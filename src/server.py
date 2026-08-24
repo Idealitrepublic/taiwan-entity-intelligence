@@ -5,6 +5,7 @@ import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
+from .company import get_company
 from .db import connect
 from .graph import company_graph
 from .repository import company_people
@@ -42,17 +43,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(400, {"error": "統編必須是純數字。"})
                 return
             try:
+                basic = get_company(uniform_number)
                 conn = connect()
                 people = company_people(conn, uniform_number)
-                if not people:
+                if not basic and not people:
                     conn.close()
-                    self._json(404, {"error": "找不到此統編的本機公司資料。"})
+                    self._json(404, {"error": "找不到此統編。"})
                     return
                 graph = company_graph(conn, uniform_number)
                 conn.close()
                 self._json(200, {
                     "uniform_number": uniform_number,
-                    "company_name": people[0]["company_name"],
+                    "company": basic,
+                    "company_name": (basic or {}).get("Company_Name") or (people[0]["company_name"] if people else uniform_number),
+                    "people": people,
                     "graph": graph,
                 })
             except Exception as exc:
