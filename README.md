@@ -1,8 +1,28 @@
 # Taiwan Entity Intelligence
 
-Taiwan Entity Intelligence is an MVP for turning public Taiwanese company, director, and government procurement information into a searchable relationship graph.
+Taiwan Entity Intelligence is an investigation-oriented MVP for turning public Taiwanese company, director, and government procurement information into an explorable relationship network.
 
-## MVP
+## Investor-demo MVP
+
+The current product experience is designed around a simple workflow:
+
+**輸入統編 → 建立企業網絡 → 找到關鍵人物／關聯企業／標案 → 點擊節點追查上下文**
+
+The browser workspace now includes:
+
+- Target company profile and official basic-data summary
+- Network KPI cards: nodes, relationships, people, related companies, tenders, high-connectivity entities
+- Interactive relationship graph with radial, hierarchical, and compact layouts
+- Entity-type filters for companies, people, and tenders
+- Pan / zoom / reset controls
+- Click-to-inspect entity details and direct relationships
+- Focus-on-company and full-graph modes
+- A compact investigation-signal panel that summarizes observable network structure
+- Dependency-free frontend: no frontend framework or CDN is required for the MVP
+
+The interaction model is intentionally inspired by mature graph-investigation products: progressive visual exploration, search/filter controls, multiple layouts, entity detail panels, and relationship-focused inspection. Mature tools such as Linkurious and Maltego provide similar investigation primitives including filtering, neighborhood exploration, multiple layouts, node/edge details, and graph export/collaboration workflows. This repository does **not** copy their proprietary implementation or UI.
+
+## Data returned
 
 Input a Taiwan company uniform number and return:
 
@@ -11,7 +31,7 @@ Input a Taiwan company uniform number and return:
 - Related companies through shared people
 - Government tender / winner records when supported by the local tender schema
 - A graph JSON representation
-- A local browser UI for visual exploration
+- A local browser investigation workspace
 
 The official company-data API is documented by the Ministry of Economic Affairs' commercial administration open-data platform. urlOfficial API documentationhttps://data.gcis.nat.gov.tw/od/rule
 
@@ -37,7 +57,7 @@ Official company API     Local SQLite
                  +-----+-----+
                  |           |
                  v           v
-              JSON       Browser UI
+              JSON       Investigation UI
 ```
 
 ## Repository layout
@@ -52,7 +72,7 @@ src/
   main.py          CLI entry point
   server.py        Local web API + UI server
 web/
-  index.html       Dependency-free graph viewer
+  index.html       Dependency-free investigation workspace
 data/
   README.md        Local data instructions
 tests/
@@ -87,18 +107,21 @@ For the browser UI:
 python3 -m src.server
 ```
 
-Then open `http://127.0.0.1:8000` and enter a company uniform number, for example `20828393` if that company exists in your local database.
+Then open `http://127.0.0.1:8000` and enter a company uniform number. `20828393` is a useful local demo target when the corresponding company data exists in your local database. The UI also has a **載入 Demo** button.
 
-## Roadmap
+## Product direction
 
-1. Normalize company and person entities
-2. Improve tender/winner schema mapping and source provenance
-3. Add bounded multi-hop graph traversal
-4. Add interactive graph filtering, search, and relationship details
-5. Add source/date/confidence for every edge
-6. Add explainable AI relationship analysis
-7. Add automated data refresh pipelines
-8. Add production API/authentication/deployment
+The MVP is deliberately moving toward an investigation product rather than a static chart. The next product layers are:
+
+1. Bounded multi-hop expansion so investigators can progressively reveal a neighborhood instead of loading everything at once
+2. Full-text / fuzzy entity search across companies and people
+3. Source provenance, effective dates, confidence, and evidence for every node/edge
+4. Tender analysis by agency, date, amount, and winner
+5. Shortest-path and shared-person analysis between two entities
+6. Timeline and geo views where the underlying data supports them
+7. Saved investigations / cases and exportable reports
+8. Explainable AI that summarizes observed relationships without presenting inference as fact
+9. Automated data refresh pipelines and production deployment
 
 ## Responsible interpretation
 
