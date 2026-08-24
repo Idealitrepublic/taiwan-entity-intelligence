@@ -5,21 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Taiwan Entity Intelligence</title>
   <style>
-    body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0f1115; color:#e8eaed; }
-    header { padding:18px 24px; border-bottom:1px solid #2b2f36; }
-    h1 { margin:0 0 8px; font-size:22px; }
-    .sub { color:#9aa0a6; font-size:14px; }
-    .toolbar { display:flex; gap:8px; padding:14px 24px; border-bottom:1px solid #2b2f36; }
-    input { flex:0 1 320px; padding:10px 12px; border:1px solid #444b55; border-radius:8px; background:#181b21; color:#fff; }
-    button { padding:10px 16px; border:0; border-radius:8px; cursor:pointer; }
-    #status { padding:0 24px; color:#9aa0a6; }
-    #graph { height:calc(100vh - 160px); min-height:500px; }
-    svg { width:100%; height:100%; }
-    .edge { stroke:#69717d; stroke-width:1.5; }
+    :root { --bg:#0f1115; --panel:#181b21; --line:#2b2f36; --text:#e8eaed; --muted:#9aa0a6; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); overflow:hidden; }
+    header { padding:16px 24px 12px; border-bottom:1px solid var(--line); }
+    h1 { margin:0 0 5px; font-size:22px; }
+    .sub { color:var(--muted); font-size:14px; }
+    .toolbar { display:flex; align-items:center; gap:8px; padding:12px 24px; border-bottom:1px solid var(--line); }
+    input { width:320px; padding:10px 12px; border:1px solid #444b55; border-radius:8px; background:var(--panel); color:#fff; font-size:15px; }
+    button { padding:10px 15px; border:0; border-radius:8px; cursor:pointer; font-weight:600; }
+    .zoom { margin-left:auto; display:flex; gap:6px; }
+    .zoom button { background:var(--panel); color:var(--text); border:1px solid #343942; padding:8px 12px; }
+    #status { padding:8px 24px; color:var(--muted); font-size:14px; border-bottom:1px solid #20242b; }
+    #graph { position:relative; height:calc(100vh - 145px); min-height:500px; }
+    svg { width:100%; height:100%; display:block; cursor:grab; }
+    svg.dragging { cursor:grabbing; }
+    .edge { stroke:#58616d; stroke-width:1.4; opacity:.65; }
+    .edge-label { fill:#858c96; font-size:10px; pointer-events:none; }
     .node { cursor:pointer; }
-    .node circle { stroke:#fff; stroke-width:1.5; }
-    .node text { fill:#e8eaed; font-size:12px; pointer-events:none; }
-    .legend { position:absolute; right:20px; top:105px; background:#181b21; padding:10px 12px; border:1px solid #2b2f36; border-radius:8px; font-size:12px; }
+    .node circle { stroke:#0b0d10; stroke-width:2; }
+    .node:hover circle { stroke:#fff; stroke-width:3; }
+    .node text { fill:#e8eaed; font-size:12px; pointer-events:none; paint-order:stroke; stroke:#0f1115; stroke-width:3px; stroke-linejoin:round; }
+    .legend { position:absolute; right:20px; top:12px; background:rgba(24,27,33,.94); padding:9px 12px; border:1px solid var(--line); border-radius:8px; font-size:12px; z-index:2; }
+    .hint { position:absolute; left:20px; bottom:14px; color:#777f8b; font-size:12px; pointer-events:none; }
+    .empty { display:flex; height:100%; align-items:center; justify-content:center; color:#666d78; }
   </style>
 </head>
 <body>
@@ -30,48 +39,79 @@
   <div class="toolbar">
     <input id="uniform" inputmode="numeric" placeholder="輸入公司統編，例如 20828393">
     <button id="search">建立關係圖</button>
+    <div class="zoom"><button id="zoomOut">−</button><button id="zoomReset">重置</button><button id="zoomIn">＋</button></div>
   </div>
   <div id="status">等待輸入公司統編。</div>
-  <div class="legend">● 公司　● 人物　● 標案</div>
-  <div id="graph"></div>
+  <div id="graph">
+    <div class="legend">● 公司　● 人物　● 標案</div>
+    <div class="hint">滾輪縮放・拖曳畫布・點擊節點</div>
+    <div class="empty">輸入統編後建立企業關係圖</div>
+  </div>
 <script>
 const colors = { company:'#6ea8fe', person:'#7ee2a8', tender:'#f6c85f' };
-const radius = { company:20, person:14, tender:12 };
+const radius = { company:22, person:15, tender:12 };
+let current = { nodes:[], edges:[] }, scale=1, panX=0, panY=0, drag=null;
 
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function render(data){
-  const host = document.getElementById('graph');
-  const W = host.clientWidth || 900, H = host.clientHeight || 600;
-  const nodes = data.nodes.map((n,i)=>({...n,x:W/2+(Math.random()-.5)*W*.65,y:H/2+(Math.random()-.5)*H*.65}));
-  const byId = new Map(nodes.map(n=>[n.id,n]));
-  const edges = data.edges.map(e=>({...e,a:byId.get(e.source),b:byId.get(e.target)})).filter(e=>e.a&&e.b);
-  for(let k=0;k<80;k++){
-    for(const n of nodes){ n.vx=(n.vx||0)*.82; n.vy=(n.vy||0)*.82; }
-    for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
-      const a=nodes[i],b=nodes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.max(30,Math.hypot(dx,dy)),f=9000/(d*d);
-      a.vx+=dx/d*f; a.vy+=dy/d*f; b.vx-=dx/d*f; b.vy-=dy/d*f;
-    }
-    for(const e of edges){ const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,d=Math.max(1,Math.hypot(dx,dy)),f=(d-130)*.002; e.a.vx+=dx*f;e.a.vy+=dy*f;e.b.vx-=dx*f;e.b.vy-=dy*f; }
-    for(const n of nodes){ n.x=Math.max(30,Math.min(W-30,n.x+n.vx)); n.y=Math.max(30,Math.min(H-30,n.y+n.vy)); }
-  }
-  const edgeSvg=edges.map(e=>`<line class="edge" x1="${e.a.x}" y1="${e.a.y}" x2="${e.b.x}" y2="${e.b.y}"/>`).join('');
-  const nodeSvg=nodes.map(n=>`<g class="node" transform="translate(${n.x},${n.y})" data-id="${esc(n.id)}"><circle r="${radius[n.type]||12}" fill="${colors[n.type]||'#aaa'}"></circle><text x="${(radius[n.type]||12)+5}" y="4">${esc(n.label)}</text></g>`).join('');
-  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="企業關係圖">${edgeSvg}${nodeSvg}</svg>`;
+function typeName(t){ return ({company:'公司',person:'人物',tender:'標案'})[t] || t; }
+function layout(nodes, edges, W, H){
+  const root = nodes.find(n=>n.type==='company') || nodes[0];
+  const people = nodes.filter(n=>n!==root && n.type==='person');
+  const companies = nodes.filter(n=>n!==root && n.type==='company');
+  const tenders = nodes.filter(n=>n.type==='tender');
+  const placeRing = (arr, cx, cy, r, phase=0) => arr.forEach((n,i)=>{
+    const a = phase + (Math.PI*2*i/Math.max(1,arr.length));
+    n.x=cx+Math.cos(a)*r; n.y=cy+Math.sin(a)*r;
+  });
+  if(root){ root.x=W/2; root.y=H/2; }
+  placeRing(people, W/2, H/2, Math.min(W,H)*.25, -Math.PI/2);
+  placeRing(companies, W/2, H/2, Math.min(W,H)*.38, 0);
+  placeRing(tenders, W/2, H/2, Math.min(W,H)*.46, Math.PI/4);
+  return nodes;
 }
+function render(data){
+  current=data;
+  const host=document.getElementById('graph');
+  const W=host.clientWidth||1000, H=host.clientHeight||600;
+  const nodes=data.nodes.map(n=>({...n}));
+  layout(nodes,data.edges,W,H);
+  const byId=new Map(nodes.map(n=>[n.id,n]));
+  const edges=data.edges.map(e=>({...e,a:byId.get(e.source),b:byId.get(e.target)})).filter(e=>e.a&&e.b);
+  const edgeSvg=edges.map(e=>`<g><line class="edge" x1="${e.a.x}" y1="${e.a.y}" x2="${e.b.x}" y2="${e.b.y}"/><text class="edge-label" x="${(e.a.x+e.b.x)/2}" y="${(e.a.y+e.b.y)/2-4}" text-anchor="middle">${esc(e.type||'關聯')}</text></g>`).join('');
+  const nodeSvg=nodes.map(n=>`<g class="node" transform="translate(${n.x},${n.y})" data-id="${esc(n.id)}" data-type="${esc(n.type)}"><circle r="${radius[n.type]||12}" fill="${colors[n.type]||'#aaa'}"></circle><text x="${(radius[n.type]||12)+6}" y="4">${esc(n.label)}</text></g>`).join('');
+  host.querySelector('.empty')?.remove();
+  host.insertAdjacentHTML('beforeend',`<svg id="graphSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="企業關係圖"><g id="viewport" transform="translate(0 0) scale(1)">${edgeSvg}${nodeSvg}</g></svg>`);
+  bindGraph(W,H);
+}
+function applyTransform(){ const v=document.getElementById('viewport'); if(v) v.setAttribute('transform',`translate(${panX} ${panY}) scale(${scale})`); }
+function bindGraph(W,H){
+  const svg=document.getElementById('graphSvg'); if(!svg)return;
+  svg.addEventListener('wheel',e=>{e.preventDefault(); scale=Math.max(.35,Math.min(2.5,scale*(e.deltaY<0?1.1:.9))); applyTransform();},{passive:false});
+  svg.addEventListener('pointerdown',e=>{ if(e.target.closest('.node')) return; drag={x:e.clientX,y:e.clientY,px:panX,py:panY}; svg.classList.add('dragging'); });
+  window.addEventListener('pointermove',e=>{if(!drag)return;panX=drag.px+(e.clientX-drag.x);panY=drag.py+(e.clientY-drag.y);applyTransform();});
+  window.addEventListener('pointerup',()=>{drag=null;svg.classList.remove('dragging');});
+  svg.querySelectorAll('.node').forEach(el=>el.addEventListener('click',()=>{
+    const n=current.nodes.find(x=>x.id===el.dataset.id); if(n) document.getElementById('status').textContent=`${typeName(n.type)}：${n.label}`;
+  }));
+}
+function clearGraph(){ const old=document.getElementById('graphSvg'); if(old)old.remove(); }
 async function search(){
   const id=document.getElementById('uniform').value.trim();
-  if(!/^\d+$/.test(id)){ document.getElementById('status').textContent='請輸入純數字統編。'; return; }
+  if(!/^\d+$/.test(id)){document.getElementById('status').textContent='請輸入純數字統編。';return;}
+  clearGraph(); scale=1;panX=0;panY=0;
   document.getElementById('status').textContent='正在建立關係圖…';
   try{
     const r=await fetch('/api/company/'+encodeURIComponent(id));
-    const data=await r.json();
-    if(!r.ok) throw new Error(data.error||'查詢失敗');
+    const data=await r.json(); if(!r.ok)throw new Error(data.error||'查詢失敗');
     render(data.graph);
     document.getElementById('status').textContent=`${data.company_name}：${data.graph.nodes.length} 個節點、${data.graph.edges.length} 條關係`;
-  }catch(e){ document.getElementById('status').textContent=e.message; }
+  }catch(e){document.getElementById('status').textContent=e.message;}
 }
 document.getElementById('search').addEventListener('click',search);
 document.getElementById('uniform').addEventListener('keydown',e=>{if(e.key==='Enter')search();});
+document.getElementById('zoomIn').addEventListener('click',()=>{scale=Math.min(2.5,scale*1.2);applyTransform();});
+document.getElementById('zoomOut').addEventListener('click',()=>{scale=Math.max(.35,scale/1.2);applyTransform();});
+document.getElementById('zoomReset').addEventListener('click',()=>{scale=1;panX=0;panY=0;applyTransform();});
 </script>
 </body>
 </html>
