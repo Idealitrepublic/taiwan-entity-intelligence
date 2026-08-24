@@ -1,0 +1,2 @@
+# MVP currently uses Python standard library only.
+# Web UI / graph visualization dependencies will be added in the next phase.
