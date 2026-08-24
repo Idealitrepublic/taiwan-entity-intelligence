@@ -2,95 +2,104 @@
 
 Taiwan Entity Intelligence is an MVP for turning public Taiwanese company, director, and government procurement information into a searchable relationship graph.
 
-## MVP goal
+## MVP
 
 Input a Taiwan company uniform number and return:
 
-- Company basic information
-- Directors / supervisors and representatives
-- Related companies through people and corporate representatives
-- Government tender / procurement history when local tender data is available
-- A graph-friendly JSON representation for future visualization
+- Official company basic information from Taiwan's Ministry of Economic Affairs open-data API
+- Directors / supervisors and corporate representatives from the local entity database
+- Related companies through shared people
+- Government tender / winner records when supported by the local tender schema
+- A graph JSON representation
+- A local browser UI for visual exploration
+
+The official company-data API is documented by the Ministry of Economic Affairs' commercial administration open-data platform. urlOfficial API documentationhttps://data.gcis.nat.gov.tw/od/rule
 
 ## Architecture
 
 ```text
 Company uniform number
         |
-        v
-  Company Resolver
-        |
-   +----+----+----------------+
-   |         |                |
-   v         v                v
-People    Related         Tenders
-   |       Companies          |
-   +---------+---------------+
-             v
-        Entity Graph
-             |
-             v
-      Visualization / AI
+        +--------------------+
+        |                    |
+        v                    v
+Official company API     Local SQLite
+        |                    |
+        |              +-----+-----+
+        |              |           |
+        |              v           v
+        |           People      Tenders
+        |              |           |
+        +--------------+-----------+
+                       v
+                  Entity Graph
+                       |
+                 +-----+-----+
+                 |           |
+                 v           v
+              JSON       Browser UI
 ```
 
 ## Repository layout
 
 ```text
 src/
-  company.py          Company data access layer
-  people.py           Company -> people queries
-  person_lookup.py    Person -> companies queries
-  graph_query.py      Graph-oriented query layer
-
+  company.py       Official company basic-data client
+  db.py            SQLite connection/schema helpers
+  models.py        Entity graph data models
+  repository.py    Company/person/tender queries
+  graph.py         Graph construction
+  main.py          CLI entry point
+  server.py        Local web API + UI server
+web/
+  index.html       Dependency-free graph viewer
 data/
-  README.md           Local data instructions
-
+  README.md        Local data instructions
 tests/
-  (MVP tests)
+  test_models.py   Graph model smoke test
 ```
 
-## Data policy
+## Local data
 
-Large source datasets and local databases are intentionally **not committed to Git**. Put local datasets under `data/` on your development machine and document their schema/source here instead.
+Large source datasets and databases are intentionally **not committed to Git**. Put them under `data/` locally.
 
-Expected local files may include:
+Expected local files:
 
 - `directors.csv`
 - `person_index.json`
 - `entity.db`
 - `tenders_gpa.json`
 
-Do not commit personal credentials, API keys, secrets, or restricted datasets.
+The current MVP reads the existing SQLite tables `company_directors`, `tenders`, and `tender_winners` when the relevant columns are available.
 
-## Development
+## Run locally
 
-Python 3.9+ is supported for the current MVP.
-
-Create an environment and install dependencies:
+Python 3.9+ is supported. The MVP currently uses the Python standard library.
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python3 -m unittest discover -s tests
+python3 -m src.main
 ```
 
-Run the current query prototype:
+For the browser UI:
 
 ```bash
-python3 src/graph_query.py
+python3 -m src.server
 ```
+
+Then open `http://127.0.0.1:8000` and enter a company uniform number, for example `20828393` if that company exists in your local database.
 
 ## Roadmap
 
 1. Normalize company and person entities
-2. Build company <-> person edges
-3. Build company <-> tender / winner edges
-4. Add multi-hop graph traversal
-5. Add graph visualization web UI
+2. Improve tender/winner schema mapping and source provenance
+3. Add bounded multi-hop graph traversal
+4. Add interactive graph filtering, search, and relationship details
+5. Add source/date/confidence for every edge
 6. Add explainable AI relationship analysis
-7. Add source provenance and confidence scores
-8. Add automated data refresh pipelines
+7. Add automated data refresh pipelines
+8. Add production API/authentication/deployment
 
-## Important
+## Responsible interpretation
 
-This project is an intelligence/research tool. A relationship in public records does not by itself establish wrongdoing, beneficial ownership, or a personal relationship. The eventual product should display source provenance, dates, relationship types, and confidence rather than presenting inference as fact.
+A public-record relationship does not by itself establish wrongdoing, beneficial ownership, or a personal relationship. The product should distinguish facts from inference and show source provenance, dates, relationship types, and confidence scores.
