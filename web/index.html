@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taiwan Entity Intelligence</title>
+  <style>
+    body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0f1115; color:#e8eaed; }
+    header { padding:18px 24px; border-bottom:1px solid #2b2f36; }
+    h1 { margin:0 0 8px; font-size:22px; }
+    .sub { color:#9aa0a6; font-size:14px; }
+    .toolbar { display:flex; gap:8px; padding:14px 24px; border-bottom:1px solid #2b2f36; }
+    input { flex:0 1 320px; padding:10px 12px; border:1px solid #444b55; border-radius:8px; background:#181b21; color:#fff; }
+    button { padding:10px 16px; border:0; border-radius:8px; cursor:pointer; }
+    #status { padding:0 24px; color:#9aa0a6; }
+    #graph { height:calc(100vh - 160px); min-height:500px; }
+    svg { width:100%; height:100%; }
+    .edge { stroke:#69717d; stroke-width:1.5; }
+    .node { cursor:pointer; }
+    .node circle { stroke:#fff; stroke-width:1.5; }
+    .node text { fill:#e8eaed; font-size:12px; pointer-events:none; }
+    .legend { position:absolute; right:20px; top:105px; background:#181b21; padding:10px 12px; border:1px solid #2b2f36; border-radius:8px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Taiwan Entity Intelligence</h1>
+    <div class="sub">公司 → 人物 → 關聯企業 → 政府標案</div>
+  </header>
+  <div class="toolbar">
+    <input id="uniform" inputmode="numeric" placeholder="輸入公司統編，例如 20828393">
+    <button id="search">建立關係圖</button>
+  </div>
+  <div id="status">等待輸入公司統編。</div>
+  <div class="legend">● 公司　● 人物　● 標案</div>
+  <div id="graph"></div>
+<script>
+const colors = { company:'#6ea8fe', person:'#7ee2a8', tender:'#f6c85f' };
+const radius = { company:20, person:14, tender:12 };
+
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function render(data){
+  const host = document.getElementById('graph');
+  const W = host.clientWidth || 900, H = host.clientHeight || 600;
+  const nodes = data.nodes.map((n,i)=>({...n,x:W/2+(Math.random()-.5)*W*.65,y:H/2+(Math.random()-.5)*H*.65}));
+  const byId = new Map(nodes.map(n=>[n.id,n]));
+  const edges = data.edges.map(e=>({...e,a:byId.get(e.source),b:byId.get(e.target)})).filter(e=>e.a&&e.b);
+  for(let k=0;k<80;k++){
+    for(const n of nodes){ n.vx=(n.vx||0)*.82; n.vy=(n.vy||0)*.82; }
+    for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i],b=nodes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.max(30,Math.hypot(dx,dy)),f=9000/(d*d);
+      a.vx+=dx/d*f; a.vy+=dy/d*f; b.vx-=dx/d*f; b.vy-=dy/d*f;
+    }
+    for(const e of edges){ const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,d=Math.max(1,Math.hypot(dx,dy)),f=(d-130)*.002; e.a.vx+=dx*f;e.a.vy+=dy*f;e.b.vx-=dx*f;e.b.vy-=dy*f; }
+    for(const n of nodes){ n.x=Math.max(30,Math.min(W-30,n.x+n.vx)); n.y=Math.max(30,Math.min(H-30,n.y+n.vy)); }
+  }
+  const edgeSvg=edges.map(e=>`<line class="edge" x1="${e.a.x}" y1="${e.a.y}" x2="${e.b.x}" y2="${e.b.y}"/>`).join('');
+  const nodeSvg=nodes.map(n=>`<g class="node" transform="translate(${n.x},${n.y})" data-id="${esc(n.id)}"><circle r="${radius[n.type]||12}" fill="${colors[n.type]||'#aaa'}"></circle><text x="${(radius[n.type]||12)+5}" y="4">${esc(n.label)}</text></g>`).join('');
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="企業關係圖">${edgeSvg}${nodeSvg}</svg>`;
+}
+async function search(){
+  const id=document.getElementById('uniform').value.trim();
+  if(!/^\d+$/.test(id)){ document.getElementById('status').textContent='請輸入純數字統編。'; return; }
+  document.getElementById('status').textContent='正在建立關係圖…';
+  try{
+    const r=await fetch('/api/company/'+encodeURIComponent(id));
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||'查詢失敗');
+    render(data.graph);
+    document.getElementById('status').textContent=`${data.company_name}：${data.graph.nodes.length} 個節點、${data.graph.edges.length} 條關係`;
+  }catch(e){ document.getElementById('status').textContent=e.message; }
+}
+document.getElementById('search').addEventListener('click',search);
+document.getElementById('uniform').addEventListener('keydown',e=>{if(e.key==='Enter')search();});
+</script>
+</body>
+</html>
