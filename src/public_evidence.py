@@ -1,44 +1,64 @@
-"""Bounded public-record evidence connectors.
+"""Bounded live public-record evidence connectors.
 
-The connectors deliberately return source-backed records only. A match is not
-an allegation of wrongdoing; it means the source record contains the entity
-name (or a related observable such as a domain).
+A match means only that an official source record contains the searched
+observable. It is not a legal or criminal conclusion.
 """
 import csv
 import io
 import json
 import os
 import re
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-DATASET_PAGES = {
-    "labor_penalties": "https://data.gov.tw/dataset/109896",
-    "scam_domains": "https://data.gov.tw/dataset/176455",
-    "fake_investment_sites": "https://data.gov.tw/dataset/160055",
-    "scam_refutations": "https://data.gov.tw/dataset/38262",
+DATASET_IDS = {
+    "labor_penalties": "109896",
+    "scam_domains": "176455",
+    "fake_investment_sites": "160055",
+    "scam_refutations": "38262",
+}
+DIRECT_RESOURCES = {
+    # Official MOL CSV resource; metadata is preferred and this is a fallback.
+    "109896": "https://apiservice.mol.gov.tw/OdService/download/A17000000J-020050-MUA",
 }
 
 
-def _get(url, timeout=12, headers=None):
-    req = urllib.request.Request(url, headers=headers or {"User-Agent": "TaiwanEntityIntelligence/0.3"})
+def _get(url, timeout=25, headers=None):
+    req = urllib.request.Request(url, headers=headers or {"User-Agent": "TaiwanEntityIntelligence/0.4"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
 
-def _dataset_csv_urls(page_url):
-    html = _get(page_url).decode("utf-8", "ignore")
-    # data.gov.tw resource links currently point to opdadm.moi.gov.tw for
-    # these CSV resources. Keep the resolver generic so resource IDs can move.
-    urls = re.findall(r'https?://opdadm\.moi\.gov\.tw/[^"<> ]+', html)
+def _json(url):
+    return json.loads(_get(url).decode("utf-8-sig", "ignore"))
+
+
+def _dataset_resources(dataset_id):
+    urls = []
+    try:
+        meta = _json("https://data.gov.tw/api/v2/rest/dataset/{}".format(dataset_id))
+        distributions = meta.get("distribution") or meta.get("distributions") or []
+        if isinstance(distributions, dict):
+            distributions = list(distributions.values())
+        for item in distributions:
+            if not isinstance(item, dict):
+                continue
+            url = item.get("resourceDownloadURL") or item.get("downloadURL") or item.get("url")
+            if url:
+                urls.append(url)
+    except Exception:
+        pass
+    if dataset_id in DIRECT_RESOURCES:
+        urls.append(DIRECT_RESOURCES[dataset_id])
     return list(dict.fromkeys(urls))
 
 
-def _read_csv_url(url, limit=5000):
+def _read_csv_url(url, limit=10000):
     raw = _get(url)
-    text = raw.decode("utf-8-sig", "ignore")
+    text = raw.decode("utf-8-sig", "replace")
     try:
-        dialect = csv.Sniffer().sniff(text[:4096])
+        dialect = csv.Sniffer().sniff(text[:8192])
     except csv.Error:
         dialect = csv.excel
     rows = csv.DictReader(io.StringIO(text), dialect=dialect)
@@ -54,7 +74,7 @@ def _match_row(row, needles):
     return any(n and n in hay for n in needles)
 
 
-def _evidence(source, record_id, title, summary, url, raw, fact_type="public_record", confidence=1.0):
+def _evidence(source, record_id, title, summary, url, raw, fact_type):
     now = datetime.now(timezone.utc).isoformat()
     return {
         "evidence_id": "{}:{}".format(source, record_id),
@@ -63,7 +83,7 @@ def _evidence(source, record_id, title, summary, url, raw, fact_type="public_rec
         "retrieved_at": now,
         "source": {"type": "government_open_data", "name": source, "record_id": str(record_id), "url": url},
         "fact": {"type": fact_type, "title": title, "summary": summary},
-        "confidence": confidence,
+        "confidence": 1.0,
         "status": "active",
         "raw": raw,
     }
@@ -71,73 +91,58 @@ def _evidence(source, record_id, title, summary, url, raw, fact_type="public_rec
 
 def _collect_dataset(dataset_key, needles, source_name, fact_type, max_rows=100):
     out = []
-    page = DATASET_PAGES[dataset_key]
-    try:
-        urls = _dataset_csv_urls(page)
-        for url in urls[:5]:
-            try:
-                rows = _read_csv_url(url)
-            except Exception:
+    dataset_id = DATASET_IDS[dataset_key]
+    for url in _dataset_resources(dataset_id):
+        try:
+            rows = _read_csv_url(url)
+        except Exception:
+            continue
+        for idx, row in enumerate(rows):
+            if not _match_row(row, needles):
                 continue
-            for idx, row in enumerate(rows):
-                if not _match_row(row, needles):
-                    continue
-                record_id = row.get("處分字號") or row.get("處分書文號") or row.get("網域") or row.get("網址") or row.get("編號") or idx
-                title = row.get("事業單位名稱") or row.get("事業單位名稱或負責人") or row.get("網域") or row.get("網站名稱") or row.get("標題") or source_name
-                summary = "來源資料含有與目前查詢實體名稱相符的公開紀錄；請回看原始資料確認脈絡。"
-                out.append(_evidence(source_name, record_id, title, summary, url, row, fact_type))
-                if len(out) >= max_rows:
-                    return out
-    except Exception:
-        pass
+            record_id = (row.get("處分字號") or row.get("處分書文號") or row.get("網域") or
+                         row.get("網址") or row.get("編號") or idx)
+            title = (row.get("事業單位名稱") or row.get("事業單位名稱或負責人") or
+                     row.get("網域") or row.get("網站名稱") or row.get("標題") or source_name)
+            summary = "官方公開資料含有與查詢實體名稱相符的紀錄；請開啟來源確認完整脈絡。"
+            out.append(_evidence(source_name, record_id, title, summary, "https://data.gov.tw/dataset/{}".format(dataset_id), row, fact_type))
+            if len(out) >= max_rows:
+                return out
     return out
 
 
 def _judicial_recent(needles, max_docs=20):
-    """Use the official Judicial Yuan API only when credentials are configured.
-
-    The API requires an account/token and is available during its published
-    service window. Without credentials we return a transparent unavailable
-    status rather than scraping the public judgment UI.
-    """
-    user = os.getenv("JUDICIAL_API_USER")
-    password = os.getenv("JUDICIAL_API_PASSWORD")
+    """Query the official Judicial Yuan API only when credentials are configured."""
+    user = os.getenv("JUDICIAL_API_USER") or os.getenv("JUDICIAL_USER")
+    password = os.getenv("JUDICIAL_API_PASSWORD") or os.getenv("JUDICIAL_PASSWORD")
     if not user or not password:
-        return [], {"status": "not_configured", "message": "司法院裁判書 API 需要資料開放平台帳密。"}
+        return [], {"status": "not_configured", "message": "司法院 API 尚未設定帳密；已提供官方全文檢索入口。"}
     try:
-        body = json.dumps({"user": user, "password": password}).encode("utf-8")
-        req = urllib.request.Request("https://data.judicial.gov.tw/jdg/api/Auth", data=body,
-                                     headers={"Content-Type": "application/json", "User-Agent": "TaiwanEntityIntelligence/0.3"})
-        auth = json.loads(urllib.request.urlopen(req, timeout=12).read().decode("utf-8"))
-        token = auth.get("token")
+        def post(path, payload, timeout=20):
+            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            req = urllib.request.Request("https://data.judicial.gov.tw/jdg/api" + path, data=body,
+                                         headers={"Content-Type": "application/json", "User-Agent": "TaiwanEntityIntelligence/0.4"})
+            return json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode("utf-8"))
+        auth = post("/Auth", {"user": user, "password": password})
+        token = auth.get("Token") or auth.get("token")
         if not token:
-            return [], {"status": "auth_failed"}
-        req = urllib.request.Request("https://data.judicial.gov.tw/jdg/api/JList", data=json.dumps({"token": token}).encode("utf-8"),
-                                     headers={"Content-Type": "application/json", "User-Agent": "TaiwanEntityIntelligence/0.3"})
-        listing = json.loads(urllib.request.urlopen(req, timeout=12).read().decode("utf-8"))
+            return [], {"status": "auth_failed", "message": "司法院 API 驗證失敗。"}
+        listing = post("/JList", {"token": token})
         ids = []
-        def walk(x):
-            if isinstance(x, str) and ("," in x or x.startswith("J")):
-                ids.append(x)
-            elif isinstance(x, dict):
-                for v in x.values(): walk(v)
-            elif isinstance(x, list):
-                for v in x: walk(v)
-        walk(listing)
+        for day in listing if isinstance(listing, list) else []:
+            if isinstance(day, dict):
+                ids.extend(day.get("list", []))
         ids = list(dict.fromkeys(ids))[:max_docs]
         out = []
         for jid in ids:
             try:
-                req = urllib.request.Request("https://data.judicial.gov.tw/jdg/api/JDoc", data=json.dumps({"token": token, "j": jid}).encode("utf-8"),
-                                             headers={"Content-Type": "application/json", "User-Agent": "TaiwanEntityIntelligence/0.3"})
-                doc = json.loads(urllib.request.urlopen(req, timeout=12).read().decode("utf-8"))
-                content = json.dumps(doc, ensure_ascii=False)
-                if not any(n in _norm(content) for n in needles):
+                doc = post("/JDoc", {"token": token, "j": jid})
+                content = _norm(json.dumps(doc, ensure_ascii=False))
+                if not any(n in content for n in needles):
                     continue
-                out.append(_evidence("司法院裁判書開放 API", jid,
-                                     doc.get("JTITLE") or jid,
-                                     "近期裁判書全文包含查詢實體名稱；需人工確認當事人身分與案件脈絡。",
-                                     "https://data.judicial.gov.tw/jdg/api/JDoc", doc, "judgment"))
+                out.append(_evidence("司法院裁判書開放 API", jid, doc.get("JTITLE") or jid,
+                                     "近期裁判書全文包含查詢實體名稱；仍需人工確認當事人與案件關係。",
+                                     "https://data.judicial.gov.tw/", doc, "judgment"))
             except Exception:
                 continue
         return out, {"status": "ok", "checked": len(ids)}
@@ -153,14 +158,19 @@ def collect_public_evidence(company_name, people=None):
 
     evidence += _collect_dataset("labor_penalties", needles, "勞動部／違反勞動法令事業單位", "administrative_penalty")
     statuses["裁罰"] = "checked"
-    evidence += _collect_dataset("scam_domains", needles, "165反詐騙諮詢專線_遭停止解析涉詐網站", "anti_fraud_domain")
-    evidence += _collect_dataset("fake_investment_sites", needles, "165反詐騙諮詢專線_假投資(博弈)網站", "anti_fraud_site")
-    evidence += _collect_dataset("scam_refutations", needles, "165反詐騙諮詢專線－詐騙闢謠專區", "anti_fraud_refutation")
+    for key, source, fact_type in [
+        ("scam_domains", "165反詐騙諮詢專線_遭停止解析涉詐網站", "anti_fraud_domain"),
+        ("fake_investment_sites", "165反詐騙諮詢專線_假投資(博弈)網站", "anti_fraud_site"),
+        ("scam_refutations", "165反詐騙諮詢專線－詐騙闢謠專區", "anti_fraud_refutation"),
+    ]:
+        evidence += _collect_dataset(key, needles, source, fact_type)
     statuses["165"] = "checked"
 
     judicial, judicial_status = _judicial_recent(needles)
     evidence += judicial
     statuses["裁判書"] = judicial_status
-
-    return {"evidence": evidence, "statuses": statuses,
-            "note": "公開紀錄命中僅表示來源資料存在名稱／觀測值相符，不代表該實體已被認定違法或涉詐。"}
+    return {
+        "evidence": evidence,
+        "statuses": statuses,
+        "note": "公開紀錄命中僅表示來源資料存在名稱／觀測值相符，不代表該實體已被認定違法或涉詐。",
+    }
