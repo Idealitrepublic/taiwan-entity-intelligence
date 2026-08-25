@@ -1,6 +1,7 @@
 """Standard-library web server for the investigation workspace."""
 import json
 import os
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import quote_plus, unquote, urlparse
 
@@ -15,6 +16,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
 JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/LAW_Mobile_FJUD/FJUD/qryresult.aspx?judtype=JUDBOOK&kw={}"
 DEMO_COMPANY = "82876417"
+PRIMARY_DOMAIN = "taiwan-entity-intelligence.vercel.app"
+WORKING_DEPLOYMENT = "https://taiwan-entity-intelligence-641h.vercel.app"
 
 
 def _demo_response():
@@ -66,7 +69,35 @@ def _response(uniform_number,basic,company_name,people,graph,evidence,statuses,m
 class Handler(BaseHTTPRequestHandler):
     def _json(self,status,payload):
         body=json.dumps(payload,ensure_ascii=False).encode("utf-8"); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
+
+    def _proxy_primary_domain(self):
+        """Temporary bridge: the primary domain uses the already-verified deployment.
+
+        This is intentionally host-gated so the working deployment does not proxy to
+        itself. It lets the primary URL use the verified runtime while the two Vercel
+        projects have different environment-variable state.
+        """
+        host=self.headers.get("Host","").split(":",1)[0].lower()
+        if host != PRIMARY_DOMAIN:
+            return False
+        target=WORKING_DEPLOYMENT + self.path
+        try:
+            req=urllib.request.Request(target,headers={"User-Agent":"TaiwanEntityIntelligence/0.4-primary-bridge"})
+            with urllib.request.urlopen(req,timeout=25) as response:
+                body=response.read()
+                self.send_response(response.status)
+                content_type=response.headers.get("Content-Type")
+                if content_type: self.send_header("Content-Type",content_type)
+                self.send_header("Content-Length",str(len(body)))
+                self.end_headers(); self.wfile.write(body)
+                return True
+        except Exception as exc:
+            self._json(502,{"error":"正式網址與已驗證服務的橋接失敗。","detail":str(exc)})
+            return True
+
     def do_GET(self):
+        if self._proxy_primary_domain():
+            return
         parsed=urlparse(self.path)
         if parsed.path=="/":
             with open(os.path.join(WEB,"index.html"),"rb") as f: body=f.read()
