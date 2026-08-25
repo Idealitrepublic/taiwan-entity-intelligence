@@ -31,7 +31,7 @@ def _demo_response():
       {"evidence_id":"judgment:KLDM-111訴328","schema_version":"1.0","source":{"type":"judicial_public","name":"司法院裁判書－111年度訴字第328號","record_id":"KLDM,111,訴,328,20230428,1","url":"https://judgment.judicial.gov.tw/FJUD/printData.aspx?id=KLDM%2C111%2C%E8%A8%B4%2C328%2C20230428%2C1"},"fact":{"type":"judgment","title":"臺灣基隆地方法院 111年度訴字第328號","summary":"判決記載吳虹葳以人頭負責人及股東身分設立御首公司，並記載詐欺集團以御首公司名義對21人實施詐欺。此為裁判書觀測事實，不代表公司法人本身當然成立刑事責任。"},"confidence":1.0,"status":"active","entity_id":"company:82876417","entity_type":"company"},
       {"evidence_id":"judgment:KLDM-110原訴9","schema_version":"1.0","source":{"type":"judicial_public","name":"司法院裁判書－110年度原訴字第9號","record_id":"KLDM,110,原訴,9,20220128,11","url":"https://data.judicial.gov.tw/opendl/JDocFile/KLDM/110%2C%E5%8E%9F%E8%A8%B4%2C9%2C20220128%2C11.pdf"},"fact":{"type":"judgment","title":"臺灣基隆地方法院 110年度原訴字第9號","summary":"判決內容多處直接提及御首公司、林宇澤及相關人員的角色與案件事實；應以裁判全文核對各人的最終罪責與判決主文。"},"confidence":1.0,"status":"active","entity_id":"company:82876417","entity_type":"company"}
     ]
-    return {"uniform_number":DEMO_COMPANY,"company":{"Company_Name":company,"Responsible_Name":"吳虹葳","Company_Status":"解散","Company_Setup_Date":"108/05/17","Capital_Stock_Amount":"200,000"},"company_name":company,"people":[{"person_name":n,"position":r} for _,n,r in people],"graph":{"nodes":nodes,"edges":edges},"data_mode":"demo_judicial_case","evidence":evidence,"evidence_count":len(evidence),"evidence_sources":{"司法院裁判書－111年度訴字第328號":1,"司法院裁判書－110年度原訴字第9號":1},"evidence_status":{"標案":"not_run","裁罰":"not_run","165":"not_run","裁判書":"demo_fixture"},"judicial_search_url":JUDICIAL_SEARCH.format(quote_plus(company)),"evidence_note":"這是官方裁判書案例的測試 fixture，用來驗證圖譜與 Evidence UI；不是即時全量裁判書查詢。"}
+    return {"uniform_number":DEMO_COMPANY,"company":{"Company_Name":company,"Responsible_Name":"吳虹葳","Company_Status":"解散","Company_Setup_Date":"108/05/17","Capital_Stock_Amount":"200,000"},"company_name":company,"people":[{"person_name":n,"position":r} for _,n,r in people],"graph":{"nodes":nodes,"edges":edges},"data_mode":"demo_judicial_case","evidence":evidence,"evidence_count":2,"evidence_sources":{"司法院裁判書－111年度訴字第328號":1,"司法院裁判書－110年度原訴字第9號":1},"evidence_status":{"標案":"not_run","裁罰":"not_run","165":"not_run","裁判書":"demo_fixture"},"judicial_search_url":JUDICIAL_SEARCH.format(quote_plus(company)),"evidence_note":"這是官方裁判書案例的測試 fixture，用來驗證圖譜與 Evidence UI；不是即時全量裁判書查詢。"}
 
 
 def _tender_evidence(tenders):
@@ -71,19 +71,14 @@ class Handler(BaseHTTPRequestHandler):
         body=json.dumps(payload,ensure_ascii=False).encode("utf-8"); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
 
     def _proxy_primary_domain(self):
-        """Temporary bridge: the primary domain uses the already-verified deployment.
-
-        This is intentionally host-gated so the working deployment does not proxy to
-        itself. It lets the primary URL use the verified runtime while the two Vercel
-        projects have different environment-variable state.
-        """
+        """Temporary bridge: the primary domain uses the already-verified deployment."""
         host=self.headers.get("Host","").split(":",1)[0].lower()
         if host != PRIMARY_DOMAIN:
             return False
         target=WORKING_DEPLOYMENT + self.path
         try:
             req=urllib.request.Request(target,headers={"User-Agent":"TaiwanEntityIntelligence/0.4-primary-bridge"})
-            with urllib.request.urlopen(req,timeout=25) as response:
+            with urllib.request.urlopen(req,timeout=55) as response:
                 body=response.read()
                 self.send_response(response.status)
                 content_type=response.headers.get("Content-Type")
