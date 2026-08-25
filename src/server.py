@@ -1,5 +1,4 @@
 """Tiny standard-library web server for the MVP."""
-
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -8,6 +7,7 @@ from urllib.parse import unquote, urlparse
 from .company import get_company
 from .db import connect
 from .graph import company_graph
+from .live_graph import live_company_graph
 from .repository import company_people
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -44,7 +44,38 @@ class Handler(BaseHTTPRequestHandler):
                 return
             try:
                 basic = get_company(uniform_number)
-                conn = connect()
+
+                # The local SQLite snapshot is still preferred when it exists.
+                # Public Vercel deployments do not contain the private snapshot,
+                # so transparently fall back to live official government APIs.
+                try:
+                    conn = connect()
+                except FileNotFoundError:
+                    graph = live_company_graph(uniform_number)
+                    people = [
+                        {
+                            "uniform_number": uniform_number,
+                            "company_name": basic.get("Company_Name") if basic else uniform_number,
+                            "position": node.get("properties", {}).get("position"),
+                            "person_name": node.get("label"),
+                            "shares": node.get("properties", {}).get("shares"),
+                        }
+                        for node in graph.get("nodes", [])
+                        if node.get("type") == "person"
+                    ]
+                    if not basic and not graph.get("nodes"):
+                        self._json(404, {"error": "找不到此統編。"})
+                        return
+                    self._json(200, {
+                        "uniform_number": uniform_number,
+                        "company": basic,
+                        "company_name": (basic or {}).get("Company_Name") or uniform_number,
+                        "people": people,
+                        "graph": graph,
+                        "data_mode": "live_government_open_data",
+                    })
+                    return
+
                 people = company_people(conn, uniform_number)
                 if not basic and not people:
                     conn.close()
@@ -58,6 +89,7 @@ class Handler(BaseHTTPRequestHandler):
                     "company_name": (basic or {}).get("Company_Name") or (people[0]["company_name"] if people else uniform_number),
                     "people": people,
                     "graph": graph,
+                    "data_mode": "local_database",
                 })
             except Exception as exc:
                 self._json(500, {"error": str(exc)})
