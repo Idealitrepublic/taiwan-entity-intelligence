@@ -1,0 +1,48 @@
+name: Sync Taiwan public evidence
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 01:30 Taiwan time (UTC+8), inside the Judicial Yuan API service window.
+    - cron: '30 17 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Sync public evidence
+        env:
+          JUDICIAL_USER: ${{ secrets.JUDICIAL_USER }}
+          JUDICIAL_PASSWORD: ${{ secrets.JUDICIAL_PASSWORD }}
+        run: python3 scripts/sync_public_sources.py
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: taiwan-entity-evidence-${{ github.run_number }}
+          path: |
+            data/public_evidence.jsonl
+            data/public_sync_state.json
+            data/public_sync_status.json
+          retention-days: 30
+          compression-level: 6
+
+      - name: Publish sync status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f data/public_sync_status.json
+          git commit -m "chore: update public evidence sync status" || true
+          git push || true
