@@ -8,10 +8,31 @@ from .company import get_company
 from .db import connect
 from .graph import company_graph
 from .live_graph import live_company_graph
-from .repository import company_people
+from .public_evidence import collect_public_evidence
+from .repository import company_people, company_tenders
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
+
+
+def _tender_evidence(company_name, tenders):
+    rows = []
+    for tender in tenders:
+        tender_id = tender.get("tender_id") or tender.get("案號") or tender.get("標案編號") or tender.get("id")
+        if not tender_id:
+            continue
+        title = tender.get("tender_name") or tender.get("標案名稱") or tender.get("案名") or str(tender_id)
+        rows.append({
+            "evidence_id": "procurement:{}".format(tender_id),
+            "schema_version": "1.0",
+            "source": {"type": "local_government_open_data", "name": "政府採購／本機標案資料", "record_id": str(tender_id)},
+            "fact": {"type": "government_tender", "title": title,
+                     "summary": "本機資料庫含有與公司名稱相符的政府採購紀錄；請回看原始標案確認得標、履約及時間脈絡。"},
+            "confidence": 1.0,
+            "status": "active",
+            "raw": tender,
+        })
+    return rows
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -45,9 +66,6 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 basic = get_company(uniform_number)
 
-                # The local SQLite snapshot is still preferred when it exists.
-                # Public Vercel deployments do not contain the private snapshot,
-                # so transparently fall back to live official government APIs.
                 try:
                     conn = connect()
                 except FileNotFoundError:
@@ -63,16 +81,21 @@ class Handler(BaseHTTPRequestHandler):
                         for node in graph.get("nodes", [])
                         if node.get("type") == "person"
                     ]
+                    company_name = (basic or {}).get("Company_Name") or uniform_number
+                    public = collect_public_evidence(company_name, [p.get("person_name") for p in people])
                     if not basic and not graph.get("nodes"):
                         self._json(404, {"error": "找不到此統編。"})
                         return
                     self._json(200, {
                         "uniform_number": uniform_number,
                         "company": basic,
-                        "company_name": (basic or {}).get("Company_Name") or uniform_number,
+                        "company_name": company_name,
                         "people": people,
                         "graph": graph,
                         "data_mode": "live_government_open_data",
+                        "evidence": public["evidence"],
+                        "evidence_status": {"標案": "not_available_in_public_runtime", **public["statuses"]},
+                        "evidence_note": public["note"],
                     })
                     return
 
@@ -81,15 +104,22 @@ class Handler(BaseHTTPRequestHandler):
                     conn.close()
                     self._json(404, {"error": "找不到此統編。"})
                     return
+                company_name = (basic or {}).get("Company_Name") or (people[0]["company_name"] if people else uniform_number)
                 graph = company_graph(conn, uniform_number)
+                tenders = company_tenders(conn, company_name)
                 conn.close()
+                public = collect_public_evidence(company_name, [p.get("person_name") for p in people])
+                evidence = _tender_evidence(company_name, tenders) + public["evidence"]
                 self._json(200, {
                     "uniform_number": uniform_number,
                     "company": basic,
-                    "company_name": (basic or {}).get("Company_Name") or (people[0]["company_name"] if people else uniform_number),
+                    "company_name": company_name,
                     "people": people,
                     "graph": graph,
                     "data_mode": "local_database",
+                    "evidence": evidence,
+                    "evidence_status": {"標案": "checked", **public["statuses"]},
+                    "evidence_note": public["note"],
                 })
             except Exception as exc:
                 self._json(500, {"error": str(exc)})
