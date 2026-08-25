@@ -1,0 +1,14 @@
+{
+  "last_sync": "2026-08-25T18:53:42+00:00",
+  "evidence_count": 0,
+  "new": 0,
+  "fetched": 0,
+  "by_source": {},
+  "errors": [
+    {
+      "source": "judicial",
+      "error": "'relation_type'"
+    }
+  ],
+  "judicial_enabled": true
+}
