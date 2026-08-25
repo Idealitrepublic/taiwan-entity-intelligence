@@ -1,5 +1,6 @@
 """Repository functions for entities, tenders, and unified evidence."""
 
+import json
 from typing import Dict, List, Any, Optional
 
 from .db import connect, columns, tables
@@ -54,14 +55,41 @@ def _evidence_table_ready(conn) -> bool:
 
 
 def upsert_evidence(conn, evidence: Dict[str, Any]) -> None:
+    """Persist canonical nested Evidence into the flat SQLite evidence schema."""
     if not _evidence_table_ready(conn):
         raise RuntimeError("evidence table is not initialized")
-    fields = list(evidence.keys())
+
+    source = evidence.get("source") or {}
+    subject = evidence.get("subject") or {}
+    fact = evidence.get("fact") or {}
+    row = {
+        "evidence_id": evidence.get("evidence_id"),
+        "schema_version": evidence.get("schema_version", "1.0"),
+        "source_type": source.get("type"),
+        "source_name": source.get("name"),
+        "source_record_id": source.get("record_id"),
+        "source_url": source.get("url"),
+        "source_published_at": source.get("published_at"),
+        "observed_at": evidence.get("observed_at"),
+        "retrieved_at": evidence.get("retrieved_at") or evidence.get("observed_at"),
+        "entity_id": subject.get("id"),
+        "entity_type": subject.get("type"),
+        "fact_type": fact.get("type"),
+        "relation_type": fact.get("relation"),
+        "target_entity_id": evidence.get("target_entity_id"),
+        "target_entity_type": evidence.get("target_entity_type"),
+        "title": fact.get("title"),
+        "summary": fact.get("summary"),
+        "confidence": float(evidence.get("confidence", 1.0)),
+        "status": evidence.get("status", "active"),
+        "raw_payload_json": json.dumps(evidence.get("raw"), ensure_ascii=False, default=str),
+    }
+    fields = list(row.keys())
     placeholders = ",".join(["?"] * len(fields))
     sql = "INSERT OR REPLACE INTO evidence ({}) VALUES ({})".format(
         ",".join(fields), placeholders
     )
-    conn.execute(sql, [evidence[f] for f in fields])
+    conn.execute(sql, [row[f] for f in fields])
 
 
 def evidence_for_entity(conn, entity_id: str, limit: int = 100) -> List[Dict[str, Any]]:
