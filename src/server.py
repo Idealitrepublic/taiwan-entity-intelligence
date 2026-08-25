@@ -71,39 +71,35 @@ class Handler(BaseHTTPRequestHandler):
         body=json.dumps(payload,ensure_ascii=False).encode("utf-8"); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
 
     def _proxy_primary_domain(self):
-        """Temporary bridge: the primary domain uses the already-verified deployment."""
         host=self.headers.get("Host","").split(":",1)[0].lower()
-        if host != PRIMARY_DOMAIN:
-            return False
+        if host != PRIMARY_DOMAIN: return False
         target=WORKING_DEPLOYMENT + self.path
         try:
             req=urllib.request.Request(target,headers={"User-Agent":"TaiwanEntityIntelligence/0.4-primary-bridge"})
             with urllib.request.urlopen(req,timeout=55) as response:
-                body=response.read()
-                self.send_response(response.status)
-                content_type=response.headers.get("Content-Type")
+                body=response.read(); self.send_response(response.status); content_type=response.headers.get("Content-Type")
                 if content_type: self.send_header("Content-Type",content_type)
-                self.send_header("Content-Length",str(len(body)))
-                self.end_headers(); self.wfile.write(body)
-                return True
+                self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body); return True
         except Exception as exc:
-            self._json(502,{"error":"正式網址與已驗證服務的橋接失敗。","detail":str(exc)})
-            return True
+            self._json(502,{"error":"正式網址與已驗證服務的橋接失敗。","detail":str(exc)}); return True
 
     def do_GET(self):
-        if self._proxy_primary_domain():
-            return
+        if self._proxy_primary_domain(): return
         parsed=urlparse(self.path)
         if parsed.path=="/":
             with open(os.path.join(WEB,"index.html"),"rb") as f: body=f.read()
+            injection=b'<script src="/tei-enhancements.js"></script>'
+            if b"tei-enhancements.js" not in body: body=body.replace(b"</body>",injection+b"</body>")
             self.send_response(200); self.send_header("Content-Type","text/html; charset=utf-8"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body); return
+        if parsed.path=="/tei-enhancements.js":
+            with open(os.path.join(WEB,"tei-enhancements.js"),"rb") as f: body=f.read()
+            self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","no-store"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body); return
         prefix="/api/company/"
         if not parsed.path.startswith(prefix): self.send_response(404); self.end_headers(); return
         uniform_number=unquote(parsed.path[len(prefix):])
         if not uniform_number.isdigit() or len(uniform_number)!=8: self._json(400,{"error":"統編必須是 8 碼數字。"}); return
         try:
-            if uniform_number==DEMO_COMPANY:
-                self._json(200,_demo_response()); return
+            if uniform_number==DEMO_COMPANY: self._json(200,_demo_response()); return
             basic=get_company(uniform_number)
             try: conn=connect()
             except FileNotFoundError:
