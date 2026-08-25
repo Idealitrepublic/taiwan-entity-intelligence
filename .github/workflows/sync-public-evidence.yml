@@ -2,6 +2,12 @@ name: Sync Taiwan public evidence
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'data/public_sync_status.json'
+      - 'data/public_sync_state.json'
+      - 'data/public_evidence.jsonl'
   schedule:
     # 01:30 Taiwan time (UTC+8), inside the Judicial Yuan API service window.
     - cron: '30 17 * * *'
