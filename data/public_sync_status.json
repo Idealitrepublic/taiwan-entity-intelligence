@@ -1,5 +1,5 @@
 {
-  "last_sync": "2026-08-25T18:53:42+00:00",
+  "last_sync": "2026-08-27T14:41:24+00:00",
   "evidence_count": 0,
   "new": 0,
   "fetched": 0,
@@ -7,7 +7,7 @@
   "errors": [
     {
       "source": "judicial",
-      "error": "'relation_type'"
+      "error": "司法院 API 驗證失敗：{'error': '目前非本 API 服務時間。'}"
     }
   ],
   "judicial_enabled": true
