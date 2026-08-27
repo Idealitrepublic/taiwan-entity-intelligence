@@ -11,26 +11,31 @@ import re
 import urllib.request
 from datetime import datetime, timezone
 
-# Government open-data datasets currently used by T.E.I.
 DATASET_IDS = {
-    "labor_penalties": "109896",          # 勞動法令違反
-    "labor_gender_penalties": "109897",  # 性別平等工作法
-    "employment_service_penalties": "110908",  # 就業服務法
-    "scam_domains": "176455",            # 165 遭停止解析涉詐網站
-    "fake_investment_sites": "160055",   # 165 假投資／博弈網站
-    "scam_refutations": "38262",         # 165 詐騙闢謠
-    "digital_scam_domains": "165027",    # 數位產業署詐騙網域停止解析
-    # Representative procurement datasets published by government agencies.
-    "procurement_armor": "23838",        # 役政署採購決標
-    "procurement_cpc": "30136",          # 中油探採事業部採購
-    "procurement_hakka": "164996",       # 客委會採購案件
-    "procurement_ntb": "25622",          # 財政部臺北國稅局採購
-    "procurement_moda": "161985",         # 數位發展部歷年採購
-    "procurement_highway": "91516",       # 高速公路局採購標案
+    "labor_penalties": "109896",
+    "labor_gender_penalties": "109897",
+    "employment_service_penalties": "110908",
+    "scam_domains": "176455",
+    "fake_investment_sites": "160055",
+    "scam_refutations": "38262",
+    "digital_scam_domains": "165027",
+    "procurement_armor": "23838",
+    "procurement_cpc": "30136",
+    "procurement_hakka": "164996",
+    "procurement_ntb": "25622",
+    "procurement_moda": "161985",
+    "procurement_highway": "91516",
 }
 
+# Prefer direct, official resource URLs. The generic data.gov.tw metadata
+# endpoint is a useful catalog but some serverless environments cannot reach
+# every metadata/distribution endpoint, so direct resources are more reliable.
 DIRECT_RESOURCES = {
     "109896": "https://apiservice.mol.gov.tw/OdService/download/A17000000J-020050-MUA",
+    "176455": "https://opdadm.moi.gov.tw/api/v1/no-auth/resource/api/dataset/29E8E643-88ED-4952-B21E-BD42A3B7108C/resource/EF3880BD-4C86-4D5E-9C3E-1CBF70919743/download",
+    "160055": "https://opdadm.moi.gov.tw/api/v1/no-auth/resource/api/dataset/033197D4-70F4-45EB-9FB8-6D83532B999A/resource/A00B1802-6A4A-42B4-B842-B66A2D937DAE/download",
+    "38262": "https://opdadm.moi.gov.tw/api/v1/no-auth/resource/api/dataset/4F4DF9A5-DF4C-4EE8-A50D-869347D38D9E/resource/59234DED-9AC0-4237-AE21-5EF9938EE938/download",
+    "165027": "https://www-api.moda.gov.tw/OpenData/Files/16352",
 }
 
 DATASET_LABELS = {
@@ -51,7 +56,7 @@ DATASET_LABELS = {
 
 
 def _get(url, timeout=30, headers=None):
-    req = urllib.request.Request(url, headers=headers or {"User-Agent": "TaiwanEntityIntelligence/0.6"})
+    req = urllib.request.Request(url, headers=headers or {"User-Agent": "TaiwanEntityIntelligence/0.7"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
@@ -65,6 +70,8 @@ def _json(url):
 
 def _dataset_resources(dataset_id):
     urls = []
+    if dataset_id in DIRECT_RESOURCES:
+        urls.append(DIRECT_RESOURCES[dataset_id])
     meta = _json("https://data.gov.tw/api/v2/rest/dataset/{}".format(dataset_id))
     distributions = meta.get("distribution") or meta.get("distributions") or []
     if isinstance(distributions, dict):
@@ -74,8 +81,6 @@ def _dataset_resources(dataset_id):
             url = item.get("resourceDownloadURL") or item.get("downloadURL") or item.get("url")
             if url:
                 urls.append(url)
-    if dataset_id in DIRECT_RESOURCES:
-        urls.append(DIRECT_RESOURCES[dataset_id])
     return list(dict.fromkeys(urls))
 
 
@@ -87,11 +92,11 @@ def _read_rows(url, limit=20000):
         try:
             obj = json.loads(text)
             if isinstance(obj, dict):
-                for key in ("data", "records", "result", "results", "payload"):
+                for key in ("data", "records", "result", "results", "payload", "items"):
                     if isinstance(obj.get(key), list):
                         return [x for x in obj[key] if isinstance(x, dict)][:limit]
                     if isinstance(obj.get(key), dict):
-                        for subkey in ("data", "records", "result", "results", "search_result"):
+                        for subkey in ("data", "records", "result", "results", "search_result", "items"):
                             if isinstance(obj[key].get(subkey), list):
                                 return [x for x in obj[key][subkey] if isinstance(x, dict)][:limit]
             if isinstance(obj, list):
@@ -135,10 +140,14 @@ def _collect_dataset(dataset_key, needles, source_name, fact_type, max_rows=100)
     resources = _dataset_resources(dataset_id)
     if not resources:
         return out, {"status": "source_unavailable", "dataset_id": dataset_id, "label": DATASET_LABELS.get(dataset_id, source_name), "matched": 0}
+    last_error = None
+    rows_read = 0
     for url in resources:
         try:
             rows = _read_rows(url)
-        except Exception:
+            rows_read += len(rows)
+        except Exception as exc:
+            last_error = str(exc)
             continue
         for idx, row in enumerate(rows):
             if not _match_row(row, needles):
@@ -169,7 +178,11 @@ def _collect_dataset(dataset_key, needles, source_name, fact_type, max_rows=100)
                 break
         if len(out) >= max_rows:
             break
-    return out, {"status": "ok", "dataset_id": dataset_id, "label": DATASET_LABELS.get(dataset_id, source_name), "matched": len(out)}
+    status = "ok" if rows_read or out else "source_unavailable"
+    result = {"status": status, "dataset_id": dataset_id, "label": DATASET_LABELS.get(dataset_id, source_name), "matched": len(out), "rows_read": rows_read}
+    if last_error and not out:
+        result["message"] = last_error
+    return out, result
 
 
 def _judicial_recent(needles, max_docs=50):
@@ -180,39 +193,20 @@ def _judicial_recent(needles, max_docs=50):
     try:
         def post(path, payload, timeout=30):
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            req = urllib.request.Request(
-                "https://data.judicial.gov.tw/jdg/api" + path,
-                data=body,
-                headers={"Content-Type": "application/json", "User-Agent": "TaiwanEntityIntelligence/0.6"},
-            )
+            req = urllib.request.Request("https://data.judicial.gov.tw/jdg/api" + path, data=body, headers={"Content-Type": "application/json", "User-Agent": "TaiwanEntityIntelligence/0.7"})
             return json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode("utf-8"))
-
-        auth = post("/Auth", {"user": user, "password": password})
-        token = auth.get("Token") or auth.get("token")
+        auth = post("/Auth", {"user": user, "password": password}); token = auth.get("Token") or auth.get("token")
         if not token:
             return [], {"status": "auth_failed", "message": "司法院 API 驗證失敗。", "matched": 0}
-        listing = post("/JList", {"token": token})
-        ids = []
+        listing = post("/JList", {"token": token}); ids = []
         for day in listing if isinstance(listing, list) else []:
-            if isinstance(day, dict):
-                ids.extend(day.get("list", []))
-        ids = list(dict.fromkeys(ids))[:max_docs]
-        out = []
+            if isinstance(day, dict): ids.extend(day.get("list", []))
+        ids = list(dict.fromkeys(ids))[:max_docs]; out = []
         for jid in ids:
             try:
-                doc = post("/JDoc", {"token": token, "j": jid})
-                content = _norm(json.dumps(doc, ensure_ascii=False))
+                doc = post("/JDoc", {"token": token, "j": jid}); content = _norm(json.dumps(doc, ensure_ascii=False))
                 if any(n in content for n in needles):
-                    out.append(_evidence(
-                        "司法院裁判書開放 API",
-                        jid,
-                        doc.get("JTITLE") or jid,
-                        "近期裁判書全文包含查詢實體名稱；仍需人工確認當事人、案件關係與判決主文。",
-                        "https://data.judicial.gov.tw/",
-                        doc,
-                        "judgment",
-                        [n for n in needles if n in content],
-                    ))
+                    out.append(_evidence("司法院裁判書開放 API", jid, doc.get("JTITLE") or jid, "近期裁判書全文包含查詢實體名稱；仍需人工確認當事人、案件關係與判決主文。", "https://data.judicial.gov.tw/", doc, "judgment", [n for n in needles if n in content]))
             except Exception:
                 continue
         return out, {"status": "ok", "checked": len(ids), "matched": len(out)}
@@ -225,7 +219,6 @@ def collect_public_evidence(company_name, people=None):
     needles = [n for n in needles if len(n) >= 2]
     evidence = []
     statuses = {}
-
     items = [
         ("labor_penalties", "勞動部／違反勞動法令事業單位", "administrative_penalty", "裁罰"),
         ("labor_gender_penalties", "勞動部／性別平等工作法違法事業單位", "administrative_penalty", "裁罰"),
@@ -238,23 +231,26 @@ def collect_public_evidence(company_name, people=None):
         ("procurement_cpc", "台灣中油／探採事業部採購公告", "government_tender", "標案"),
         ("procurement_hakka", "客家委員會／年度採購案件", "government_tender", "標案"),
         ("procurement_ntb", "財政部臺北國稅局／採購案", "government_tender", "標案"),
-        ("procurement_modа", "數位發展部／歷年採購案件", "government_tender", "標案"),
+        ("procurement_moda", "數位發展部／歷年採購案件", "government_tender", "標案"),
         ("procurement_highway", "交通部高速公路局／採購標案", "government_tender", "標案"),
     ]
-    # Typo-safe normalization for the key added above.
-    items = [("procurement_moda" if key == "procurement_modа" else key, source, fact, sk) for key, source, fact, sk in items]
-
     for key, source, fact_type, status_key in items:
         rows, status = _collect_dataset(key, needles, source, fact_type)
         evidence.extend(rows)
-        bucket = statuses.setdefault(status_key, {"status": "ok", "matched": 0})
-        bucket["matched"] = int(bucket.get("matched", 0)) + int(status.get("matched", 0))
-        bucket.setdefault("datasets", []).append(status)
-
+        bucket = statuses.setdefault(status_key, {"status": "ok", "matched": 0, "datasets": []})
+        bucket["matched"] += int(status.get("matched", 0))
+        bucket["datasets"].append(status)
+        if status.get("status") == "source_unavailable":
+            bucket["unavailable_count"] = int(bucket.get("unavailable_count", 0)) + 1
     judicial, jstatus = _judicial_recent(needles)
     evidence.extend(judicial)
     statuses["裁判書"] = jstatus
-
+    statuses["資料源總數"] = {
+        "status": "ok",
+        "configured_datasets": len(items),
+        "live_categories": ["公司登記", "裁判書", "裁罰", "165反詐", "詐騙網域", "政府標案"],
+        "note": "逐資料集顯示成功讀取、0 筆命中或來源不可用；不把 0 筆誤標成未查詢。",
+    }
     return {
         "evidence": evidence,
         "statuses": statuses,
