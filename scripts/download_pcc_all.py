@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-"""Download all downloadable resources listed by PCC Open Data showList.
+"""PCC OpenData bulk downloader with iframe/form/button discovery.
 
-This runs on the user's own computer. It uses Playwright because the PCC site
-may require JavaScript/session state. It paginates until no next page remains,
-deduplicates file URLs, downloads them to data/raw/pcc/files/, and maintains a
-manifest so interrupted runs can resume.
+The PCC OpenData list is a browser-oriented page and may not expose files as
+ordinary <a href> links. This version inspects the main document and every
+iframe, collects href/action/data-* and JavaScript download targets, and can
+also capture a diagnostic snapshot when no resources are discovered.
 
-Setup:
+Local setup:
   python3 -m pip install playwright
   python3 -m playwright install chromium
 
-Run:
-  python3 scripts/download_pcc_all.py
-  python3 scripts/download_pcc_all.py --max-pages 3   # smoke test
-  python3 scripts/download_pcc_all.py --list-only     # discover links only
+Smoke test:
+  python3 scripts/download_pcc_all.py --max-pages 1 --headed
+
+Full run:
+  python3 scripts/download_pcc_all.py --headed
+
+Outputs:
+  data/raw/pcc/files/
+  data/raw/pcc/manifest.json
+  data/raw/pcc/debug/  (HTML/screenshot when discovery is empty)
 """
 from __future__ import annotations
 
@@ -29,15 +35,22 @@ from urllib.parse import urljoin, urlparse
 try:
     from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 except ImportError:
-    print("請先安裝 Playwright：python3 -m pip install playwright && python3 -m playwright install chromium")
+    print("請先安裝：python3 -m pip install playwright && python3 -m playwright install chromium")
     raise SystemExit(2)
 
 START_URL = "https://web.pcc.gov.tw/tps/tp/OpenData/showList"
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "raw" / "pcc"
 FILES = OUT / "files"
+DEBUG = OUT / "debug"
 MANIFEST = OUT / "manifest.json"
-FILE_EXTENSIONS = {".csv", ".tsv", ".txt", ".json", ".xml", ".xlsx", ".xls", ".ods", ".zip", ".rar", ".7z", ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".rtf", ".kml", ".kmz", ".shp", ".dbf", ".prj", ".sql"}
+
+EXTENSIONS = {
+    ".csv", ".tsv", ".txt", ".json", ".xml", ".xlsx", ".xls", ".ods",
+    ".zip", ".rar", ".7z", ".pdf", ".doc", ".docx", ".ppt", ".pptx",
+    ".rtf", ".kml", ".kmz", ".shp", ".dbf", ".prj", ".sql"
+}
+DOWNLOAD_WORDS = ("download", "下載", "下載檔案", "資料下載", "取得", "檔案")
 
 
 def safe_name(name: str) -> str:
@@ -45,7 +58,7 @@ def safe_name(name: str) -> str:
     return name[:180] or "download"
 
 
-def manifest_load() -> dict:
+def load_manifest() -> dict:
     if MANIFEST.exists():
         try:
             return json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -54,56 +67,145 @@ def manifest_load() -> dict:
     return {"source": START_URL, "pages": [], "files": {}}
 
 
-def manifest_save(m: dict) -> None:
+def save_manifest(m: dict) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     tmp = MANIFEST.with_suffix(".tmp")
     tmp.write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(MANIFEST)
 
 
-def is_file_link(href: str, text: str) -> bool:
-    path = urlparse(href).path.lower()
-    if any(path.endswith(ext) for ext in FILE_EXTENSIONS):
-        return True
-    blob = f"{href} {text}".lower()
-    return any(x in blob for x in ("download", "下載", "檔案", "資料下載"))
+def likely_resource(url: str, text: str = "", attrs: str = "") -> bool:
+    blob = f"{url} {text} {attrs}".lower()
+    path = urlparse(url).path.lower()
+    return any(path.endswith(ext) for ext in EXTENSIONS) or any(w in blob for w in DOWNLOAD_WORDS)
 
 
-def page_links(page) -> list[dict]:
-    out, seen = [], set()
-    for a in page.locator("a").all():
-        try:
-            href = a.get_attribute("href")
-            text = (a.inner_text() or "").strip()
-        except Exception:
-            continue
-        if not href or href.startswith("javascript:") or href.startswith("#"):
-            continue
-        url = urljoin(page.url, href)
-        if is_file_link(url, text) and url not in seen:
-            seen.add(url)
-            out.append({"url": url, "text": text})
+def extract_frame_resources(frame, page_url: str) -> list[dict]:
+    """Collect resource-like URLs from a document/frame, including forms."""
+    out: list[dict] = []
+    try:
+        anchors = frame.locator("a").all()
+        for a in anchors:
+            try:
+                href = a.get_attribute("href") or ""
+                text = (a.inner_text() or "").strip()
+                raw = (a.get_attribute("onclick") or "") + " " + (a.get_attribute("data-url") or "") + " " + (a.get_attribute("data-href") or "")
+            except Exception:
+                continue
+            candidates = [href]
+            for m in re.findall(r"(?:location(?:\.href)?|url|downloadUrl|fileUrl)\\?\s*[=:]\s*['\"]([^'\"]+)", raw, re.I):
+                candidates.append(m)
+            for candidate in candidates:
+                if not candidate or candidate.startswith("javascript:") or candidate.startswith("#"):
+                    continue
+                absolute = urljoin(page_url, candidate)
+                if likely_resource(absolute, text, raw):
+                    out.append({"url": absolute, "text": text, "kind": "link"})
+
+        for form in frame.locator("form").all():
+            try:
+                action = form.get_attribute("action") or ""
+                method = (form.get_attribute("method") or "get").lower()
+                text = (form.inner_text() or "").strip()
+            except Exception:
+                continue
+            if not action:
+                continue
+            absolute = urljoin(page_url, action)
+            blob = (text + " " + absolute).lower()
+            if likely_resource(absolute, text) or any(w in blob for w in DOWNLOAD_WORDS):
+                out.append({"url": absolute, "text": text[:200], "kind": "form", "method": method})
+
+        for el in frame.locator("button, input[type=button], input[type=submit], [role=button]").all():
+            try:
+                text = (el.inner_text() or el.get_attribute("value") or "").strip()
+                raw = " ".join(filter(None, [
+                    el.get_attribute("onclick") or "",
+                    el.get_attribute("data-url") or "",
+                    el.get_attribute("data-href") or "",
+                    el.get_attribute("data-download") or "",
+                ]))
+            except Exception:
+                continue
+            if not text and not raw:
+                continue
+            if any(w in (text + " " + raw).lower() for w in DOWNLOAD_WORDS):
+                urls = re.findall(r"https?://[^'\"\\s]+|['\"]([^'\"]+)['\"]", raw)
+                flat = []
+                for item in urls:
+                    if isinstance(item, tuple):
+                        flat.extend(item)
+                    else:
+                        flat.append(item)
+                for candidate in flat:
+                    if not candidate:
+                        continue
+                    absolute = urljoin(page_url, candidate)
+                    out.append({"url": absolute, "text": text, "kind": "button"})
+    except Exception:
+        pass
     return out
 
 
-def next_url(page) -> str | None:
-    selectors = ['a:has-text("下一頁")', 'a[title*="下一"]', 'a[aria-label*="下一"]']
-    for selector in selectors:
+def all_frame_resources(page) -> list[dict]:
+    resources: list[dict] = []
+    seen = set()
+    for frame in page.frames:
+        for row in extract_frame_resources(frame, frame.url or page.url):
+            if row["url"] in seen:
+                continue
+            seen.add(row["url"])
+            resources.append(row)
+    return resources
+
+
+def find_next(page) -> str | None:
+    selectors = [
+        'a:has-text("下一頁")', 'a:has-text("下一页")',
+        'button:has-text("下一頁")', 'button:has-text("下一页")',
+        'a[title*="下一"]', 'a[aria-label*="下一"]',
+    ]
+    for sel in selectors:
         try:
-            loc = page.locator(selector).first
+            loc = page.locator(sel).first
             if loc.count() and loc.is_visible():
                 href = loc.get_attribute("href")
                 if href and not href.startswith("javascript:"):
                     return urljoin(page.url, href)
+                # Button pagination: click and return resulting URL.
+                before = page.url
+                loc.click(timeout=5000)
+                page.wait_for_timeout(1000)
+                if page.url != before:
+                    return page.url
         except Exception:
             pass
     return None
 
 
+def debug_snapshot(page, page_no: int) -> None:
+    DEBUG.mkdir(parents=True, exist_ok=True)
+    try:
+        (DEBUG / f"page_{page_no}.html").write_text(page.content(), encoding="utf-8")
+    except Exception:
+        pass
+    try:
+        page.screenshot(path=str(DEBUG / f"page_{page_no}.png"), full_page=True)
+    except Exception:
+        pass
+    try:
+        frames = [{"url": f.url, "name": f.name} for f in page.frames]
+        (DEBUG / f"page_{page_no}_frames.json").write_text(
+            json.dumps(frames, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+
 def filename(url: str, text: str) -> str:
     base = Path(urlparse(url).path).name
     if not base or "." not in base:
-        base = text or "download"
+        base = safe_name(text) or "download"
     return safe_name(base)
 
 
@@ -113,69 +215,87 @@ def download(context, url: str, target: Path) -> dict:
         return {"status": "exists", "bytes": target.stat().st_size}
     page = context.new_page()
     try:
-        response = page.goto(url, wait_until="domcontentloaded", timeout=90000)
-        if response is not None:
+        with page.expect_download(timeout=15000) as dl_info:
+            page.goto(url, wait_until="commit", timeout=90000)
+        dl = dl_info.value
+        dl.save_as(str(target))
+        return {"status": "downloaded", "bytes": target.stat().st_size}
+    except Exception:
+        try:
+            response = page.goto(url, wait_until="domcontentloaded", timeout=90000)
+            if response is None:
+                return {"status": "no_response"}
             body = response.body()
             ctype = (response.headers.get("content-type") or "").lower()
-            if "text/html" not in ctype or target.suffix.lower() in {".html", ".htm"}:
-                target.write_bytes(body)
-                return {"status": "downloaded", "bytes": len(body), "http": response.status,
-                        "sha256": hashlib.sha256(body).hexdigest()}
-        return {"status": "empty_or_html", "http": response.status if response else None}
-    except PlaywrightTimeoutError:
-        return {"status": "timeout"}
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)[:500]}
+            if "text/html" in ctype and target.suffix.lower() not in {".html", ".htm"}:
+                return {"status": "html_response", "http": response.status, "content_type": ctype}
+            target.write_bytes(body)
+            return {"status": "downloaded", "bytes": len(body), "http": response.status,
+                    "sha256": hashlib.sha256(body).hexdigest()}
+        except PlaywrightTimeoutError:
+            return {"status": "timeout"}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)[:500]}
     finally:
         page.close()
 
 
 def main() -> int:
-    p = argparse.ArgumentParser()
-    p.add_argument("--max-pages", type=int, default=0)
-    p.add_argument("--list-only", action="store_true")
-    p.add_argument("--delay", type=float, default=0.5)
-    args = p.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-pages", type=int, default=0, help="0 = all pages")
+    parser.add_argument("--list-only", action="store_true")
+    parser.add_argument("--headed", action="store_true", help="Show Chromium window")
+    parser.add_argument("--delay", type=float, default=1.0)
+    parser.add_argument("--wait", type=int, default=5, help="extra seconds after page load")
+    args = parser.parse_args()
+
     OUT.mkdir(parents=True, exist_ok=True)
     FILES.mkdir(parents=True, exist_ok=True)
-    m = manifest_load()
+    m = load_manifest()
     files = m.setdefault("files", {})
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True)
+        browser = pw.chromium.launch(headless=not args.headed)
         context = browser.new_context(accept_downloads=True, locale="zh-TW")
         page = context.new_page()
-        page.goto(START_URL, wait_until="domcontentloaded", timeout=90000)
-        page.wait_for_timeout(1500)
+        print(f"開啟 PCC：{START_URL}")
+        page.goto(START_URL, wait_until="domcontentloaded", timeout=120000)
+        page.wait_for_timeout(args.wait * 1000)
+
         seen_pages = set()
-        count = 0
+        page_no = 0
         while page.url not in seen_pages:
             seen_pages.add(page.url)
-            count += 1
-            links = page_links(page)
-            m.setdefault("pages", []).append({"page": count, "url": page.url, "links": len(links)})
-            for row in links:
-                files.setdefault(row["url"], {"text": row["text"], "pages": []})
-                files[row["url"]].setdefault("pages", []).append(count)
+            page_no += 1
+            resources = all_frame_resources(page)
+            if not resources:
+                debug_snapshot(page, page_no)
+            for row in resources:
+                files.setdefault(row["url"], {"text": row.get("text", ""), "kind": row.get("kind"), "pages": []})
+                files[row["url"]].setdefault("pages", []).append(page_no)
             manifest_save(m)
-            print(f"第 {count} 頁：{len(links)} 個檔案連結；累計 {len(files)} 個唯一資源")
-            if args.max_pages and count >= args.max_pages:
+            print(f"第 {page_no} 頁：找到 {len(resources)} 個候選資源；累計 {len(files)} 個唯一資源")
+            if not resources:
+                print("  ⚠️ 沒找到下載資源。已保存除錯檔案到 data/raw/pcc/debug/")
+            if args.max_pages and page_no >= args.max_pages:
                 break
-            nxt = next_url(page)
+            nxt = find_next(page)
             if not nxt or nxt in seen_pages:
                 break
-            page.goto(nxt, wait_until="domcontentloaded", timeout=90000)
-            page.wait_for_timeout(int(args.delay * 1000))
+            if page.url != nxt:
+                page.goto(nxt, wait_until="domcontentloaded", timeout=120000)
+                page.wait_for_timeout(args.wait * 1000)
+            time.sleep(args.delay)
 
         if args.list_only:
             browser.close()
-            print(f"已建立清單：{MANIFEST}")
+            print(f"清單：{MANIFEST}")
             return 0
 
         total = len(files)
-        for i, (url, meta) in enumerate(files.items(), start=1):
+        for i, (url, meta) in enumerate(files.items(), 1):
             name = filename(url, meta.get("text", ""))
-            stamp = hashlib.sha1(url.encode()).hexdigest()[:10]
+            stamp = hashlib.sha1(url.encode("utf-8")).hexdigest()[:10]
             target = FILES / name
             if target.exists() and meta.get("url_hash") != stamp:
                 target = FILES / f"{Path(name).stem}_{stamp}{Path(name).suffix}"
@@ -187,8 +307,9 @@ def main() -> int:
             print(f"[{i}/{total}] {meta['last_result'].get('status')} {name}")
             time.sleep(args.delay)
         browser.close()
+
     m["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
-    manifest_save(m)
+    save_manifest(m)
     print(f"完成。資料：{FILES}")
     print(f"清單：{MANIFEST}")
     return 0
