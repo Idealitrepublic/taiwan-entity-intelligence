@@ -100,6 +100,7 @@ def stream_rows(path):
 
     encodings = ("utf-8-sig", "cp950", "big5", "utf-8")
     for enc in encodings:
+        f = None
         try:
             f = path.open("r", encoding=enc, newline="")
             sample = f.read(8192)
@@ -114,10 +115,11 @@ def stream_rows(path):
             f.close()
             return
         except UnicodeDecodeError:
-            try:
-                f.close()
-            except Exception:
-                pass
+            if f is not None:
+                try:
+                    f.close()
+                except Exception:
+                    pass
             continue
     raise RuntimeError(f"無法讀取：{path}")
 
@@ -135,6 +137,7 @@ def classify(path):
 
 def files_for(root, source):
     out = []
+    root = root.resolve()
     for p in root.rglob("*"):
         if not p.is_file() or p.suffix.lower() not in (".csv", ".json", ".jsonl"):
             continue
@@ -146,6 +149,10 @@ def files_for(root, source):
     return sorted(out)
 
 
+def rel_label(path, root):
+    return path.relative_to(root.resolve()).as_posix()
+
+
 def flush_all(people, companies, rels, key):
     post("people", list(people.values()), key, "source_name,source_record_id")
     post("companies", list(companies.values()), key, "uniform_number")
@@ -153,10 +160,13 @@ def flush_all(people, companies, rels, key):
     people.clear(); companies.clear(); rels.clear()
 
 
-def ingest_directors(paths, key):
-    total = 0; people = {}; companies = {}; rels = {}
+def ingest_directors(paths, key, root):
+    total = 0
+    people = {}
+    companies = {}
+    rels = {}
     for path in paths:
-        print(f"  → 董監事：{path.relative_to(ROOT)}", flush=True)
+        print(f"  → 董監事：{rel_label(path, root)}", flush=True)
         source = "director:" + path.name
         for idx, row in enumerate(stream_rows(path), 1):
             total += 1
@@ -171,7 +181,17 @@ def ingest_directors(paths, key):
             if uniform and company:
                 companies[uniform] = {"uniform_number": uniform, "company_name": company, "source_name": "董監事資料集", "source_record_id": rid("company", uniform)}
                 keyrel = (uniform, pid, title or "董監事")
-                rels[keyrel] = {"source_entity_type": "company", "source_entity_id": uniform, "relationship_type": title or "董監事", "target_entity_type": "person", "target_entity_id": pid, "confidence": 1, "evidence_ids": [], "source_name": source, "source_record_id": str(idx)}
+                rels[keyrel] = {
+                    "source_entity_type": "company",
+                    "source_entity_id": uniform,
+                    "relationship_type": title or "董監事",
+                    "target_entity_type": "person",
+                    "target_entity_id": pid,
+                    "confidence": 1,
+                    "evidence_ids": [],
+                    "source_name": source,
+                    "source_record_id": str(idx),
+                }
             if total % PROGRESS_EVERY == 0:
                 flush_all(people, companies, rels, key)
                 print(f"    進度：已讀取 {total:,} 列", flush=True)
@@ -179,10 +199,11 @@ def ingest_directors(paths, key):
     return total
 
 
-def ingest_fraud(paths, key):
-    total = 0; out = {}
+def ingest_fraud(paths, key, root):
+    total = 0
+    out = {}
     for path in paths:
-        print(f"  → 165：{path.relative_to(ROOT)}", flush=True)
+        print(f"  → 165：{rel_label(path, root)}", flush=True)
         source = "fraud165:" + path.name
         for idx, row in enumerate(stream_rows(path), 1):
             total += 1
@@ -191,19 +212,31 @@ def ingest_fraud(paths, key):
             uniform = first(row, ["統一編號", "統編", "公司統編"])
             if domain or name or uniform:
                 x = rid(source, idx, domain, name, uniform)
-                out[x] = {"record_id": x, "dataset_id": "165", "record_type": "fraud_warning", "entity_name": name, "uniform_number": uniform, "domain": domain, "source_url": first(row, ["來源網址", "source_url"]), "source_record_id": str(idx)}
+                out[x] = {
+                    "record_id": x,
+                    "dataset_id": "165",
+                    "record_type": "fraud_warning",
+                    "entity_name": name,
+                    "uniform_number": uniform,
+                    "domain": domain,
+                    "source_url": first(row, ["來源網址", "source_url"]),
+                    "source_record_id": str(idx),
+                }
             if len(out) >= BATCH:
-                post("fraud_records", list(out.values()), key, "record_id"); out.clear()
+                post("fraud_records", list(out.values()), key, "record_id")
+                out.clear()
             if total % PROGRESS_EVERY == 0:
                 print(f"    進度：已讀取 {total:,} 列", flush=True)
-        post("fraud_records", list(out.values()), key, "record_id"); out.clear()
+        post("fraud_records", list(out.values()), key, "record_id")
+        out.clear()
     return total
 
 
-def ingest_penalties(paths, key):
-    total = 0; out = {}
+def ingest_penalties(paths, key, root):
+    total = 0
+    out = {}
     for path in paths:
-        print(f"  → 裁罰：{path.relative_to(ROOT)}", flush=True)
+        print(f"  → 裁罰：{rel_label(path, root)}", flush=True)
         source = "penalty:" + path.name
         for idx, row in enumerate(stream_rows(path), 1):
             total += 1
@@ -216,12 +249,25 @@ def ingest_penalties(paths, key):
             fine = first(row, ["罰鍰", "罰鍰金額", "處罰金額"])
             n = re.sub(r"[^0-9.-]", "", fine)
             x = rid(source, idx, party, uniform, violation)
-            out[x] = {"case_id": x, "agency_name": agency, "party_name": party, "uniform_number": uniform, "penalty_date": date or None, "legal_basis": basis, "violation": violation, "fine_amount": float(n) if n else None, "source_url": first(row, ["來源網址", "source_url", "URL"]), "source_record_id": str(idx)}
+            out[x] = {
+                "case_id": x,
+                "agency_name": agency,
+                "party_name": party,
+                "uniform_number": uniform,
+                "penalty_date": date or None,
+                "legal_basis": basis,
+                "violation": violation,
+                "fine_amount": float(n) if n else None,
+                "source_url": first(row, ["來源網址", "source_url", "URL"]),
+                "source_record_id": str(idx),
+            }
             if len(out) >= BATCH:
-                post("penalties", list(out.values()), key, "case_id"); out.clear()
+                post("penalties", list(out.values()), key, "case_id")
+                out.clear()
             if total % PROGRESS_EVERY == 0:
                 print(f"    進度：已讀取 {total:,} 列", flush=True)
-        post("penalties", list(out.values()), key, "case_id"); out.clear()
+        post("penalties", list(out.values()), key, "case_id")
+        out.clear()
     return total
 
 
@@ -230,6 +276,8 @@ def main():
     ap.add_argument("--source", choices=["directors", "fraud", "penalties", "all"], required=True)
     args = ap.parse_args()
     root = ROOT.resolve()
+    if not root.is_dir():
+        raise SystemExit(f"找不到資料夾：{root}")
     key = getpass.getpass("T.E.I. v2 Supabase key：").strip()
     if not key:
         raise SystemExit("沒有輸入 key")
@@ -242,11 +290,11 @@ def main():
             continue
         try:
             if source == "directors":
-                n = ingest_directors(fs, key)
+                n = ingest_directors(fs, key, root)
             elif source == "fraud":
-                n = ingest_fraud(fs, key)
+                n = ingest_fraud(fs, key, root)
             else:
-                n = ingest_penalties(fs, key)
+                n = ingest_penalties(fs, key, root)
             print(f"  ✅ 完成：讀取 {n:,} 列", flush=True)
             grand += n
         except Exception as exc:
