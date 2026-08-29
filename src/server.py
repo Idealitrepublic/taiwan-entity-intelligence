@@ -51,8 +51,6 @@ def _demo_response():
                   "summary": "判決內容多處直接提及御首公司、林宇澤及相關人員的角色與案件事實；應以裁判全文核對各人的最終罪責與判決主文。"},
          "confidence": 1.0, "status": "active", "entity_id": "company:82876417", "entity_type": "company"},
     ]
-    # Also run the real public-source connectors so the Demo screen truthfully
-    # distinguishes fixture evidence from live source checks.
     try:
         live = collect_public_evidence(company, [n for _, n, _ in people])
         live_evidence = live.get("evidence", [])
@@ -145,14 +143,41 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if uid == DEMO_COMPANY: self._json(200, _demo_response()); return
             basic = get_company(uid)
-            try: conn = connect()
+            try:
+                conn = connect()
             except FileNotFoundError:
-                graph = live_company_graph(uid); people = [{"uniform_number": uid, "company_name": (basic or {}).get('Company_Name') or uid, "position": n.get('properties', {}).get('position'), "person_name": n.get('label'), "shares": n.get('properties', {}).get('shares')} for n in graph.get('nodes', []) if n.get('type') == 'person']; name = (basic or {}).get('Company_Name') or uid; public = collect_public_evidence(name, [p.get('person_name') for p in people]); evidence = _decorate_evidence(public['evidence'], name, [p.get('person_name') for p in people], uid); statuses = {"標案": "not_available_in_public_runtime", **public['statuses']}
-                if not basic and not graph.get('nodes'): self._json(404, {"error": "找不到此統編。"}); return
+                graph = live_company_graph(uid)
+                people = [{"uniform_number": uid, "company_name": (basic or {}).get('Company_Name') or uid, "position": n.get('properties', {}).get('position'), "person_name": n.get('label'), "shares": n.get('properties', {}).get('shares')} for n in graph.get('nodes', []) if n.get('type') == 'person']
+                name = (basic or {}).get('Company_Name') or uid
+                public = collect_public_evidence(name, [p.get('person_name') for p in people])
+                evidence = _decorate_evidence(public['evidence'], name, [p.get('person_name') for p in people], uid)
+                statuses = {"標案": "not_available_in_public_runtime", **public['statuses']}
+                if not basic and not graph.get('nodes'):
+                    self._json(404, {"error": "找不到此統編。"}); return
                 self._json(200, _response(uid, basic, name, people, graph, evidence, statuses, 'live_government_open_data')); return
             people = company_people(conn, uid)
-            if not basic and not people: conn.close(); self._json(404, {"error": "找不到此統編。"}); return
-            name = (basic or {}).get('Company_Name') or (people[0]['company_name'] if people else uid); graph = company_graph(conn, uid); tenders = company_tenders(conn, name); conn.close(); public = collect_public_evidence(name, [p.get('person_name') for p in people]); evidence = _decorate_evidence(_tender_evidence(tenders) + public['evidence'], name, [p.get('person_name') for p in people], uid); statuses = {"標案": {"status": "local_database", "matched": len(_tender_evidence(tenders))}, **public['statuses']}; self._json(200, _response(uid, basic, name, people, graph, evidence, statuses, 'local_database'))
+            # v2 intentionally does not bulk-store all directors. If the local
+            # store has no director rows, fall back to the official live MOEA
+            # director API instead of returning an empty people list.
+            if not people:
+                conn.close()
+                graph = live_company_graph(uid)
+                people = [{"uniform_number": uid, "company_name": (basic or {}).get('Company_Name') or uid, "position": n.get('properties', {}).get('position'), "person_name": n.get('label'), "shares": n.get('properties', {}).get('shares')} for n in graph.get('nodes', []) if n.get('type') == 'person']
+                name = (basic or {}).get('Company_Name') or uid
+                public = collect_public_evidence(name, [p.get('person_name') for p in people])
+                evidence = _decorate_evidence(public['evidence'], name, [p.get('person_name') for p in people], uid)
+                statuses = {"標案": "not_available_in_public_runtime", **public['statuses']}
+                if not basic and not graph.get('nodes'):
+                    self._json(404, {"error": "找不到此統編。"}); return
+                self._json(200, _response(uid, basic, name, people, graph, evidence, statuses, 'live_government_open_data')); return
+            name = (basic or {}).get('Company_Name') or (people[0]['company_name'] if people else uid)
+            graph = company_graph(conn, uid)
+            tenders = company_tenders(conn, name)
+            conn.close()
+            public = collect_public_evidence(name, [p.get('person_name') for p in people])
+            evidence = _decorate_evidence(_tender_evidence(tenders) + public['evidence'], name, [p.get('person_name') for p in people], uid)
+            statuses = {"標案": {"status": "local_database", "matched": len(_tender_evidence(tenders))}, **public['statuses']}
+            self._json(200, _response(uid, basic, name, people, graph, evidence, statuses, 'local_database'))
         except Exception as exc:
             self._json(500, {"error": str(exc)})
 
