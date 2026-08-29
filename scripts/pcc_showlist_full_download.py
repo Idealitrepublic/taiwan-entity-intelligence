@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Download all files listed by PCC OpenData showList.
+"""Download files listed by the PCC OpenData showList page.
+
+This version does not rely only on href discovery. It also clicks likely
+Download/OpenData controls and captures Playwright download events, which is
+important when PCC generates the file only after a JavaScript/form action.
 
 Usage:
-  python3 scripts/pcc_showlist_full_download.py
-
-The script uses Playwright, follows the actual showList pagination, captures
-network responses/downloads, extracts candidate file URLs, and stores files
-under data/raw/pcc/all/. It keeps a manifest so reruns skip files already
-successfully downloaded.
+  python3 scripts/pcc_showlist_full_download.py --max-pages 1 --headed
 """
 from __future__ import annotations
 
@@ -25,8 +24,9 @@ SHOWLIST = "https://web.pcc.gov.tw/tps/tp/OpenData/showList"
 DEFAULT_DIR = Path("data/raw/pcc/all")
 
 
-def safe_name(url: str, fallback: str = "download.bin") -> str:
-    path = urlparse(url).path
+def safe_name(value: str, fallback: str = "download.bin") -> str:
+    # Accept either a URL or a Playwright suggested filename.
+    path = urlparse(value).path if "://" in value else value
     name = os.path.basename(path) or fallback
     name = re.sub(r"[^\w.\-()\u4e00-\u9fff ]+", "_", name).strip() or fallback
     return name[:240]
@@ -55,6 +55,7 @@ class Downloader:
                 pass
         self.urls: List[str] = []
         self.seen: Set[str] = set()
+        self.download_count = 0
 
     def save_manifest(self):
         tmp = self.manifest_path.with_suffix(".json.tmp")
@@ -68,8 +69,9 @@ class Downloader:
         if url.startswith("javascript:"):
             return
         low = url.lower()
-        # Keep download-like URLs and PCC same-origin resources; avoid CSS/JS/images.
         if any(x in low for x in (".css", ".js", ".png", ".jpg", ".jpeg", ".gif", "favicon")):
+            return
+        if "web.pcc.gov.tw" not in low:
             return
         if url not in self.seen:
             self.seen.add(url)
@@ -77,11 +79,10 @@ class Downloader:
 
     async def scan_page(self, page) -> List[str]:
         found: Set[str] = set()
-        # Anchor hrefs.
-        for u in await page.locator("a").evaluate_all("els => els.map(e => e.href).filter(Boolean)"):
-            if "web.pcc.gov.tw" in u:
-                found.add(u)
-        # Buttons/data attributes and common download tokens.
+
+        hrefs = await page.locator("a[href]").evaluate_all("els => els.map(e => e.href).filter(Boolean)")
+        found.update(hrefs)
+
         values = await page.locator("*[href], *[data-url], *[data-href], *[onclick]").evaluate_all(
             "els => els.flatMap(e => [e.getAttribute('href'), e.getAttribute('data-url'), e.getAttribute('data-href'), e.getAttribute('onclick')]).filter(Boolean)"
         )
@@ -89,65 +90,112 @@ class Downloader:
             for match in re.findall(r"https?://[^\"'\\s)]+|(?:/|OpenData/|tps/)[^\"'\\s)]+", value):
                 if "web.pcc.gov.tw" in match or match.startswith("/"):
                     found.add(urljoin(SHOWLIST, match))
-        for u in found:
+
+        # Also keep the actual page for debugging.
+        try:
+            (self.output / "showlist_last.html").write_text(await page.content(), encoding="utf-8")
+        except Exception:
+            pass
+
+        for u in sorted(found):
             self.add_url(u)
         return sorted(found)
 
-    async def run(self):
-        from playwright.async_api import async_playwright
+    async def save_download(self, download, page_url: str):
+        try:
+            suggested = await download.suggested_filename()
+            name = safe_name(suggested)
+            dest = self.output / name
+            if dest.exists():
+                stem, suffix = dest.stem, dest.suffix
+                i = 2
+                while (self.output / f"{stem}_{i}{suffix}").exists():
+                    i += 1
+                dest = self.output / f"{stem}_{i}{suffix}"
+            await download.save_as(str(dest))
+            size = dest.stat().st_size
+            key = f"download::{suggested}::{page_url}"
+            self.manifest["files"][key] = {
+                "url": page_url,
+                "status": "downloaded",
+                "path": str(dest),
+                "bytes": size,
+                "sha256": sha256(dest),
+                "suggested_filename": suggested,
+            }
+            self.save_manifest()
+            self.download_count += 1
+            print(f"  ✓ 瀏覽器下載：{name} ({size:,} bytes)", flush=True)
+        except Exception as exc:
+            print(f"  ✗ 保存瀏覽器下載失敗：{exc}", flush=True)
 
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=self.headless)
-            context = await browser.new_context(accept_downloads=True)
-            page = await context.new_page()
+    async def click_download_controls(self, page):
+        """Click likely download buttons/links and capture download events."""
+        selectors = [
+            "a",
+            "button",
+            "input[type='button']",
+            "input[type='submit']",
+            "[role='button']",
+            "[onclick]",
+        ]
+        candidates = page.locator(",".join(selectors))
+        count = await candidates.count()
+        for i in range(count):
+            el = candidates.nth(i)
+            try:
+                text = ((await el.inner_text()) or "").strip()
+            except Exception:
+                text = ""
+            try:
+                attrs = await el.evaluate("e => ({href:e.getAttribute('href'),onclick:e.getAttribute('onclick'),title:e.getAttribute('title'),value:e.getAttribute('value')})")
+            except Exception:
+                attrs = {}
+            hay = " ".join(str(attrs.get(k) or "") for k in ("href", "onclick", "title", "value")) + " " + text
+            if not re.search(r"下載|下載檔案|download|open.?data|檔案", hay, re.I):
+                continue
 
-            async def on_response(response):
-                url = response.url
-                ct = (response.headers.get("content-type") or "").lower()
-                if "web.pcc.gov.tw" in url and ("download" in url.lower() or "attachment" in ct or "octet-stream" in ct or "xml" in ct or "csv" in ct):
-                    self.add_url(url)
-
-            page.on("response", on_response)
-
-            await page.goto(SHOWLIST, wait_until="domcontentloaded", timeout=120000)
-            await page.wait_for_timeout(2500)
-
-            page_no = 1
-            while True:
-                before = len(self.urls)
-                found = await self.scan_page(page)
-                print(f"第 {page_no} 頁：找到 {len(found)} 個候選連結；累計 {len(self.urls)} 個唯一資源", flush=True)
-
-                # Download URLs discovered on this page first.
-                for url in list(self.urls)[before:]:
-                    await self.download_one(context, url)
-
-                if self.max_pages and page_no >= self.max_pages:
-                    break
-
-                # Try to locate next-page controls by visible labels or href/query.
-                next_link = page.locator("a", has_text=re.compile(r"下一頁|Next|>|›", re.I)).first
-                if await next_link.count() == 0:
-                    next_link = page.locator('a[href*="page"], a[href*="Page"], a[href*="pageNo"]').last
-                if await next_link.count() == 0:
-                    break
-
+            try:
+                async with page.expect_download(timeout=6000) as dl_info:
+                    await el.click(timeout=5000, no_wait_after=True)
+                download = await dl_info.value
+                await self.save_download(download, page.url)
+            except Exception:
+                # Some controls navigate or open a new tab instead of emitting a download.
                 try:
-                    await next_link.click(timeout=8000)
-                    await page.wait_for_timeout(1800)
-                    page_no += 1
+                    await el.click(timeout=2000, no_wait_after=True)
+                    await page.wait_for_timeout(800)
                 except Exception:
-                    break
+                    pass
 
-            await context.close()
-            await browser.close()
+    async def click_next(self, page) -> bool:
+        patterns = [
+            re.compile(r"下一頁", re.I),
+            re.compile(r"Next", re.I),
+            re.compile(r"^>$"),
+            re.compile(r"^›$"),
+            re.compile(r"下一頁|下页", re.I),
+        ]
+        for pattern in patterns:
+            loc = page.get_by_text(pattern).first
+            try:
+                if await loc.count() and await loc.is_visible():
+                    await loc.click(timeout=8000)
+                    await page.wait_for_timeout(1800)
+                    return True
+            except Exception:
+                continue
 
-        self.save_manifest()
-        ok = sum(1 for v in self.manifest["files"].values() if v.get("status") == "downloaded")
-        print(f"完成：發現 {len(self.urls)} 個唯一資源；成功下載 {ok} 個。", flush=True)
-        if not self.urls:
-            debug = self.output / "showlist_debug.html"
-            print(f"沒有發現資源。請查看：{debug}")
+        # Fallback: links whose URL looks like pagination.
+        loc = page.locator('a[href*="page"], a[href*="Page"], a[href*="pageNo"]').last
+        try:
+            if await loc.count() and await loc.is_visible():
+                await loc.click(timeout=8000)
+                await page.wait_for_timeout(1800)
+                return True
+        except Exception:
+            pass
+        return False
 
     async def download_one(self, context, url: str):
         key = url
@@ -156,7 +204,6 @@ class Downloader:
             return
         name = safe_name(url)
         dest = self.output / name
-        # Avoid collisions.
         if dest.exists() and (not rec or rec.get("url") != url):
             stem, suffix = dest.stem, dest.suffix
             i = 2
@@ -168,6 +215,7 @@ class Downloader:
             body = await response.body()
             if not body:
                 self.manifest["files"][key] = {"url": url, "status": "empty", "status_code": response.status}
+                self.save_manifest()
                 return
             dest.write_bytes(body)
             self.manifest["files"][key] = {
@@ -179,11 +227,62 @@ class Downloader:
                 "sha256": sha256(dest),
             }
             self.save_manifest()
-            print(f"  ✓ {name} ({len(body):,} bytes)", flush=True)
+            self.download_count += 1
+            print(f"  ✓ URL 下載：{name} ({len(body):,} bytes)", flush=True)
         except Exception as exc:
             self.manifest["files"][key] = {"url": url, "status": "error", "error": str(exc)}
             self.save_manifest()
             print(f"  ✗ {url} :: {exc}", flush=True)
+
+    async def run(self):
+        from playwright.async_api import async_playwright
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=self.headless)
+            context = await browser.new_context(accept_downloads=True)
+            page = await context.new_page()
+
+            # Capture any download that occurs independently of an explicit click.
+            async def on_download(download):
+                await self.save_download(download, page.url)
+
+            page.on("download", on_download)
+
+            await page.goto(SHOWLIST, wait_until="domcontentloaded", timeout=120000)
+            await page.wait_for_timeout(4000)
+
+            page_no = 1
+            previous_url = None
+            while True:
+                before = len(self.urls)
+                found = await self.scan_page(page)
+                print(f"第 {page_no} 頁：找到 {len(found)} 個候選連結；累計 {len(self.urls)} 個唯一資源", flush=True)
+
+                # First try actual browser downloads from buttons/forms/JS controls.
+                await self.click_download_controls(page)
+
+                # Then fetch ordinary direct URLs discovered on the page.
+                for url in list(self.urls)[before:]:
+                    await self.download_one(context, url)
+
+                if self.max_pages and page_no >= self.max_pages:
+                    break
+
+                previous_url = page.url
+                if not await self.click_next(page):
+                    break
+                if page.url == previous_url:
+                    break
+                page_no += 1
+
+            await context.close()
+            await browser.close()
+
+        self.save_manifest()
+        ok = sum(1 for v in self.manifest["files"].values() if v.get("status") == "downloaded")
+        print(f"完成：發現 {len(self.urls)} 個唯一資源；成功下載 {ok} 個。", flush=True)
+        if not self.urls and self.download_count == 0:
+            print(f"沒有發現可下載資源。已保存除錯頁：{self.output / 'showlist_last.html'}", flush=True)
 
 
 def main():
