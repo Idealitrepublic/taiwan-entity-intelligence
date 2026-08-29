@@ -8,6 +8,7 @@ BUCKET = "raw-data"
 MANIFEST_NAME = "upload_manifest_v2.json"
 PART_SIZE = 40 * 1024 * 1024
 MAX_RETRIES = 4
+EXCLUDED_DIRS = {"pcc", "company"}
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -22,7 +23,9 @@ def load_manifest(path: Path):
     except Exception: return {"files": {}}
 
 def save_manifest(path: Path, m):
-    tmp = path.with_suffix('.tmp'); tmp.write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding='utf-8'); os.replace(tmp, path)
+    tmp = path.with_suffix('.tmp')
+    tmp.write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding='utf-8')
+    os.replace(tmp, path)
 
 def upload(url, data, key, content_type):
     last=''
@@ -41,9 +44,9 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--root',default='data/raw'); ap.add_argument('--yes',action='store_true'); args=ap.parse_args()
     root=Path(args.root).expanduser().resolve()
     if not root.is_dir(): print(f'找不到資料夾：{root}'); return 1
-    files=[p for p in root.rglob('*') if p.is_file() and p.name not in {'.DS_Store',MANIFEST_NAME}]
+    files=[p for p in root.rglob('*') if p.is_file() and p.name not in {'.DS_Store',MANIFEST_NAME} and not any(part.lower() in EXCLUDED_DIRS for part in p.relative_to(root).parts)]
     files.sort(); total=sum(p.stat().st_size for p in files)
-    print('T.E.I. v2 原始資料 → Supabase Storage'); print(f'專案：https://anntdcxttvffekslbrkj.supabase.co'); print(f'Bucket：{BUCKET}（private）'); print(f'檔案數：{len(files)}'); print(f'總大小：約 {total/1024/1024:.1f} MB')
+    print('T.E.I. v2 原始資料 → Supabase Storage'); print(f'專案：https://anntdcxttvffekslbrkj.supabase.co'); print(f'Bucket：{BUCKET}（private）'); print(f'排除：pcc/、company/'); print(f'檔案數：{len(files)}'); print(f'總大小：約 {total/1024/1024:.1f} MB')
     if not args.yes and input('確定開始上傳？[y/N] ').strip().lower() not in {'y','yes'}: return 0
     key=getpass.getpass('請貼上 T.E.I. v2 Supabase secret key（sb_secret_...）：').strip()
     if not key: return 1
