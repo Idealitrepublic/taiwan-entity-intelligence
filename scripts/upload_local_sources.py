@@ -1,273 +1,136 @@
 #!/usr/bin/env python3
-"""Upload local government source files to the clean T.E.I. Supabase project.
-
-The original uploader used the original Chinese/local path as the Storage object
-key. Supabase Storage object names should use safe object-key characters, and
-TUS metadata is especially sensitive to non-ASCII paths. This version therefore
-uses an ASCII-only SHA256-derived object key while retaining the original local
-path in `source_files.metadata`.
-
-- Walks ~/taiwan-entity-intelligence/data/raw by default.
-- Ignores macOS .DS_Store files and common build/cache directories.
-- Uploads to the private `tei-raw` bucket.
-- Uses Supabase TUS resumable uploads for files > 6 MB.
-- Uses the Storage REST upload endpoint for smaller files.
-- Registers each uploaded object in public.source_files.
-- On rerun, skips files already registered with the same local path + SHA256.
-- Never uploads anything from a browser and never stores a service key in the repo.
-"""
-
+"""Idempotent uploader for the clean T.E.I. Supabase project."""
 from __future__ import annotations
-
-import getpass
-import hashlib
-import mimetypes
-import sys
+import getpass, hashlib, mimetypes, sys
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Iterable, Any
 import requests
 
 PROJECT_REF = "rztdbdurkjfrirsrrhtu"
-SUPABASE_URL = f"https://{PROJECT_REF}.supabase.co"
-STORAGE_TUS_URL = f"https://{PROJECT_REF}.storage.supabase.co/storage/v1/upload/resumable"
+BASE = f"https://{PROJECT_REF}.supabase.co"
+TUS_BASE = f"{BASE}/storage/v1/upload/resumable"
 BUCKET = "tei-raw"
-DEFAULT_ROOT = Path.home() / "taiwan-entity-intelligence" / "data" / "raw"
-TUS_THRESHOLD = 6 * 1024 * 1024
-TUS_CHUNK = 6 * 1024 * 1024
+ROOT = Path.home() / "taiwan-entity-intelligence" / "data" / "raw"
+CHUNK = 6 * 1024 * 1024
 
 
-def sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
-        while True:
-            data = f.read(chunk_size)
-            if not data:
-                break
-            h.update(data)
+        for block in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(block)
     return h.hexdigest()
 
 
 def classify(rel: Path) -> str:
     s = str(rel).lower()
-    if "pcc" in s or "採購" in s or "招標" in s or "決標" in s:
-        return "pcc"
-    if "165" in s or "詐" in s or "fraud" in s or "scam" in s:
-        return "anti_fraud"
-    if "裁罰" in s or "penalt" in s or "違法" in s or "勞動" in s:
-        return "penalties"
-    if "公司" in s or "company" in s or "登記" in s:
-        return "company"
+    if any(x in s for x in ("pcc", "採購", "招標", "決標")): return "pcc"
+    if any(x in s for x in ("165", "詐", "fraud", "scam")): return "anti_fraud"
+    if any(x in s for x in ("裁罰", "penalt", "違法", "勞動")): return "penalties"
+    if any(x in s for x in ("公司", "company", "登記")): return "company"
     return "other"
 
 
-def object_path(root: Path, path: Path, digest: str) -> str:
-    """Create an ASCII-only, collision-resistant Storage object key."""
-    rel = path.relative_to(root)
-    dataset = classify(rel)
-    suffix = path.suffix.lower()
-    return f"{dataset}/{digest}{suffix}"
-
-
-def postgrest_headers(key: str) -> dict[str, str]:
-    return {
-        "apikey": key,
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-    }
+def headers(key: str) -> dict[str, str]:
+    return {"apikey": key, "Authorization": f"Bearer {key}"}
 
 
 def fetch_registered(key: str) -> dict[str, dict[str, Any]]:
-    """Load already registered local files once to avoid re-uploading them."""
-    url = f"{SUPABASE_URL}/rest/v1/source_files"
-    params = {
-        "select": "object_path,file_name,size_bytes,sha256,status,metadata",
-        "limit": "5000",
-    }
-    r = requests.get(url, headers=postgrest_headers(key), params=params, timeout=60)
+    r = requests.get(
+        f"{BASE}/rest/v1/source_files",
+        params={"select":"object_path,file_name,sha256,status,metadata", "sha256":"not.is.null", "limit":"100000"},
+        headers=headers(key), timeout=120,
+    )
     r.raise_for_status()
-    rows = r.json()
-    out: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        meta = row.get("metadata") or {}
-        local_rel = meta.get("local_relative_path")
+    out = {}
+    for row in r.json():
         sha = row.get("sha256")
-        if local_rel and sha:
-            out[f"{local_rel}|{sha}"] = row
+        if sha:
+            out[sha] = row
     return out
 
 
-def register_file(key: str, dataset: str, obj_path: str, file_path: Path, digest: str, root: Path) -> None:
-    url = f"{SUPABASE_URL}/rest/v1/source_files"
-    rel = file_path.relative_to(root).as_posix()
-    payload = {
-        "dataset": dataset,
-        "object_path": obj_path,
-        "file_name": file_path.name,
-        "format": file_path.suffix.lstrip(".").lower() or None,
-        "size_bytes": file_path.stat().st_size,
-        "sha256": digest,
-        "status": "uploaded",
-        "metadata": {"local_relative_path": rel},
-    }
-    r = requests.post(
-        url,
-        headers={**postgrest_headers(key), "Prefer": "resolution=merge-duplicates,return=minimal"},
-        json=payload,
-        timeout=60,
-    )
-    r.raise_for_status()
+def storage_exists(key: str, obj: str) -> bool:
+    r = requests.head(f"{BASE}/storage/v1/object/{BUCKET}/{obj}", headers=headers(key), timeout=60)
+    if r.status_code in (200, 206): return True
+    if r.status_code == 404: return False
+    # Storage variants may not support HEAD; use object/info as a lightweight probe.
+    q = requests.get(f"{BASE}/storage/v1/object/info/{BUCKET}/{obj}", headers=headers(key), timeout=60)
+    return q.status_code == 200
 
 
-def upload_small(key: str, obj_path: str, file_path: Path) -> None:
-    url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{obj_path}"
-    content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
-    with file_path.open("rb") as f:
+def upload_small(key: str, obj: str, path: Path) -> None:
+    ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    with path.open("rb") as f:
         r = requests.post(
-            url,
-            headers={
-                "apikey": key,
-                "Authorization": f"Bearer {key}",
-                "Content-Type": content_type,
-                "x-upsert": "true",
-            },
-            data=f,
-            timeout=300,
+            f"{BASE}/storage/v1/object/{BUCKET}/{obj}",
+            headers={**headers(key), "Content-Type": ctype, "x-upsert":"false"},
+            data=f, timeout=300,
         )
     r.raise_for_status()
 
 
-def upload_tus(key: str, obj_path: str, file_path: Path) -> None:
+def upload_tus(key: str, obj: str, path: Path) -> None:
     try:
         from tusclient import client as tus_client
     except ImportError as exc:
-        raise RuntimeError(
-            "缺少 tusclient。請先執行：python3 -m pip install tuspy"
-        ) from exc
-
-    client = tus_client.TusClient(
-        STORAGE_TUS_URL,
-        headers={
-            "Authorization": f"Bearer {key}",
-            "apikey": key,
-            "x-upsert": "true",
-        },
-    )
-    metadata = {
-        "bucketName": BUCKET,
-        "objectName": obj_path,
-        "contentType": mimetypes.guess_type(file_path.name)[0] or "application/octet-stream",
-        "cacheControl": "3600",
-    }
-    with file_path.open("rb") as stream:
-        uploader = client.uploader(
-            file_stream=stream,
-            chunk_size=TUS_CHUNK,
-            metadata=metadata,
-        )
-        uploader.upload()
+        raise RuntimeError("缺少 tusclient；請先執行 python3 -m pip install tuspy") from exc
+    c = tus_client.TusClient(TUS_BASE, headers={"Authorization":f"Bearer {key}", "apikey":key, "x-upsert":"false"})
+    meta = {"bucketName":BUCKET, "objectName":obj, "contentType":mimetypes.guess_type(path.name)[0] or "application/octet-stream", "cacheControl":"3600"}
+    with path.open("rb") as f:
+        c.uploader(file_stream=f, chunk_size=CHUNK, metadata=meta).upload()
 
 
-def upload_one(key: str, root: Path, file_path: Path, registered: dict[str, dict[str, Any]]) -> str:
-    rel = file_path.relative_to(root)
-    size = file_path.stat().st_size
-    digest = sha256_file(file_path)
-    registered_key = f"{rel.as_posix()}|{digest}"
-
-    if registered_key in registered and registered[registered_key].get("status") == "uploaded":
-        print(f"\n[SKIP] {rel}：已上傳且 SHA256 相同")
-        return "skipped"
-
-    dataset = classify(rel)
-    obj_path = object_path(root, file_path, digest)
-    print(f"\n[{dataset}] {rel} ({size / 1024 / 1024:.2f} MB)")
-    print(f"SHA256: {digest}")
-    print(f"Storage key: {obj_path}")
-    if size > TUS_THRESHOLD:
-        print("方式：TUS resumable upload")
-        upload_tus(key, obj_path, file_path)
-    else:
-        print("方式：Storage REST upload")
-        upload_small(key, obj_path, file_path)
-    register_file(key, dataset, obj_path, file_path, digest, root)
-    print("✅ 成功")
-    return "uploaded"
+def register(key: str, rel: Path, obj: str, digest: str, root: Path) -> None:
+    payload = {"dataset":classify(rel), "object_path":obj, "file_name":rel.name, "format":rel.suffix.lstrip('.').lower() or None, "size_bytes":rel.stat().st_size, "sha256":digest, "status":"uploaded", "metadata":{"local_relative_path":rel.as_posix()}}
+    r = requests.post(f"{BASE}/rest/v1/source_files", headers={**headers(key), "Content-Type":"application/json", "Prefer":"resolution=merge-duplicates,return=minimal"}, json=payload, timeout=60)
+    r.raise_for_status()
 
 
 def iter_files(root: Path) -> Iterable[Path]:
-    ignored_parts = {".git", "__pycache__"}
     for p in sorted(root.rglob("*")):
-        if not p.is_file():
+        if not p.is_file() or p.name in {".DS_Store", "Thumbs.db"}:
             continue
-        if p.name == ".DS_Store":
-            continue
-        if any(part in ignored_parts for part in p.parts):
+        if any(x in p.parts for x in (".git", "__pycache__")):
             continue
         yield p
 
 
 def main() -> int:
-    root = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else DEFAULT_ROOT
+    root = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else ROOT
     if not root.exists():
-        print(f"找不到資料夾：{root}")
-        return 1
-
+        print(f"找不到資料夾：{root}"); return 1
     files = list(iter_files(root))
-    if not files:
-        print(f"資料夾沒有檔案：{root}")
-        return 1
-
-    total = sum(p.stat().st_size for p in files)
-    print("T.E.I. CLEAN LOCAL SOURCE UPLOADER v2")
-    print(f"Supabase: {SUPABASE_URL}")
-    print(f"Bucket:   {BUCKET} (private)")
-    print(f"來源：    {root}")
-    print(f"檔案：    {len(files)} 個 / {total / 1024 / 1024:.2f} MB")
-    print("\n本版本會：")
-    print("1. 忽略 macOS .DS_Store")
-    print("2. 使用 ASCII-only SHA256 Storage key，避免中文檔名造成 400")
-    print("3. 已成功上傳且 SHA256 相同的檔案自動跳過")
-    print("4. 原始中文檔名與本機相對路徑仍保留在 source_files metadata")
-    confirm = input("\n開始上傳？輸入 YES：").strip()
-    if confirm != "YES":
-        print("已取消。")
-        return 0
-
-    key = getpass.getpass("貼上 T.E.I. 新專案的 service_role key（不會顯示）：").strip()
-    if not key:
-        print("沒有輸入 key。")
-        return 1
-
+    print(f"找到 {len(files)} 個檔案。只會處理尚未存在於 Supabase 的資料。")
+    key = getpass.getpass("貼上新 T.E.I. Supabase service_role key（不會顯示）：").strip()
+    if not key: return 1
     try:
-        registered = fetch_registered(key)
-    except Exception as exc:  # noqa: BLE001
-        print(f"❌ 無法讀取 source_files：{exc}")
-        return 1
-
+        registry = fetch_registered(key)
+    except Exception as exc:
+        print(f"❌ 無法讀取 source_files：{exc}"); return 1
+    seen = set()
     uploaded = skipped = failed = 0
-    for idx, path in enumerate(files, 1):
-        print(f"\n========== {idx}/{len(files)} ==========")
+    for i, path in enumerate(files, 1):
+        rel = path.relative_to(root)
         try:
-            result = upload_one(key, root, path, registered)
-            if result == "uploaded":
-                uploaded += 1
-                rel = path.relative_to(root).as_posix()
-                digest = sha256_file(path)
-                registered[f"{rel}|{digest}"] = {"status": "uploaded"}
-            else:
-                skipped += 1
-        except Exception as exc:  # noqa: BLE001
-            failed += 1
-            print(f"❌ 失敗：{exc}")
+            digest = sha256_file(path)
+            if digest in seen:
+                print(f"[{i}/{len(files)}] SKIP 本批重複：{rel}"); skipped += 1; continue
+            seen.add(digest)
+            if digest in registry:
+                print(f"[{i}/{len(files)}] SKIP 已存在：{rel}"); skipped += 1; continue
+            ds = classify(rel); obj = f"{ds}/{digest}{path.suffix.lower()}"
+            if storage_exists(key, obj):
+                print(f"[{i}/{len(files)}] SKIP Storage 已存在：{rel}")
+                register(key, rel, obj, digest, root); registry[digest] = {"status":"uploaded"}; skipped += 1; continue
+            print(f"[{i}/{len(files)}] 上傳：{rel}")
+            if path.stat().st_size > CHUNK: upload_tus(key, obj, path)
+            else: upload_small(key, obj, path)
+            register(key, rel, obj, digest, root); registry[digest] = {"status":"uploaded"}
+            print("  ✅ 成功"); uploaded += 1
+        except Exception as exc:
+            print(f"  ❌ 失敗：{exc}"); failed += 1
+    print(f"\n完成：新上傳 {uploaded} / 跳過 {skipped} / 失敗 {failed}")
+    return 2 if failed else 0
 
-    print("\n==============================")
-    print(f"完成：{uploaded} 新上傳 / {skipped} 跳過 / {failed} 失敗 / 共 {len(files)}")
-    if failed:
-        print("失敗檔案可直接再次執行本程式；已成功檔案會自動跳過。")
-        return 2
-    print("✅ 全部需要的檔案都已處理")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == "__main__": raise SystemExit(main())
