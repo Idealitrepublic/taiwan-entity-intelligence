@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Idempotent uploader for the clean T.E.I. Supabase project."""
+"""Idempotent uploader for the clean T.E.I. Supabase project.
+
+PCC is intentionally excluded because its already-uploaded files must never be
+re-uploaded by the local-source repair job.  Only non-PCC files missing from
+both source_files and Storage are candidates for upload.
+"""
 from __future__ import annotations
 import getpass, hashlib, mimetypes, sys
 from pathlib import Path
@@ -45,8 +50,7 @@ def fetch_registered(key: str) -> dict[str, dict[str, Any]]:
     out = {}
     for row in r.json():
         sha = row.get("sha256")
-        if sha:
-            out[sha] = row
+        if sha: out[sha] = row
     return out
 
 
@@ -54,7 +58,6 @@ def storage_exists(key: str, obj: str) -> bool:
     r = requests.head(f"{BASE}/storage/v1/object/{BUCKET}/{obj}", headers=headers(key), timeout=60)
     if r.status_code in (200, 206): return True
     if r.status_code == 404: return False
-    # Storage variants may not support HEAD; use object/info as a lightweight probe.
     q = requests.get(f"{BASE}/storage/v1/object/info/{BUCKET}/{obj}", headers=headers(key), timeout=60)
     return q.status_code == 200
 
@@ -62,11 +65,7 @@ def storage_exists(key: str, obj: str) -> bool:
 def upload_small(key: str, obj: str, path: Path) -> None:
     ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     with path.open("rb") as f:
-        r = requests.post(
-            f"{BASE}/storage/v1/object/{BUCKET}/{obj}",
-            headers={**headers(key), "Content-Type": ctype, "x-upsert":"false"},
-            data=f, timeout=300,
-        )
+        r = requests.post(f"{BASE}/storage/v1/object/{BUCKET}/{obj}", headers={**headers(key), "Content-Type":ctype, "x-upsert":"false"}, data=f, timeout=300)
     r.raise_for_status()
 
 
@@ -81,7 +80,7 @@ def upload_tus(key: str, obj: str, path: Path) -> None:
         c.uploader(file_stream=f, chunk_size=CHUNK, metadata=meta).upload()
 
 
-def register(key: str, rel: Path, obj: str, digest: str, root: Path) -> None:
+def register(key: str, rel: Path, obj: str, digest: str) -> None:
     payload = {"dataset":classify(rel), "object_path":obj, "file_name":rel.name, "format":rel.suffix.lstrip('.').lower() or None, "size_bytes":rel.stat().st_size, "sha256":digest, "status":"uploaded", "metadata":{"local_relative_path":rel.as_posix()}}
     r = requests.post(f"{BASE}/rest/v1/source_files", headers={**headers(key), "Content-Type":"application/json", "Prefer":"resolution=merge-duplicates,return=minimal"}, json=payload, timeout=60)
     r.raise_for_status()
@@ -89,44 +88,41 @@ def register(key: str, rel: Path, obj: str, digest: str, root: Path) -> None:
 
 def iter_files(root: Path) -> Iterable[Path]:
     for p in sorted(root.rglob("*")):
-        if not p.is_file() or p.name in {".DS_Store", "Thumbs.db"}:
-            continue
-        if any(x in p.parts for x in (".git", "__pycache__")):
-            continue
+        if not p.is_file() or p.name in {".DS_Store", "Thumbs.db"}: continue
+        if any(x in p.parts for x in (".git", "__pycache__")): continue
         yield p
 
 
 def main() -> int:
     root = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else ROOT
-    if not root.exists():
-        print(f"找不到資料夾：{root}"); return 1
+    if not root.exists(): print(f"找不到資料夾：{root}"); return 1
     files = list(iter_files(root))
-    print(f"找到 {len(files)} 個檔案。只會處理尚未存在於 Supabase 的資料。")
+    print(f"找到 {len(files)} 個檔案。PCC 全部跳過，只修補其他資料的缺失檔案。")
     key = getpass.getpass("貼上新 T.E.I. Supabase service_role key（不會顯示）：").strip()
     if not key: return 1
-    try:
-        registry = fetch_registered(key)
-    except Exception as exc:
-        print(f"❌ 無法讀取 source_files：{exc}"); return 1
-    seen = set()
+    registry = fetch_registered(key)
+    seen: set[str] = set()
     uploaded = skipped = failed = 0
     for i, path in enumerate(files, 1):
         rel = path.relative_to(root)
         try:
+            ds = classify(rel)
             digest = sha256_file(path)
             if digest in seen:
                 print(f"[{i}/{len(files)}] SKIP 本批重複：{rel}"); skipped += 1; continue
             seen.add(digest)
+            if ds == "pcc":
+                print(f"[{i}/{len(files)}] SKIP PCC（永不重傳）：{rel}"); skipped += 1; continue
             if digest in registry:
                 print(f"[{i}/{len(files)}] SKIP 已存在：{rel}"); skipped += 1; continue
-            ds = classify(rel); obj = f"{ds}/{digest}{path.suffix.lower()}"
+            obj = f"{ds}/{digest}{path.suffix.lower()}"
             if storage_exists(key, obj):
                 print(f"[{i}/{len(files)}] SKIP Storage 已存在：{rel}")
-                register(key, rel, obj, digest, root); registry[digest] = {"status":"uploaded"}; skipped += 1; continue
-            print(f"[{i}/{len(files)}] 上傳：{rel}")
+                register(key, rel, obj, digest); registry[digest] = {"status":"uploaded"}; skipped += 1; continue
+            print(f"[{i}/{len(files)}] 修補：{rel}")
             if path.stat().st_size > CHUNK: upload_tus(key, obj, path)
             else: upload_small(key, obj, path)
-            register(key, rel, obj, digest, root); registry[digest] = {"status":"uploaded"}
+            register(key, rel, obj, digest); registry[digest] = {"status":"uploaded"}
             print("  ✅ 成功"); uploaded += 1
         except Exception as exc:
             print(f"  ❌ 失敗：{exc}"); failed += 1
