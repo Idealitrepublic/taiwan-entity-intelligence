@@ -1,24 +1,30 @@
 #!/usr/bin/env python3
 """Upload local government source files to the clean T.E.I. Supabase project.
 
+The original uploader used the original Chinese/local path as the Storage object
+key. Supabase Storage object names should use safe object-key characters, and
+TUS metadata is especially sensitive to non-ASCII paths. This version therefore
+uses an ASCII-only SHA256-derived object key while retaining the original local
+path in `source_files.metadata`.
+
 - Walks ~/taiwan-entity-intelligence/data/raw by default.
+- Ignores macOS .DS_Store files and common build/cache directories.
 - Uploads to the private `tei-raw` bucket.
 - Uses Supabase TUS resumable uploads for files > 6 MB.
 - Uses the Storage REST upload endpoint for smaller files.
 - Registers each uploaded object in public.source_files.
+- On rerun, skips files already registered with the same local path + SHA256.
 - Never uploads anything from a browser and never stores a service key in the repo.
 """
 
 from __future__ import annotations
 
-import csv
 import getpass
 import hashlib
 import mimetypes
-import os
 import sys
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 import requests
 
@@ -48,18 +54,19 @@ def classify(rel: Path) -> str:
         return "pcc"
     if "165" in s or "詐" in s or "fraud" in s or "scam" in s:
         return "anti_fraud"
-    if "裁罰" in s or "penalt" in s or "違法" in s:
+    if "裁罰" in s or "penalt" in s or "違法" in s or "勞動" in s:
         return "penalties"
     if "公司" in s or "company" in s or "登記" in s:
         return "company"
     return "other"
 
 
-def object_path(root: Path, path: Path) -> str:
+def object_path(root: Path, path: Path, digest: str) -> str:
+    """Create an ASCII-only, collision-resistant Storage object key."""
     rel = path.relative_to(root)
     dataset = classify(rel)
-    # Use POSIX separators because Storage object keys are URL-like paths.
-    return f"{dataset}/{rel.as_posix()}"
+    suffix = path.suffix.lower()
+    return f"{dataset}/{digest}{suffix}"
 
 
 def postgrest_headers(key: str) -> dict[str, str]:
@@ -70,8 +77,29 @@ def postgrest_headers(key: str) -> dict[str, str]:
     }
 
 
-def register_file(key: str, dataset: str, obj_path: str, file_path: Path, digest: str) -> None:
+def fetch_registered(key: str) -> dict[str, dict[str, Any]]:
+    """Load already registered local files once to avoid re-uploading them."""
     url = f"{SUPABASE_URL}/rest/v1/source_files"
+    params = {
+        "select": "object_path,file_name,size_bytes,sha256,status,metadata",
+        "limit": "5000",
+    }
+    r = requests.get(url, headers=postgrest_headers(key), params=params, timeout=60)
+    r.raise_for_status()
+    rows = r.json()
+    out: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        meta = row.get("metadata") or {}
+        local_rel = meta.get("local_relative_path")
+        sha = row.get("sha256")
+        if local_rel and sha:
+            out[f"{local_rel}|{sha}"] = row
+    return out
+
+
+def register_file(key: str, dataset: str, obj_path: str, file_path: Path, digest: str, root: Path) -> None:
+    url = f"{SUPABASE_URL}/rest/v1/source_files"
+    rel = file_path.relative_to(root).as_posix()
     payload = {
         "dataset": dataset,
         "object_path": obj_path,
@@ -80,7 +108,7 @@ def register_file(key: str, dataset: str, obj_path: str, file_path: Path, digest
         "size_bytes": file_path.stat().st_size,
         "sha256": digest,
         "status": "uploaded",
-        "metadata": {"local_relative_path": file_path.as_posix()},
+        "metadata": {"local_relative_path": rel},
     }
     r = requests.post(
         url,
@@ -110,7 +138,6 @@ def upload_small(key: str, obj_path: str, file_path: Path) -> None:
 
 
 def upload_tus(key: str, obj_path: str, file_path: Path) -> None:
-    # Lazy import so small-file uploads do not require tusclient.
     try:
         from tusclient import client as tus_client
     except ImportError as exc:
@@ -141,29 +168,42 @@ def upload_tus(key: str, obj_path: str, file_path: Path) -> None:
         uploader.upload()
 
 
-def upload_one(key: str, root: Path, file_path: Path) -> None:
+def upload_one(key: str, root: Path, file_path: Path, registered: dict[str, dict[str, Any]]) -> str:
     rel = file_path.relative_to(root)
-    obj_path = object_path(root, file_path)
-    dataset = classify(rel)
     size = file_path.stat().st_size
-    print(f"\n[{dataset}] {rel} ({size / 1024 / 1024:.2f} MB)")
     digest = sha256_file(file_path)
+    registered_key = f"{rel.as_posix()}|{digest}"
+
+    if registered_key in registered and registered[registered_key].get("status") == "uploaded":
+        print(f"\n[SKIP] {rel}：已上傳且 SHA256 相同")
+        return "skipped"
+
+    dataset = classify(rel)
+    obj_path = object_path(root, file_path, digest)
+    print(f"\n[{dataset}] {rel} ({size / 1024 / 1024:.2f} MB)")
     print(f"SHA256: {digest}")
+    print(f"Storage key: {obj_path}")
     if size > TUS_THRESHOLD:
         print("方式：TUS resumable upload")
         upload_tus(key, obj_path, file_path)
     else:
         print("方式：Storage REST upload")
         upload_small(key, obj_path, file_path)
-    register_file(key, dataset, obj_path, file_path, digest)
+    register_file(key, dataset, obj_path, file_path, digest, root)
     print("✅ 成功")
+    return "uploaded"
 
 
 def iter_files(root: Path) -> Iterable[Path]:
     ignored_parts = {".git", "__pycache__"}
     for p in sorted(root.rglob("*")):
-        if p.is_file() and not any(part in ignored_parts for part in p.parts):
-            yield p
+        if not p.is_file():
+            continue
+        if p.name == ".DS_Store":
+            continue
+        if any(part in ignored_parts for part in p.parts):
+            continue
+        yield p
 
 
 def main() -> int:
@@ -178,12 +218,16 @@ def main() -> int:
         return 1
 
     total = sum(p.stat().st_size for p in files)
-    print("T.E.I. CLEAN LOCAL SOURCE UPLOADER")
+    print("T.E.I. CLEAN LOCAL SOURCE UPLOADER v2")
     print(f"Supabase: {SUPABASE_URL}")
     print(f"Bucket:   {BUCKET} (private)")
     print(f"來源：    {root}")
     print(f"檔案：    {len(files)} 個 / {total / 1024 / 1024:.2f} MB")
-    print("\n這支程式只會上傳你本機 data/raw 內的檔案；不會把內容灌進 PostgreSQL。")
+    print("\n本版本會：")
+    print("1. 忽略 macOS .DS_Store")
+    print("2. 使用 ASCII-only SHA256 Storage key，避免中文檔名造成 400")
+    print("3. 已成功上傳且 SHA256 相同的檔案自動跳過")
+    print("4. 原始中文檔名與本機相對路徑仍保留在 source_files metadata")
     confirm = input("\n開始上傳？輸入 YES：").strip()
     if confirm != "YES":
         print("已取消。")
@@ -194,22 +238,34 @@ def main() -> int:
         print("沒有輸入 key。")
         return 1
 
-    ok = failed = 0
+    try:
+        registered = fetch_registered(key)
+    except Exception as exc:  # noqa: BLE001
+        print(f"❌ 無法讀取 source_files：{exc}")
+        return 1
+
+    uploaded = skipped = failed = 0
     for idx, path in enumerate(files, 1):
         print(f"\n========== {idx}/{len(files)} ==========")
         try:
-            upload_one(key, root, path)
-            ok += 1
+            result = upload_one(key, root, path, registered)
+            if result == "uploaded":
+                uploaded += 1
+                rel = path.relative_to(root).as_posix()
+                digest = sha256_file(path)
+                registered[f"{rel}|{digest}"] = {"status": "uploaded"}
+            else:
+                skipped += 1
         except Exception as exc:  # noqa: BLE001
             failed += 1
             print(f"❌ 失敗：{exc}")
 
     print("\n==============================")
-    print(f"完成：{ok} 成功 / {failed} 失敗 / 共 {len(files)}")
+    print(f"完成：{uploaded} 新上傳 / {skipped} 跳過 / {failed} 失敗 / 共 {len(files)}")
     if failed:
-        print("失敗檔案不會影響其他檔案；再次執行可重試（使用 x-upsert）。")
+        print("失敗檔案可直接再次執行本程式；已成功檔案會自動跳過。")
         return 2
-    print("✅ 全部成功")
+    print("✅ 全部需要的檔案都已處理")
     return 0
 
 
