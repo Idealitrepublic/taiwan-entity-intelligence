@@ -3,6 +3,7 @@
 import json
 from urllib.parse import parse_qs, urlparse
 
+from src.app_js import APP_JS
 from src.v2server import Handler as BaseHandler, SUPABASE_KEY, build_company
 
 TEST_UNIFORM = "22099131"
@@ -57,6 +58,8 @@ class Handler(BaseHandler):
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         query = parse_qs(urlparse(self.path).query)
+        if path == "/app.js":
+            return self._send_raw(200, APP_JS, "application/javascript; charset=utf-8")
         if path == "/api" and query.get("format") == ["json"]:
             return self._send_raw(200, json.dumps(smoke_result(), ensure_ascii=False), "application/json; charset=utf-8")
         if path == "/api":
