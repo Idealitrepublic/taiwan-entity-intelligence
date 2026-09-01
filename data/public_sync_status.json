@@ -1,11 +1,14 @@
 {
-  "last_sync": "2026-08-30T20:21:16+00:00",
-  "evidence_count": 1710,
-  "new": 1710,
-  "fetched": 1710,
-  "by_source": {
-    "judicial": 1710
-  },
-  "errors": [],
+  "last_sync": "2026-09-01T04:09:16+00:00",
+  "evidence_count": 0,
+  "new": 0,
+  "fetched": 0,
+  "by_source": {},
+  "errors": [
+    {
+      "source": "judicial",
+      "error": "司法院 API 驗證失敗：{'error': '目前非本 API 服務時間。'}"
+    }
+  ],
   "judicial_enabled": true
 }
