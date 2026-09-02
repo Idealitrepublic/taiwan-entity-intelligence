@@ -32,3 +32,16 @@ jobs:
         run: python -m pytest -q tests/test_public_sources.py
       - name: Test three-company non-judicial source integration
         run: python -m pytest -q tests/test_multi_company_sources.py -vv
+      - name: Test production build_company path
+        run: |
+          python - <<'PY'
+          from src.v2server import build_company
+          for uniform in ('23060248', '96972256', '22099131'):
+              data = build_company(uniform)
+              assert isinstance(data, dict), (uniform, type(data), data)
+              assert data.get('company_name'), (uniform, data)
+              assert isinstance(data.get('people'), list), (uniform, type(data.get('people')))
+              assert isinstance(data.get('evidence'), list), (uniform, type(data.get('evidence')))
+              assert isinstance(data.get('evidence_status'), dict), (uniform, type(data.get('evidence_status')))
+              print(uniform, data['company_name'], 'people=', len(data['people']), 'evidence=', len(data['evidence']))
+          PY
