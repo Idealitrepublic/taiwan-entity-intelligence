@@ -13,12 +13,17 @@ from urllib.parse import parse_qs, urlparse
 
 from src.v2server import build_company, SUPABASE_KEY
 
-TEST_UNIFORM = "22099131"  # TSMC; stable public company-registry test target.
+# Publicly documented 2026 criminal judgment test target. The company was a
+# defendant in a first-instance National Security Act case; the test page
+# describes it as a known judicial test case, not as a generic "bad company" label.
+TEST_UNIFORM = "96972256"  # 東京威力科創股份有限公司
+TEST_NAME = "東京威力科創股份有限公司"
 
 
 def run_tests():
     result = {
         "test_target": TEST_UNIFORM,
+        "test_target_name": TEST_NAME,
         "core": {},
         "sources": {},
         "summary": {"passed": 0, "failed": 0, "warning": 0},
@@ -64,6 +69,7 @@ def run_tests():
                 "source_status": status,
                 "matched": matched,
                 "message": item.get("message"),
+                "url": item.get("url"),
             }
 
         result["company"] = {
@@ -73,6 +79,7 @@ def run_tests():
             "live_evidence_count": len(data.get("evidence") or []),
             "local_evidence_count": int(local.get("evidence_count") or 0),
         }
+        result["judicial_search_url"] = data.get("judicial_search_url")
         result["data_mode"] = data.get("data_mode")
 
     except Exception as exc:
@@ -94,7 +101,7 @@ main{max-width:900px;margin:auto}.box{border:1px solid #26313e;background:#0d131
 h1{font-size:22px;margin:0 0 6px}.muted{color:#7f8c9c;font-size:12px}.row{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid #1c2631;font-size:13px}.row:last-child{border-bottom:0}.pass{color:#63d39f}.fail{color:#ef7d8d}.warning{color:#f2c56a}.pill{display:inline-block;padding:5px 8px;border:1px solid #344152;border-radius:999px;font-size:11px}.summary{display:flex;gap:18px;flex-wrap:wrap}.big{font-size:32px;font-weight:800}.btn{border:1px solid #526f96;background:#dfeafb;color:#0d1520;border-radius:7px;padding:8px 12px;font-weight:700;cursor:pointer}.pre{white-space:pre-wrap;word-break:break-word;color:#9eabb9;font-size:11px;line-height:1.6}
 </style></head>
 <body><main>
-<div class="box"><h1>T.E.I. Live Smoke Test</h1><div class="muted">實際呼叫 Production gateway；不是 mock。測試目標：統編 22099131</div><div id="summary" class="summary" style="margin-top:14px"></div></div>
+<div class="box"><h1>T.E.I. Live Smoke Test</h1><div class="muted">實際呼叫 Production gateway；不是 mock。測試目標：96972256 東京威力科創股份有限公司</div><div id="summary" class="summary" style="margin-top:14px"></div></div>
 <div class="box"><h2>核心連線</h2><div id="core"></div></div>
 <div class="box"><h2>來源狀態</h2><div id="sources"></div></div>
 <div class="box"><h2>測試企業</h2><div id="company"></div></div>
@@ -105,11 +112,11 @@ async function run(){
   const r=await fetch('/api/test?format=json&t='+Date.now());
   const x=await r.json();
   document.title='T.E.I. Smoke Test — '+x.overall;
-  document.getElementById('summary').innerHTML=`<div><div class="big ${x.overall==='PASS'?'pass':'fail'}">${esc(x.overall)}</div><div class="muted">overall</div></div><div><div class="big">${x.summary.passed}</div><div class="muted">passed</div></div><div><div class="big">${x.summary.failed}</div><div class="muted">failed</div></div><div><div class="big">${x.summary.warning}</div><div class="muted">warnings</div></div>`;
-  const render=(obj)=>Object.entries(obj).map(([k,v])=>`<div class="row"><span>${esc(k)}</span><span class="${v.status}">${esc(v.status.toUpperCase())}${v.detail?' · '+esc(v.detail):v.message?' · '+esc(v.message):''}</span></div>`).join('');
+  document.getElementById('summary').innerHTML=`<div><div class='big ${x.overall==='PASS'?'pass':'fail'}'>${esc(x.overall)}</div><div class='muted'>overall</div></div><div><div class='big'>${x.summary.passed}</div><div class='muted'>passed</div></div><div><div class='big'>${x.summary.failed}</div><div class='muted'>failed</div></div><div><div class='big'>${x.summary.warning}</div><div class='muted'>warnings</div></div>`;
+  const render=(obj)=>Object.entries(obj).map(([k,v])=>`<div class='row'><span>${esc(k)}</span><span class='${v.status}'>${esc(v.status.toUpperCase())}${v.detail?' · '+esc(v.detail):v.message?' · '+esc(v.message):''}</span></div>`).join('');
   document.getElementById('core').innerHTML=render(x.core)||'<div class="muted">無資料</div>';
   document.getElementById('sources').innerHTML=render(x.sources)||'<div class="muted">無資料</div>';
-  const c=x.company||{}; document.getElementById('company').innerHTML=`<div class="row"><span>公司</span><span>${esc(c.name||'—')}</span></div><div class="row"><span>統編</span><span>${esc(c.uniform_number||'—')}</span></div><div class="row"><span>董監事</span><span>${esc(c.director_count||0)} 人</span></div><div class="row"><span>Evidence</span><span>${esc(c.live_evidence_count||0)} 筆（即時/資料層）</span></div><div class="row"><span>Supabase Evidence</span><span>${esc(c.local_evidence_count||0)} 筆</span></div>`;
+  const c=x.company||{}; document.getElementById('company').innerHTML=`<div class='row'><span>公司</span><span>${esc(c.name||'—')}</span></div><div class='row'><span>統編</span><span>${esc(c.uniform_number||'—')}</span></div><div class='row'><span>董監事</span><span>${esc(c.director_count||0)} 人</span></div><div class='row'><span>Evidence</span><span>${esc(c.live_evidence_count||0)} 筆（即時/資料層）</span></div><div class='row'><span>Supabase Evidence</span><span>${esc(c.local_evidence_count||0)} 筆</span></div><div class='row'><span>司法院查詢</span><span><a href='${esc(x.judicial_search_url||'#')}' target='_blank' rel='noreferrer' style='color:#91baff'>官方查詢入口 ↗</a></span></div>`;
   document.getElementById('raw').textContent=JSON.stringify(x,null,2);
 }
 run().catch(e=>document.getElementById('raw').textContent=String(e));
