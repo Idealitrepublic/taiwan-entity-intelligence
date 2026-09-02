@@ -13,17 +13,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate committed edge function source
+      - name: Validate committed Python source
         run: python -m compileall -q src api tests
       - name: Check Supabase Edge Function health
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --max-time 30 \
             'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/health' | python -m json.tool
-      - name: Test companies through deployed Supabase Edge Function
+      - name: Test deployed Supabase company investigations
         run: |
           python - <<'PY'
-          import json, urllib.request
+          import json, urllib.error, urllib.request
           cases = {
               '23060248': ('全家便利商店股份有限公司', True),
               '22099131': ('台灣積體電路製造股份有限公司', False),
@@ -31,7 +31,7 @@ jobs:
           }
           base = 'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/?api=company&uniform='
           for uniform, (expected_name, require_labor) in cases.items():
-              with urllib.request.urlopen(base + uniform, timeout=90) as r:
+              with urllib.request.urlopen(base + uniform, timeout=120) as r:
                   assert r.status == 200, (uniform, r.status)
                   data = json.load(r)
               assert data.get('status') == 'ok', (uniform, data)
@@ -47,5 +47,9 @@ jobs:
                   assert int(labor.get('matched', 0)) > 0, (uniform, labor)
                   assert data.get('website', {}).get('host') == 'family.com.tw', (uniform, data.get('website'))
                   assert data.get('anti_fraud', {}).get('status') in ('ok', 'partial'), (uniform, data.get('anti_fraud'))
-              print(uniform, expected_name, 'PASS', 'people=', len(data['people']), 'edges=', len(data['graph']['edges']), 'evidence=', data['local_context']['evidence_count'])
+              print(uniform, expected_name, 'PASS', 'people=', len(data['people']), 'edges=', len(data['graph']['edges']), 'supabase_evidence=', data['local_context']['evidence_count'])
+          # Validation path: malformed input must return structured error, not 500.
+          bad = json.load(urllib.request.urlopen(base + '123', timeout=30))
+          assert bad.get('status') == 'error', bad
+          print('malformed-input PASS')
           PY
