@@ -7,6 +7,7 @@ import json
 import os
 import re
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 DATASET_IDS = {
@@ -37,7 +38,7 @@ RETIRED_DATASETS = {"30136": "提供機關已停止此資料集下載；請改�
 
 
 def _get(url: str, timeout: int = 35) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "TaiwanEntityIntelligence/4.3", "Accept": "*/*"})
+    req = urllib.request.Request(url, headers={"User-Agent": "TaiwanEntityIntelligence/4.4", "Accept": "*/*"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
@@ -50,16 +51,9 @@ def _json(url: str):
 
 
 def _html_resource_fallback(dataset_id: str) -> list[str]:
-    """Extract current distribution links from the public dataset HTML page.
-
-    This is a fallback for datasets whose catalog REST endpoint is intermittently
-    unreachable from CI/serverless networks. It reads the same public page shown
-    to users and extracts absolute resource URLs; it does not scrape search engines.
-    """
     try:
         html = _get(f"https://data.gov.tw/dataset/{dataset_id}", timeout=12).decode("utf-8", "ignore")
         urls = re.findall(r'''href=[\"'](https?://[^\"']+)[\"']''', html, flags=re.I)
-        # Keep external file/download URLs and discard navigation links.
         keep = []
         for u in urls:
             low = u.lower()
@@ -86,8 +80,8 @@ def _dataset_resources(dataset_id: str) -> list[str]:
     for item in distributions:
         if isinstance(item, dict):
             u = item.get("resourceDownloadURL") or item.get("downloadURL") or item.get("url")
-            if u: urls.append(u)
-    # HTML fallback discovers annual resource links for datasets such as 25622/161985.
+            if u:
+                urls.append(u)
     if not urls:
         urls.extend(_html_resource_fallback(dataset_id))
     return list(dict.fromkeys(urls))
@@ -99,25 +93,33 @@ def _read_rows(url: str, limit: int = 20000):
     if stripped.startswith("[") or stripped.startswith("{"):
         try:
             obj = json.loads(text)
-            if isinstance(obj, list): return [x for x in obj if isinstance(x, dict)][:limit]
+            if isinstance(obj, list):
+                return [x for x in obj if isinstance(x, dict)][:limit]
             if isinstance(obj, dict):
                 for key in ("data", "records", "result", "results", "payload", "items"):
                     value = obj.get(key)
-                    if isinstance(value, list): return [x for x in value if isinstance(x, dict)][:limit]
+                    if isinstance(value, list):
+                        return [x for x in value if isinstance(x, dict)][:limit]
                     if isinstance(value, dict):
                         for subkey in ("data", "records", "result", "results", "items"):
-                            if isinstance(value.get(subkey), list): return [x for x in value[subkey] if isinstance(x, dict)][:limit]
+                            if isinstance(value.get(subkey), list):
+                                return [x for x in value[subkey] if isinstance(x, dict)][:limit]
         except Exception:
             pass
-    try: dialect = csv.Sniffer().sniff(text[:8192])
-    except csv.Error: dialect = csv.excel
+    try:
+        dialect = csv.Sniffer().sniff(text[:8192])
+    except csv.Error:
+        dialect = csv.excel
     return [dict(row) for _, row in zip(range(limit), csv.DictReader(io.StringIO(text), dialect=dialect))]
 
 
-def _norm(v: object) -> str: return re.sub(r"\s+", "", str(v or "")).casefold()
+def _norm(v: object) -> str:
+    return re.sub(r"\s+", "", str(v or "")).casefold()
+
 
 def _match_row(row: dict, needles: list[str]) -> bool:
-    hay = _norm(" ".join(str(v) for v in row.values())); return any(n and n in hay for n in needles)
+    hay = _norm(" ".join(str(v) for v in row.values()))
+    return any(n and n in hay for n in needles)
 
 
 def _evidence(source: str, dataset_id: str, row: dict, idx: int, fact_type: str, matched_terms: list[str]):
@@ -154,7 +156,8 @@ def _judicial_recent(needles, max_docs=50):
 
 
 def collect_public_evidence(company_name: str, people=None):
-    needles = [_norm(company_name)] + [_norm(p) for p in (people or []) if p]; needles = [n for n in needles if len(n) >= 2]
+    needles = [_norm(company_name)] + [_norm(p) for p in (people or []) if p]
+    needles = [n for n in needles if len(n) >= 2]
     evidence, statuses = [], {}
     items = [
         ("labor_penalties", "勞動部／違反勞動法令事業單位", "administrative_penalty", "裁罰"),
@@ -171,10 +174,31 @@ def collect_public_evidence(company_name: str, people=None):
         ("procurement_moda", "數位發展部／歷年採購案件", "government_tender", "標案"),
         ("procurement_highway", "交通部高速公路局／採購標案", "government_tender", "標案"),
     ]
-    for key, source, fact_type, group in items:
-        rows, st = _collect_dataset(key, needles, source, fact_type); evidence.extend(rows)
-        bucket = statuses.setdefault(group, {"status": "ok", "matched": 0, "rows_read": 0, "datasets": []}); bucket["matched"] += int(st.get("matched") or 0); bucket["rows_read"] += int(st.get("rows_read") or 0); bucket["datasets"].append(st)
+
+    # Parallelize independent public-source calls so production searches do not
+    # serialize 13 slow upstream datasets for every company.
+    results = [None] * len(items)
+    with ThreadPoolExecutor(max_workers=min(13, len(items))) as pool:
+        futures = {pool.submit(_collect_dataset, key, needles, source, fact_type): i for i, (key, source, fact_type, _) in enumerate(items)}
+        for future in as_completed(futures):
+            i = futures[future]
+            try:
+                results[i] = future.result()
+            except Exception as exc:
+                key, source, _, _ = items[i]
+                results[i] = ([], {"status": "source_unavailable", "dataset_id": DATASET_IDS[key], "label": DATASET_LABELS[DATASET_IDS[key]], "matched": 0, "rows_read": 0, "message": str(exc)})
+
+    for i, ((_, source, _, group), result) in enumerate(zip(items, results)):
+        rows, st = result or ([], {"status": "source_unavailable", "matched": 0, "rows_read": 0})
+        evidence.extend(rows)
+        bucket = statuses.setdefault(group, {"status": "ok", "matched": 0, "rows_read": 0, "datasets": []})
+        bucket["matched"] += int(st.get("matched") or 0)
+        bucket["rows_read"] += int(st.get("rows_read") or 0)
+        bucket["datasets"].append(st)
         if st.get("status") == "source_unavailable": bucket["status"] = "partial"
-    judicial, jstatus = _judicial_recent(needles); evidence.extend(judicial); statuses["裁判書"] = jstatus
+
+    judicial, jstatus = _judicial_recent(needles)
+    evidence.extend(judicial)
+    statuses["裁判書"] = jstatus
     statuses["資料源總數"] = {"status": "ok", "matched": len(items), "configured_datasets": len(items), "live_categories": ["裁罰", "165", "詐騙網域", "標案"]}
     return evidence, statuses
