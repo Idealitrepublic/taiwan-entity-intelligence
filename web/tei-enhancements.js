@@ -1,51 +1,88 @@
-/* T.E.I. investigation UX: risk levels, source coverage and plain-language evidence reader. */
+/* T.E.I. UI enhancements: force-readable graph labels + company website/domain cross-check. */
 (function(){
-const R='#f04f5f',O='#f59e42',Y='#e8c34a';let p=null,last=null;
-const s=document.createElement('style');s.textContent='.node text{fill:#fff!important;stroke:#070a0f!important;stroke-width:4px!important;paint-order:stroke!important}.tei-risk-ring{fill:none;stroke:'+R+';stroke-width:4;filter:drop-shadow(0 0 6px rgba(240,79,95,.75));pointer-events:none}.tei-risk-ring.medium{stroke:'+O+'}.tei-risk-ring.low{stroke:'+Y+'}.tei-plain{margin-top:8px;padding:9px;border-left:3px solid '+R+';background:#171116;color:#eee4e4;font-size:10px;line-height:1.7}.tei-plain.medium{border-left-color:'+O+'}.tei-plain.low{border-left-color:'+Y+'}.tei-original{margin-top:6px;color:#788596;font-size:9px}.tei-risk-legend{margin-top:8px;padding:8px;border:1px solid #3a2b31;background:#130f12;color:#9d8f94;font-size:9px;line-height:1.6;border-radius:6px}.tei-source-detail{margin-top:9px;display:grid;gap:5px}.tei-source-detail .row{display:flex;justify-content:space-between;gap:8px;padding:6px 7px;border:1px solid #27323f;background:#0b1118;border-radius:6px;font-size:9px}.tei-source-detail .name{color:#cbd4df}.tei-source-detail .meta{color:#738193;white-space:nowrap}.tei-source-detail .good{color:#72d6a1}.tei-source-detail .zero{color:#e8c34a}.tei-source-detail .err{color:#f04f5f}.tei-source-detail .off{color:#f59e42}';document.head.appendChild(s);
-function level(e){let x=JSON.stringify(e||{});if(/刑事|詐欺|詐騙|有罪|判刑|起訴|犯罪/.test(x))return'high';if(/裁罰|裁處|罰鍰|違法|停止解析|涉詐|假投資|假博弈/.test(x))return'medium';return'low'}
-function map(){let m={};(p.evidence||[]).forEach(e=>{let l=level(e);if(e.entity_id)m[e.entity_id]=m[e.entity_id]==='high'?'high':l;let h=JSON.stringify(e).replace(/\s/g,'');(p.graph?.nodes||[]).forEach(n=>{if(n.label&&h.includes(String(n.label).replace(/\s/g,'')))m[n.id]=m[n.id]==='high'||l==='high'?'high':l})});return m}
-function paint(){if(!p)return;let m=map();document.querySelectorAll('#canvas g.node').forEach(g=>{let label=(g.textContent||'').trim(),n=(p.graph?.nodes||[]).find(x=>String(x.label||'')===label),c=g.querySelector('circle');if(!n||!m[n.id]||!c||g.querySelector('.tei-risk-ring'))return;let r=document.createElementNS('http://www.w3.org/2000/svg','circle');r.setAttribute('r',parseFloat(c.getAttribute('r')||14)+7);r.setAttribute('class','tei-risk-ring '+(m[n.id]==='medium'?'medium':m[n.id]==='low'?'low':''));g.insertBefore(r,c)})}
-function plain(e){let t=String((e.fact||{}).summary||(e.fact||{}).title||'');[['人頭負責人及股東','用掛名方式擔任公司的負責人和股東'],['人頭負責人','用掛名方式擔任公司負責人'],['人頭股東','用掛名方式擔任股東'],['詐欺集團','判決中描述的詐騙犯罪集團'],['對21人實施詐欺','涉及對 21 名被害人進行詐騙'],['判決記載','法院判決中提到'],['應以裁判全文核對','最後罪責仍應以完整判決主文與理由確認']].forEach(a=>t=t.split(a[0]).join(a[1]));return t||'這筆資料表示該實體出現在公開資料中；請查看原始來源。'}
-function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function judicialUrl(v){if(!v||!v.url)return'';try{let u=new URL(v.url);if(u.hostname==='judgment.judicial.gov.tw'&&u.pathname==='/FJUD/qryresult.aspx')u.pathname='/LAW_Mobile_FJUD/FJUD/qryresult.aspx';return u.toString()}catch(_){return v.url}}
-function fixJudicialSource(){if(!p)return;let st=p.evidence_status||{},v=st['司法院'];if(!v||v.status!=='link'||!v.url)return;let host=document.getElementById('sourceStatus');if(!host)return;let rows=host.querySelectorAll('.src');rows.forEach(row=>{let name=row.querySelector('.name');if(!name||name.textContent.trim()!=='司法院')return;let right=row.lastElementChild;let href=judicialUrl(v);if(right&&right.tagName==='A'&&right.href===href)return;let a=document.createElement('a');a.className='partial';a.href=href;a.target='_blank';a.rel='noreferrer';a.textContent='官方查詢入口 ↗';if(right)right.replaceWith(a);else row.appendChild(a)})}
-function enhance(){if(!p)return;let pane=document.getElementById('evidencePane');if(pane){let cards=pane.querySelectorAll('.evidence-card');(p.evidence||[]).forEach((e,i)=>{let c=cards[i];if(!c||c.querySelector('.tei-plain'))return;let l=level(e),b=document.createElement('div');b.className='tei-plain '+(l==='medium'?'medium':l==='low'?'low':'');b.innerHTML='<b>白話解讀｜'+(l==='high'?'高風險訊號':l==='medium'?'注意訊號':'資料命中')+'</b><br>'+esc(plain(e));c.appendChild(b);let o=document.createElement('div');o.className='tei-original';o.textContent='T.E.I. 閱讀輔助，不是法院或政府的官方翻譯；重要判斷請核對原始文件。';c.appendChild(o)});if(!pane.querySelector('.tei-risk-legend')){let l=document.createElement('div');l.className='tei-risk-legend';l.innerHTML='<b>風險標記</b><br>🔴 高風險：刑事／詐欺等明確訊號<br>🟠 注意：裁罰／違法／反詐訊號<br>🟡 資料命中：有公開資料但不足以判定違法<br>⚠️ 紅色不是「有罪」標籤。';pane.appendChild(l)}}fixJudicialSource()}
-function sourceDetail(){if(!p)return;let host=document.getElementById('sourceStatus');if(!host)return;let old=document.getElementById('tei-source-detail');if(old)old.remove();let st=p.evidence_status||{};let rows=[];Object.keys(st).forEach(k=>{let v=st[k]||{};if(typeof v==='string')v={status:v,matched:0};let status=v.status||'unknown',matched=Number(v.matched||0),cls=status==='ok'?(matched?'good':'zero'):(status==='link'?'good':status==='not_configured'||status==='source_unavailable'||status==='not_available_in_public_runtime'?'off':'err');let label=status==='ok'?(matched?('命中 '+matched+' 筆'):'已查詢 · 0 筆'):status==='link'?'官方查詢入口':status==='not_configured'?'尚未設定':status==='source_unavailable'?'來源不可用':status==='not_available_in_public_runtime'?'公開環境未提供':status==='auth_failed'?'驗證失敗':'查詢錯誤';rows.push('<div class="row"><span class="name">'+esc(k)+'</span><span class="meta '+cls+'">'+esc(label)+'</span></div>');if(Array.isArray(v.datasets))v.datasets.forEach(d=>{let dm=Number(d.matched||0);let dc=d.status==='ok'?(dm?'good':'zero'):'err';rows.push('<div class="row"><span class="name">↳ '+esc(d.label||('dataset '+d.dataset_id))+'</span><span class="meta '+dc+'">'+(d.status==='ok'?(dm+' 筆'):('未成功讀取'))+'</span></div>')})});let box=document.createElement('div');box.id='tei-source-detail';box.className='tei-source-detail';box.innerHTML=rows.join('');host.parentNode.insertBefore(box,host.nextSibling)}
-async function load(){let q=document.getElementById('q'),id=q&&q.value.trim();if(!/^\d{8}$/.test(id)||id===last)return;last=id;try{let r=await fetch('/api/company/'+id+'?tei='+Date.now()),x=await r.json();if(r.ok){p=x;[200,600,1200,2200].forEach(t=>setTimeout(()=>{paint();enhance();sourceDetail()},t))}}catch(e){}}
-document.addEventListener('click',e=>{if(e.target&&(e.target.id==='search'||e.target.id==='sample')){last=null;setTimeout(load,800)}});new MutationObserver(()=>{paint();enhance();sourceDetail()}).observe(document.body,{subtree:true,childList:true,characterData:true});
+  const WHITE='#ffffff', STROKE='#070a0f';
+  let current=null, lastUniform=null, busy=false;
 
-// T.E.I_ONE_TIME_JUDICIAL_UI_PATCH_V1
-// Keep graph labels readable even when the base inline SVG renderer uses browser defaults.
-const teiGraphStyle = document.createElement('style');
-teiGraphStyle.textContent = '.graph svg .node text,.graph svg text.node-label{fill:#ffffff!important;color:#ffffff!important;stroke:#070a0f!important;stroke-width:4px!important;paint-order:stroke!important;}';
-document.head.appendChild(teiGraphStyle);
+  const style=document.createElement('style');
+  style.textContent=`
+    .graph svg text,.graph svg .node text,.graph svg text.node-label{fill:${WHITE}!important;color:${WHITE}!important;stroke:${STROKE}!important;stroke-width:4px!important;paint-order:stroke!important;user-select:none!important;-webkit-user-select:none!important}
+    .tei-site-card{border:1px solid #2f4050;background:#0c131b;border-radius:8px;padding:10px;margin-top:9px;font-size:9px;color:#9aa8b7}
+    .tei-site-card h4{margin:0 0 7px;color:#eaf0f6;font-size:10px}
+    .tei-site-card .line{display:flex;justify-content:space-between;gap:10px;margin:6px 0;line-height:1.5}
+    .tei-site-card .ok{color:#72d6a1}.tei-site-card .bad{color:#f04f5f}.tei-site-card .warn{color:#f2c56a}
+    .tei-site-card a{color:#91baff;text-decoration:none}.tei-site-card code{font-family:ui-monospace,monospace;color:#d6dee7}
+  `;
+  document.head.appendChild(style);
 
-function teiJudicialPanel() {
-  const pane = document.getElementById('overviewPane');
-  if (!pane || document.getElementById('tei-judicial-api')) return;
-  const box = document.createElement('div');
-  box.id = 'tei-judicial-api';
-  box.className = 'card';
-  box.innerHTML = '<h4>司法院裁判書 API</h4><p>官方 Open API 需要司法院資料開放平台帳號密碼。T.E.I. 會在伺服器端保存憑證，不會送到瀏覽器。</p><div style="display:flex;gap:6px;margin-top:8px"><input id="tei-jid" placeholder="貼上 JID，例如 CHDM,105,交訴,51,20161216,1" style="flex:1;min-width:0;background:#111821;border:1px solid #334151;border-radius:6px;color:#edf2f7;padding:7px;font-size:9px"><button id="tei-jdoc" class="secondary" style="height:32px">取得裁判書</button></div><div id="tei-jdoc-result" style="margin-top:8px;font-size:9px;color:#8b99a8"></div>';
-  pane.appendChild(box);
-  document.getElementById('tei-jdoc').addEventListener('click', async () => {
-    const jid = document.getElementById('tei-jid').value.trim();
-    const out = document.getElementById('tei-jdoc-result');
-    if (!jid) { out.textContent = '請輸入 JID。'; return; }
-    out.textContent = '查詢司法院 API 中…';
-    try {
-      const r = await fetch('/api/judicial?jid=' + encodeURIComponent(jid) + '&t=' + Date.now(), {cache:'no-store'});
-      const x = await r.json();
-      if (!r.ok || x.status !== 'ok') throw new Error(x.error || x.detail?.error || x.detail || '司法院 API 尚未設定或驗證失敗');
-      const d = x.data || {};
-      const full = d.JFULLX || {};
-      out.innerHTML = '<b style="color:#eaf0f6">' + (full.JFULLCONTENT ? '已取得裁判全文' : '已取得裁判資料') + '</b><br>' + esc(d.JTITLE || '') + ' · ' + esc(d.JID || jid) + (full.JFULLCONTENT ? '<div style="margin-top:7px;max-height:280px;overflow:auto;white-space:pre-wrap;color:#c9d2dc">' + esc(full.JFULLCONTENT) + '</div>' : '');
-    } catch (e) { out.textContent = '司法院 API：' + e.message; }
-  });
-}
+  function forceWhite(){
+    document.querySelectorAll('.graph svg text,.graph svg .node text,.graph svg text.node-label').forEach(t=>{
+      t.setAttribute('fill',WHITE);
+      t.setAttribute('stroke',STROKE);
+      t.setAttribute('stroke-width','4');
+      t.setAttribute('paint-order','stroke');
+      t.style.setProperty('fill',WHITE,'important');
+      t.style.setProperty('color',WHITE,'important');
+      t.style.setProperty('stroke',STROKE,'important');
+      t.style.setProperty('stroke-width','4px','important');
+      t.style.setProperty('paint-order','stroke','important');
+      t.style.setProperty('user-select','none','important');
+    });
+  }
 
-document.addEventListener('DOMContentLoaded', teiJudicialPanel);
-const teiOldEnhance = enhance;
-enhance = function(){ teiOldEnhance(); teiJudicialPanel(); };
+  function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+  function renderWebsiteCheck(x){
+    const pane=document.getElementById('overviewPane');
+    if(!pane || !x?.uniform_number || document.getElementById('tei-site-card')) return;
+    fetch('/api/website-check?uniform='+encodeURIComponent(x.uniform_number)+'&t='+Date.now(),{cache:'no-store'})
+      .then(r=>r.json())
+      .then(data=>{
+        const site=data.website||{};
+        const af=data.anti_fraud||{};
+        const matches=Array.isArray(af.records)?af.records:[];
+        const card=document.createElement('div');
+        card.id='tei-site-card'; card.className='tei-site-card';
+        const siteHtml=site.url
+          ? `<div class="line"><span>公司網站</span><span><a href="${esc(site.url)}" target="_blank" rel="noreferrer">${esc(site.url)}</a></span></div>
+             <div class="line"><span>網址來源</span><span>${esc(site.source||'—')}</span></div>`
+          : `<div class="line"><span>公司網站</span><span>沒有可驗證的政府來源網址</span></div>
+             <div class="line"><span>候選搜尋</span><span><a href="${esc(site.search_url||'#')}" target="_blank" rel="noreferrer">搜尋官方網站 ↗</a></span></div>`;
+        const verdict=Number(af.matched||0)>0
+          ? `<span class="bad">命中 ${Number(af.matched)} 筆政府詐騙網域資料</span>`
+          : `<span class="ok">未命中目前檢查的政府詐騙網域資料</span>`;
+        const detail=matches.length
+          ? `<div style="margin-top:7px">${matches.slice(0,5).map(m=>`<div style="margin-top:6px"><code>${esc(m['網域名稱']||m['網址']||m.WEBURL||m.url||'')}</code><br>${esc(m.source_name||'政府公開資料')}</div>`).join('')}</div>`
+          : '';
+        card.innerHTML=`<h4>公司網站 × 165／MODA 詐騙網域交叉比對</h4>${siteHtml}<div class="line"><span>網域</span><span><code>${esc(data.domain||'—')}</code></span></div><div class="line"><span>比對結果</span><span>${verdict}</span></div>${detail}<div style="margin-top:7px;color:#748294;line-height:1.6">未命中不等於公司或網站獲得安全認定；這裡只表示該網域與本次檢查的政府公開詐騙網域資料是否相符。</div>`;
+        pane.appendChild(card);
+      })
+      .catch(()=>{});
+  }
+
+  function refreshFromPage(){
+    forceWhite();
+    const q=document.getElementById('q');
+    const uniform=q?.value?.trim();
+    if(!/^\d{8}$/.test(uniform)) return;
+    if(window.__tei_last_data) renderWebsiteCheck(window.__tei_last_data);
+  }
+
+  // Capture company API responses without changing the main app.
+  const nativeFetch=window.fetch;
+  window.fetch=function(...args){
+    return nativeFetch.apply(this,args).then(r=>{
+      try{
+        const url=String(args[0]||'');
+        if(url.includes('/api/company/')){
+          r.clone().json().then(x=>{ current=x; window.__tei_last_data=x; renderWebsiteCheck(x); setTimeout(forceWhite,0); setTimeout(forceWhite,150); setTimeout(forceWhite,500); setTimeout(forceWhite,1200); }).catch(()=>{});
+        }
+      }catch(_){ }
+      return r;
+    });
+  };
+
+  const observer=new MutationObserver(()=>{ if(!busy){busy=true;forceWhite();setTimeout(()=>busy=false,0);} });
+  observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['style','fill','stroke','class']});
+  document.addEventListener('DOMContentLoaded',()=>{forceWhite();refreshFromPage();});
+  setInterval(forceWhite,1500);
 })();
