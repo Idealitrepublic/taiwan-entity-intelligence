@@ -6,10 +6,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from src.app_js import APP_JS
-from src.v2server import SUPABASE_KEY, build_company
+from src.v2server import SUPABASE, SUPABASE_KEY, _supabase_get, build_company
 
 TEST_UNIFORM = "96972256"
 TEST_NAME = "東京威力科創股份有限公司"
@@ -25,24 +25,13 @@ HTML = """<!doctype html><html lang='zh-Hant'><head><meta charset='utf-8'><meta 
 <script src="/app.js?v=20260902" defer></script></body></html>"""
 
 def _judicial_request(jid=None):
-    if not SUPABASE_KEY:
-        return 503, {"status": "not_configured", "error": "Supabase key not configured"}
-    url = JUDICIAL_EDGE
-    if jid: url += "?" + urllib.parse.urlencode({"jid": jid})
-    req = urllib.request.Request(url, headers={"Authorization":f"Bearer {SUPABASE_KEY}","apikey":SUPABASE_KEY,"Accept":"application/json","User-Agent":"T.E.I./4.0"})
+    if not SUPABASE_KEY: return 503,{"status":"not_configured","error":"Supabase key not configured"}
+    url=JUDICIAL_EDGE if not jid else JUDICIAL_EDGE+"?"+urllib.parse.urlencode({"jid":jid})
+    req=urllib.request.Request(url,headers={"Authorization":f"Bearer {SUPABASE_KEY}","apikey":SUPABASE_KEY,"Accept":"application/json","User-Agent":"T.E.I./4.0"})
     try:
-        with urllib.request.urlopen(req, timeout=50) as r:
-            body=r.read().decode("utf-8",errors="replace")
-            try: data=json.loads(body)
-            except Exception: data={"status":"error","error":body[:1200]}
-            return r.status,data
-    except urllib.error.HTTPError as exc:
-        body=exc.read().decode("utf-8",errors="replace")
-        try: data=json.loads(body)
-        except Exception: data={"status":"error","error":body[:1200]}
-        return exc.code,data
-    except Exception as exc:
-        return 502,{"status":"error","error":str(exc)}
+        with urllib.request.urlopen(req,timeout=50) as r: return r.status,json.loads(r.read().decode("utf-8",errors="replace"))
+    except urllib.error.HTTPError as exc: return exc.code,{"status":"error","error":exc.read().decode("utf-8",errors="replace")[:800]}
+    except Exception as exc: return 502,{"status":"error","error":str(exc)}
 
 def smoke_result():
     result={"overall":"FAIL","test_target":TEST_UNIFORM,"test_target_name":TEST_NAME,"checks":{},"summary":{"passed":0,"failed":0,"warning":0}}
@@ -51,7 +40,7 @@ def smoke_result():
         for label,ok,detail in [("MOEA 公司 API",bool(data.get("company_name")) and bool(company),"公司基本資料可取得"),("MOEA 董監事 API",isinstance(people,list) and len(people)>0,f"取得 {len(people)} 位董監事"),("Supabase 資料庫",bool(local.get("configured")) and local.get("error") is None,"REST 讀取正常")]:
             result["checks"][label]={"status":"PASS" if ok else "FAIL","detail":detail}; result["summary"]["passed" if ok else "failed"]+=1
         for label,item in statuses.items():
-            result["checks"][label]={"status":"PASS" if item.get("status")=="ok" else "WARN","matched":int(item.get("matched") or 0),"detail":item.get("message","")}; result["summary"]["passed" if item.get("status")=="ok" else "warning"]+=1
+            ok=item.get("status")=="ok"; result["checks"][label]={"status":"PASS" if ok else "WARN","matched":int(item.get("matched") or 0),"detail":item.get("message","")}; result["summary"]["passed" if ok else "warning"]+=1
         result["company"]={"name":data.get("company_name"),"uniform_number":TEST_UNIFORM,"director_count":len(people),"live_evidence_count":len(data.get("evidence") or []),"local_evidence_count":int(local.get("evidence_count") or 0),"website_url":data.get("website_url"),"website_crosscheck":data.get("website_crosscheck")}
         result["overall"]="PASS" if result["summary"]["failed"]==0 else "FAIL"
     except Exception as exc:
@@ -64,6 +53,19 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path=self.path.split("?",1)[0]; query=parse_qs(urlparse(self.path).query)
         if path=="/app.js": return self._send(200,APP_JS,"application/javascript; charset=utf-8")
+        if path.startswith("/api/company/"):
+            uid=unquote(path.split("/api/company/",1)[1])
+            if not uid.isdigit() or len(uid)!=8: return self._send(400,json.dumps({"error":"統編必須是 8 碼數字。"},ensure_ascii=False),"application/json; charset=utf-8")
+            try: return self._send(200,json.dumps(build_company(uid),ensure_ascii=False),"application/json; charset=utf-8")
+            except Exception as exc: return self._send(502,json.dumps({"error":"來源查詢失敗","detail":str(exc)},ensure_ascii=False),"application/json; charset=utf-8")
+        if path=="/api/status":
+            supa={"configured":bool(SUPABASE_KEY),"source_files":0,"companies":0,"people":0,"evidence":0}
+            if SUPABASE_KEY:
+                for table in ("source_files","companies","people","evidence"):
+                    rows,status=_supabase_get(table,None,1000)
+                    if isinstance(rows,list): supa[table]=len(rows)
+                    else: supa[f"{table}_status"]=status
+            return self._send(200,json.dumps({"status":"ok","version":"4.0","supabase":supa},ensure_ascii=False),"application/json; charset=utf-8")
         if path=="/api" and query.get("format")==["json"]: return self._send(200,json.dumps(smoke_result(),ensure_ascii=False),"application/json; charset=utf-8")
         if path=="/api": return self._send(200,json.dumps(smoke_result(),ensure_ascii=False),"application/json; charset=utf-8")
         if path=="/api/judicial/health":
