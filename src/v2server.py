@@ -9,6 +9,8 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import unquote
 
+from .public_evidence import collect_public_evidence
+
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
 SUPABASE = os.environ.get("SUPABASE_URL", "https://rztdbdurkjfrirsrrhtu.supabase.co")
@@ -60,27 +62,32 @@ def _edge(slug: str, params: dict[str, str]):
 
 
 def _rows(payload):
-    if isinstance(payload, list): return payload
+    if isinstance(payload, list):
+        return payload
     if isinstance(payload, dict):
         for key in ("records", "data", "result", "items", "rows"):
-            if isinstance(payload.get(key), list): return payload[key]
+            if isinstance(payload.get(key), list):
+                return payload[key]
     return []
 
 
 def _website_from_company(company: dict):
     candidates = []
     for key, value in company.items():
-        if value is None: continue
+        if value is None:
+            continue
         k = str(key).lower()
         v = str(value).strip()
-        if not v: continue
+        if not v:
+            continue
         if any(token in k for token in ("website", "web_url", "url", "網址", "網站", "網頁")) and ("." in v or "://" in v):
             candidates.append(v)
     for value in candidates:
         try:
             raw = value if "://" in value else "https://" + value
             host = urllib.parse.urlparse(raw).hostname or ""
-            if host: return raw, host.lower().removeprefix("www.")
+            if host:
+                return raw, host.lower().removeprefix("www.")
         except Exception:
             pass
     return None, None
@@ -111,8 +118,9 @@ def source_catalog():
     return {
         "公司登記": {"status": "live", "publisher": "經濟部商業署商工行政資料開放平台"},
         "董監事": {"status": "live", "publisher": "經濟部商業署商工行政資料開放平台"},
-        "勞動裁罰": {"status": "adapter", "publisher": "勞動部違反勞動法令事業單位查詢系統"},
-        "165反詐": {"status": "adapter", "publisher": "警政署165相關公開資料"},
+        "裁罰": {"status": "live", "publisher": "勞動部政府公開資料"},
+        "165": {"status": "live", "publisher": "警政署165相關公開資料"},
+        "標案": {"status": "live", "publisher": "政府公開採購資料集"},
         "公司網址×165": {"status": "adapter", "publisher": "公司登記網址 + 165/數位發展部網域清單"},
         "司法院": {"status": "link", "publisher": "司法院裁判書系統"},
     }
@@ -128,7 +136,8 @@ def build_company(uniform: str):
     people, nodes, edges = [], [{"id": f"company:{uniform}", "type": "company", "label": name, "properties": {"uniform_number": uniform, "source": "經濟部商工行政資料開放平台"}}], []
     for row in director_rows[:50]:
         person = row.get("Person_Name") or row.get("person_name")
-        if not person: continue
+        if not person:
+            continue
         position = row.get("Person_Position_Name") or row.get("position") or "董監事"
         shares = row.get("Person_Shareholding") or row.get("shares")
         representative = row.get("Representative") or row.get("representative")
@@ -139,48 +148,56 @@ def build_company(uniform: str):
 
     local = _local_context(uniform)
     evidence = list(local.get("evidence") or [])
-    statuses = {}
 
-    labor = _edge("labor-penalties-api", {"company": name, "limit": "50"})
-    lrows = _rows(labor)
-    evidence.extend(_evidence_card("勞動部政府公開資料 API", "administrative_penalty", row, i, "勞動部公開資料命中；這是來源紀錄，不等於法律結論。", labor.get("source_url") if isinstance(labor, dict) else None) for i, row in enumerate(lrows[:50]))
-    statuses["勞動裁罰"] = {"status": "ok" if labor.get("status") == "ok" else labor.get("status", "error"), "matched": len(lrows), "message": "已完成事業單位名稱比對" if labor.get("status") == "ok" else labor.get("message", "")}
+    # Primary evidence path: call the direct government open-data collectors.
+    # This includes labor penalties, 165 datasets, procurement datasets and
+    # the Judicial status. Judicial is treated as an official link for now;
+    # all other categories are live inline source checks.
+    public = collect_public_evidence(name, [p.get("person_name") for p in people])
+    evidence.extend(public.get("evidence") or [])
+    statuses = dict(public.get("statuses") or {})
 
-    # Name search remains available as a fallback, but the website/domain cross-check is a separate exact-domain operation.
-    fraud_name = _edge("anti-fraud-api", {"q": name, "limit": "50"})
-    fnrows = _rows(fraud_name)
-    evidence.extend(_evidence_card("165反詐騙公開資料（公司名搜尋）", "anti_fraud_name", row, i, "165 公開資料名稱搜尋命中；不代表企業本身涉詐。") for i, row in enumerate(fnrows[:20]))
-    statuses["165反詐名稱搜尋"] = {"status": "ok" if fraud_name.get("status") == "ok" else fraud_name.get("status", "error"), "matched": len(fnrows)}
-
+    # Keep a separate exact website/domain cross-check when a verified company
+    # website is present in the MOEA company record.
     if website_host:
         fraud_domain = _edge("anti-fraud-api", {"domain": website_host, "limit": "50"})
         fdrows = _rows(fraud_domain)
-        cross_message = f"精確比對 {website_host}；命中 {len(fdrows)} 筆。" if fdrows else f"精確比對 {website_host}；目前 0 筆命中。"
         cross_status = "ok" if fraud_domain.get("status") == "ok" else fraud_domain.get("status", "error")
+        cross_message = f"精確比對 {website_host}；命中 {len(fdrows)} 筆。" if cross_status == "ok" else f"精確比對 {website_host}；來源查詢失敗。"
         for i, row in enumerate(fdrows[:50]):
             evidence.append(_evidence_card("165/數位發展部反詐騙網域清單", "anti_fraud_domain", row, i, "公司網址與公開涉詐網域清單完成精確網域/子網域比對。"))
         website_crosscheck = {"status": cross_status, "matched": len(fdrows), "website_url": website_url, "website_host": website_host, "records": fdrows[:50], "message": cross_message}
-        statuses["公司網址×165"] = {"status": cross_status, "matched": len(fdrows), "message": cross_message}
     else:
         website_crosscheck = {"status": "no_website", "matched": 0, "website_url": None, "website_host": None, "records": [], "message": "經濟部公司登記資料未提供可交叉比對的公司網址。"}
-        statuses["公司網址×165"] = website_crosscheck
+    statuses["公司網址×165"] = website_crosscheck
 
     judicial_url = JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name))
     statuses["司法院"] = {"status": "link", "matched": 0, "message": "官方裁判書查詢入口", "url": judicial_url}
+    statuses.setdefault("資料源總數", {"status": "ok", "configured_datasets": 13})
 
     seen, deduped = set(), []
     for e in evidence:
-        key = (e.get("source", {}).get("dataset_id"), e.get("external_id"), e.get("source_url"), e.get("event_date"))
-        if key in seen: continue
-        seen.add(key); deduped.append(e)
+        key = (e.get("evidence_id") or e.get("external_id"), e.get("source_url"), e.get("event_date"))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(e)
 
     return {
-        "uniform_number": uniform, "company": basic, "company_name": name,
-        "website_url": website_url, "website_host": website_host,
-        "people": people, "graph": {"nodes": nodes, "edges": edges},
-        "evidence": deduped[:150], "evidence_count": len(deduped[:150]),
-        "local_context": local, "evidence_status": statuses, "source_catalog": source_catalog(),
-        "website_crosscheck": website_crosscheck, "judicial_search_url": judicial_url,
+        "uniform_number": uniform,
+        "company": basic,
+        "company_name": name,
+        "website_url": website_url,
+        "website_host": website_host,
+        "people": people,
+        "graph": {"nodes": nodes, "edges": edges},
+        "evidence": deduped[:150],
+        "evidence_count": len(deduped[:150]),
+        "local_context": local,
+        "evidence_status": statuses,
+        "source_catalog": source_catalog(),
+        "website_crosscheck": website_crosscheck,
+        "judicial_search_url": judicial_url,
         "data_mode": "live_public_api_plus_supabase",
         "evidence_note": "觀測到公開紀錄 ≠ 法律結論。系統把來源證據、精確網域比對與推論分開。",
     }
@@ -189,23 +206,34 @@ def build_company(uniform: str):
 class Handler(BaseHTTPRequestHandler):
     def _send(self, status, payload, ctype="application/json; charset=utf-8"):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status); self.send_header("Content-Type", ctype); self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         if path.startswith("/api/company/"):
-            uid = unquote(path.split("/api/company/",1)[1])
-            if not uid.isdigit() or len(uid) != 8: return self._send(400, {"error":"統編必須是 8 碼數字。"})
-            try: return self._send(200, build_company(uid))
-            except Exception as exc: return self._send(502, {"error":"來源查詢失敗", "detail":str(exc)})
+            uid = unquote(path.split("/api/company/", 1)[1])
+            if not uid.isdigit() or len(uid) != 8:
+                return self._send(400, {"error": "統編必須是 8 碼數字。"})
+            try:
+                return self._send(200, build_company(uid))
+            except Exception as exc:
+                return self._send(502, {"error": "來源查詢失敗", "detail": str(exc)})
         if path == "/api/status":
-            supa={"configured":bool(SUPABASE_KEY),"source_files":0,"companies":0,"people":0,"evidence":0}
+            supa = {"configured": bool(SUPABASE_KEY), "source_files": 0, "companies": 0, "people": 0, "evidence": 0}
             if SUPABASE_KEY:
-                for table in ("source_files","companies","people","evidence"):
-                    rows, status=_supabase_get(table,None,1000)
-                    if isinstance(rows,list): supa[table]=len(rows)
-                    else: supa[f"{table}_status"]=status
-            return self._send(200,{"status":"ok","version":"4.0","supabase":supa,"sources":source_catalog()})
-        return super().do_GET()
-    def log_message(self, fmt, *args): return
+                for k, table in (("source_files", "source_files"), ("companies", "companies"), ("people", "people"), ("evidence", "evidence")):
+                    rows, status = _supabase_get(table, limit=1)
+                    supa[k] = 1 if status == "ok" and isinstance(rows, list) and rows else 0
+            return self._send(200, {"status": "ok", "version": "4.1", "supabase": supa, "source_catalog": source_catalog()})
+        self._send(404, {"error": "Not found"})
+
+    def log_message(self, fmt, *args):
+        return
+
 
 handler = Handler
