@@ -58,3 +58,5 @@ jobs:
           assert bad.get('status') == 'error', bad
           print('malformed-input PASS')
           PY
+
+# acceptance rerun after tei-web v5.6 deployment
