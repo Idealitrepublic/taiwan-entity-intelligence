@@ -15,17 +15,12 @@ DATASET_IDS = {
     "procurement_armor": "23838", "procurement_cpc": "30136", "procurement_hakka": "164996", "procurement_ntb": "25622",
     "procurement_moda": "161985", "procurement_highway": "91516",
 }
-
 DATASET_LABELS = {
     "109896": "勞動部／違反勞動法令事業單位", "109897": "勞動部／性別平等工作法違法事業單位", "110908": "勞動部／就業服務法違法事業單位",
     "176455": "165反詐騙／遭停止解析涉詐網站", "160055": "165反詐騙／假投資(博弈)網站", "38262": "165反詐騙／詐騙闢謠專區", "165027": "數位產業署／詐騙網域停止解析網址清單",
     "23838": "役政署／政府採購決標案件", "30136": "台灣中油／探採事業部採購公告", "164996": "客家委員會／年度採購案件", "25622": "財政部臺北國稅局／採購案",
     "161985": "數位發展部／歷年採購案件", "91516": "交通部高速公路局／採購標案",
 }
-
-# Verified current official resource URLs. Direct resources are preferred because
-# serverless runtimes may fail on data.gov.tw metadata endpoints even when the
-# actual resource is healthy.
 DIRECT_RESOURCES = {
     "109896": "https://apiservice.mol.gov.tw/OdService/download/A17000000J-020050-MUA",
     "109897": "https://apiservice.mol.gov.tw/OdService/download/A17000000J-030226-sop",
@@ -38,24 +33,43 @@ DIRECT_RESOURCES = {
     "164996": "https://cloud.hakka.gov.tw/Pub/Opendata/DTST20230800004.csv",
     "91516": "https://www.freeway.gov.tw/Download_File_Direct.ashx?FileConditionsID=1&id=295",
 }
-
-# Provider has explicitly stopped CSV distribution for dataset 30136.
-RETIRED_DATASETS = {
-    "30136": "提供機關已停止此資料集下載；請改由政府電子採購網查詢。",
-}
+RETIRED_DATASETS = {"30136": "提供機關已停止此資料集下載；請改由政府電子採購網查詢。"}
 
 
 def _get(url: str, timeout: int = 35) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "TaiwanEntityIntelligence/4.2", "Accept": "*/*"})
+    req = urllib.request.Request(url, headers={"User-Agent": "TaiwanEntityIntelligence/4.3", "Accept": "*/*"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
 
 def _json(url: str):
     try:
-        return json.loads(_get(url).decode("utf-8-sig", "ignore"))
+        return json.loads(_get(url, timeout=12).decode("utf-8-sig", "ignore"))
     except Exception:
         return {}
+
+
+def _html_resource_fallback(dataset_id: str) -> list[str]:
+    """Extract current distribution links from the public dataset HTML page.
+
+    This is a fallback for datasets whose catalog REST endpoint is intermittently
+    unreachable from CI/serverless networks. It reads the same public page shown
+    to users and extracts absolute resource URLs; it does not scrape search engines.
+    """
+    try:
+        html = _get(f"https://data.gov.tw/dataset/{dataset_id}", timeout=12).decode("utf-8", "ignore")
+        urls = re.findall(r'''href=[\"'](https?://[^\"']+)[\"']''', html, flags=re.I)
+        # Keep external file/download URLs and discard navigation links.
+        keep = []
+        for u in urls:
+            low = u.lower()
+            if "data.gov.tw" in low:
+                continue
+            if any(token in low for token in (".csv", ".json", ".xml", "download", "opendata", "openapi")):
+                keep.append(u)
+        return list(dict.fromkeys(keep))
+    except Exception:
+        return []
 
 
 def _dataset_resources(dataset_id: str) -> list[str]:
@@ -72,54 +86,45 @@ def _dataset_resources(dataset_id: str) -> list[str]:
     for item in distributions:
         if isinstance(item, dict):
             u = item.get("resourceDownloadURL") or item.get("downloadURL") or item.get("url")
-            if u:
-                urls.append(u)
+            if u: urls.append(u)
+    # HTML fallback discovers annual resource links for datasets such as 25622/161985.
+    if not urls:
+        urls.extend(_html_resource_fallback(dataset_id))
     return list(dict.fromkeys(urls))
 
 
 def _read_rows(url: str, limit: int = 20000):
-    text = _get(url).decode("utf-8-sig", "replace")
+    text = _get(url).decode("utf-8-sig", "replace").lstrip("\ufeff")
     stripped = text.lstrip()
     if stripped.startswith("[") or stripped.startswith("{"):
         try:
             obj = json.loads(text)
-            if isinstance(obj, list):
-                return [x for x in obj if isinstance(x, dict)][:limit]
+            if isinstance(obj, list): return [x for x in obj if isinstance(x, dict)][:limit]
             if isinstance(obj, dict):
                 for key in ("data", "records", "result", "results", "payload", "items"):
                     value = obj.get(key)
-                    if isinstance(value, list):
-                        return [x for x in value if isinstance(x, dict)][:limit]
+                    if isinstance(value, list): return [x for x in value if isinstance(x, dict)][:limit]
                     if isinstance(value, dict):
                         for subkey in ("data", "records", "result", "results", "items"):
-                            if isinstance(value.get(subkey), list):
-                                return [x for x in value[subkey] if isinstance(x, dict)][:limit]
+                            if isinstance(value.get(subkey), list): return [x for x in value[subkey] if isinstance(x, dict)][:limit]
         except Exception:
             pass
-    try:
-        dialect = csv.Sniffer().sniff(text[:8192])
-    except csv.Error:
-        dialect = csv.excel
+    try: dialect = csv.Sniffer().sniff(text[:8192])
+    except csv.Error: dialect = csv.excel
     return [dict(row) for _, row in zip(range(limit), csv.DictReader(io.StringIO(text), dialect=dialect))]
 
 
-def _norm(v: object) -> str:
-    return re.sub(r"\s+", "", str(v or "")).casefold()
-
+def _norm(v: object) -> str: return re.sub(r"\s+", "", str(v or "")).casefold()
 
 def _match_row(row: dict, needles: list[str]) -> bool:
-    hay = _norm(" ".join(str(v) for v in row.values()))
-    return any(n and n in hay for n in needles)
+    hay = _norm(" ".join(str(v) for v in row.values())); return any(n and n in hay for n in needles)
 
 
 def _evidence(source: str, dataset_id: str, row: dict, idx: int, fact_type: str, matched_terms: list[str]):
     now = datetime.now(timezone.utc).isoformat()
     record_id = row.get("處分字號") or row.get("處分書文號") or row.get("網域") or row.get("網址") or row.get("編號") or row.get("採購編號") or row.get("案件編號") or row.get("案號") or idx
     title = row.get("事業單位名稱") or row.get("事業單位名稱或負責人") or row.get("網域") or row.get("網址") or row.get("標案名稱") or row.get("標案案名") or row.get("案名") or row.get("tender_name") or row.get("得標者") or row.get("得標廠商") or source
-    return {"evidence_id": f"{source}:{record_id}", "schema_version": "1.0", "observed_at": now, "retrieved_at": now,
-            "source": {"type": "government_open_data", "name": source, "record_id": str(record_id), "url": f"https://data.gov.tw/dataset/{dataset_id}"},
-            "fact": {"type": fact_type, "title": str(title), "summary": "官方公開資料命中查詢實體；這是來源紀錄，不等於法律結論。", "matched_terms": matched_terms},
-            "confidence": 1.0, "status": "active", "raw": row}
+    return {"evidence_id": f"{source}:{record_id}", "schema_version": "1.0", "observed_at": now, "retrieved_at": now, "source": {"type": "government_open_data", "name": source, "record_id": str(record_id), "url": f"https://data.gov.tw/dataset/{dataset_id}"}, "fact": {"type": fact_type, "title": str(title), "summary": "官方公開資料命中查詢實體；這是來源紀錄，不等於法律結論。", "matched_terms": matched_terms}, "confidence": 1.0, "status": "active", "raw": row}
 
 
 def _collect_dataset(dataset_key: str, needles: list[str], source_name: str, fact_type: str, max_rows: int = 100):
@@ -131,10 +136,8 @@ def _collect_dataset(dataset_key: str, needles: list[str], source_name: str, fac
         return [], {"status": "source_unavailable", "dataset_id": dataset_id, "label": DATASET_LABELS[dataset_id], "matched": 0, "rows_read": 0}
     out, rows_read, last_error = [], 0, None
     for url in resources:
-        try:
-            rows = _read_rows(url); rows_read += len(rows)
-        except Exception as exc:
-            last_error = str(exc); continue
+        try: rows = _read_rows(url); rows_read += len(rows)
+        except Exception as exc: last_error = str(exc); continue
         for idx, row in enumerate(rows):
             if _match_row(row, needles):
                 terms = [n for n in needles if n in _norm(" ".join(str(v) for v in row.values()))]
@@ -147,16 +150,11 @@ def _collect_dataset(dataset_key: str, needles: list[str], source_name: str, fac
 
 
 def _judicial_recent(needles, max_docs=50):
-    user = os.getenv("JUDICIAL_API_USER") or os.getenv("JUDICIAL_USER")
-    password = os.getenv("JUDICIAL_API_PASSWORD") or os.getenv("JUDICIAL_PASSWORD")
-    if not user or not password:
-        return [], {"status": "not_configured", "message": "司法院 API 尚未設定帳密。", "matched": 0}
-    return [], {"status": "not_implemented_in_public_runtime", "message": "司法院保留為官方查詢入口。", "matched": 0}
+    return [], {"status": "not_configured", "message": "司法院保留為官方查詢入口。", "matched": 0}
 
 
 def collect_public_evidence(company_name: str, people=None):
-    needles = [_norm(company_name)] + [_norm(p) for p in (people or []) if p]
-    needles = [n for n in needles if len(n) >= 2]
+    needles = [_norm(company_name)] + [_norm(p) for p in (people or []) if p]; needles = [n for n in needles if len(n) >= 2]
     evidence, statuses = [], {}
     items = [
         ("labor_penalties", "勞動部／違反勞動法令事業單位", "administrative_penalty", "裁罰"),
@@ -173,14 +171,10 @@ def collect_public_evidence(company_name: str, people=None):
         ("procurement_moda", "數位發展部／歷年採購案件", "government_tender", "標案"),
         ("procurement_highway", "交通部高速公路局／採購標案", "government_tender", "標案"),
     ]
-    group_meta = {}
     for key, source, fact_type, group in items:
-        rows, st = _collect_dataset(key, needles, source, fact_type)
-        evidence.extend(rows)
-        meta = group_meta.setdefault(group, {"status": "ok", "matched": 0, "rows_read": 0, "datasets": []})
-        meta["matched"] += int(st.get("matched") or 0); meta["rows_read"] += int(st.get("rows_read") or 0); meta["datasets"].append(st)
-        if st.get("status") == "source_unavailable": meta["status"] = "partial"
-    statuses.update(group_meta)
+        rows, st = _collect_dataset(key, needles, source, fact_type); evidence.extend(rows)
+        bucket = statuses.setdefault(group, {"status": "ok", "matched": 0, "rows_read": 0, "datasets": []}); bucket["matched"] += int(st.get("matched") or 0); bucket["rows_read"] += int(st.get("rows_read") or 0); bucket["datasets"].append(st)
+        if st.get("status") == "source_unavailable": bucket["status"] = "partial"
     judicial, jstatus = _judicial_recent(needles); evidence.extend(judicial); statuses["裁判書"] = jstatus
     statuses["資料源總數"] = {"status": "ok", "matched": len(items), "configured_datasets": len(items), "live_categories": ["裁罰", "165", "詐騙網域", "標案"]}
     return evidence, statuses
