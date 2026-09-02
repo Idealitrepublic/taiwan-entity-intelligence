@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -17,25 +18,21 @@ SUPABASE = os.environ.get("SUPABASE_URL", "https://rztdbdurkjfrirsrrhtu.supabase
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
 JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/FJUD/qryresult.aspx?kw={}&judtype=JUDBOOK"
 
-
 def _json_get(url: str, timeout: int = 20, headers=None):
     req = urllib.request.Request(url, headers=headers or {"User-Agent": "T.E.I./4.0", "Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8-sig", "replace"))
-
 
 def _company_filter(api: str, field: str, value: str, top: int):
     params = urllib.parse.urlencode({"$format": "json", "$filter": f"{field} eq {value}", "$skip": "0", "$top": str(top)})
     payload = _json_get(api + "?" + params)
     return payload if isinstance(payload, list) else []
 
-
 def _supabase_get(path: str, params: dict[str, str] | None = None, limit: int = 100):
     if not SUPABASE_KEY:
         return None, "not_configured"
     qs = {"select": "*", "limit": str(limit)}
-    if params:
-        qs.update(params)
+    if params: qs.update(params)
     url = f"{SUPABASE}/rest/v1/{path}?{urllib.parse.urlencode(qs, safe=',') }"
     req = urllib.request.Request(url, headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Accept": "application/json", "User-Agent": "T.E.I./4.0"})
     try:
@@ -45,7 +42,6 @@ def _supabase_get(path: str, params: dict[str, str] | None = None, limit: int = 
         return {"error": exc.read().decode("utf-8", errors="replace")[:800]}, "error"
     except Exception as exc:
         return {"error": str(exc)}, "error"
-
 
 def _edge(slug: str, params: dict[str, str]):
     if not SUPABASE_KEY:
@@ -60,14 +56,12 @@ def _edge(slug: str, params: dict[str, str]):
     except Exception as exc:
         return {"status": "error", "matched": 0, "records": [], "message": str(exc)}
 
-
 def _rows(payload):
     if isinstance(payload, list): return payload
     if isinstance(payload, dict):
         for key in ("records", "data", "result", "items", "rows"):
             if isinstance(payload.get(key), list): return payload[key]
     return []
-
 
 def _website_from_company(company: dict):
     candidates = []
@@ -84,11 +78,9 @@ def _website_from_company(company: dict):
         except Exception: pass
     return None, None
 
-
 def _evidence_card(source: str, dataset: str, row: dict, idx: int, note: str):
     title = next((str(row.get(k)) for k in ("party", "事業單位名稱", "事業單位名稱或負責人", "WEBURL", "網址", "網域名稱", "案件名稱", "標案名稱", "name") if row.get(k)), source)
     return {"source": {"type": "government_open_data", "name": source, "dataset_id": dataset}, "fact": {"type": dataset, "title": title, "summary": note}, "external_id": f"{dataset}:{idx}", "source_url": row.get("source_url") or row.get("來源網址") or row.get("URL"), "event_date": row.get("event_date") or row.get("date") or row.get("公告日期") or row.get("裁罰日期"), "raw": row}
-
 
 def _local_context(uniform: str):
     if not SUPABASE_KEY: return {"configured": False, "company": None, "evidence": [], "evidence_count": 0, "error": "Supabase key not configured"}
@@ -97,10 +89,8 @@ def _local_context(uniform: str):
     evidence_rows = evidence_rows if isinstance(evidence_rows, list) else []
     return {"configured": c_status == "ok" and e_status == "ok", "company": company_rows[0] if isinstance(company_rows, list) and company_rows else None, "evidence": evidence_rows, "evidence_count": len(evidence_rows), "error": None if c_status == "ok" and e_status == "ok" else "Supabase read partially unavailable"}
 
-
 def source_catalog():
     return {"公司登記": {"status": "live", "publisher": "經濟部商業署商工行政資料開放平台"}, "董監事": {"status": "live", "publisher": "經濟部商業署商工行政資料開放平台"}, "裁罰": {"status": "live", "publisher": "勞動部政府公開資料"}, "165": {"status": "live", "publisher": "警政署165相關公開資料"}, "標案": {"status": "live", "publisher": "政府公開採購資料集"}, "公司網址×165": {"status": "adapter", "publisher": "公司登記網址 + 165/數位發展部網域清單"}, "司法院": {"status": "link", "publisher": "司法院裁判書系統"}}
-
 
 def build_company(uniform: str):
     basic_rows = _company_filter(COMPANY_API, "Business_Accounting_NO", uniform, 1)
@@ -130,7 +120,6 @@ def build_company(uniform: str):
         seen.add(key); deduped.append(e)
     return {"uniform_number": uniform, "company": basic, "company_name": name, "website_url": website_url, "website_host": website_host, "people": people, "graph": {"nodes": nodes, "edges": edges}, "evidence": deduped[:150], "evidence_count": len(deduped[:150]), "local_context": local, "evidence_status": statuses, "source_catalog": source_catalog(), "website_crosscheck": website_crosscheck, "judicial_search_url": judicial_url, "data_mode": "live_public_api_plus_supabase", "evidence_note": "觀測到公開紀錄 ≠ 法律結論。來源讀取成功與是否命中是兩個不同指標。"}
 
-
 class Handler(BaseHTTPRequestHandler):
     def _send(self, status, payload):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8"); self.send_response(status); self.send_header("Content-Type", "application/json; charset=utf-8"); self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
@@ -140,11 +129,10 @@ class Handler(BaseHTTPRequestHandler):
             uid = unquote(path.split("/api/company/", 1)[1])
             if not uid.isdigit() or len(uid) != 8: return self._send(400, {"error": "統編必須是 8 碼數字。"})
             try: return self._send(200, build_company(uid))
-            except Exception as exc: return self._send(502, {"error": "來源查詢失敗", "detail": str(exc)})
+            except Exception as exc: return self._send(500, {"error": str(exc), "traceback": traceback.format_exc()})
         if path == "/api/status":
-            return self._send(200, {"status":"ok", "version":"4.2", "supabase":{"configured":bool(SUPABASE_KEY)}, "source_catalog":source_catalog()})
+            return self._send(200, {"status":"ok", "version":"4.3-diagnostic", "supabase":{"configured":bool(SUPABASE_KEY)}, "source_catalog":source_catalog()})
         self._send(404, {"error":"Not found"})
     def log_message(self, fmt, *args): return
-
 
 handler = Handler
