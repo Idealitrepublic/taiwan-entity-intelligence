@@ -25,13 +25,16 @@ SUPABASE_KEY = (
     or os.environ.get("SUPABASE_ANON_KEY")
     or os.environ.get("VITE_SUPABASE_ANON_KEY")
 )
-JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/LAW_Mobile_FJUD/FJUD/qryresult.aspx?judtype=JUDBOOK&kw={}"
+# Current official Judicial Yuan desktop search endpoint. Official Judicial
+# links currently use the FJUD/qryresult.aspx form; the old mobile path was
+# the reason the UI could report a false "query failed" state.
+JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/FJUD/qryresult.aspx?kw={}&judtype=JUDBOOK"
 
 
 def _json_get(url: str, timeout: int = 15, headers=None):
     req = urllib.request.Request(
         url,
-        headers=headers or {"User-Agent": "T.E.I./3.0"},
+        headers=headers or {"User-Agent": "T.E.I./3.1"},
     )
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8-sig", "replace"))
@@ -63,7 +66,7 @@ def _supabase_get(path: str, params: dict[str, str] | None = None, limit: int = 
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "Accept": "application/json",
-            "User-Agent": "T.E.I./3.0",
+            "User-Agent": "T.E.I./3.1",
         },
     )
     try:
@@ -85,7 +88,7 @@ def _edge(slug: str, params: dict[str, str]):
         headers={
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "apikey": SUPABASE_KEY,
-            "User-Agent": "T.E.I./3.0",
+            "User-Agent": "T.E.I./3.1",
         },
     )
     try:
@@ -280,13 +283,14 @@ def build_company(uniform: str):
         "matched": 0,
         "message": "目前展示來源狀態，不冒充不存在的官方直接統編 API。",
     }
+    judicial_url = JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name))
     statuses["司法院"] = {
         "status": "link",
         "matched": 0,
-        "message": "可由名稱直接開啟司法院裁判書查詢；API 帳號尚未設定。",
+        "message": "官方裁判書查詢入口可用；伺服器端不冒充已抓取裁判書全文。",
+        "url": judicial_url,
     }
 
-    # Deduplicate cards by external identity while keeping live + local provenance.
     seen = set()
     deduped = []
     for e in evidence:
@@ -307,7 +311,7 @@ def build_company(uniform: str):
         "local_context": local,
         "evidence_status": statuses,
         "source_catalog": source_catalog(),
-        "judicial_search_url": JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name)),
+        "judicial_search_url": judicial_url,
         "data_mode": "live_public_api_plus_supabase",
         "evidence_note": "觀測到公開紀錄 ≠ 法律結論。系統刻意把來源證據與推論分開。",
     }
@@ -353,18 +357,52 @@ class Handler(BaseHTTPRequestHandler):
                         supa[table] = len(rows)
                     else:
                         supa[f"{table}_status"] = status
-            return self._send(200, {"status": "ok", "version": "3.0", "supabase": supa, "sources": source_catalog()})
+            return self._send(200, {"status": "ok", "version": "3.1", "supabase": supa, "sources": source_catalog()})
 
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         web = os.path.join(root, "web")
         if path in ("", "/"):
-            return self._send_file(os.path.join(web, "index.html"), "text/html; charset=utf-8")
+            with open(os.path.join(web, "index.html"), "rb") as f:
+                html = f.read().decode("utf-8")
+            extra = """
+<style>
+.graph .node text{fill:#fff !important;stroke:#070a0f !important;stroke-width:4px !important;paint-order:stroke !important}
+.graph .edgeLabel{fill:#cbd5e1 !important;paint-order:stroke !important;stroke:#070a0f !important;stroke-width:3px !important}
+</style>
+<script>
+(function(){
+  function fixJudicial(){
+    document.querySelectorAll('.src').forEach(function(row){
+      var n=row.querySelector('.name');
+      if(n && n.textContent.trim()==='司法院'){
+        var v=row.children[row.children.length-1];
+        if(v) { v.textContent='官方查詢入口'; v.className='partial'; }
+      }
+    });
+  }
+  new MutationObserver(fixJudicial).observe(document.body,{subtree:true,childList:true,characterData:true});
+  document.addEventListener('DOMContentLoaded',fixJudicial);
+  setTimeout(fixJudicial,0); setTimeout(fixJudicial,1000); setTimeout(fixJudicial,2500);
+})();
+</script>
+"""
+            html = html.replace("</head>", extra + "</head>", 1)
+            return self._send_raw_html(html)
         if path == "/app.js":
             return self._send_file(os.path.join(web, "app.js"), "application/javascript; charset=utf-8")
         if path == "/tei-enhancements.js":
             return self._send_file(os.path.join(web, "tei-enhancements.js"), "application/javascript; charset=utf-8")
         self.send_response(404)
         self.end_headers()
+
+    def _send_raw_html(self, html: str):
+        body = html.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def log_message(self, fmt, *args):
         return
