@@ -23,10 +23,17 @@ def _json_get(url: str, timeout: int = 20, headers=None):
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8-sig", "replace"))
 
+def _rows(payload):
+    if isinstance(payload, list): return payload
+    if isinstance(payload, dict):
+        for key in ("records", "data", "result", "items", "rows"):
+            if isinstance(payload.get(key), list): return payload[key]
+    return []
+
 def _company_filter(api: str, field: str, value: str, top: int):
     params = urllib.parse.urlencode({"$format": "json", "$filter": f"{field} eq {value}", "$skip": "0", "$top": str(top)})
     payload = _json_get(api + "?" + params)
-    return payload if isinstance(payload, list) else []
+    return _rows(payload)
 
 def _supabase_get(path: str, params: dict[str, str] | None = None, limit: int = 100):
     if not SUPABASE_KEY:
@@ -55,13 +62,6 @@ def _edge(slug: str, params: dict[str, str]):
         return {"status": "error", "matched": 0, "records": [], "message": exc.read().decode("utf-8", errors="replace")[:800]}
     except Exception as exc:
         return {"status": "error", "matched": 0, "records": [], "message": str(exc)}
-
-def _rows(payload):
-    if isinstance(payload, list): return payload
-    if isinstance(payload, dict):
-        for key in ("records", "data", "result", "items", "rows"):
-            if isinstance(payload.get(key), list): return payload[key]
-    return []
 
 def _website_from_company(company: dict):
     candidates = []
