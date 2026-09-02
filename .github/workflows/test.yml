@@ -19,3 +19,42 @@ jobs:
           python-version: '3.11'
       - name: Run unit tests
         run: python3 -m unittest discover -s tests -v
+      - name: Check deployed Supabase TEI health
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 30 \
+            'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/health' \
+            | python3 -m json.tool
+      - name: Run deployed company smoke tests
+        run: |
+          python3 - <<'PY'
+          import json
+          import urllib.parse
+          import urllib.request
+
+          base = 'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/'
+          cases = {
+              '23060248': '全家便利商店股份有限公司',
+              '22099131': '台灣積體電路製造股份有限公司',
+              '22555003': '統一超商股份有限公司',
+          }
+          for uniform, expected_name in cases.items():
+              url = base + '?' + urllib.parse.urlencode({'api': 'company', 'uniform': uniform})
+              with urllib.request.urlopen(url, timeout=120) as response:
+                  assert response.status == 200, (uniform, response.status)
+                  data = json.load(response)
+              assert data.get('status') == 'ok', (uniform, data)
+              assert data.get('company_name') == expected_name, (uniform, data.get('company_name'))
+              assert len(data.get('people', [])) > 0, (uniform, 'director records missing')
+              assert len(data.get('graph', {}).get('edges', [])) > 0, (uniform, 'graph edges missing')
+              assert data.get('evidence_status', {}).get('公司登記', {}).get('status') == 'ok', uniform
+              assert data.get('evidence_status', {}).get('董監事', {}).get('status') == 'ok', uniform
+              assert data.get('local_context', {}).get('configured') is True, (uniform, 'Supabase evidence unavailable')
+              print(uniform, 'PASS', data['company_name'], 'people=', len(data['people']), 'edges=', len(data['graph']['edges']), 'evidence=', data['local_context']['evidence_count'])
+
+          bad_url = base + '?' + urllib.parse.urlencode({'api': 'company', 'uniform': '123'})
+          with urllib.request.urlopen(bad_url, timeout=30) as response:
+              bad = json.load(response)
+          assert bad.get('status') == 'error', bad
+          print('malformed-input PASS')
+          PY
