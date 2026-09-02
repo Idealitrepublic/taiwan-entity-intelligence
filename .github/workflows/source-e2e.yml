@@ -26,5 +26,7 @@ jobs:
           print('inline script bytes:', len(scripts[-1].encode('utf-8')))
           PY
           node --check /tmp/tei-app.js
+      - name: Install test dependency
+        run: python -m pip install --quiet pytest
       - name: Test live public source integration
         run: python -m pytest -q tests/test_public_sources.py
