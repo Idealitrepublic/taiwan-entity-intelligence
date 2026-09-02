@@ -1,7 +1,3 @@
-import json
-import urllib.parse
-import urllib.request
-
 from src.public_evidence import collect_public_evidence
 from src.v2server import COMPANY_API, DIRECTOR_API, _company_filter
 
@@ -22,7 +18,8 @@ def test_multiple_companies_company_and_director_apis_and_public_sources():
         assert director_rows, f"MOEA director API returned no rows: {uniform}"
 
         public = collect_public_evidence(expected_name, [])
-        statuses = public.get("statuses", {})
+        evidence, statuses = public
+        assert isinstance(evidence, list), type(evidence)
 
         # Every non-judicial category must be callable and backed by readable rows.
         for category in ("裁罰", "165", "標案"):
@@ -32,12 +29,15 @@ def test_multiple_companies_company_and_director_apis_and_public_sources():
             datasets = item.get("datasets") or []
             assert datasets, (uniform, category, item)
             for dataset in datasets:
+                # dataset 30136 is explicitly retired by its provider and is
+                # therefore a valid non-error state, not a false zero result.
+                if dataset.get("status") == "retired":
+                    assert "停止" in dataset.get("message", "") or "採購網" in dataset.get("message", ""), dataset
+                    continue
                 assert dataset.get("status") == "ok", (uniform, category, dataset)
                 assert int(dataset.get("rows_read") or 0) > 0, (uniform, category, dataset)
 
         total = statuses.get("資料源總數")
         assert isinstance(total, dict), statuses
         assert int(total.get("configured_datasets") or 0) >= 13, total
-
-        # Judicial is intentionally excluded from the live-source requirement.
         assert "裁判書" in statuses, statuses
