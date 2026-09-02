@@ -1,0 +1,60 @@
+name: Seed T.E.I. test entities
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Seed three smoke entities through Supabase T.E.I.
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, urllib.request
+          base = 'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/?api=company&uniform='
+          for uid in ['23060248','22099131','22555003']:
+              with urllib.request.urlopen(base + uid, timeout=90) as r:
+                  data = json.load(r)
+              print(uid, json.dumps({
+                  'status': data.get('status'),
+                  'company_name': data.get('company_name'),
+                  'people': len(data.get('people', [])),
+                  'persistence': data.get('persistence'),
+                  'evidence_count_after': data.get('local_context', {}).get('evidence_count')
+              }, ensure_ascii=False))
+              assert data.get('status') == 'ok', (uid, data)
+              assert len(data.get('people', [])) > 0, (uid, 'no people')
+              assert (data.get('persistence') or {}).get('status') == 'ok', (uid, data.get('persistence'))
+          print('seed requests PASS')
+          PY
+
+      - name: Verify Supabase persisted rows
+        env:
+          SUPABASE_URL: https://rztdbdurkjfrirsrrhtu.supabase.co
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_KEY"
+          python3 - <<'PY'
+          import json, os, urllib.parse, urllib.request
+          base=os.environ['SUPABASE_URL']+'/rest/v1/'
+          key=os.environ['SUPABASE_KEY']
+          headers={'apikey':key,'Authorization':'Bearer '+key,'Accept':'application/json'}
+          uids=['23060248','22099131','22555003']
+          q=urllib.parse.urlencode({'select':'uniform_number,name','uniform_number':'in.('+','.join(uids)+')'}, safe='(),')
+          with urllib.request.urlopen(urllib.request.Request(base+'companies?'+q,headers=headers),timeout=30) as r: companies=json.load(r)
+          print('companies rows=',len(companies),companies)
+          assert {x['uniform_number'] for x in companies}==set(uids), companies
+          q=urllib.parse.urlencode({'select':'entity_key,source_type,fact_type','entity_type':'eq.company','entity_key':'in.('+','.join(uids)+')'}, safe='(),')
+          with urllib.request.urlopen(urllib.request.Request(base+'evidence?'+q,headers=headers),timeout=30) as r: evidence=json.load(r)
+          print('evidence rows=',len(evidence))
+          assert len(evidence)>=3, evidence
+          print('Supabase persistence verification PASS')
+          PY
