@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler
+import urllib.request
+import urllib.error
 
 from src.v2server import (
     COMPANY_API,
     DIRECTOR_API,
+    SUPABASE,
     SUPABASE_KEY,
     _company_filter,
     _local_context,
@@ -30,6 +33,44 @@ def read_text(path: Path, fallback: str = "") -> str:
         return path.read_text(encoding="utf-8")
     except Exception:
         return fallback
+
+
+def supabase_table_count(table: str) -> int | None:
+    """Return an exact row count when the service/anon key permits REST reads."""
+    if not SUPABASE_KEY:
+        return None
+    url = f"{SUPABASE}/rest/v1/{table}?select=id&limit=1"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Accept": "application/json",
+            "Prefer": "count=exact",
+            "User-Agent": "T.E.I./5.2",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as r:
+            content_range = r.headers.get("Content-Range", "")
+            if "/" not in content_range:
+                return 0
+            total = content_range.rsplit("/", 1)[1].strip()
+            return int(total) if total.isdigit() else 0
+    except Exception:
+        return None
+
+
+def supabase_counts() -> dict[str, int] | None:
+    if not SUPABASE_KEY:
+        return None
+    counts: dict[str, int] = {}
+    for table in ("source_files", "companies", "people", "evidence"):
+        value = supabase_table_count(table)
+        if value is None:
+            return None
+        counts[table] = value
+    return counts
 
 
 def core_company(uniform: str) -> dict:
@@ -53,8 +94,6 @@ def core_company(uniform: str) -> dict:
     name = basic.get("Company_Name") or basic.get("Juristic_Person_Name") or uniform
     website_url, website_host = _website_from_company(basic)
 
-    # Directors are part of the core graph. If the optional director upstream
-    # is temporarily unavailable, preserve the company record instead of 500.
     try:
         director_rows = _company_filter(DIRECTOR_API, "Business_Accounting_NO", uniform, 1000)
         director_error = None
@@ -122,8 +161,6 @@ def core_company(uniform: str) -> dict:
             "matched": len(people),
             **({"message": director_error} if director_error else {}),
         },
-        # Optional live evidence collection is deliberately not executed here.
-        # The Supabase T.E.I. console owns the slower evidence adapters.
         "裁罰": {
             "status": "not_available_in_public_runtime",
             "matched": 0,
@@ -225,13 +262,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, js, "application/javascript; charset=utf-8")
 
         if path == "/api/status":
-            return self._send(200, {
+            counts = supabase_counts()
+            payload = {
                 "status": "ok",
-                "version": "5.1-core-isolated",
+                "version": "5.2-core-isolated",
                 "supabase": {"configured": bool(SUPABASE_KEY)},
                 "routes": ["/api/status", "/api/company/{uniform}", "/api/company-sources"],
                 "source_mode": "MOEA core on Vercel; optional evidence on Supabase",
-            })
+            }
+            if counts is not None:
+                payload["supabase"].update(counts)
+            return self._send(200, payload)
 
         if path.startswith("/api/company/"):
             uniform = unquote(path.split("/api/company/", 1)[1]).strip()
@@ -240,11 +281,10 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 return self._send(200, core_company(uniform))
             except Exception as exc:
-                # No traceback leakage in the public endpoint.
                 return self._send(502, {"status": "error", "error": f"核心公開資料暫時不可用：{type(exc).__name__}: {exc}"})
 
         if path == "/api/company-sources":
-            qs = __import__("urllib.parse", fromlist=["parse_qs"]).parse_qs(parsed.query)
+            qs = parse_qs(parsed.query)
             uniform = str((qs.get("uniform") or [""])[0]).strip()
             if not (uniform.isdigit() and len(uniform) == 8):
                 return self._send(400, {"error": "uniform must be 8 digits"})
