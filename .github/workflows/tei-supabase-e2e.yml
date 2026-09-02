@@ -1,0 +1,51 @@
+name: T.E.I. Supabase E2E
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate committed edge function source
+        run: python -m compileall -q src api tests
+      - name: Check Supabase Edge Function health
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 30 \
+            'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/health' | python -m json.tool
+      - name: Test companies through deployed Supabase Edge Function
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          cases = {
+              '23060248': ('全家便利商店股份有限公司', True),
+              '22099131': ('台灣積體電路製造股份有限公司', False),
+              '22555003': ('統一超商股份有限公司', False),
+          }
+          base = 'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/?api=company&uniform='
+          for uniform, (expected_name, require_labor) in cases.items():
+              with urllib.request.urlopen(base + uniform, timeout=90) as r:
+                  assert r.status == 200, (uniform, r.status)
+                  data = json.load(r)
+              assert data.get('status') == 'ok', (uniform, data)
+              assert data.get('company_name') == expected_name, (uniform, data.get('company_name'))
+              assert len(data.get('people', [])) > 0, (uniform, 'no directors')
+              assert len(data.get('graph', {}).get('edges', [])) > 0, (uniform, 'no graph edges')
+              assert data.get('evidence_status', {}).get('公司登記', {}).get('status') == 'ok', uniform
+              assert data.get('evidence_status', {}).get('董監事', {}).get('status') == 'ok', uniform
+              assert data.get('local_context', {}).get('configured') is True, (uniform, 'supabase evidence query unavailable')
+              if require_labor:
+                  labor = data.get('labor', {})
+                  assert labor.get('status') == 'ok', (uniform, labor)
+                  assert int(labor.get('matched', 0)) > 0, (uniform, labor)
+                  assert data.get('website', {}).get('host') == 'family.com.tw', (uniform, data.get('website'))
+                  assert data.get('anti_fraud', {}).get('status') in ('ok', 'partial'), (uniform, data.get('anti_fraud'))
+              print(uniform, expected_name, 'PASS', 'people=', len(data['people']), 'edges=', len(data['graph']['edges']), 'evidence=', data['local_context']['evidence_count'])
+          PY
