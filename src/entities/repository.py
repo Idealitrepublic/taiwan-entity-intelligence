@@ -35,7 +35,7 @@ class EntityRepository:
             f"{self.url.rstrip('/')}/rest/v1/{table}?{urlencode(params)}",
             headers={"apikey": self.key, "Authorization": f"Bearer {self.key}"})
         try:
-            with urllib.request.urlopen(request, timeout=8) as response:
+            with urllib.request.urlopen(request, timeout=12) as response:
                 rows = json.load(response)
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
             raise EntityStoreUnavailable("Entity database unavailable") from exc
@@ -93,3 +93,15 @@ class EntityRepository:
         rows = self.transport("relationships", params)
         return {"items": rows[:limit], "has_more": len(rows) > limit,
                 "next_cursor": rows[limit - 1]["id"] if len(rows) > limit else None}
+
+    def search(self, term, *, entity_type=None, limit=20):
+        params = {"search_query": term, "result_limit": limit}
+        if entity_type:
+            params["entity_type_filter"] = entity_type
+        rows = self.transport("rpc/search_entities", params)
+        groups = {}
+        for row in rows:
+            kind = row.get("entity_type")
+            groups[kind] = groups.get(kind, 0) + 1
+        return {"query": term, "items": rows, "groups": groups,
+                "result_count": len(rows), "limit": limit}

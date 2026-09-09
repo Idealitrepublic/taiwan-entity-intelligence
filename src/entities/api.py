@@ -2,10 +2,25 @@
 import os
 from .models import uuid_string
 from .repository import EntityRepository, EntityStoreUnavailable
+from .search import parse_search_request
 from src.relationships.models import RELATIONSHIP_TYPES
 
 
 def dispatch_entity_api(path, query, repository=None):
+    if path.rstrip("/") == "/api/v1/search":
+        try:
+            request = parse_search_request(query)
+        except (TypeError, ValueError):
+            return 400, {"error": "請輸入 2–100 個字並使用有效的類型與筆數 / Invalid search query, type or limit"}, None
+        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
+            return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
+        repository = repository or EntityRepository()
+        try:
+            result = repository.search(request.term, entity_type=request.entity_type,
+                                       limit=request.limit)
+        except EntityStoreUnavailable:
+            return 503, {"status": "unavailable", "error": "搜尋資料庫暫時無法使用 / Search store unavailable"}, None
+        return 200, {"api_version": "1", "data": result}, None
     parts = path.strip("/").split("/")
     valid = (len(parts) == 4 and parts[2] in ("entities", "relationships", "evidence")) or (
         len(parts) == 5 and parts[2] == "entities" and parts[4] == "relationships")

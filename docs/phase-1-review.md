@@ -4,7 +4,7 @@
 
 已實作 Entity、Relationship、Evidence 的基礎模型，保留既有公司查詢。
 分支：`feature/entity-model`；既有正式站基準：`280689f`。
-**正式 Supabase migration 尚未套用，正式網站未更新，Phase 2 尚未開始。**
+Phase 1 已合併至 `main`（PR #1），正式 Supabase migration、受控回填與 Vercel Production 均已完成並驗證。
 
 本階段驗收範圍為資料模型、證據約束、讀取 API 及受控回填。
 Global Search、Graph 2.0、Path Finder 與政治資料接入仍依後續 Phase 順序執行。
@@ -65,7 +65,7 @@ https://supabase.com/docs/guides/api/securing-your-api
 | 舊資料對照 | 37 |
 | 未映射／無效來源列 | 0 |
 
-全部輸出為 draft，沒有寫入正式資料庫。匯出及回填內容僅存在忽略的 `.build/`，不提交 Git。
+回填先輸出為 draft，核對後已在同一交易中發布至正式資料庫；`.build/` 暫存資料未提交 Git。
 程序預設 dry-run，明確 `--apply` 才會寫入明確指定的 Supabase 目的地。
 新來源不在本階段自動匯入；裁罰、裁判、標案仍走原流程，未大量搬入新模型。
 監察人等未定義對應的角色會被報告為 skipped，不錯誤標記為董事。
@@ -120,7 +120,7 @@ node tests/entity_http_flow.cjs draft-bundle.json
 5. Review 通過後才 Merge，正式資料庫套用 additive migration，再發布正式網站。
 6. 回復時先關閉 `TEI_ENTITY_API_ENABLED`，保留新資料表與證據供檢查；不刪舊表或批次資料。
 
-目前未建立付費 Supabase branch。獨立開發資料庫與正式 migration 仍屬審查後啟用項目。
+目前未建立付費 Supabase branch；migration 因此直接在既有專案依 additive、先測試後發布流程執行。
 現有舊表的公開 raw 欄位、舊人物姓名合併及裁罰分類問題不在此階段偷偷重寫；新模型不沿用這些連接。
 
 ## Git 差異與自動審查限制
@@ -128,11 +128,8 @@ node tests/entity_http_flow.cjs draft-bundle.json
 遠端 `main` 為 `f2c5cf5`，正式站／本機基準 `280689f` 包含 5 個先前尚未推送的提交。
 Phase 1 的純變更範圍以 `280689f..feature/entity-model` 審查。
 
-已核對遠端為目前連接帳號擁有的公開 repository：
-`Idealitrepublic/taiwan-entity-intelligence`。本機提交已完成。
-自動審查仍拒絕 git push，理由為公開程式／migration 的目的地尚缺使用者明確授權。
-沒有改用另一個工具繞過拒絕；沒有建立遠端 PR，也沒有 merge 或 production deployment。
-待使用者明確授權推送至該 repository 後再完成 GitHub 分支／PR 交付。
+已核對並經使用者授權推送至公開 repository：
+`Idealitrepublic/taiwan-entity-intelligence`。PR #1 的所有 CI 與 Vercel 狀態通過後，以 squash merge 合併；Production commit 為 `bbc78c2`。
 
 ## 現有雲端 advisor
 
@@ -144,5 +141,4 @@ Phase 1 的純變更範圍以 `280689f..feature/entity-model` 審查。
   [官方說明](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)。
   若僅供後端使用，無公開 policy 可為預期設計。
 
-新 migration 的 RLS 與 grants 已在隔離 PostgreSQL 測試；不能以既有雲端 advisor
-當成尚未部署的新 schema 已完成雲端驗證。
+新 migration 的 RLS 與 grants 已在隔離 PostgreSQL及正式 Supabase 驗證；Phase 1 新表沒有 advisor 警示。
