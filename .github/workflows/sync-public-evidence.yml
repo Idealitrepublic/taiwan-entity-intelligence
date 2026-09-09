@@ -8,6 +8,7 @@ on:
       - 'data/public_sync_status.json'
       - 'data/public_sync_state.json'
       - 'data/public_evidence.jsonl'
+      - 'data/judicial_company_index.json'
   schedule:
     # 01:30 Taiwan time (UTC+8), inside the Judicial Yuan API service window.
     - cron: '30 17 * * *'
@@ -42,6 +43,7 @@ jobs:
             data/public_evidence.jsonl
             data/public_sync_state.json
             data/public_sync_status.json
+            data/judicial_company_index.json
           retention-days: 30
           compression-level: 6
 
@@ -49,6 +51,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f data/public_sync_status.json
+          git add -f data/public_sync_status.json data/judicial_company_index.json
           git commit -m "chore: update public evidence sync status" || true
           git push || true

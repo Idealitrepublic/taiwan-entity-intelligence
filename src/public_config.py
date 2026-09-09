@@ -1,0 +1,3 @@
+# Public Data API key; row-level policies restrict this to public read access.
+SUPABASE_URL = 'https://rztdbdurkjfrirsrrhtu.supabase.co'
+SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6dGRiZHVya2pmcmlyc3JyaHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxODcyNTksImV4cCI6MjEwMzc2MzI1OX0.BbeWKjXh4jBf_ynYlLSXykReLhXdR3d8LltcFUd6wXU"

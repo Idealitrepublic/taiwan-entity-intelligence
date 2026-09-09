@@ -111,22 +111,7 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, status, payload):
         body = json.dumps(payload, ensure_ascii=False).encode('utf-8'); self.send_response(status); self.send_header('Content-Type', 'application/json; charset=utf-8'); self.send_header('Cache-Control', 'no-store'); self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
 
-    def _proxy_primary_domain(self):
-        host = self.headers.get('Host', '').split(':', 1)[0].lower()
-        if host != PRIMARY_DOMAIN:
-            return False
-        try:
-            target = WORKING_DEPLOYMENT + self.path
-            req = urllib.request.Request(target, headers={'User-Agent': 'TaiwanEntityIntelligence-primary-bridge'})
-            with urllib.request.urlopen(req, timeout=55) as response:
-                body = response.read(); self.send_response(response.status); ct = response.headers.get('Content-Type')
-                if ct: self.send_header('Content-Type', ct)
-                self.send_header('Cache-Control', 'no-store'); self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body); return True
-        except Exception as exc:
-            self._json(502, {"error": "正式網址與已驗證服務的橋接失敗。", "detail": str(exc)}); return True
-
     def do_GET(self):
-        if self._proxy_primary_domain(): return
         parsed = urlparse(self.path)
         if parsed.path == '/':
             with open(os.path.join(WEB, 'index.html'), 'rb') as f: body = f.read()

@@ -49,7 +49,12 @@ jobs:
                   assert data.get('anti_fraud', {}).get('status') in ('ok', 'partial'), (uniform, data.get('anti_fraud'))
               print(uniform, expected_name, 'PASS', 'people=', len(data['people']), 'edges=', len(data['graph']['edges']), 'supabase_evidence=', data['local_context']['evidence_count'])
           # Validation path: malformed input must return structured error, not 500.
-          bad = json.load(urllib.request.urlopen(base + '123', timeout=30))
+          try:
+              urllib.request.urlopen(base + '123', timeout=30)
+              raise AssertionError('malformed input unexpectedly returned HTTP 200')
+          except urllib.error.HTTPError as response:
+              assert response.code == 400, response.code
+              bad = json.load(response)
           assert bad.get('status') == 'error', bad
           print('malformed-input PASS')
           PY

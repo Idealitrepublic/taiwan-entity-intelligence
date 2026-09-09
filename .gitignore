@@ -29,3 +29,11 @@ src_old/
 
 # Logs
 *.log
+
+# Development checks / local preview
+node_modules/
+.build/
+.pytest_cache/
+.ruff_cache/
+.vercel/
+supabase/.temp/

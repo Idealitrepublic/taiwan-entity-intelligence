@@ -18,12 +18,14 @@ sys.path.insert(0, str(ROOT))
 
 from src.sources.public_records import evidence_rows as public_rows  # noqa: E402
 from src.sources.judicial import evidence_rows as judicial_rows  # noqa: E402
+from src.sources.judicial_index import build_index  # noqa: E402
 
 OUT = ROOT / "data"
 OUT.mkdir(exist_ok=True)
 EVIDENCE = OUT / "public_evidence.jsonl"
 STATE = OUT / "public_sync_state.json"
 STATUS = OUT / "public_sync_status.json"
+JUDICIAL_INDEX = OUT / "judicial_company_index.json"
 
 
 def load_state() -> Dict[str, Any]:
@@ -97,6 +99,10 @@ def main() -> int:
         "judicial_enabled": bool(os.environ.get("JUDICIAL_USER") and os.environ.get("JUDICIAL_PASSWORD")),
     }
     STATUS.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+    JUDICIAL_INDEX.write_text(
+        json.dumps(build_index(existing.values(), now), ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
     print(json.dumps(status, ensure_ascii=False, indent=2))
     return 0
 

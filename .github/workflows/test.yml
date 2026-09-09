@@ -30,6 +30,7 @@ jobs:
           python3 - <<'PY'
           import json
           import urllib.parse
+          import urllib.error
           import urllib.request
 
           base = 'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/'
@@ -53,7 +54,11 @@ jobs:
               print(uniform, 'PASS', data['company_name'], 'people=', len(data['people']), 'edges=', len(data['graph']['edges']), 'evidence=', data['local_context']['evidence_count'])
 
           bad_url = base + '?' + urllib.parse.urlencode({'api': 'company', 'uniform': '123'})
-          with urllib.request.urlopen(bad_url, timeout=30) as response:
+          try:
+              urllib.request.urlopen(bad_url, timeout=30)
+              raise AssertionError('malformed input unexpectedly returned HTTP 200')
+          except urllib.error.HTTPError as response:
+              assert response.code == 400, response.code
               bad = json.load(response)
           assert bad.get('status') == 'error', bad
           print('malformed-input PASS')
