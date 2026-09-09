@@ -24,7 +24,9 @@ def dispatch_entity_api(path, query, repository=None):
             raise ValueError("Unknown relationship type")
     except (ValueError, TypeError):
         return 400, {"error": "Invalid UUID, limit (1–50) or relationship type / 查詢參數錯誤"}, None
-    if os.environ.get("TEI_ENTITY_API_ENABLED") != "1":
+    # Schema is additive and read-only to public clients. Keep an emergency kill
+    # switch instead of requiring an environment mutation for every deployment.
+    if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
         return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
     repository = repository or EntityRepository()
     try:

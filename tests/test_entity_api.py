@@ -17,13 +17,14 @@ class EntityApiTests(unittest.TestCase):
             code, _, _ = dispatch_entity_api("/api/v1/entities/not-a-uuid", {})
         self.assertEqual(code, 400)
 
-    def test_feature_flag_defaults_disabled(self):
+    def test_emergency_feature_flag_disables_api(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(dispatch_entity_api(f"/api/v1/entities/{ID}", {})[0], 503)
+            with patch.dict(os.environ, {"TEI_ENTITY_API_ENABLED": "0"}):
+                self.assertEqual(dispatch_entity_api(f"/api/v1/entities/{ID}", {})[0], 503)
 
     def test_enabled_profile_and_missing_record(self):
         repo = Mock()
-        with patch.dict(os.environ, {"TEI_ENTITY_API_ENABLED": "1"}):
+        with patch.dict(os.environ, {}, clear=True):
             repo.entity.return_value = {"id": ID, "display_name": "測試公司"}
             code, body, _ = dispatch_entity_api(f"/api/v1/entities/{ID}", {}, repo)
             self.assertEqual(code, 200)
@@ -34,7 +35,7 @@ class EntityApiTests(unittest.TestCase):
     def test_unavailable_is_not_an_empty_success(self):
         repo = Mock()
         repo.entity.side_effect = EntityStoreUnavailable("secret details")
-        with patch.dict(os.environ, {"TEI_ENTITY_API_ENABLED": "1"}):
+        with patch.dict(os.environ, {}, clear=True):
             code, body, _ = dispatch_entity_api(f"/api/v1/entities/{ID}", {}, repo)
         self.assertEqual(code, 503)
         self.assertNotIn("secret", str(body))

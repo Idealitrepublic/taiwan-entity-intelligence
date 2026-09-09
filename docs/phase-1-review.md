@@ -44,7 +44,8 @@ Migration：`supabase/migrations/20260909100626_entity_relationship_evidence.sql
 證據列表最多回傳 50 個附加來源並標示 evidence_has_more；完整證據分頁留待證據介面階段。
 無效參數 400；未公開或不存在 404；未啟用／資料庫不可用 503；寫入方法 405。
 
-預設 `TEI_ENTITY_API_ENABLED=0`。新資料庫讀取只用 anon key，無 service-role fallback。
+正式 migration 已驗證後，API 預設啟用；`TEI_ENTITY_API_ENABLED=0` 是緊急關閉開關。
+新資料庫讀取只用 anon key，無 service-role fallback。
 `tei_ingest_bundle` 為 service-role 專用、SECURITY INVOKER、1 MB 有界交易寫入 RPC。
 匿名／一般登入角色只有已公開資料的 SELECT 權限；識別碼、來源對照、比對候選為後端專用。
 
@@ -80,7 +81,7 @@ https://supabase.com/docs/guides/api/securing-your-api
 - PostgreSQL 使用 PGlite 隔離引擎；HTTP 測試使用明確的本機查詢 adapter，不假裝是雲端 PostgREST。
 - Vercel Preview build：READY（Python），部署 ID `dpl_2MawrEBX5vyQGLiGSzDht2KHDGSt`。
 - Preview 瀏覽器：中華電信查詢成功，公司／董監事及三類紀錄列表呈現；縮放 100% → 110%，標案列表可切換。
-- Preview 新 API 回傳 503/not_enabled：符合正式 migration 尚未套用的設計。
+- 第一版 Preview 新 API 回傳 503/not_enabled：符合當時正式 migration 尚未套用的設計。
 - 瀏覽器錯誤紀錄來自擴充套件及先前 Vercel 登入頁，未觀察到本次 T.E.I. 頁面自身的 JavaScript error。
 
 `npm test` 使用既有 unittest suite（16 項）加本次 24 項，並執行 PostgreSQL 檢查。
