@@ -2,6 +2,22 @@
 
 Taiwan Entity Intelligence is an investigation-oriented MVP for turning Taiwanese public records into an explorable, source-backed entity relationship graph.
 
+## Current production runtime
+
+The canonical application is a dependency-light Python WSGI service (`app.py`) with a bilingual browser workspace (`web/index.html`), deployed on Vercel. Supabase stores the evidence-backed Entity and Relationship layer; browser reads use only the public/anon credential.
+
+Current Entity API:
+
+| Route | Purpose |
+|---|---|
+| `GET /api/v1/search?q=...&entity_type=...&limit=...` | Bounded global entity search (2–100 characters, maximum 20 results) |
+| `GET /api/v1/entities/{id}` | Published entity profile and evidence |
+| `GET /api/v1/entities/{id}/relationships` | Bounded one-hop relationships |
+| `GET /api/v1/relationships/{id}` | Relationship and provenance |
+| `GET /api/v1/evidence/{id}` | Published source evidence |
+
+The global search covers only entities already indexed and published in the Entity layer. Same-name people remain separate source-scoped records unless reviewed resolution evidence supports a merge. An 8-digit company ID continues to use the existing live company investigation path for backward compatibility.
+
 ## Current direction
 
 The product is moving from **data aggregation** to **cross-source evidence intelligence**:

@@ -13,7 +13,8 @@ FILES = [
     "src/sources/procurement.py", "data/judicial_company_index.json",
     "web/index.html", "web/app.js", "web/tei-enhancements.js",
     "src/entities/__init__.py", "src/entities/models.py", "src/entities/repository.py",
-    "src/entities/api.py", "src/relationships/__init__.py", "src/relationships/models.py",
+    "src/entities/api.py", "src/entities/search.py", "src/relationships/__init__.py",
+    "src/relationships/models.py",
 ]
 
 if __name__ == "__main__":
