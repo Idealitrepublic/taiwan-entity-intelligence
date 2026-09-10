@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Development commands for the Python WSGI application; not a Next.js runtime.",
   "scripts": {
-    "lint": "python -m ruff check src/entities src/relationships scripts/backfill_entity_model.py scripts/build_check.py tests/test_entity_model.py tests/test_entity_api.py tests/test_entity_search.py && node scripts/check_web_syntax.cjs",
+    "lint": "python -m ruff check src/entities src/relationships scripts/backfill_entity_model.py scripts/build_check.py tests/test_entity_model.py tests/test_entity_api.py tests/test_entity_search.py tests/test_graph_v2.py && node scripts/check_web_syntax.cjs",
     "build": "python scripts/build_check.py",
     "test": "python -m unittest discover -s tests -v && node tests/entity_schema.test.mjs",
     "test:live": "python -m pytest tests/test_public_sources.py tests/test_multi_company_sources.py -v",

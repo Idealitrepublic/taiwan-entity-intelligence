@@ -51,6 +51,8 @@ Phase 2 在 `feature/global-search` 實作全實體搜尋，PR #2 以 Phase 1 pr
 - Vercel Preview `dpl_FfUFnLAqyNJwUsLSCt79smdSCjjU`：READY。
 - Preview API 公司名稱搜尋回傳 200；其餘查詢由本機 WSGI→正式 PostgREST 與 SQL/RLS 雙重驗證。
 - GitHub：T.E.I. tests、live smoke tests、Entity model checks、Vercel 全數成功。
+- PR #2 已合併；Production commit `ca06f90`、deployment `dpl_CLRPeVVozfjKkaTPGaJ9ctpewGg6` 均 READY。
+- Production：首頁、公司名稱搜尋、人物＋類型、公司統編均回傳 200；一字查詢正確回傳 400。
 
 ## 已知限制與回復
 
