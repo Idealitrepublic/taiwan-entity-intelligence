@@ -72,6 +72,13 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   await rejects("select * from public.search_entities('測試', null, 21)", 'unbounded result limit denied');
   await rejects("select * from public.search_entities('測試', 'Arbitrary', 20)", 'unknown entity type denied');
   await rejects("insert into public.entity_search_terms values ($1,'篡改','篡改','alias')", 'public search projection writes denied', [company.id]);
+  const graphRows = await db.query('select * from public.graph_entity_neighbors($1, 1, null, null)', [company.id]);
+  assert.equal(graphRows.rows.length, 2, 'limit + 1 probe row is returned');
+  assert.equal(graphRows.rows[0].focus_entity.id, company.id);
+  assert.equal(graphRows.rows[0].relationship.relationship_type, 'DIRECTOR_OF');
+  assert.equal(graphRows.rows[0].primary_evidence.status, 'active');
+  checks += 4;
+  await rejects('select * from public.graph_entity_neighbors($1, 26, null, null)', 'unbounded graph expansion denied', [company.id]);
   await db.exec('reset role; set role service_role;');
   await db.query("update public.evidence_records set status='retracted' where id=$1", [evidenceId]);
   assert.equal((await db.query('select status from public.relationships where id=$1', [rel.id])).rows[0].status, 'retracted');

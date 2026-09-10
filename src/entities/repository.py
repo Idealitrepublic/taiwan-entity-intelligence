@@ -105,3 +105,38 @@ class EntityRepository:
             groups[kind] = groups.get(kind, 0) + 1
         return {"query": term, "items": rows, "groups": groups,
                 "result_count": len(rows), "limit": limit}
+
+    def graph_neighbors(self, entity_id, *, limit=12, after=None, relationship_type=None):
+        entity_id = uuid_string(entity_id)
+        params = {"focus_id": entity_id, "result_limit": limit}
+        if after:
+            params["after_relationship_id"] = uuid_string(after)
+        if relationship_type:
+            params["relationship_type_filter"] = relationship_type
+        rows = self.transport("rpc/graph_entity_neighbors", params)
+        if not rows:
+            return None
+        root = rows[0].get("focus_entity")
+        if not root:
+            return None
+        relationship_rows = [row for row in rows if row.get("relationship")]
+        visible = relationship_rows[:limit]
+        nodes = {root["id"]: root}
+        edges = []
+        for row in visible:
+            source, target = row.get("source_entity"), row.get("target_entity")
+            primary = row.get("primary_evidence")
+            if not source or not target or not primary:
+                continue
+            nodes[source["id"]] = source
+            nodes[target["id"]] = target
+            relationship = row["relationship"]
+            edges.append({**relationship, "source": relationship["source_entity_id"],
+                          "target": relationship["target_entity_id"],
+                          "primary_evidence": primary})
+        has_more = len(relationship_rows) > limit
+        return {"focus_entity_id": entity_id,
+                "nodes": sorted(nodes.values(), key=lambda item: item["id"]), "edges": edges,
+                "has_more": has_more,
+                "next_cursor": edges[-1]["id"] if has_more and edges else None,
+                "requested_limit": limit}

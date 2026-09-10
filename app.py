@@ -20,9 +20,11 @@ def db_count(table):
 def dispatch(path, query):
     if path.startswith('/api/v1/'):
         return dispatch_entity_api(path, query)
-    if path in ('/', '/app.js', '/tei-enhancements.js'):
-        name = 'index.html' if path == '/' else path[1:]
-        return 200, (WEB / name).read_text(), 'text/html; charset=utf-8' if path == '/' else 'application/javascript; charset=utf-8'
+    entity_uuid = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+    page_route = path == '/' or bool(re.fullmatch(rf'/(?:entity|graph)/{entity_uuid}/?', path))
+    if page_route or path in ('/app.js', '/tei-enhancements.js'):
+        name = 'index.html' if page_route else path[1:]
+        return 200, (WEB / name).read_text(), 'text/html; charset=utf-8' if page_route else 'application/javascript; charset=utf-8'
     if path == '/api/status':
         db = {'configured': bool(core.SUPABASE_KEY), 'connected': False}
         if core.SUPABASE_KEY:

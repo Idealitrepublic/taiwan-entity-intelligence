@@ -13,8 +13,11 @@ Current Entity API:
 | `GET /api/v1/search?q=...&entity_type=...&limit=...` | Bounded global entity search (2–100 characters, maximum 20 results) |
 | `GET /api/v1/entities/{id}` | Published entity profile and evidence |
 | `GET /api/v1/entities/{id}/relationships` | Bounded one-hop relationships |
+| `GET /api/v1/graph/{id}?limit=12&after=...&relationship_type=...` | RLS-aware lazy graph expansion with batched entities and primary evidence |
 | `GET /api/v1/relationships/{id}` | Relationship and provenance |
 | `GET /api/v1/evidence/{id}` | Published source evidence |
+
+Entity graph pages are shareable at `/graph/{entity_id}`; `/entity/{entity_id}` loads the same published profile and Graph 2.0 workspace. Expansion is capped at three hops and 60 browser nodes.
 
 The global search covers only entities already indexed and published in the Entity layer. Same-name people remain separate source-scoped records unless reviewed resolution evidence supports a merge. An 8-digit company ID continues to use the existing live company investigation path for backward compatibility.
 
