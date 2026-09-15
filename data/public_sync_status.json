@@ -1,11 +1,16 @@
 {
-  "last_sync": "2026-09-13T20:02:21+00:00",
-  "evidence_count": 2310,
-  "new": 2310,
-  "fetched": 2310,
+  "last_sync": "2026-09-15T20:48:01+00:00",
+  "evidence_count": 1660,
+  "new": 1660,
+  "fetched": 1660,
   "by_source": {
-    "judicial": 2310
+    "judicial": 1660
   },
-  "errors": [],
+  "errors": [
+    {
+      "source": "judicial",
+      "error": "HTTP Error 500: Internal Server Error"
+    }
+  ],
   "judicial_enabled": true
 }
