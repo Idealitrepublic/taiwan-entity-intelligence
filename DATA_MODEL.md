@@ -49,7 +49,7 @@ Publication requires `EXACT` or `HIGH` confidence. `relationship_evidence` adds 
 ## Read projections and APIs
 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
-- `search_entities`: bounded to 20 published results; exact identifier, exact name, prefix, then contains ranking.
+- `search_entities`: NFKC-normalized and bounded to 20 published results across all Entity types; exact public company identifier, exact name/alias, prefix, then contains ranking.
 - `graph_entity_neighbors`: one-hop, keyset-cursor expansion; maximum 25 records per RPC call.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Browser expansion is bounded to three hops and 60 nodes.

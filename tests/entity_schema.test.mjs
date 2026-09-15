@@ -53,7 +53,16 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   await rejects("update public.relationships set start_date='2025-01-01',end_date='2024-01-01' where id=$1", 'time order checked', [rel.id]);
   await rejects("update public.evidence_records set summary='changed' where id=$1", 'evidence content immutable', [evidenceId]);
   await rejects('delete from public.evidence_records where id=$1', 'linked evidence cannot be deleted', [evidenceId]);
-  await db.exec("update public.relationships set status='published'; set constraints all immediate; reset role; set role anon;");
+  await db.exec("update public.relationships set status='published'; set constraints all immediate;");
+  await db.exec(`insert into public.entities
+    (id, entity_type, canonical_name, display_name, source, source_id, identity_status, publication_status)
+    values
+    ('33333333-3333-4333-8333-333333333333', 'Politician', '林立委', '林立委', 'fixture', 'legislator', 'SOURCE_SCOPED', 'published'),
+    ('44444444-4444-4444-8444-444444444444', 'GovernmentAgency', '交通部', '交通部', 'fixture', 'agency', 'EXACT', 'published'),
+    ('55555555-5555-4555-8555-555555555555', 'GovernmentOfficial', '王次長', '王次長', 'fixture', 'official', 'SOURCE_SCOPED', 'published')`);
+  await db.exec("insert into public.entity_aliases(entity_id, alias, source) values ('44444444-4444-4444-8444-444444444444', 'ＭＯＴＣ', 'fixture')");
+  await rejects("insert into public.entity_search_terms values ('44444444-4444-4444-8444-444444444444','ＭＯＴＣ','ＭＯＴＣ','alias')", 'search projection requires normalized terms');
+  await db.exec('reset role; set role anon;');
   assert.equal((await db.query('select count(*)::int n from public.relationships')).rows[0].n, 2);
   checks++;
   const companySearch = await db.query("select * from public.search_entities('測試公司', null, 20)");
@@ -62,12 +71,23 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   assert.equal(companySearch.rows[0].public_identifier, '12345678');
   const idSearch = await db.query("select * from public.search_entities('12345678', 'Company', 20)");
   assert.equal(idSearch.rows[0].match_type, 'identifier_exact');
+  const fullWidthIdSearch = await db.query("select * from public.search_entities('１２３４５６７８', 'Company', 20)");
+  assert.equal(fullWidthIdSearch.rows[0].entity_id, company.id);
+  const politicianSearch = await db.query("select * from public.search_entities('林立委', null, 20)");
+  assert.equal(politicianSearch.rows[0].entity_type, 'Politician');
+  const agencySearch = await db.query("select * from public.search_entities('交通', 'GovernmentAgency', 20)");
+  assert.equal(agencySearch.rows[0].entity_type, 'GovernmentAgency');
+  const agencyAliasSearch = await db.query("select * from public.search_entities('MOTC', null, 20)");
+  assert.equal(agencyAliasSearch.rows[0].entity_type, 'GovernmentAgency');
+  const officialSearch = await db.query("select * from public.search_entities('王次長', 'GovernmentOfficial', 20)");
+  assert.equal(officialSearch.rows[0].entity_type, 'GovernmentOfficial');
+  assert.equal((await db.query("select count(*)::int n from public.search_entities('林立委', 'Person', 20)")).rows[0].n, 0);
   const sameName = await db.query("select * from public.search_entities('同名測試人', 'Person', 20)");
   assert.equal(sameName.rows.length, 2, 'same-name source observations must remain separate');
   assert.notEqual(sameName.rows[0].entity_id, sameName.rows[1].entity_id);
   assert.equal((await db.query('select count(*)::int n from public.entity_public_identifiers')).rows[0].n, 1);
   assert.equal((await db.query("select prosecdef from pg_proc where proname='search_entities'")).rows[0].prosecdef, false);
-  checks += 6;
+  checks += 12;
   await rejects("select * from public.search_entities('王', null, 20)", 'one-character enumeration denied');
   await rejects("select * from public.search_entities('測試', null, 21)", 'unbounded result limit denied');
   await rejects("select * from public.search_entities('測試', 'Arbitrary', 20)", 'unknown entity type denied');

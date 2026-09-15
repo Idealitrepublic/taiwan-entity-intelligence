@@ -118,4 +118,10 @@ Migration `20260915171831_phase_1_public_model_hardening.sql` repeats publicatio
 
 There is no Phase 1 UI layout or interaction change. Existing search, company, procurement, penalty, judgment, and Graph flows retain their response shapes. The migration is intentionally not applied to Production by this branch; database acceptance requires a non-production Supabase target, while the Preview may perform only public read checks against the currently configured store.
 
-Debt A6 is resolved in the migration and automated PGlite tests, but remains unapplied to the shared database until an accepted database deployment. A2, A3, A4, A5, A7, A8, and A9 remain open. The known judicial zero-record gap remains A1/Phase 3 work and is not part of this phase.
+Debt A6 is resolved in the migration and automated PGlite tests, but remains unapplied to the shared database until an accepted database deployment. A2, A3, A4, A5, A7, A8, and A9 remain open. The known judicial zero-record gap remains A1/Phase 4 work and is not part of this phase.
+
+## Phase 2 global entity search
+
+The existing read path remains `web/index.html -> /api/v1/search -> search_entities`. Phase 2 does not add another search service or alter the version-1 response. Input is normalized with Unicode NFKC in the browser, API validation, search projection refresh, and RPC query. This makes full-width company numbers and compatibility characters deterministic while retaining the eight-digit direct company-investigation path.
+
+Migration `20260915173315_phase_2_global_entity_search.sql` keeps `search_entities(text,text,integer)` stable, explicitly filters published entities, and refreshes canonical names, display names, aliases, and the allowlisted company-number projection. Search remains bounded to 20 records and supports every declared Entity type; the UI now exposes every type as an optional filter. Multi-type PGlite fixtures cover Company, Person, Politician, GovernmentOfficial, and GovernmentAgency without seeding or modifying Production.

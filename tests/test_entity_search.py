@@ -16,6 +16,10 @@ class EntitySearchTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 parse_search_request(query)
 
+    def test_request_normalizes_compatibility_characters(self):
+        request = parse_search_request({"q": [" ２３０６０２４８ "]})
+        self.assertEqual(request.term, "23060248")
+
     def test_api_returns_classified_results_without_merging_names(self):
         repo = Mock()
         repo.search.return_value = {
@@ -60,6 +64,9 @@ class EntitySearchTests(unittest.TestCase):
         self.assertIn("/api/v1/search?", html)
         self.assertIn("async function searchCompany", html)
         self.assertIn("同名人物會分開顯示", html)
+        self.assertIn("value.normalize('NFKC')", html)
+        self.assertIn('value="GovernmentAgency"', html)
+        self.assertIn('value="LobbyingRecord"', html)
         self.assertNotIn('maxlength="8" inputmode="numeric"', html)
 
 
