@@ -40,7 +40,7 @@ Entity <- EntityEvidence -> Evidence
 
 `relationships` connects two different entities using a constrained `relationship_type`. It carries time precision, quantities/amounts, source role, confidence, publication status, and a mandatory `primary_evidence_id`.
 
-Publication requires `EXACT` or `HIGH` confidence. `relationship_evidence` adds supporting, contextual, or refuting evidence. `relationship_types` defines allowed endpoint types and directionality, though endpoint compatibility still needs application/ingestion enforcement.
+Publication requires `EXACT` or `HIGH` confidence. `relationship_evidence` adds supporting, contextual, or refuting evidence. `relationship_types` defines allowed endpoint types and directionality. A deferred database constraint enforces compatible endpoint types, published endpoints, and active/published primary evidence in the same transaction.
 
 ### Resolution
 
@@ -48,6 +48,7 @@ Publication requires `EXACT` or `HIGH` confidence. `relationship_evidence` adds 
 
 ## Read projections and APIs
 
+- `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
 - `search_entities`: bounded to 20 published results; exact identifier, exact name, prefix, then contains ranking.
 - `graph_entity_neighbors`: one-hop, keyset-cursor expansion; maximum 25 records per RPC call.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
@@ -75,8 +76,8 @@ Before scaling, verify with real query plans:
 
 ## Open model decisions
 
-- Define deletion versus withdrawal/retention semantics for every core table.
-- Enforce relationship endpoint compatibility declared in `relationship_types`.
-- Define source correction and retraction propagation to dependent relationships.
+- Routine correction inserts a new immutable Evidence version; existing Evidence is marked superseded or retracted rather than edited.
+- Entity withdrawal and primary-Evidence withdrawal/retraction automatically retract dependent published relationships. Republish requires an explicit relationship review; it is never automatic.
+- Core foreign keys use restrictive deletion semantics. Routine hard deletion is unsupported; retention and exceptional cleanup policy still require an operations decision.
 - Define entity merge/split audit records and reversible resolution decisions.
 - Decide whether penalties, contracts, and judgments remain entities, evidence, or both under explicit modeling rules.

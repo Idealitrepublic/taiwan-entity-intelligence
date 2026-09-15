@@ -15,6 +15,8 @@ Exit gate: documentation reviewed; no Production mutation; branch diff is bounde
 
 ## Phase 1 — Entity and Evidence foundation
 
+Status: model hardening implemented on `phase-1/entity-relationship-evidence`; Preview acceptance and Production migration remain gated.
+
 Goal: make identity and provenance the stable base before expanding features.
 
 - Consolidate canonical routing/service boundaries without response changes.
@@ -23,6 +25,8 @@ Goal: make identity and provenance the stable base before expanding features.
 - Verify explicit Data API grants before Supabase's 2026-10-30 enforcement date.
 - Add Preview-isolation assertions and a non-production dataset fixture.
 - Add contract tests proving public clients cannot read private identifiers or use service-role access.
+
+This branch centralizes the version-1 public Entity/Relationship/Evidence contract, adds explicit publication predicates to public model policies, and covers withdraw/republish projection races. It does not change the UI or legacy company responses. Preview isolation is limited to read-only public access until a dedicated non-production Supabase target is provisioned; no Production migration is authorized.
 
 Exit gate: Entity/Evidence invariants, RLS, retraction, and Preview isolation pass automated tests.
 

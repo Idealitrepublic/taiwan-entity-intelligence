@@ -6,12 +6,23 @@ from urllib.parse import parse_qs, urlsplit
 
 from app import app
 from src.entities.api import dispatch_entity_api
+from src.entities.contracts import ENTITY_FIELDS, EVIDENCE_FIELDS, RELATIONSHIP_FIELDS
 from src.entities.repository import EntityRepository, EntityStoreUnavailable
 
 ID = "11111111-1111-4111-8111-111111111111"
 
 
 class EntityApiTests(unittest.TestCase):
+    def test_public_contract_is_allowlisted_and_keeps_v1_envelope(self):
+        repo = Mock()
+        repo.entity.return_value = {"id": ID, "display_name": "測試公司"}
+        code, body, _ = dispatch_entity_api(f"/api/v1/entities/{ID}", {}, repo)
+        self.assertEqual((code, body["api_version"]), (200, "1"))
+        self.assertNotIn("source_id", ENTITY_FIELDS)
+        self.assertNotIn("publication_status", ENTITY_FIELDS)
+        self.assertIn("primary_evidence_id", RELATIONSHIP_FIELDS)
+        self.assertIn("content_hash", EVIDENCE_FIELDS)
+
     def test_invalid_id_is_rejected_before_network(self):
         with patch("urllib.request.urlopen", side_effect=AssertionError("network forbidden")):
             code, _, _ = dispatch_entity_api("/api/v1/entities/not-a-uuid", {})

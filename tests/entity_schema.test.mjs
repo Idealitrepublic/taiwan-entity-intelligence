@@ -79,6 +79,26 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   assert.equal(graphRows.rows[0].primary_evidence.status, 'active');
   checks += 4;
   await rejects('select * from public.graph_entity_neighbors($1, 26, null, null)', 'unbounded graph expansion denied', [company.id]);
+  const lifecycleId = '22222222-2222-4222-8222-222222222222';
+  await db.exec('reset role; set role service_role;');
+  await db.query(`insert into public.entities
+    (id, entity_type, canonical_name, display_name, source, source_id, identity_status, publication_status)
+    values ($1, 'Company', '投影生命週期公司', '投影生命週期公司', 'fixture', 'lifecycle', 'EXACT', 'published')`,
+    [lifecycleId]);
+  await db.exec('reset role; set role anon;');
+  assert.equal((await db.query("select count(*)::int n from public.search_entities('投影生命週期公司', null, 20)")).rows[0].n, 1);
+  checks++;
+  await db.exec('reset role; set role service_role;');
+  await db.query("update public.entities set publication_status='withdrawn' where id=$1", [lifecycleId]);
+  await db.exec('reset role; set role anon;');
+  assert.equal((await db.query('select count(*)::int n from public.entity_search_terms where entity_id=$1', [lifecycleId])).rows[0].n, 0);
+  assert.equal((await db.query("select count(*)::int n from public.search_entities('投影生命週期公司', null, 20)")).rows[0].n, 0);
+  checks += 2;
+  await db.exec('reset role; set role service_role;');
+  await db.query("update public.entities set publication_status='published' where id=$1", [lifecycleId]);
+  await db.exec('reset role; set role anon;');
+  assert.equal((await db.query("select count(*)::int n from public.search_entities('投影生命週期公司', null, 20)")).rows[0].n, 1);
+  checks++;
   await db.exec('reset role; set role service_role;');
   await db.query("update public.evidence_records set status='retracted' where id=$1", [evidenceId]);
   assert.equal((await db.query('select status from public.relationships where id=$1', [rel.id])).rows[0].status, 'retracted');

@@ -4,15 +4,18 @@ import os
 import urllib.error
 import urllib.request
 from urllib.parse import urlencode
+from .contracts import (
+    ENTITY_FIELDS as PUBLIC_ENTITY_FIELDS,
+    EVIDENCE_FIELDS as PUBLIC_EVIDENCE_FIELDS,
+    RELATIONSHIP_FIELDS as PUBLIC_RELATIONSHIP_FIELDS,
+    select_list,
+)
 from .models import uuid_string
 from src.public_config import SUPABASE_PUBLISHABLE_KEY
 
-ENTITY_FIELDS = "id,entity_type,canonical_name,display_name,identity_status,created_at,updated_at"
-EVIDENCE_FIELDS = ("id,source_name,source_record_id,source_class,source_url,source_locator,"
-                   "title,summary,observed_at,retrieved_at,content_hash,status,created_at,updated_at")
-RELATIONSHIP_FIELDS = ("id,source_entity_id,target_entity_id,relationship_type,primary_evidence_id,"
-                       "start_date,end_date,date_precision,observed_at,amount,currency,percentage,"
-                       "quantity,quantity_unit,source_role,confidence,status,created_at,updated_at")
+ENTITY_FIELDS = select_list(PUBLIC_ENTITY_FIELDS)
+EVIDENCE_FIELDS = select_list(PUBLIC_EVIDENCE_FIELDS)
+RELATIONSHIP_FIELDS = select_list(PUBLIC_RELATIONSHIP_FIELDS)
 
 
 class EntityStoreUnavailable(RuntimeError):

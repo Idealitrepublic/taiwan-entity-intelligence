@@ -109,3 +109,13 @@ Source adapters -> immutable Evidence -> resolved Entity -> evidence-backed Rela
 ```
 
 Source-specific payloads remain provenance; published Entity and Relationship records are curated projections, never unsupported inferences.
+
+## Phase 1 model hardening
+
+Phase 1 keeps the deployed WSGI and browser boundaries unchanged. `src/entities/contracts.py` is now the single allowlist for public Entity, Relationship, and Evidence fields and the version-1 response envelope. The repository continues to use anonymous, RLS-aware reads; no public write route or service-role fallback was added.
+
+Migration `20260915171831_phase_1_public_model_hardening.sql` repeats publication-state checks inside the public search, relationship, and evidence-link policies. This removes the search projection refresh process as a single safety boundary. The existing deferred relationship constraint remains authoritative for endpoint types, published endpoints, confidence, and active/published primary evidence; existing withdrawal triggers retract dependent published relationships.
+
+There is no Phase 1 UI layout or interaction change. Existing search, company, procurement, penalty, judgment, and Graph flows retain their response shapes. The migration is intentionally not applied to Production by this branch; database acceptance requires a non-production Supabase target, while the Preview may perform only public read checks against the currently configured store.
+
+Debt A6 is resolved in the migration and automated PGlite tests, but remains unapplied to the shared database until an accepted database deployment. A2, A3, A4, A5, A7, A8, and A9 remain open. The known judicial zero-record gap remains A1/Phase 3 work and is not part of this phase.

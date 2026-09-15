@@ -1,5 +1,6 @@
 """Read-only Entity API with bounded search and lazy graph expansion."""
 import os
+from .contracts import response
 from .models import uuid_string
 from .repository import EntityRepository, EntityStoreUnavailable
 from .search import parse_search_request
@@ -20,7 +21,7 @@ def dispatch_entity_api(path, query, repository=None):
                                        limit=request.limit)
         except EntityStoreUnavailable:
             return 503, {"status": "unavailable", "error": "搜尋資料庫暫時無法使用 / Search store unavailable"}, None
-        return 200, {"api_version": "1", "data": result}, None
+        return 200, response(result), None
     parts = path.strip("/").split("/")
     if len(parts) == 4 and parts[2] == "graph":
         try:
@@ -46,7 +47,7 @@ def dispatch_entity_api(path, query, repository=None):
             return 503, {"status": "unavailable", "error": "關係圖資料暫時無法使用 / Graph store unavailable"}, None
         if result is None:
             return 404, {"error": "找不到已公開實體 / Published entity not found"}, None
-        return 200, {"api_version": "1", "data": result}, None
+        return 200, response(result), None
     valid = (len(parts) == 4 and parts[2] in ("entities", "relationships", "evidence")) or (
         len(parts) == 5 and parts[2] == "entities" and parts[4] == "relationships")
     if not valid:
@@ -83,4 +84,4 @@ def dispatch_entity_api(path, query, repository=None):
         return 503, {"status": "unavailable", "error": "實體資料庫暫時無法使用 / Entity store unavailable"}, None
     if result is None:
         return 404, {"error": "找不到已公開紀錄 / Published record not found"}, None
-    return 200, {"api_version": "1", "data": result}, None
+    return 200, response(result), None
