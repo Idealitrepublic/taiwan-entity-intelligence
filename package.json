@@ -8,7 +8,7 @@
     "build": "python scripts/build_check.py",
     "test": "python -m unittest discover -s tests -v && node tests/entity_schema.test.mjs",
     "test:live": "python -m pytest tests/test_public_sources.py tests/test_multi_company_sources.py -v",
-    "dev": "python app.py"
+    "dev": "sh -c 'set -a; [ ! -f .env.local ] || . ./.env.local; set +a; exec python app.py'"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.7"

@@ -1,5 +1,6 @@
 """Canonical WSGI entrypoint shared by every Vercel domain."""
 import json
+import os
 import re
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -71,4 +72,7 @@ application = app
 
 if __name__ == '__main__':
     from wsgiref.simple_server import make_server
-    make_server('0.0.0.0', 8000, app).serve_forever()
+    host = os.environ.get('HOST', '127.0.0.1')
+    port = int(os.environ.get('PORT', '3000'))
+    print(f'T.E.I. local server: http://{host}:{port}', flush=True)
+    make_server(host, port, app).serve_forever()
