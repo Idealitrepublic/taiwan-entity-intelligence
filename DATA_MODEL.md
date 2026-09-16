@@ -51,9 +51,12 @@ Publication requires `EXACT` or `HIGH` confidence. `relationship_evidence` adds 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
 - `search_entities`: NFKC-normalized and bounded to 20 published results across all Entity types; exact public company identifier, exact name/alias, prefix, then contains ranking.
 - `graph_entity_neighbors`: one-hop, keyset-cursor expansion; maximum 25 records per RPC call.
+- `find_entity_relationship_path`: bidirectional traversal over published relationships; shortest path within a caller-selected one-to-three-hop depth and a fixed 50-relationship expansion cap per entity.
+- Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.
 - Graph edges preserve `source_entity_id -> relationship_type -> target_entity_id` direction and expose the edge's active primary Evidence without duplicating it into Entity state.
+- Path segments preserve the stored edge direction, identify forward/reverse traversal, and carry dates, amounts, primary Evidence, source record IDs, and source URLs in one bounded RPC response.
 
 ## Constraints and indexes
 

@@ -22,6 +22,25 @@ def dispatch_entity_api(path, query, repository=None):
         except EntityStoreUnavailable:
             return 503, {"status": "unavailable", "error": "搜尋資料庫暫時無法使用 / Search store unavailable"}, None
         return 200, response(result), None
+    if path.rstrip("/") == "/api/v1/paths":
+        try:
+            source_id = uuid_string(query.get("source", [None])[0])
+            target_id = uuid_string(query.get("target", [None])[0])
+            max_depth = int(query.get("max_depth", ["3"])[0])
+            if source_id == target_id or not 1 <= max_depth <= 3:
+                raise ValueError("Invalid path bounds")
+        except (TypeError, ValueError):
+            return 400, {"error": "請提供不同的 Entity UUID，max depth 須為 1–3 / Invalid path parameters"}, None
+        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
+            return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
+        repository = repository or EntityRepository()
+        try:
+            result = repository.relationship_path(source_id, target_id, max_depth=max_depth)
+        except EntityStoreUnavailable:
+            return 503, {"status": "unavailable", "error": "關係路徑資料暫時無法使用 / Path store unavailable"}, None
+        if result is None:
+            return 404, {"error": "找不到已公開的起點或終點實體 / Published path endpoint not found"}, None
+        return 200, response(result), None
     parts = path.strip("/").split("/")
     if len(parts) == 4 and parts[2] == "graph":
         try:

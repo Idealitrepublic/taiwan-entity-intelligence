@@ -133,3 +133,13 @@ Graph 2.0 keeps the existing `/api/v1/graph/{entity_id}` envelope and the one-ho
 The Entity graph now exposes a selectable one-, two-, or three-hop ceiling, relationship-type filtering, labeled nodes, evidence inspection, expansion animation, and direct node repositioning. It preserves the legacy eight-digit company graph and its pan/zoom/collapse behavior. Browser state is capped at 60 nodes; changing hop or relationship filters rebuilds the bounded view from the root so stale out-of-scope edges cannot remain visible.
 
 No Phase 3 schema change is required: endpoint compatibility, publication state, active primary Evidence, RLS, grants, source/target indexes, and cursor ordering are already enforced by the Phase 1–2 migrations and the existing graph RPC. Phase 3 adds PGlite regression coverage for filter and cursor behavior. Production migrations and the known judicial zero-record issue remain outside this phase.
+
+## Phase 4 Relationship Path Finder
+
+The read path is `web/index.html -> /api/v1/paths -> find_entity_relationship_path`. The browser lets an investigator select two published Entity records from search results or graph nodes, then requests their shortest evidence-backed path. Every returned segment keeps the underlying relationship direction while also declaring whether the A-to-B traversal follows or reverses that direction.
+
+The database performs one `SECURITY INVOKER`, RLS-aware recursive query. It rejects identical endpoints, enforces `max_depth` from one to three, prevents entity cycles with a visited UUID array, and examines at most 50 ordered relationships per expanded entity. Only published Entities and Relationships with active, published primary Evidence participate. The response reports these limits so a zero result is not presented as proof that no relationship exists outside the bounded search.
+
+For backward compatibility while the additive migration awaits acceptance, the repository detects only the RPC-missing response and falls back to Graph 2.0 pages. That fallback uses breadth-first search, 12 relationships per entity, at most 30 expanded entities, cycle prevention, and an explicit `truncated` flag. Other database failures still surface as unavailable rather than silently falling back.
+
+No public table or write path is added. The existing source/target relationship indexes remain the access paths; the API preserves the version-1 envelope and all Graph 2.0 endpoints. Each segment includes relationship type, available dates and amounts, primary Evidence, source record ID, and original source URL. The migration remains unapplied to Production until Preview acceptance.

@@ -53,7 +53,19 @@ Status: implemented on `phase-3/graph-2`; Preview acceptance remains gated.
 
 Exit gate: bounded graph expansion remains correct and performant on representative data.
 
-## Phase 4 — Source adapter reliability
+## Phase 4 — Relationship Path Finder
+
+Status: implemented on `phase-4/relationship-path-finder`; Preview acceptance and Production migration remain gated.
+
+- Find the shortest published Entity A → Entity B path within one to three hops.
+- Keep traversal cycle-free and cap expansion at 50 relationships per entity.
+- Return relationship direction/type, dates, amounts, primary Evidence, and original source details for every segment.
+- Preserve the version-1 API envelope, Global Entity Search, Graph 2.0, and legacy company investigation behavior.
+- Verify the RPC under anonymous RLS with deterministic PostgreSQL fixtures and deploy only to Vercel Preview.
+
+Exit gate: targeted tests, bounded traversal DB checks, full build, and protected Preview runtime checks pass without a Production mutation.
+
+## Phase 5 — Source adapter reliability
 
 - Unify procurement, penalty, judicial, fraud/domain, and registry adapters behind consistent source-result contracts.
 - Repair the canonical judicial known-case path and add deterministic fixtures.
@@ -62,7 +74,7 @@ Exit gate: bounded graph expansion remains correct and performant on representat
 
 Exit gate: each source has read-only Preview acceptance tests and observable failure states.
 
-## Phase 5 — Delivery and operations
+## Phase 6 — Delivery and operations
 
 - Standardize Python/Node versions across local, CI, and Vercel.
 - Replace Production-facing CI smoke tests with Preview gates; make ingestion jobs explicit and approved.

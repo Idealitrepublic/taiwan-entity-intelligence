@@ -114,6 +114,45 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   checks++;
   await rejects('select * from public.graph_entity_neighbors($1, 26, null, null)', 'unbounded graph expansion denied', [company.id]);
   await rejects("select * from public.graph_entity_neighbors($1, 12, null, 'ARBITRARY')", 'unknown graph relationship type denied', [company.id]);
+  await db.exec('reset role; set role service_role;');
+  await db.query(`insert into public.relationships
+    (id, source_entity_id, target_entity_id, relationship_type, primary_evidence_id,
+     observed_at, confidence, status)
+    values
+    ('66666666-6666-4666-8666-666666666666', $1,
+     '44444444-4444-4444-8444-444444444444', 'CONTRACT_WITH', $2,
+     '2025-01-01T00:00:00Z', 'EXACT', 'published'),
+    ('77777777-7777-4777-8777-777777777777',
+     '55555555-5555-4555-8555-555555555555',
+     '44444444-4444-4444-8444-444444444444', 'GOVERNMENT_POSITION', $2,
+     '2025-01-01T00:00:00Z', 'EXACT', 'published')`, [company.id, evidenceId]);
+  await db.exec('set constraints all immediate; reset role; set role anon;');
+  const pathRows = await db.query(
+    'select * from public.find_entity_relationship_path($1, $2, 3)',
+    [rel.source_entity_id, '55555555-5555-4555-8555-555555555555']);
+  assert.equal(pathRows.rows.length, 1);
+  assert.equal(pathRows.rows[0].path_result.found, true);
+  assert.equal(pathRows.rows[0].path_result.depth, 3);
+  assert.equal(pathRows.rows[0].path_result.segments.length, 3);
+  assert.equal(pathRows.rows[0].path_result.segments[0].evidence.id, evidenceId);
+  assert.equal(pathRows.rows[0].path_result.segments[1].relationship.amount, null);
+  assert.equal(pathRows.rows[0].path_result.segments[2].traversal_direction, 'reverse');
+  assert.equal(pathRows.rows[0].path_result.relationship_limit_per_node, 50);
+  checks += 8;
+  const shallowPath = await db.query(
+    'select * from public.find_entity_relationship_path($1, $2, 2)',
+    [rel.source_entity_id, '55555555-5555-4555-8555-555555555555']);
+  assert.equal(shallowPath.rows[0].path_result.found, false);
+  assert.deepEqual(shallowPath.rows[0].path_result.segments, []);
+  assert.equal((await db.query(
+    "select count(*)::int n from public.find_entity_relationship_path($1, '99999999-9999-4999-8999-999999999999', 3)",
+    [rel.source_entity_id])).rows[0].n, 0);
+  assert.equal((await db.query(
+    "select prosecdef from pg_proc where proname='find_entity_relationship_path'")).rows[0].prosecdef, false);
+  checks += 4;
+  await rejects('select * from public.find_entity_relationship_path($1, $1, 3)', 'identical endpoints denied', [rel.source_entity_id]);
+  await rejects('select * from public.find_entity_relationship_path($1, $2, 0)', 'zero path depth denied', [rel.source_entity_id, company.id]);
+  await rejects('select * from public.find_entity_relationship_path($1, $2, 4)', 'unbounded path depth denied', [rel.source_entity_id, company.id]);
   const lifecycleId = '22222222-2222-4222-8222-222222222222';
   await db.exec('reset role; set role service_role;');
   await db.query(`insert into public.entities

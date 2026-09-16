@@ -22,6 +22,10 @@ class EntityStoreUnavailable(RuntimeError):
     """No credentials or unavailable/missing Phase 1 schema."""
 
 
+class EntityFeatureUnavailable(EntityStoreUnavailable):
+    """The backing store is reachable but does not have an additive read RPC yet."""
+
+
 class EntityRepository:
     def __init__(self, transport=None):
         self.url = os.environ.get("TEI_ENTITY_SUPABASE_URL") or os.environ.get(
@@ -40,6 +44,10 @@ class EntityRepository:
         try:
             with urllib.request.urlopen(request, timeout=12) as response:
                 rows = json.load(response)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404 and table == "rpc/find_entity_relationship_path":
+                raise EntityFeatureUnavailable("Path RPC is not installed") from exc
+            raise EntityStoreUnavailable("Entity database unavailable") from exc
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
             raise EntityStoreUnavailable("Entity database unavailable") from exc
         if not isinstance(rows, list):
@@ -143,3 +151,93 @@ class EntityRepository:
                 "has_more": has_more,
                 "next_cursor": edges[-1]["id"] if has_more and edges else None,
                 "requested_limit": limit}
+
+    def relationship_path(self, source_entity_id, target_entity_id, *, max_depth=3):
+        source_entity_id = uuid_string(source_entity_id)
+        target_entity_id = uuid_string(target_entity_id)
+        try:
+            rows = self.transport("rpc/find_entity_relationship_path", {
+                "start_entity_id": source_entity_id,
+                "end_entity_id": target_entity_id,
+                "max_depth": max_depth,
+            })
+        except EntityFeatureUnavailable:
+            return self._relationship_path_from_graph(source_entity_id, target_entity_id,
+                                                      max_depth=max_depth)
+        if not rows:
+            return None
+        result = rows[0].get("path_result")
+        if not isinstance(result, dict):
+            raise EntityStoreUnavailable("Unexpected path response")
+        return result
+
+    def _relationship_path_from_graph(self, source_entity_id, target_entity_id, *, max_depth):
+        page_size, entity_limit = 12, 30
+        target_graph = self.graph_neighbors(target_entity_id, limit=1)
+        if target_graph is None:
+            return None
+        target = next((node for node in target_graph["nodes"]
+                       if node["id"] == target_entity_id), None)
+        frontier = [source_entity_id]
+        visited = {source_entity_id}
+        parents = {}
+        entities = {target_entity_id: target}
+        expanded = 0
+        truncated = False
+        source = None
+        for _depth in range(1, max_depth + 1):
+            next_frontier = []
+            for current_id in frontier:
+                if expanded >= entity_limit:
+                    truncated = True
+                    break
+                graph = self.graph_neighbors(current_id, limit=page_size)
+                if graph is None:
+                    if current_id == source_entity_id:
+                        return None
+                    continue
+                expanded += 1
+                entities.update({node["id"]: node for node in graph["nodes"]})
+                source = source or entities.get(source_entity_id)
+                truncated = truncated or graph["has_more"]
+                for edge in graph["edges"]:
+                    neighbor_id = edge["target"] if edge["source"] == current_id else edge["source"]
+                    if neighbor_id in visited:
+                        continue
+                    visited.add(neighbor_id)
+                    parents[neighbor_id] = (current_id, edge)
+                    if neighbor_id == target_entity_id:
+                        segments = []
+                        cursor = target_entity_id
+                        while cursor != source_entity_id:
+                            previous, path_edge = parents[cursor]
+                            segments.append({
+                                "from_entity": entities.get(previous, {"id": previous}),
+                                "to_entity": entities.get(cursor, {"id": cursor}),
+                                "traversal_direction": (
+                                    "forward" if path_edge["source"] == previous else "reverse"),
+                                "relationship": {key: value for key, value in path_edge.items()
+                                                 if key != "primary_evidence"},
+                                "evidence": path_edge.get("primary_evidence"),
+                            })
+                            cursor = previous
+                        segments.reverse()
+                        return {"found": True, "source_entity": source,
+                                "target_entity": target, "depth": len(segments),
+                                "segments": segments, "max_depth": max_depth,
+                                "relationship_limit_per_node": page_size,
+                                "entity_expansion_limit": entity_limit,
+                                "traversal_bounded": True, "truncated": truncated,
+                                "backend": "graph_neighbors_fallback"}
+                    next_frontier.append(neighbor_id)
+            if truncated and expanded >= entity_limit:
+                break
+            frontier = next_frontier
+            if not frontier:
+                break
+        return {"found": False, "source_entity": source, "target_entity": target,
+                "depth": None, "segments": [], "max_depth": max_depth,
+                "relationship_limit_per_node": page_size,
+                "entity_expansion_limit": entity_limit,
+                "traversal_bounded": True, "truncated": truncated,
+                "backend": "graph_neighbors_fallback"}
