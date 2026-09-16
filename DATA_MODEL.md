@@ -52,7 +52,8 @@ Publication requires `EXACT` or `HIGH` confidence. `relationship_evidence` adds 
 - `search_entities`: NFKC-normalized and bounded to 20 published results across all Entity types; exact public company identifier, exact name/alias, prefix, then contains ranking.
 - `graph_entity_neighbors`: one-hop, keyset-cursor expansion; maximum 25 records per RPC call.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
-- Browser expansion is bounded to three hops and 60 nodes.
+- Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.
+- Graph edges preserve `source_entity_id -> relationship_type -> target_entity_id` direction and expose the edge's active primary Evidence without duplicating it into Entity state.
 
 ## Constraints and indexes
 

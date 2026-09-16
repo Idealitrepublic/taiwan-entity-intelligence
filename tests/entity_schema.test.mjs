@@ -98,7 +98,22 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   assert.equal(graphRows.rows[0].relationship.relationship_type, 'DIRECTOR_OF');
   assert.equal(graphRows.rows[0].primary_evidence.status, 'active');
   checks += 4;
+  const filteredGraphRows = await db.query(
+    "select * from public.graph_entity_neighbors($1, 25, null, 'DIRECTOR_OF')", [company.id]);
+  assert.equal(filteredGraphRows.rows.length, 2, 'relationship filter keeps matching edges');
+  const cursorGraphRows = await db.query(
+    'select * from public.graph_entity_neighbors($1, 1, $2, null)',
+    [company.id, graphRows.rows[0].relationship.id]);
+  assert.equal(cursorGraphRows.rows.length, 1, 'keyset cursor advances without overlap');
+  assert.notEqual(cursorGraphRows.rows[0].relationship.id, graphRows.rows[0].relationship.id);
+  checks += 3;
+  const graphIndexes = await db.query(`select indexname from pg_indexes
+    where schemaname='public' and indexname in
+      ('relationships_source_type_idx','relationships_target_type_idx')`);
+  assert.equal(graphIndexes.rows.length, 2, 'both graph endpoint access paths are indexed');
+  checks++;
   await rejects('select * from public.graph_entity_neighbors($1, 26, null, null)', 'unbounded graph expansion denied', [company.id]);
+  await rejects("select * from public.graph_entity_neighbors($1, 12, null, 'ARBITRARY')", 'unknown graph relationship type denied', [company.id]);
   const lifecycleId = '22222222-2222-4222-8222-222222222222';
   await db.exec('reset role; set role service_role;');
   await db.query(`insert into public.entities

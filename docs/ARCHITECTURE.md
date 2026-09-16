@@ -125,3 +125,11 @@ Debt A6 is resolved in the migration and automated PGlite tests, but remains una
 The existing read path remains `web/index.html -> /api/v1/search -> search_entities`. Phase 2 does not add another search service or alter the version-1 response. Input is normalized with Unicode NFKC in the browser, API validation, search projection refresh, and RPC query. This makes full-width company numbers and compatibility characters deterministic while retaining the eight-digit direct company-investigation path.
 
 Migration `20260915173315_phase_2_global_entity_search.sql` keeps `search_entities(text,text,integer)` stable, explicitly filters published entities, and refreshes canonical names, display names, aliases, and the allowlisted company-number projection. Search remains bounded to 20 records and supports every declared Entity type; the UI now exposes every type as an optional filter. Multi-type PGlite fixtures cover Company, Person, Politician, GovernmentOfficial, and GovernmentAgency without seeding or modifying Production.
+
+## Phase 3 Graph 2.0
+
+Graph 2.0 keeps the existing `/api/v1/graph/{entity_id}` envelope and the one-hop `graph_entity_neighbors` RPC. The browser composes those bounded pages into an Entity→Relationship→Entity view: every edge retains its direction, relationship type, and active primary Evidence record. Expansion remains lazy and uses one RPC call per clicked node, with keyset cursors for additional pages rather than offsets or per-edge lookups.
+
+The Entity graph now exposes a selectable one-, two-, or three-hop ceiling, relationship-type filtering, labeled nodes, evidence inspection, expansion animation, and direct node repositioning. It preserves the legacy eight-digit company graph and its pan/zoom/collapse behavior. Browser state is capped at 60 nodes; changing hop or relationship filters rebuilds the bounded view from the root so stale out-of-scope edges cannot remain visible.
+
+No Phase 3 schema change is required: endpoint compatibility, publication state, active primary Evidence, RLS, grants, source/target indexes, and cursor ordering are already enforced by the Phase 1–2 migrations and the existing graph RPC. Phase 3 adds PGlite regression coverage for filter and cursor behavior. Production migrations and the known judicial zero-record issue remain outside this phase.
