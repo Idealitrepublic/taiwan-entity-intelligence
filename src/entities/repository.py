@@ -8,6 +8,7 @@ from .contracts import (
     ENTITY_FIELDS as PUBLIC_ENTITY_FIELDS,
     EVIDENCE_FIELDS as PUBLIC_EVIDENCE_FIELDS,
     RELATIONSHIP_FIELDS as PUBLIC_RELATIONSHIP_FIELDS,
+    POLITICIAN_TERM_FIELDS as PUBLIC_POLITICIAN_TERM_FIELDS,
     select_list,
 )
 from .models import uuid_string
@@ -16,6 +17,7 @@ from src.public_config import SUPABASE_PUBLISHABLE_KEY
 ENTITY_FIELDS = select_list(PUBLIC_ENTITY_FIELDS)
 EVIDENCE_FIELDS = select_list(PUBLIC_EVIDENCE_FIELDS)
 RELATIONSHIP_FIELDS = select_list(PUBLIC_RELATIONSHIP_FIELDS)
+POLITICIAN_TERM_FIELDS = select_list(PUBLIC_POLITICIAN_TERM_FIELDS)
 
 
 class EntityStoreUnavailable(RuntimeError):
@@ -45,8 +47,8 @@ class EntityRepository:
             with urllib.request.urlopen(request, timeout=12) as response:
                 rows = json.load(response)
         except urllib.error.HTTPError as exc:
-            if exc.code == 404 and table == "rpc/find_entity_relationship_path":
-                raise EntityFeatureUnavailable("Path RPC is not installed") from exc
+            if exc.code == 404 and table in ("rpc/find_entity_relationship_path", "politician_terms"):
+                raise EntityFeatureUnavailable("Additive Entity feature is not installed") from exc
             raise EntityStoreUnavailable("Entity database unavailable") from exc
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
             raise EntityStoreUnavailable("Entity database unavailable") from exc
@@ -151,6 +153,63 @@ class EntityRepository:
                 "has_more": has_more,
                 "next_cursor": edges[-1]["id"] if has_more and edges else None,
                 "requested_limit": limit}
+
+    def politician_profile(self, entity_id, *, relationship_limit=25):
+        entity_id = uuid_string(entity_id)
+        if not 1 <= relationship_limit <= 25:
+            raise ValueError("Politician relationship limit must be between 1 and 25")
+        profile = self.entity(entity_id)
+        if not profile or profile.get("entity_type") != "Politician":
+            return None
+        schema_available = True
+        try:
+            terms = self.transport("politician_terms", {
+                "select": (
+                    f"{POLITICIAN_TERM_FIELDS},"
+                    f"party:entities!politician_terms_party_entity_id_fkey({ENTITY_FIELDS}),"
+                    "primary_evidence:evidence_records!politician_terms_primary_evidence_id_fkey("
+                    f"{EVIDENCE_FIELDS})"
+                ),
+                "politician_entity_id": f"eq.{entity_id}",
+                "publication_status": "eq.published",
+                "order": "term_number.desc,start_date.desc,id.asc",
+                "limit": 21,
+            })
+        except EntityFeatureUnavailable:
+            terms, schema_available = [], False
+        relationship_rows = self.transport("relationships", {
+            "select": (
+                f"{RELATIONSHIP_FIELDS},"
+                f"source_entity:entities!relationships_source_entity_id_fkey({ENTITY_FIELDS}),"
+                f"target_entity:entities!relationships_target_entity_id_fkey({ENTITY_FIELDS}),"
+                "primary_evidence:evidence_records!relationships_primary_evidence_id_fkey("
+                f"{EVIDENCE_FIELDS})"
+            ),
+            "source_entity_id": f"eq.{entity_id}",
+            "relationship_type": (
+                "in.(MEMBER_OF,LEGISLATOR_OF,COMMITTEE_MEMBER,PROPOSED_BILL,CO_SPONSORED_BILL)"),
+            "status": "eq.published", "order": "id.asc", "limit": relationship_limit + 1,
+        })
+        groups = {"affiliations": [], "legislatures": [], "committees": [],
+                  "proposed_bills": [], "co_sponsored_bills": []}
+        relationship_groups = {
+            "MEMBER_OF": "affiliations", "LEGISLATOR_OF": "legislatures",
+            "COMMITTEE_MEMBER": "committees", "PROPOSED_BILL": "proposed_bills",
+            "CO_SPONSORED_BILL": "co_sponsored_bills",
+        }
+        for row in relationship_rows[:relationship_limit]:
+            group = relationship_groups.get(row.get("relationship_type"))
+            if not group or not row.get("target_entity") or not row.get("primary_evidence"):
+                continue
+            groups[group].append({
+                "relationship": {key: value for key, value in row.items()
+                                 if key not in ("source_entity", "target_entity", "primary_evidence")},
+                "entity": row["target_entity"],
+                "evidence": row["primary_evidence"],
+            })
+        return {"entity": profile, "terms": terms[:20], "terms_has_more": len(terms) > 20,
+                "relationship_has_more": len(relationship_rows) > relationship_limit,
+                "schema_available": schema_available, **groups}
 
     def relationship_path(self, source_entity_id, target_entity_id, *, max_depth=3):
         source_entity_id = uuid_string(source_entity_id)

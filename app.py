@@ -22,7 +22,7 @@ def dispatch(path, query):
     if path.startswith('/api/v1/'):
         return dispatch_entity_api(path, query)
     entity_uuid = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
-    page_route = path == '/' or bool(re.fullmatch(rf'/(?:entity|graph)/{entity_uuid}/?', path))
+    page_route = path == '/' or bool(re.fullmatch(rf'/(?:entity|graph|politician)/{entity_uuid}/?', path))
     if page_route or path in ('/app.js', '/tei-enhancements.js'):
         name = 'index.html' if page_route else path[1:]
         return 200, (WEB / name).read_text(), 'text/html; charset=utf-8' if page_route else 'application/javascript; charset=utf-8'

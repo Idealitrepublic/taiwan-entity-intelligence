@@ -50,6 +50,19 @@ RELATIONSHIP_FIELDS = (
     "created_at",
     "updated_at",
 )
+POLITICIAN_TERM_FIELDS = (
+    "id",
+    "politician_entity_id",
+    "term_number",
+    "constituency",
+    "constituency_type",
+    "party_entity_id",
+    "start_date",
+    "end_date",
+    "primary_evidence_id",
+    "created_at",
+    "updated_at",
+)
 
 
 def select_list(fields: tuple[str, ...]) -> str:

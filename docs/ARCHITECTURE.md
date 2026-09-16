@@ -143,3 +143,11 @@ The database performs one `SECURITY INVOKER`, RLS-aware recursive query. It reje
 For backward compatibility while the additive migration awaits acceptance, the repository detects only the RPC-missing response and falls back to Graph 2.0 pages. That fallback uses breadth-first search, 12 relationships per entity, at most 30 expanded entities, cycle prevention, and an explicit `truncated` flag. Other database failures still surface as unavailable rather than silently falling back.
 
 No public table or write path is added. The existing source/target relationship indexes remain the access paths; the API preserves the version-1 envelope and all Graph 2.0 endpoints. Each segment includes relationship type, available dates and amounts, primary Evidence, source record ID, and original source URL. The migration remains unapplied to Production until Preview acceptance.
+
+## Phase 5 Politician Entity
+
+The legislator profile path is `web/index.html -> /api/v1/politicians/{entity_id} -> politician_terms + bounded Relationships`. The canonical identity remains a `Politician` Entity. An additive, evidence-backed term table records term number, constituency, party Entity, and term dates; committee and bill activity reuse the existing Relationship and Evidence model.
+
+The public repository performs bounded reads: at most 20 term rows and 25 first-page legislative relationships. It classifies `MEMBER_OF`, `LEGISLATOR_OF`, `COMMITTEE_MEMBER`, `PROPOSED_BILL`, and `CO_SPONSORED_BILL` in one embedded Relationship read without per-edge queries. If the new table is absent, the same endpoint returns existing evidence-backed Relationships with an explicit schema-availability flag, retaining Preview compatibility before database acceptance.
+
+The browser adds a shareable `/politician/{uuid}` route and renders name, party, constituency, term, committee, proposal/co-sponsorship, Evidence, and original source links. Search, Graph 2.0, path finding, and the eight-digit company flow keep their existing contracts. The migration is not applied to Production in this phase.

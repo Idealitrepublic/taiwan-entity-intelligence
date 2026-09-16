@@ -65,7 +65,18 @@ Status: implemented on `phase-4/relationship-path-finder`; Preview acceptance an
 
 Exit gate: targeted tests, bounded traversal DB checks, full build, and protected Preview runtime checks pass without a Production mutation.
 
-## Phase 5 — Source adapter reliability
+## Phase 5 — Politician Entity
+
+Status: implemented on `phase-5/politician-entity`; Preview acceptance and Production migration remain gated.
+
+- Model legislators as canonical Politician Entities with evidence-backed terms, party, constituency, and dates.
+- Represent legislature, committee, proposal, and co-sponsorship through existing Relationship/Evidence edges.
+- Add a bounded read API and shareable legislator page while preserving company, search, Graph, and path contracts.
+- Verify RLS, grants, endpoint types, term constraints, backward-compatible fallback, and source links.
+
+Exit gate: targeted tests, PostgreSQL checks, full build, and protected Preview runtime checks pass without a Production mutation.
+
+## Phase 6 — Source adapter reliability
 
 - Unify procurement, penalty, judicial, fraud/domain, and registry adapters behind consistent source-result contracts.
 - Repair the canonical judicial known-case path and add deterministic fixtures.
@@ -74,7 +85,7 @@ Exit gate: targeted tests, bounded traversal DB checks, full build, and protecte
 
 Exit gate: each source has read-only Preview acceptance tests and observable failure states.
 
-## Phase 6 — Delivery and operations
+## Phase 7 — Delivery and operations
 
 - Standardize Python/Node versions across local, CI, and Vercel.
 - Replace Production-facing CI smoke tests with Preview gates; make ingestion jobs explicit and approved.

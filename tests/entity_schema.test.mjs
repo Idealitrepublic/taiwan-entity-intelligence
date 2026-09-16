@@ -59,11 +59,38 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
     values
     ('33333333-3333-4333-8333-333333333333', 'Politician', '林立委', '林立委', 'fixture', 'legislator', 'SOURCE_SCOPED', 'published'),
     ('44444444-4444-4444-8444-444444444444', 'GovernmentAgency', '交通部', '交通部', 'fixture', 'agency', 'EXACT', 'published'),
-    ('55555555-5555-4555-8555-555555555555', 'GovernmentOfficial', '王次長', '王次長', 'fixture', 'official', 'SOURCE_SCOPED', 'published')`);
+    ('55555555-5555-4555-8555-555555555555', 'GovernmentOfficial', '王次長', '王次長', 'fixture', 'official', 'SOURCE_SCOPED', 'published'),
+    ('88888888-8888-4888-8888-888888888888', 'PoliticalParty', '測試黨', '測試黨', 'fixture', 'party', 'EXACT', 'published'),
+    ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'LegislativeBill', '測試法案', '測試法案', 'fixture', 'bill', 'EXACT', 'published')`);
+  await db.query(`insert into public.politician_terms
+    (id, politician_entity_id, term_number, constituency, constituency_type,
+     party_entity_id, start_date, end_date, primary_evidence_id, publication_status)
+    values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      '33333333-3333-4333-8333-333333333333', 11, '臺北市第一選舉區', 'district',
+      '88888888-8888-4888-8888-888888888888', '2024-02-01', '2028-01-31', $1, 'published')`,
+    [evidenceId]);
+  await db.exec('set constraints all immediate;');
+  await rejects(`insert into public.politician_terms
+    (politician_entity_id, term_number, constituency, constituency_type,
+     party_entity_id, start_date, primary_evidence_id, publication_status)
+    values ('33333333-3333-4333-8333-333333333333', 12, '錯誤選區', 'district',
+      '44444444-4444-4444-8444-444444444444', '2028-02-01', $1, 'published')`,
+    'published term rejects a non-party entity', [evidenceId]);
   await db.exec("insert into public.entity_aliases(entity_id, alias, source) values ('44444444-4444-4444-8444-444444444444', 'ＭＯＴＣ', 'fixture')");
   await rejects("insert into public.entity_search_terms values ('44444444-4444-4444-8444-444444444444','ＭＯＴＣ','ＭＯＴＣ','alias')", 'search projection requires normalized terms');
   await db.exec('reset role; set role anon;');
   assert.equal((await db.query('select count(*)::int n from public.relationships')).rows[0].n, 2);
+  checks++;
+  const politicianTerms = await db.query(`select term_number,constituency,start_date,end_date
+    from public.politician_terms where politician_entity_id='33333333-3333-4333-8333-333333333333'`);
+  assert.equal(politicianTerms.rows.length, 1);
+  assert.equal(politicianTerms.rows[0].term_number, 11);
+  assert.equal(politicianTerms.rows[0].constituency, '臺北市第一選舉區');
+  checks += 3;
+  await rejects("insert into public.politician_terms(politician_entity_id,term_number,constituency,start_date,primary_evidence_id) values ('33333333-3333-4333-8333-333333333333',12,'篡改','2028-02-01',$1)", 'public term writes denied', [evidenceId]);
+  const politicianIndexes = await db.query(`select indexname from pg_indexes where schemaname='public'
+    and indexname in ('politician_terms_entity_period_idx','politician_terms_party_idx','politician_terms_evidence_idx')`);
+  assert.equal(politicianIndexes.rows.length, 3);
   checks++;
   const companySearch = await db.query("select * from public.search_entities('測試公司', null, 20)");
   assert.equal(companySearch.rows.length, 1);

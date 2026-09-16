@@ -46,12 +46,19 @@ Publication requires `EXACT` or `HIGH` confidence. `relationship_evidence` adds 
 
 `resolution_candidates` stores reviewable possible identity matches with evidence and decision state. It must never silently merge same-name people. `legacy_entity_map` provides deterministic migration continuity from old records.
 
+### Politician and legislative terms
+
+A legislator is a canonical `Politician` Entity; the name is not a unique identity key. `politician_terms` stores one evidence-backed term observation with term number, constituency/type, dates, optional `PoliticalParty` Entity, and mandatory primary Evidence. Only published politicians, parties, and active published Evidence may appear in a published term.
+
+Party membership, legislature, committee service, proposal, and co-sponsorship remain directed Relationships (`MEMBER_OF`, `LEGISLATOR_OF`, `COMMITTEE_MEMBER`, `PROPOSED_BILL`, `CO_SPONSORED_BILL`). Committees are `GovernmentAgency` Entities and bills are `LegislativeBill` Entities, so Graph and path queries remain reusable.
+
 ## Read projections and APIs
 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
 - `search_entities`: NFKC-normalized and bounded to 20 published results across all Entity types; exact public company identifier, exact name/alias, prefix, then contains ranking.
 - `graph_entity_neighbors`: one-hop, keyset-cursor expansion; maximum 25 records per RPC call.
 - `find_entity_relationship_path`: bidirectional traversal over published relationships; shortest path within a caller-selected one-to-three-hop depth and a fixed 50-relationship expansion cap per entity.
+- `/api/v1/politicians/{entity_id}`: bounded profile projection with at most 20 terms and 25 evidence-backed legislative relationships; it falls back to the existing Graph projection while the additive term table awaits deployment.
 - Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.
