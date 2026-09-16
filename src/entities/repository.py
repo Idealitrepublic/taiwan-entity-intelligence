@@ -47,7 +47,9 @@ class EntityRepository:
             with urllib.request.urlopen(request, timeout=12) as response:
                 rows = json.load(response)
         except urllib.error.HTTPError as exc:
-            if exc.code == 404 and table in ("rpc/find_entity_relationship_path", "politician_terms"):
+            if exc.code == 404 and table in (
+                    "rpc/find_entity_relationship_path", "rpc/political_contributions_for_entity",
+                    "politician_terms"):
                 raise EntityFeatureUnavailable("Additive Entity feature is not installed") from exc
             raise EntityStoreUnavailable("Entity database unavailable") from exc
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
@@ -210,6 +212,86 @@ class EntityRepository:
         return {"entity": profile, "terms": terms[:20], "terms_has_more": len(terms) > 20,
                 "relationship_has_more": len(relationship_rows) > relationship_limit,
                 "schema_available": schema_available, **groups}
+
+    def political_contributions(self, entity_id, *, limit=25, after=None):
+        entity_id = uuid_string(entity_id)
+        if not 1 <= limit <= 25:
+            raise ValueError("Political contribution limit must be between 1 and 25")
+        params = {"focus_entity_id": entity_id, "result_limit": limit}
+        if after:
+            params["after_relationship_id"] = uuid_string(after)
+        try:
+            rows = self.transport("rpc/political_contributions_for_entity", params)
+        except EntityFeatureUnavailable:
+            return self._political_contributions_fallback(entity_id, limit=limit, after=after)
+        if not rows:
+            return None
+        focus = rows[0].get("focus_entity")
+        if not focus:
+            return None
+        return self._political_contribution_page(focus, rows, limit)
+
+    @staticmethod
+    def _political_contribution_page(focus, rows, limit):
+        records = [row for row in rows if row.get("relationship")]
+        items = []
+        for row in records[:limit]:
+            relationship = row.get("relationship") or {}
+            evidence = row.get("primary_evidence") or {}
+            company, politician = row.get("company_entity"), row.get("politician_entity")
+            if not company or not politician or not evidence:
+                continue
+            items.append({
+                "relationship": relationship,
+                "company": company,
+                "politician": politician,
+                "amount": relationship.get("amount"),
+                "currency": relationship.get("currency"),
+                "date": relationship.get("start_date"),
+                "contribution_type": relationship.get("source_role"),
+                "source_record": {"id": evidence.get("source_record_id"),
+                                  "locator": evidence.get("source_locator")},
+                "evidence": evidence,
+                "original_source_url": evidence.get("source_url"),
+            })
+        has_more = len(records) > limit
+        return {"focus_entity": focus, "items": items, "has_more": has_more,
+                "next_cursor": items[-1]["relationship"]["id"] if has_more and items else None,
+                "match_method": "exact_uniform_number", "requested_limit": limit}
+
+    def _political_contributions_fallback(self, entity_id, *, limit, after):
+        entities = self.transport("entities", {
+            "select": ENTITY_FIELDS, "id": f"eq.{entity_id}",
+            "entity_type": "in.(Company,Politician)",
+            "publication_status": "eq.published", "limit": 1})
+        if not entities:
+            return None
+        params = {
+            "select": (
+                f"{RELATIONSHIP_FIELDS},"
+                f"company_entity:entities!relationships_source_entity_id_fkey({ENTITY_FIELDS}),"
+                f"politician_entity:entities!relationships_target_entity_id_fkey({ENTITY_FIELDS}),"
+                "primary_evidence:evidence_records!relationships_primary_evidence_id_fkey("
+                f"{EVIDENCE_FIELDS})"),
+            "or": f"(source_entity_id.eq.{entity_id},target_entity_id.eq.{entity_id})",
+            "relationship_type": "eq.POLITICAL_CONTRIBUTION_TO",
+            "status": "eq.published", "order": "id.asc", "limit": limit + 1,
+        }
+        if after:
+            params["id"] = f"gt.{uuid_string(after)}"
+        raw = self.transport("relationships", params)
+        rows = []
+        for item in raw:
+            evidence = item.get("primary_evidence") or {}
+            if (evidence.get("source_locator") or {}).get("match_method") != "exact_uniform_number":
+                continue
+            relationship = {key: value for key, value in item.items()
+                            if key not in ("company_entity", "politician_entity", "primary_evidence")}
+            rows.append({"focus_entity": entities[0], "relationship": relationship,
+                         "company_entity": item.get("company_entity"),
+                         "politician_entity": item.get("politician_entity"),
+                         "primary_evidence": evidence})
+        return self._political_contribution_page(entities[0], rows, limit)
 
     def relationship_path(self, source_entity_id, target_entity_id, *, max_depth=3):
         source_entity_id = uuid_string(source_entity_id)

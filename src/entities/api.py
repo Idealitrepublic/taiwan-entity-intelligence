@@ -85,6 +85,27 @@ def dispatch_entity_api(path, query, repository=None):
         if result is None:
             return 404, {"error": "找不到已公開實體 / Published entity not found"}, None
         return 200, response(result), None
+    if len(parts) == 5 and parts[2] == "entities" and parts[4] == "political-contributions":
+        try:
+            entity_id = uuid_string(parts[3])
+            limit = int(query.get("limit", ["25"])[0])
+            if not 1 <= limit <= 25:
+                raise ValueError("Invalid contribution limit")
+            after = query.get("after", [None])[0]
+            if after:
+                uuid_string(after)
+        except (TypeError, ValueError):
+            return 400, {"error": "Entity UUID 或 limit（1–25）錯誤 / Invalid parameters"}, None
+        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
+            return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
+        repository = repository or EntityRepository()
+        try:
+            result = repository.political_contributions(entity_id, limit=limit, after=after)
+        except EntityStoreUnavailable:
+            return 503, {"status": "unavailable", "error": "政治獻金資料暫時無法使用 / Contribution data unavailable"}, None
+        if result is None:
+            return 404, {"error": "找不到已公開公司或政治人物 / Published entity not found"}, None
+        return 200, response(result), None
     valid = (len(parts) == 4 and parts[2] in ("entities", "relationships", "evidence")) or (
         len(parts) == 5 and parts[2] == "entities" and parts[4] == "relationships")
     if not valid:

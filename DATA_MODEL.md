@@ -52,6 +52,12 @@ A legislator is a canonical `Politician` Entity; the name is not a unique identi
 
 Party membership, legislature, committee service, proposal, and co-sponsorship remain directed Relationships (`MEMBER_OF`, `LEGISLATOR_OF`, `COMMITTEE_MEMBER`, `PROPOSED_BILL`, `CO_SPONSORED_BILL`). Committees are `GovernmentAgency` Entities and bills are `LegislativeBill` Entities, so Graph and path queries remain reusable.
 
+### Political contributions
+
+A contribution is not a duplicate Entity. It is a directed `Company -> POLITICAL_CONTRIBUTION_TO -> Politician` Relationship with `amount`, `currency=TWD`, `start_date`, day precision, and `source_role` as the source contribution type. The primary Evidence preserves the source record ID, reproducible locator, immutable projection, and original source URL.
+
+Company resolution is publishable only when the donor's normalized eight-digit uniform number exactly matches an `EXACT` `tw:uniform_number` identifier. Name-only, fuzzy, malformed, and unmatched records stay skipped/unresolved; adapters always emit draft rows for review. A deferred database constraint repeats this rule at publication time.
+
 ## Read projections and APIs
 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
@@ -59,6 +65,7 @@ Party membership, legislature, committee service, proposal, and co-sponsorship r
 - `graph_entity_neighbors`: one-hop, keyset-cursor expansion; maximum 25 records per RPC call.
 - `find_entity_relationship_path`: bidirectional traversal over published relationships; shortest path within a caller-selected one-to-three-hop depth and a fixed 50-relationship expansion cap per entity.
 - `/api/v1/politicians/{entity_id}`: bounded profile projection with at most 20 terms and 25 evidence-backed legislative relationships; it falls back to the existing Graph projection while the additive term table awaits deployment.
+- `political_contributions_for_entity` and `/api/v1/entities/{entity_id}/political-contributions`: bidirectional Company/Politician projection, bounded to 25, cursor ordered, and restricted to published exact-uniform-number matches.
 - Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.

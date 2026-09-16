@@ -142,6 +142,72 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   await rejects('select * from public.graph_entity_neighbors($1, 26, null, null)', 'unbounded graph expansion denied', [company.id]);
   await rejects("select * from public.graph_entity_neighbors($1, 12, null, 'ARBITRARY')", 'unknown graph relationship type denied', [company.id]);
   await db.exec('reset role; set role service_role;');
+  const contributionEvidenceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const contributionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'監察院政治獻金公開查閱平臺','112-legislator-A-0001','Government Open Data',
+      'https://ardata.cy.gov.tw/data/search/advanced',
+      '{"dataset":"political_contribution_public_platform","source_record_id":"112-legislator-A-0001","match_method":"exact_uniform_number","uniform_number":"12345678"}'::jsonb,
+      '政治獻金：測試公司','測試公司 → 林立委；120000 TWD；營利事業捐贈；2024-01-15',
+      '2024-01-15T00:00:00Z','2026-09-16T02:00:00Z',$2,'active','published')`,
+    [contributionEvidenceId, '0'.repeat(64)]);
+  await db.query(`insert into public.relationships
+    (id,source_entity_id,target_entity_id,relationship_type,primary_evidence_id,
+     start_date,date_precision,observed_at,amount,currency,source_role,confidence,status)
+    values ($1,$2,'33333333-3333-4333-8333-333333333333','POLITICAL_CONTRIBUTION_TO',$3,
+      '2024-01-15','day','2024-01-15T00:00:00Z',120000,'TWD','營利事業捐贈','EXACT','published')`,
+    [contributionId, company.id, contributionEvidenceId]);
+  await db.exec('set constraints all immediate; reset role; set role anon;');
+  const companyContributions = await db.query(
+    'select * from public.political_contributions_for_entity($1, 25, null)', [company.id]);
+  assert.equal(companyContributions.rows.length, 1);
+  assert.equal(companyContributions.rows[0].relationship.amount, 120000);
+  assert.equal(companyContributions.rows[0].relationship.start_date, '2024-01-15');
+  assert.equal(companyContributions.rows[0].relationship.source_role, '營利事業捐贈');
+  assert.equal(companyContributions.rows[0].company_entity.id, company.id);
+  assert.equal(companyContributions.rows[0].politician_entity.id,
+    '33333333-3333-4333-8333-333333333333');
+  assert.equal(companyContributions.rows[0].primary_evidence.source_record_id,
+    '112-legislator-A-0001');
+  assert.equal(companyContributions.rows[0].primary_evidence.source_url,
+    'https://ardata.cy.gov.tw/data/search/advanced');
+  const politicianContributions = await db.query(
+    "select * from public.political_contributions_for_entity('33333333-3333-4333-8333-333333333333', 25, null)");
+  assert.equal(politicianContributions.rows[0].relationship.id, contributionId);
+  assert.equal((await db.query(
+    "select prosecdef from pg_proc where proname='political_contributions_for_entity'"
+  )).rows[0].prosecdef, false);
+  checks += 10;
+  await rejects('select * from public.political_contributions_for_entity($1, 26, null)',
+    'unbounded contribution read denied', [company.id]);
+  await rejects("insert into public.relationships(source_entity_id,target_entity_id,relationship_type,primary_evidence_id,start_date,date_precision,observed_at,amount,currency,source_role,confidence,status) values ($1,'33333333-3333-4333-8333-333333333333','POLITICAL_CONTRIBUTION_TO',$2,'2024-01-15','day','2024-01-15T00:00:00Z',1,'TWD','營利事業捐贈','EXACT','published')",
+    'anon contribution writes denied', [company.id, contributionEvidenceId]);
+  await db.exec('reset role; set role service_role;');
+  const nonExactEvidenceId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'fixture','name-only','Government Open Data','https://example.gov.tw/source',
+      '{"match_method":"name","uniform_number":"12345678"}'::jsonb,'名稱比對','',
+      '2024-01-15T00:00:00Z','2026-09-16T02:00:00Z',$2,'active','published')`,
+    [nonExactEvidenceId, '1'.repeat(64)]);
+  await rejects(`insert into public.relationships
+    (source_entity_id,target_entity_id,relationship_type,primary_evidence_id,start_date,
+     date_precision,observed_at,amount,currency,source_role,confidence,status)
+    values ($1,'33333333-3333-4333-8333-333333333333','POLITICAL_CONTRIBUTION_TO',$2,
+      '2024-01-15','day','2024-01-15T00:00:00Z',1000,'TWD','名稱推測','EXACT','published')`,
+    'name-only company match cannot publish', [company.id, nonExactEvidenceId]);
+  // PGlite surfaces the deferred-trigger error but does not roll back the row
+  // exactly like server PostgreSQL; remove that rejected fixture explicitly.
+  await db.query('delete from public.relationships where primary_evidence_id=$1', [nonExactEvidenceId]);
+  await db.exec('reset role; set role anon;');
+  assert.equal((await db.query(
+    'select count(*)::int n from public.political_contributions_for_entity($1, 25, $2)',
+    [company.id, contributionId])).rows[0].n, 1, 'cursor leaves a sentinel focus row');
+  checks++;
+  await db.exec('reset role; set role service_role;');
   await db.query(`insert into public.relationships
     (id, source_entity_id, target_entity_id, relationship_type, primary_evidence_id,
      observed_at, confidence, status)
@@ -205,7 +271,7 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   assert.equal((await db.query('select status from public.relationships where id=$1', [rel.id])).rows[0].status, 'retracted');
   checks++;
   await db.exec('reset role; set role anon;');
-  assert.equal((await db.query('select count(*)::int n from public.relationships')).rows[0].n, 1);
+  assert.equal((await db.query('select count(*)::int n from public.relationships')).rows[0].n, 2);
   assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1', [evidenceId])).rows[0].n, 0);
   checks += 2;
   await db.exec('reset role; set role service_role;');

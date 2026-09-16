@@ -76,7 +76,19 @@ Status: implemented on `phase-5/politician-entity`; Preview acceptance and Produ
 
 Exit gate: targeted tests, PostgreSQL checks, full build, and protected Preview runtime checks pass without a Production mutation.
 
-## Phase 6 — Source adapter reliability
+## Phase 6 — Political Contribution
+
+Status: implemented on `phase-6/political-contribution`; Preview acceptance and Production migration remain gated.
+
+- Project official contribution rows into Company-to-Politician Relationships with immutable Evidence.
+- Resolve companies only by normalized exact eight-digit uniform number; never infer a company from its name.
+- Preserve amount, date, contribution type, source record, Evidence, and original source URL.
+- Add bounded bidirectional reads to company and politician pages while preserving legacy company behavior.
+- Enforce publication invariants, RLS-aware reads, cursor limits, and draft-only adapter output.
+
+Exit gate: targeted tests, PostgreSQL checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
+
+## Phase 7 — Source adapter reliability
 
 - Unify procurement, penalty, judicial, fraud/domain, and registry adapters behind consistent source-result contracts.
 - Repair the canonical judicial known-case path and add deterministic fixtures.
@@ -85,7 +97,7 @@ Exit gate: targeted tests, PostgreSQL checks, full build, and protected Preview 
 
 Exit gate: each source has read-only Preview acceptance tests and observable failure states.
 
-## Phase 7 — Delivery and operations
+## Phase 8 — Delivery and operations
 
 - Standardize Python/Node versions across local, CI, and Vercel.
 - Replace Production-facing CI smoke tests with Preview gates; make ingestion jobs explicit and approved.
