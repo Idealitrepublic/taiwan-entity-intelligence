@@ -9,6 +9,7 @@ from .contracts import (
     EVIDENCE_FIELDS as PUBLIC_EVIDENCE_FIELDS,
     RELATIONSHIP_FIELDS as PUBLIC_RELATIONSHIP_FIELDS,
     POLITICIAN_TERM_FIELDS as PUBLIC_POLITICIAN_TERM_FIELDS,
+    ASSET_DECLARATION_FIELDS as PUBLIC_ASSET_DECLARATION_FIELDS,
     select_list,
 )
 from .models import uuid_string
@@ -18,6 +19,7 @@ ENTITY_FIELDS = select_list(PUBLIC_ENTITY_FIELDS)
 EVIDENCE_FIELDS = select_list(PUBLIC_EVIDENCE_FIELDS)
 RELATIONSHIP_FIELDS = select_list(PUBLIC_RELATIONSHIP_FIELDS)
 POLITICIAN_TERM_FIELDS = select_list(PUBLIC_POLITICIAN_TERM_FIELDS)
+ASSET_DECLARATION_FIELDS = select_list(PUBLIC_ASSET_DECLARATION_FIELDS)
 
 
 class EntityStoreUnavailable(RuntimeError):
@@ -49,7 +51,7 @@ class EntityRepository:
         except urllib.error.HTTPError as exc:
             if exc.code == 404 and table in (
                     "rpc/find_entity_relationship_path", "rpc/political_contributions_for_entity",
-                    "politician_terms"):
+                    "politician_terms", "asset_declarations"):
                 raise EntityFeatureUnavailable("Additive Entity feature is not installed") from exc
             raise EntityStoreUnavailable("Entity database unavailable") from exc
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
@@ -292,6 +294,44 @@ class EntityRepository:
                          "politician_entity": item.get("politician_entity"),
                          "primary_evidence": evidence})
         return self._political_contribution_page(entities[0], rows, limit)
+
+    def asset_declarations(self, politician_id, *, limit=25, after=None,
+                           declaration_year=None, asset_type=None):
+        politician_id = uuid_string(politician_id)
+        if not 1 <= limit <= 25:
+            raise ValueError("Asset declaration limit must be between 1 and 25")
+        profiles = self.transport("entities", {
+            "select": ENTITY_FIELDS, "id": f"eq.{politician_id}",
+            "entity_type": "eq.Politician", "publication_status": "eq.published", "limit": 1})
+        if not profiles:
+            return None
+        params = {
+            "select": (
+                f"{ASSET_DECLARATION_FIELDS},"
+                f"company:entities!asset_declarations_company_entity_id_fkey({ENTITY_FIELDS}),"
+                f"relationship:relationships!asset_declarations_relationship_id_fkey({RELATIONSHIP_FIELDS}),"
+                "primary_evidence:evidence_records!asset_declarations_primary_evidence_id_fkey("
+                f"{EVIDENCE_FIELDS})"),
+            "politician_id": f"eq.{politician_id}", "publication_status": "eq.published",
+            "order": "id.asc", "limit": limit + 1,
+        }
+        if after:
+            params["id"] = f"gt.{uuid_string(after)}"
+        if declaration_year is not None:
+            params["declaration_year"] = f"eq.{int(declaration_year)}"
+        if asset_type:
+            params["asset_type"] = f"eq.{asset_type}"
+        try:
+            rows = self.transport("asset_declarations", params)
+        except EntityFeatureUnavailable:
+            return {"politician": profiles[0], "items": [], "has_more": False,
+                    "next_cursor": None, "schema_available": False,
+                    "requested_limit": limit}
+        visible = rows[:limit]
+        has_more = len(rows) > limit
+        return {"politician": profiles[0], "items": visible, "has_more": has_more,
+                "next_cursor": visible[-1]["id"] if has_more and visible else None,
+                "schema_available": True, "requested_limit": limit}
 
     def relationship_path(self, source_entity_id, target_entity_id, *, max_depth=3):
         source_entity_id = uuid_string(source_entity_id)

@@ -88,7 +88,19 @@ Status: implemented on `phase-6/political-contribution`; Preview acceptance and 
 
 Exit gate: targeted tests, PostgreSQL checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
 
-## Phase 7 — Source adapter reliability
+## Phase 7 — Asset Declaration
+
+Status: implemented on `phase-7/asset-declaration`; Preview acceptance and Production migration remain gated.
+
+- Store evidence-backed legislator declarations across all thirteen required asset categories.
+- Preserve year, type, name, amount, quantity, source company text, Evidence, and original source.
+- Resolve a Company only by an exact normalized eight-digit identifier; never by fuzzy company or person name.
+- Create `ASSET_OWNERSHIP` or `BUSINESS_INVESTMENT` only for eligible, exactly resolved declarations.
+- Add bounded politician-page reads with year/type filters and backward-compatible old-schema behavior.
+
+Exit gate: targeted tests, PostgreSQL checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
+
+## Phase 8 — Source adapter reliability
 
 - Unify procurement, penalty, judicial, fraud/domain, and registry adapters behind consistent source-result contracts.
 - Repair the canonical judicial known-case path and add deterministic fixtures.
@@ -97,7 +109,7 @@ Exit gate: targeted tests, PostgreSQL checks, full build, GitHub push, and prote
 
 Exit gate: each source has read-only Preview acceptance tests and observable failure states.
 
-## Phase 8 — Delivery and operations
+## Phase 9 — Delivery and operations
 
 - Standardize Python/Node versions across local, CI, and Vercel.
 - Replace Production-facing CI smoke tests with Preview gates; make ingestion jobs explicit and approved.

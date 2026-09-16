@@ -5,6 +5,7 @@ from .models import uuid_string
 from .repository import EntityRepository, EntityStoreUnavailable
 from .search import parse_search_request
 from src.relationships.models import RELATIONSHIP_TYPES
+from src.asset_declarations import ASSET_TYPES
 
 
 def dispatch_entity_api(path, query, repository=None):
@@ -84,6 +85,36 @@ def dispatch_entity_api(path, query, repository=None):
             return 503, {"status": "unavailable", "error": "關係圖資料暫時無法使用 / Graph store unavailable"}, None
         if result is None:
             return 404, {"error": "找不到已公開實體 / Published entity not found"}, None
+        return 200, response(result), None
+    if len(parts) == 5 and parts[2] == "politicians" and parts[4] == "asset-declarations":
+        try:
+            politician_id = uuid_string(parts[3])
+            limit = int(query.get("limit", ["25"])[0])
+            if not 1 <= limit <= 25:
+                raise ValueError("Invalid asset declaration limit")
+            after = query.get("after", [None])[0]
+            if after:
+                uuid_string(after)
+            year_value = query.get("declaration_year", [None])[0]
+            declaration_year = int(year_value) if year_value else None
+            if declaration_year is not None and not 1912 <= declaration_year <= 2200:
+                raise ValueError("Invalid declaration year")
+            asset_type = query.get("asset_type", [None])[0]
+            if asset_type and asset_type not in ASSET_TYPES:
+                raise ValueError("Invalid asset type")
+        except (TypeError, ValueError):
+            return 400, {"error": "財產申報查詢參數錯誤 / Invalid asset parameters"}, None
+        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
+            return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
+        repository = repository or EntityRepository()
+        try:
+            result = repository.asset_declarations(
+                politician_id, limit=limit, after=after,
+                declaration_year=declaration_year, asset_type=asset_type)
+        except EntityStoreUnavailable:
+            return 503, {"status": "unavailable", "error": "財產申報資料暫時無法使用 / Asset data unavailable"}, None
+        if result is None:
+            return 404, {"error": "找不到已公開立委實體 / Published politician not found"}, None
         return 200, response(result), None
     if len(parts) == 5 and parts[2] == "entities" and parts[4] == "political-contributions":
         try:

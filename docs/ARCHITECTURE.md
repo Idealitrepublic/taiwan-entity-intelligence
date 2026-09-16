@@ -161,3 +161,13 @@ Each accepted row becomes one directed `Company -> POLITICAL_CONTRIBUTION_TO -> 
 The read path is `web/index.html -> /api/v1/entities/{uuid}/political-contributions -> political_contributions_for_entity`. One bounded, keyset-cursor RPC projects both endpoints, the Relationship, and primary Evidence for either the Company or Politician page. It is `SECURITY INVOKER`, explicitly filters publication state, exposes no private identifier table, and grants only execution to read roles. When the additive RPC is absent, the repository uses a bounded existing-schema projection and still rejects non-exact Evidence locators.
 
 The indexed Entity company page and Politician page render the same bidirectional card contract. The legacy eight-digit company investigation first requires an `identifier_exact` global-search result before requesting contributions; contribution lookup failure does not break existing company results. Production schema and data remain unchanged until explicit acceptance.
+
+## Phase 7 Asset Declaration
+
+The ingestion boundary is `src/asset_declarations.py -> tei_ingest_asset_declaration_bundle`. Source rows become immutable Evidence plus a typed `asset_declarations` projection. All thirteen required categories share the same contract while retaining nullable amount/currency, quantity/unit, source company name, and original source location.
+
+Company resolution is intentionally narrower than display: only an exact, normalized eight-digit source company number can resolve a published Company identifier. Name-only records remain useful declarations but keep `company_entity_id` and `relationship_id` null. Eligible securities create `ASSET_OWNERSHIP`; business investments create `BUSINESS_INVESTMENT`; other categories do not imply a company relationship.
+
+The read path is `web/index.html -> /api/v1/politicians/{uuid}/asset-declarations -> asset_declarations`. It is limited to 25 keyset-cursor rows and supports declaration-year and asset-type filters. One embedded read returns the linked Company, Relationship, and primary Evidence without N+1 queries. Missing additive schema yields an explicit empty compatibility response so existing politician, Graph, search, and legacy company views continue to work.
+
+The migration adds RLS, explicit read grants, service-role-only ingestion, indexed politician/year/type and company access paths, and a deferred publication validator. The validator repeats exact-company-number resolution and requires every derived Relationship to match endpoints, type, Evidence, values, and source role. Evidence or Entity withdrawal retracts affected published declarations. Production remains unchanged until acceptance.

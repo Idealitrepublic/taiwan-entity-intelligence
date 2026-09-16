@@ -63,6 +63,23 @@ POLITICIAN_TERM_FIELDS = (
     "created_at",
     "updated_at",
 )
+ASSET_DECLARATION_FIELDS = (
+    "id",
+    "politician_id",
+    "declaration_year",
+    "asset_type",
+    "asset_name",
+    "amount",
+    "currency",
+    "quantity",
+    "quantity_unit",
+    "company_name",
+    "company_entity_id",
+    "relationship_id",
+    "primary_evidence_id",
+    "created_at",
+    "updated_at",
+)
 
 
 def select_list(fields: tuple[str, ...]) -> str:

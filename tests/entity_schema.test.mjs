@@ -281,6 +281,92 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   await db.query("update public.entities set publication_status='withdrawn' where id=$1", [second.source_entity_id]);
   assert.equal((await db.query('select status from public.relationships where id=$1', [second.id])).rows[0].status, 'retracted');
   checks++;
+  const assetEvidenceId = '12121212-1212-4212-8212-121212121212';
+  const assetRelationshipId = '13131313-1313-4313-8313-131313131313';
+  const linkedAssetId = '14141414-1414-4414-8414-141414141414';
+  const unresolvedAssetId = '15151515-1515-4515-8515-151515151515';
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'監察院廉政專刊財產申報資料','302-legislator-asset-1','Government Open Data',
+      'https://sunshine.cy.gov.tw/',
+      '{"dataset":"asset_declaration","source_record_id":"302-legislator-asset-1","company_match_method":"exact_uniform_number","uniform_number":"12345678"}'::jsonb,
+      '財產申報：測試公司股票','林立委持有測試公司股票 1000 股',
+      '2025-11-01T00:00:00Z','2026-09-16T03:00:00Z',$2,'active','published')`,
+    [assetEvidenceId, '2'.repeat(64)]);
+  await db.query(`insert into public.relationships
+    (id,source_entity_id,target_entity_id,relationship_type,primary_evidence_id,
+     observed_at,amount,currency,quantity,quantity_unit,source_role,confidence,status)
+    values ($1,'33333333-3333-4333-8333-333333333333',$2,'ASSET_OWNERSHIP',$3,
+      '2025-11-01T00:00:00Z',300000,'TWD',1000,'股','STOCK','EXACT','published')`,
+    [assetRelationshipId, company.id, assetEvidenceId]);
+  await db.query(`insert into public.asset_declarations
+    (id,politician_id,declaration_year,asset_type,asset_name,amount,currency,quantity,
+     quantity_unit,company_name,company_entity_id,relationship_id,primary_evidence_id,
+     publication_status)
+    values
+    ($1,'33333333-3333-4333-8333-333333333333',2025,'STOCK','測試公司普通股',
+      300000,'TWD',1000,'股','測試公司',$2,$3,$4,'published'),
+    ($5,'33333333-3333-4333-8333-333333333333',2025,'INSURANCE','來源僅載名稱之保險',
+      null,null,1,'張','同名但未識別公司',null,null,$6,'published')`,
+    [linkedAssetId, company.id, assetRelationshipId, assetEvidenceId, unresolvedAssetId,
+      nonExactEvidenceId]);
+  const draftAssetId = '17171717-1717-4717-8717-171717171717';
+  const assetBundle = {entities: [], identifiers: [], evidence: [], entity_evidence: [],
+    relationships: [], relationship_evidence: [], legacy_map: [], asset_declarations: [{
+      id: draftAssetId, politician_id: '33333333-3333-4333-8333-333333333333',
+      declaration_year: 2025, asset_type: 'CASH', asset_name: '現金', amount: '50000',
+      currency: 'TWD', quantity: null, quantity_unit: null, company_name: null,
+      company_entity_id: null, relationship_id: null, primary_evidence_id: evidenceId,
+      publication_status: 'draft'}]};
+  await db.query('select public.tei_ingest_asset_declaration_bundle($1::jsonb)',
+    [JSON.stringify(assetBundle)]);
+  await db.query('select public.tei_ingest_asset_declaration_bundle($1::jsonb)',
+    [JSON.stringify(assetBundle)]);
+  assert.equal((await db.query('select count(*)::int n from public.asset_declarations where id=$1',
+    [draftAssetId])).rows[0].n, 1, 'asset ingestion is idempotent');
+  checks++;
+  await db.exec('set constraints all immediate; reset role; set role anon;');
+  const assetRows = await db.query(`select id,politician_id,declaration_year,asset_type,
+    asset_name,amount,quantity,company_name,company_entity_id,relationship_id,
+    primary_evidence_id from public.asset_declarations order by id`);
+  assert.equal(assetRows.rows.length, 2);
+  assert.equal(assetRows.rows[0].asset_type, 'STOCK');
+  assert.equal(assetRows.rows[0].company_entity_id, company.id);
+  assert.equal(assetRows.rows[0].relationship_id, assetRelationshipId);
+  assert.equal(assetRows.rows[1].company_name, '同名但未識別公司');
+  assert.equal(assetRows.rows[1].company_entity_id, null, 'name-only company remains unresolved');
+  checks += 6;
+  const assetIndexes = await db.query(`select indexname from pg_indexes where schemaname='public'
+    and indexname in ('asset_declarations_politician_id_idx',
+      'asset_declarations_politician_year_idx','asset_declarations_politician_type_idx',
+      'asset_declarations_company_idx','asset_declarations_evidence_idx')`);
+  assert.equal(assetIndexes.rows.length, 5);
+  checks++;
+  await rejects(`insert into public.asset_declarations
+    (politician_id,declaration_year,asset_type,asset_name,primary_evidence_id)
+    values ('33333333-3333-4333-8333-333333333333',2025,'CASH','篡改',$1)`,
+    'public asset declaration writes denied', [assetEvidenceId]);
+  await rejects('select public.tei_ingest_asset_declaration_bundle($1::jsonb)',
+    'public asset ingestion denied', [JSON.stringify({asset_declarations: []})]);
+  await db.exec('reset role; set role service_role;');
+  const badAssetId = '16161616-1616-4616-8616-161616161616';
+  await rejects(`insert into public.asset_declarations
+    (id,politician_id,declaration_year,asset_type,asset_name,company_name,
+     company_entity_id,primary_evidence_id,publication_status)
+    values ($1,'33333333-3333-4333-8333-333333333333',2025,'INSURANCE',
+      '名稱推測資產','同名公司',$2,$3,'published')`,
+    'name-only asset company cannot publish', [badAssetId, company.id, nonExactEvidenceId]);
+  await db.query('delete from public.asset_declarations where id=$1', [badAssetId]);
+  await db.query("update public.evidence_records set status='retracted' where id=$1", [assetEvidenceId]);
+  assert.equal((await db.query('select publication_status from public.asset_declarations where id=$1',
+    [linkedAssetId])).rows[0].publication_status, 'withdrawn');
+  checks++;
+  await db.exec('reset role; set role anon;');
+  const remainingAssets = await db.query('select id from public.asset_declarations');
+  assert.deepEqual(remainingAssets.rows, [{id: unresolvedAssetId}],
+    'retracted Evidence hides only its declaration');
+  checks++;
   await db.exec('reset role; set role authenticated;');
   await rejects('select * from public.entity_identifiers', 'authenticated role cannot read private IDs');
   await rejects("delete from public.relationships", 'authenticated role cannot write');
