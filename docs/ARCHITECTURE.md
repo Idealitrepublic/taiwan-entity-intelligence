@@ -171,3 +171,11 @@ Company resolution is intentionally narrower than display: only an exact, normal
 The read path is `web/index.html -> /api/v1/politicians/{uuid}/asset-declarations -> asset_declarations`. It is limited to 25 keyset-cursor rows and supports declaration-year and asset-type filters. One embedded read returns the linked Company, Relationship, and primary Evidence without N+1 queries. Missing additive schema yields an explicit empty compatibility response so existing politician, Graph, search, and legacy company views continue to work.
 
 The migration adds RLS, explicit read grants, service-role-only ingestion, indexed politician/year/type and company access paths, and a deferred publication validator. The validator repeats exact-company-number resolution and requires every derived Relationship to match endpoints, type, Evidence, values, and source role. Evidence or Entity withdrawal retracts affected published declarations. Production remains unchanged until acceptance.
+
+## Phase 8 Asset Timeline
+
+The read path is `web/index.html -> /api/v1/politicians/{uuid}/asset-timeline -> asset_declarations`. It reuses the Phase 7 RLS policy and `(politician_id, declaration_year, id)` index; no new table, migration, write path, or Production change is required. The repository performs one embedded read capped at 501 probe rows, returns at most 500, and limits output to the latest 2–20 requested declaration years.
+
+`src/asset_timeline.py` is the deterministic comparison boundary. It groups amounts by currency and quantities by unit, so unlike measures are never combined. Adjacent years match only exact NFKC-normalized asset identity and exact resolved Company IDs. Missing dimensions, mixed movement, or differing units are reported as `CHANGED`, not coerced into an increase or decrease. A line absent in the next declaration is labeled `NO_LONGER_DECLARED`, never sold or disposed.
+
+The politician page renders per-year type summaries, amount/quantity changes, and both current and prior Evidence/source links. Its disclaimer explicitly limits the display to objective declaration differences and rejects inferences about illegality, conflicts of interest, acquisition, or disposal. Missing Phase 7 schema remains an explicit empty compatibility response.

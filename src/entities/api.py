@@ -116,6 +116,24 @@ def dispatch_entity_api(path, query, repository=None):
         if result is None:
             return 404, {"error": "找不到已公開立委實體 / Published politician not found"}, None
         return 200, response(result), None
+    if len(parts) == 5 and parts[2] == "politicians" and parts[4] == "asset-timeline":
+        try:
+            politician_id = uuid_string(parts[3])
+            max_years = int(query.get("years", ["10"])[0])
+            if not 2 <= max_years <= 20:
+                raise ValueError("Invalid asset timeline year limit")
+        except (TypeError, ValueError):
+            return 400, {"error": "財產時間序列參數錯誤 / Invalid timeline parameters"}, None
+        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
+            return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
+        repository = repository or EntityRepository()
+        try:
+            result = repository.asset_timeline(politician_id, max_years=max_years)
+        except EntityStoreUnavailable:
+            return 503, {"status": "unavailable", "error": "財產時間序列暫時無法使用 / Timeline unavailable"}, None
+        if result is None:
+            return 404, {"error": "找不到已公開立委實體 / Published politician not found"}, None
+        return 200, response(result), None
     if len(parts) == 5 and parts[2] == "entities" and parts[4] == "political-contributions":
         try:
             entity_id = uuid_string(parts[3])

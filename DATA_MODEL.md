@@ -64,6 +64,12 @@ Company resolution is publishable only when the donor's normalized eight-digit u
 
 A Company link is allowed only when the source record contains a normalized eight-digit company number that exactly matches an `EXACT` `tw:uniform_number`. Company names remain source text and never resolve identity. Stocks, bonds, funds, and securities may create `Politician -> ASSET_OWNERSHIP -> Company`; business investments may create `Politician -> BUSINESS_INVESTMENT -> Company`. Every derived edge must use the declaration Evidence and agree with its amount, currency, quantity, and source role.
 
+### Asset timeline projection
+
+The asset timeline is a read-only projection, not a new fact table. It groups at most 500 published declaration lines across the latest 2–20 requested years, then compares adjacent declaration years. If the cap cuts through the oldest returned year, that year is explicitly marked partial. Matching uses exact NFKC-normalized asset type/name plus an exact Company Entity ID when available; unresolved source company text is compared exactly and never resolves identity.
+
+Statuses are descriptive only: `BASELINE`, `NEW`, `INCREASED`, `DECREASED`, `CONTINUED`, `CHANGED`, and `NO_LONGER_DECLARED`. Numeric increase/decrease requires identical currency and quantity-unit dimensions; missing or incompatible dimensions are `CHANGED`. Every comparison retains current and prior declaration rows with their Evidence and source URLs. Absence from a later declaration is not proof of disposal.
+
 ## Read projections and APIs
 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
@@ -73,6 +79,7 @@ A Company link is allowed only when the source record contains a normalized eigh
 - `/api/v1/politicians/{entity_id}`: bounded profile projection with at most 20 terms and 25 evidence-backed legislative relationships; it falls back to the existing Graph projection while the additive term table awaits deployment.
 - `political_contributions_for_entity` and `/api/v1/entities/{entity_id}/political-contributions`: bidirectional Company/Politician projection, bounded to 25, cursor ordered, and restricted to published exact-uniform-number matches.
 - `/api/v1/politicians/{entity_id}/asset-declarations`: bounded, cursor-ordered declaration projection with optional year/type filters, resolved Company, derived Relationship, Evidence, and an old-schema fallback.
+- `/api/v1/politicians/{entity_id}/asset-timeline`: latest 2–20 declaration years, capped at 500 rows, with per-type totals and evidence-backed adjacent-year comparisons.
 - Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.

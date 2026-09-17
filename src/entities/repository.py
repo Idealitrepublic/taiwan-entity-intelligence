@@ -13,6 +13,7 @@ from .contracts import (
     select_list,
 )
 from .models import uuid_string
+from src.asset_timeline import MAX_TIMELINE_ROWS, build_asset_timeline
 from src.public_config import SUPABASE_PUBLISHABLE_KEY
 
 ENTITY_FIELDS = select_list(PUBLIC_ENTITY_FIELDS)
@@ -332,6 +333,36 @@ class EntityRepository:
         return {"politician": profiles[0], "items": visible, "has_more": has_more,
                 "next_cursor": visible[-1]["id"] if has_more and visible else None,
                 "schema_available": True, "requested_limit": limit}
+
+    def asset_timeline(self, politician_id, *, max_years=10):
+        politician_id = uuid_string(politician_id)
+        if not 2 <= int(max_years) <= 20:
+            raise ValueError("Asset timeline years must be between 2 and 20")
+        profiles = self.transport("entities", {
+            "select": ENTITY_FIELDS, "id": f"eq.{politician_id}",
+            "entity_type": "eq.Politician", "publication_status": "eq.published", "limit": 1})
+        if not profiles:
+            return None
+        params = {
+            "select": (
+                f"{ASSET_DECLARATION_FIELDS},"
+                f"company:entities!asset_declarations_company_entity_id_fkey({ENTITY_FIELDS}),"
+                "primary_evidence:evidence_records!asset_declarations_primary_evidence_id_fkey("
+                f"{EVIDENCE_FIELDS})"),
+            "politician_id": f"eq.{politician_id}", "publication_status": "eq.published",
+            "order": "declaration_year.desc,id.asc", "limit": MAX_TIMELINE_ROWS + 1,
+        }
+        try:
+            rows = self.transport("asset_declarations", params)
+        except EntityFeatureUnavailable:
+            return {"politician": profiles[0], "years": [], "year_count": 0,
+                    "row_count": 0, "truncated": False, "schema_available": False,
+                    "requested_years": int(max_years)}
+        result = build_asset_timeline(
+            rows[:MAX_TIMELINE_ROWS], max_years=int(max_years),
+            truncated=len(rows) > MAX_TIMELINE_ROWS)
+        return {"politician": profiles[0], **result, "schema_available": True,
+                "requested_years": int(max_years)}
 
     def relationship_path(self, source_entity_id, target_entity_id, *, max_depth=3):
         source_entity_id = uuid_string(source_entity_id)
