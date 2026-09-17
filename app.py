@@ -10,6 +10,8 @@ import urllib.request
 from src import cloud_company as core
 from src.sources.procurement import lookup_awards
 from src.entities.api import dispatch_entity_api
+from src.public_config import SUPABASE_PUBLISHABLE_KEY
+from src.workspaces import dispatch_workspace_api
 
 WEB = Path(__file__).parent / 'web'
 
@@ -18,8 +20,26 @@ def db_count(table):
     with urllib.request.urlopen(req, timeout=8) as response:
         return int(response.headers['Content-Range'].split('/')[-1])
 
-def dispatch(path, query):
+def workspace_public_config():
+    url = os.environ.get('TEI_ENTITY_SUPABASE_URL') or os.environ.get(
+        'SUPABASE_URL', 'https://rztdbdurkjfrirsrrhtu.supabase.co')
+    key = os.environ.get('TEI_ENTITY_ANON_KEY') or os.environ.get('SUPABASE_ANON_KEY')
+    if not key and url.rstrip('/') == 'https://rztdbdurkjfrirsrrhtu.supabase.co':
+        key = SUPABASE_PUBLISHABLE_KEY
+    return {'supabase_url': url, 'publishable_key': key, 'auth_enabled': bool(url and key)}
+
+
+def dispatch(path, query, method='GET', payload=None, authorization=None):
+    if path.rstrip('/') == '/api/v1/workspace-config':
+        if method not in ('GET', 'HEAD'):
+            return 405, {'error': 'Method not allowed'}, None
+        return 200, workspace_public_config(), None
+    if path.rstrip('/').startswith('/api/v1/workspaces'):
+        return dispatch_workspace_api(
+            'GET' if method == 'HEAD' else method, path, payload, authorization)
     if path.startswith('/api/v1/'):
+        if method not in ('GET', 'HEAD'):
+            return 405, {'error': 'Method not allowed'}, None
         return dispatch_entity_api(path, query)
     entity_uuid = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
     page_route = path == '/' or bool(re.fullmatch(rf'/(?:entity|graph|politician)/{entity_uuid}/?', path))
@@ -57,10 +77,19 @@ def dispatch(path, query):
 
 def app(environ, start_response):
     try:
-        if environ.get('REQUEST_METHOD') not in ('GET', 'HEAD'):
-            code, payload, content_type = 405, {'error': 'Method not allowed'}, None
-        else:
-            code, payload, content_type = dispatch(environ.get('PATH_INFO', '/'), parse_qs(environ.get('QUERY_STRING', '')))
+        method = environ.get('REQUEST_METHOD', 'GET').upper()
+        path = environ.get('PATH_INFO', '/')
+        request_payload = None
+        if path.rstrip('/').startswith('/api/v1/workspaces') and method in ('POST', 'PATCH'):
+            length = int(environ.get('CONTENT_LENGTH') or 0)
+            if length <= 0 or length > 65536:
+                raise ValueError('Invalid request body length')
+            request_payload = json.loads(environ.get('wsgi.input').read(length))
+        code, payload, content_type = dispatch(
+            path, parse_qs(environ.get('QUERY_STRING', '')),
+            method, request_payload, environ.get('HTTP_AUTHORIZATION'))
+    except (ValueError, json.JSONDecodeError):
+        code, payload, content_type = 400, {'error': 'Invalid JSON request'}, None
     except Exception:
         code, payload, content_type = 502, {'status': 'error', 'error': '上游資料來源暫時無法連線，請稍後再試。'}, None
     body = (payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)).encode()

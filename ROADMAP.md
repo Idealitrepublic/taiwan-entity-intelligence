@@ -112,7 +112,19 @@ Status: implemented on `phase-8/asset-timeline`; Preview acceptance remains gate
 
 Exit gate: targeted tests, PostgreSQL checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
 
-## Phase 9 — Source adapter reliability
+## Phase 9 — Investigation Workspace
+
+Status: implemented on `phase-9/investigation-workspace`; Preview acceptance and Production migration remain gated.
+
+- Add authenticated, owner-only Workspace create/read/update/delete.
+- Save Entity, Relationship, Evidence, bounded Graph state, original Source, and Note items.
+- Preserve explicit owner/creator attribution and enforce the boundary with grants, constraints, and RLS.
+- Keep the first version single-user; do not add Watchlist, Alert, sharing, or Report Export.
+- Preserve every existing public Entity, search, Graph, politician, contribution, and asset contract.
+
+Exit gate: targeted tests, PostgreSQL owner-isolation checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
+
+## Phase 10 — Source adapter reliability
 
 - Unify procurement, penalty, judicial, fraud/domain, and registry adapters behind consistent source-result contracts.
 - Repair the canonical judicial known-case path and add deterministic fixtures.
@@ -121,7 +133,7 @@ Exit gate: targeted tests, PostgreSQL checks, full build, GitHub push, and prote
 
 Exit gate: each source has read-only Preview acceptance tests and observable failure states.
 
-## Phase 10 — Delivery and operations
+## Phase 11 — Delivery and operations
 
 - Standardize Python/Node versions across local, CI, and Vercel.
 - Replace Production-facing CI smoke tests with Preview gates; make ingestion jobs explicit and approved.

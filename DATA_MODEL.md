@@ -70,6 +70,14 @@ The asset timeline is a read-only projection, not a new fact table. It groups at
 
 Statuses are descriptive only: `BASELINE`, `NEW`, `INCREASED`, `DECREASED`, `CONTINUED`, `CHANGED`, and `NO_LONGER_DECLARED`. Numeric increase/decrease requires identical currency and quantity-unit dimensions; missing or incompatible dimensions are `CHANGED`. Every comparison retains current and prior declaration rows with their Evidence and source URLs. Absence from a later declaration is not proof of disposal.
 
+### Investigation Workspace
+
+`investigation_workspaces` is private user data, not part of the published Entity graph. Each row has an immutable `owner_user_id` derived from `auth.uid()`. Phase 9 has no membership or sharing table: the owner is the only reader and writer, and ownership cannot be transferred through the API.
+
+`workspace_items` stores one of six explicit kinds: `ENTITY`, `RELATIONSHIP`, `EVIDENCE`, `GRAPH`, `SOURCE`, or `NOTE`. Typed foreign keys preserve canonical record identity; Graph bookmarks retain a bounded root/config snapshot in JSON metadata, Source items require an HTTP(S) URL, and Note text is capped at 10,000 characters. Each item repeats `owner_user_id` and `created_by_user_id`; a composite foreign key and check constraint require both to match its workspace owner in this single-user version.
+
+Both tables revoke `anon` access, grant only authenticated CRUD, enable RLS, and define separate owner policies for select, insert, update, and delete. Deleting a workspace cascades only to its private items and never deletes bookmarked Entity, Relationship, or Evidence records.
+
 ## Read projections and APIs
 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
@@ -80,6 +88,8 @@ Statuses are descriptive only: `BASELINE`, `NEW`, `INCREASED`, `DECREASED`, `CON
 - `political_contributions_for_entity` and `/api/v1/entities/{entity_id}/political-contributions`: bidirectional Company/Politician projection, bounded to 25, cursor ordered, and restricted to published exact-uniform-number matches.
 - `/api/v1/politicians/{entity_id}/asset-declarations`: bounded, cursor-ordered declaration projection with optional year/type filters, resolved Company, derived Relationship, Evidence, and an old-schema fallback.
 - `/api/v1/politicians/{entity_id}/asset-timeline`: latest 2–20 declaration years, capped at 500 rows, with per-type totals and evidence-backed adjacent-year comparisons.
+- `/api/v1/workspaces`: authenticated owner-scoped list/create API; `/api/v1/workspaces/{id}` reads, edits, or deletes one owned workspace.
+- `/api/v1/workspaces/{id}/items`: adds a typed bookmark; `/api/v1/workspaces/{id}/items/{item_id}` edits Note/title metadata or deletes an owned item.
 - Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.

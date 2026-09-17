@@ -11,7 +11,14 @@ async function rejects(sql, message, params = []) {
   checks++;
 }
 try {
-  await db.exec('create role anon; create role authenticated; create role service_role;');
+  await db.exec(`create role anon; create role authenticated; create role service_role;
+    create schema auth;
+    create table auth.users (id uuid primary key);
+    create function auth.uid() returns uuid language sql stable as $$
+      select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+    $$;
+    grant usage on schema auth to anon, authenticated, service_role;
+    grant execute on function auth.uid() to anon, authenticated, service_role;`);
   const files = fs.readdirSync('supabase/migrations').filter(x => x.endsWith('.sql')).sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
   const bundle = JSON.parse(execFileSync('python', ['-c', `
@@ -370,6 +377,57 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   await db.exec('reset role; set role authenticated;');
   await rejects('select * from public.entity_identifiers', 'authenticated role cannot read private IDs');
   await rejects("delete from public.relationships", 'authenticated role cannot write');
+  await db.exec('reset role;');
+  const workspaceOwner = '19191919-1919-4919-8919-191919191919';
+  const otherOwner = '20202020-2020-4020-8020-202020202020';
+  const workspaceId = '21212121-2121-4121-8121-212121212121';
+  const noteId = '23232323-2323-4323-8323-232323232323';
+  await db.query('insert into auth.users(id) values ($1),($2)', [workspaceOwner, otherOwner]);
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [workspaceOwner]);
+  await db.exec('set role authenticated;');
+  await db.query(`insert into public.investigation_workspaces(id,name,description)
+    values ($1,'政府採購調查','owner-only workspace')`, [workspaceId]);
+  const ownerWorkspace = await db.query(
+    'select owner_user_id,name from public.investigation_workspaces where id=$1', [workspaceId]);
+  assert.equal(ownerWorkspace.rows[0].owner_user_id, workspaceOwner);
+  assert.equal(ownerWorkspace.rows[0].name, '政府採購調查');
+  checks += 2;
+  await db.query(`insert into public.workspace_items
+    (id,workspace_id,item_type,entity_id,relationship_id,evidence_id,graph_root_entity_id,
+     source_url,note_text,title) values
+    ('24242424-2424-4424-8424-242424242424',$1,'ENTITY',$2,null,null,null,null,null,'公司'),
+    ('25252525-2525-4525-8525-252525252525',$1,'RELATIONSHIP',null,$3,null,null,null,null,'關係'),
+    ('26262626-2626-4626-8626-262626262626',$1,'EVIDENCE',null,null,$4,null,null,null,'證據'),
+    ('27272727-2727-4727-8727-272727272727',$1,'GRAPH',null,null,null,$2,null,null,'關係圖'),
+    ('28282828-2828-4828-8828-282828282828',$1,'SOURCE',null,null,null,null,
+      'https://example.gov.tw/source',null,'原始來源'),
+    ($5,$1,'NOTE',null,null,null,null,null,'待查證','筆記')`,
+    [workspaceId, company.id, rel.id, evidenceId, noteId]);
+  const workspaceItems = await db.query(`select item_type,owner_user_id,created_by_user_id
+    from public.workspace_items where workspace_id=$1 order by item_type`, [workspaceId]);
+  assert.equal(workspaceItems.rows.length, 6);
+  assert.equal(workspaceItems.rows.every(row => row.owner_user_id === workspaceOwner), true);
+  assert.equal(workspaceItems.rows.every(row => row.created_by_user_id === workspaceOwner), true);
+  checks += 3;
+  await db.exec('reset role;');
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [otherOwner]);
+  await db.exec('set role authenticated;');
+  assert.equal((await db.query('select count(*)::int n from public.investigation_workspaces')).rows[0].n, 0);
+  assert.equal((await db.query('select count(*)::int n from public.workspace_items')).rows[0].n, 0);
+  checks += 2;
+  await rejects(`insert into public.investigation_workspaces(id,owner_user_id,name)
+    values (gen_random_uuid(),$1,'spoofed owner')`, 'workspace owner spoofing denied', [workspaceOwner]);
+  await rejects(`insert into public.workspace_items(workspace_id,item_type,note_text)
+    values ($1,'NOTE','cross-tenant')`, 'cross-owner workspace item denied', [workspaceId]);
+  await db.exec('reset role; set role anon;');
+  await rejects('select * from public.investigation_workspaces', 'anonymous workspace read denied');
+  await rejects("insert into public.investigation_workspaces(name) values ('anonymous')",
+    'anonymous workspace write denied');
+  const workspaceIndexes = await db.query(`select indexname from pg_indexes where schemaname='public'
+    and indexname in ('investigation_workspaces_owner_updated_idx',
+      'workspace_items_workspace_created_idx','workspace_items_owner_type_idx')`);
+  assert.equal(workspaceIndexes.rows.length, 3);
+  checks++;
   await db.exec('reset role;');
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
