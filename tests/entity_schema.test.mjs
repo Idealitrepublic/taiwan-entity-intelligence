@@ -21,7 +21,7 @@ try {
     grant execute on function auth.uid() to anon, authenticated, service_role;`);
   const files = fs.readdirSync('supabase/migrations').filter(x => x.endsWith('.sql')).sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
-  const bundle = JSON.parse(execFileSync('python', ['-c', `
+  const bundle = JSON.parse(execFileSync(process.env.TEI_TEST_PYTHON || 'python', ['-c', `
 import json
 from src.entities.backfill import build_legacy_bundle
 snapshot={"companies":[{"id":1,"uniform_number":"12345678","name":"測試公司","fetched_at":"2025-01-01T00:00:00+00:00","source":"MOEA/GCI","source_url":"https://example.gov.tw/company"}],"company_people":[{"id":1,"company_id":1,"person_name":"同名測試人","role":"董事","fetched_at":"2025-01-01T00:00:00+00:00","source":"MOEA/GCI","source_url":"https://example.gov.tw/director"},{"id":2,"company_id":1,"person_name":"同名測試人","role":"董事","fetched_at":"2025-01-01T00:00:00+00:00","source":"MOEA/GCI","source_url":"https://example.gov.tw/director"}]}

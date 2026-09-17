@@ -86,6 +86,12 @@ Both tables revoke `anon` access, grant only authenticated CRUD, enable RLS, and
 
 Both tables repeat `owner_user_id`, use a composite owner foreign key, revoke anonymous access, and enforce owner-only RLS for every granted operation. The bounded `sync_watchlist_events` RPC is `SECURITY INVOKER`, scans at most 25 watched Entities and inserts at most 500 events per request. It accepts only published source records with active published Evidence retrieved after the watch began. Notifications remain inside the dashboard; Phase 10 adds no Email or external push channel.
 
+### Investigation report projection
+
+Phase 11 adds no persistence model. A report is a generated, read-only projection over the canonical Entity, Relationship, Evidence, politician, asset, and Workspace records. Entity and Politician reports use published public rows; Workspace reports first authenticate the owner JWT and rely on existing owner-only RLS before resolving saved public records.
+
+Each report carries a generation timestamp and explicit coverage limits. Relationship and asset entries retain normalized Evidence plus `source`, `source_url`, and `retrieved_at`; the Sources section deduplicates those Evidence records by stable ID. Workspace Source bookmarks retain their owner-provided URL and creation time without being promoted to canonical Evidence. Reports contain objective records only and do not persist or generate findings, risk scores, legal judgments, or conflict-of-interest conclusions.
+
 ## Read projections and APIs
 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
@@ -101,6 +107,7 @@ Both tables repeat `owner_user_id`, use a composite owner foreign key, revoke an
 - `/api/v1/watchlist`: owner-scoped list/add; `/api/v1/watchlist/{id}` removes one subscription and its private alerts.
 - `/api/v1/watchlist/sync`: bounded, idempotent detection against published Relationships and asset declarations.
 - `/api/v1/alerts`: bounded all/read/unread dashboard feed; `/api/v1/alerts/{id}` changes one read state and `/api/v1/alerts/read-all` marks current unread rows read.
+- `/api/v1/reports/{entity|politician|workspace}/{id}`: deterministic JSON by default or readable HTML with `format=html`; Workspace scope requires the owner's bearer token. Entity reads are capped at 25 relationships/assets and Workspace expansion at five distinct saved roots.
 - Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.

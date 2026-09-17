@@ -136,7 +136,19 @@ Status: implemented on `phase-10/watchlist-alert`; Preview acceptance and Produc
 
 Exit gate: targeted tests, PostgreSQL owner-isolation/detection checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
 
-## Phase 11 — Source adapter reliability
+## Phase 11 — Report Export
+
+Status: implemented on `phase-11/report-export`; Preview acceptance remains gated.
+
+- Export deterministic Entity, Politician, and owner-scoped Workspace investigation reports.
+- Include profiles, key/political relationships, contracts, judgments, penalties, assets, graph, and sources.
+- Preserve Evidence plus source, source URL, and retrieval time without automated findings or conclusions.
+- Provide readable and downloadable HTML while retaining bounded reads, RLS, and existing API compatibility.
+- Add no table, migration, AI analysis, or Production mutation.
+
+Exit gate: targeted tests, existing PostgreSQL checks, full build, GitHub push, and protected Preview runtime checks pass.
+
+## Phase 12 — Source adapter reliability
 
 - Unify procurement, penalty, judicial, fraud/domain, and registry adapters behind consistent source-result contracts.
 - Repair the canonical judicial known-case path and add deterministic fixtures.
@@ -145,7 +157,7 @@ Exit gate: targeted tests, PostgreSQL owner-isolation/detection checks, full bui
 
 Exit gate: each source has read-only Preview acceptance tests and observable failure states.
 
-## Phase 12 — Delivery and operations
+## Phase 13 — Delivery and operations
 
 - Standardize Python/Node versions across local, CI, and Vercel.
 - Replace Production-facing CI smoke tests with Preview gates; make ingestion jobs explicit and approved.
@@ -156,4 +168,4 @@ Exit gate: an accepted Preview artifact is the only path to Production.
 
 ## Deferred product work
 
-No unrelated UI/product features begin without an explicit phase. Report export and AI assistance remain deferred.
+No unrelated UI/product features begin without an explicit phase. AI assistance remains deferred.

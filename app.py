@@ -11,6 +11,7 @@ from src import cloud_company as core
 from src.sources.procurement import lookup_awards
 from src.entities.api import dispatch_entity_api
 from src.public_config import SUPABASE_PUBLISHABLE_KEY
+from src.reports import dispatch_report_api
 from src.workspaces import dispatch_workspace_api
 from src.watchlists import dispatch_watchlist_api
 
@@ -35,6 +36,11 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None
         return 200, workspace_public_config(), None
+    if path.rstrip('/').startswith('/api/v1/reports'):
+        if method not in ('GET', 'HEAD'):
+            return 405, {'error': 'Method not allowed'}, None
+        return dispatch_report_api(
+            path, query, authorization=authorization)
     if path.rstrip('/').startswith('/api/v1/workspaces'):
         return dispatch_workspace_api(
             'GET' if method == 'HEAD' else method, path, payload, authorization)

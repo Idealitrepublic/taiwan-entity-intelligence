@@ -195,3 +195,11 @@ The private path remains browser session JWT → WSGI API → Supabase Data API/
 `watchlist_entries` supports published Company, Person, and Politician Entities only. The browser triggers a bounded `SECURITY INVOKER` sync; it scans at most 25 subscriptions and considers at most 500 new event candidates. Evidence retrieval time must be on or after the watch start, which establishes an objective baseline instead of labeling all historical records as new. Unique source keys make repeated syncs idempotent.
 
 Procurement, judgment, penalty, officer/director, and political-contribution alerts are projected from published Relationships with their active published primary Evidence. Asset alerts are projected from published asset declarations with the same Evidence requirement. The Dashboard provides all/read/unread filtering, individual read toggles, and mark-all-read. It deliberately adds no scheduler, Email, webhook, external push, or Production database mutation; the checked-in migration remains gated for acceptance.
+
+## Phase 11 Report Export
+
+The read path is `web/index.html -> /api/v1/reports/{scope}/{id} -> src/reports.py -> existing repositories`. Entity and Politician scopes reuse public, published projections. Workspace scope requires the browser's bearer token; the report service passes it to `WorkspaceRepository`, so the existing owner-only RLS boundary remains authoritative and no service-role credential is used.
+
+Reports are generated on demand and are not stored. The shared contract includes Entity Profile, Key Relationships, Political Relationships, Government Contracts, Judgments, Penalties, Asset Records, Relationship Graph, and Sources. Evidence is normalized without losing its canonical fields and explicitly carries `source`, `source_url`, and `retrieved_at`. HTML is escaped, printable, and downloaded client-side as a Blob so private Workspace credentials never enter URLs.
+
+Reads remain bounded to 25 graph relationships/assets per Entity and five distinct Workspace roots; truncation flags are part of the report. This phase adds no schema, migration, write path, AI inference, legal conclusion, or Production change. Existing search, company, politician, graph, asset, Workspace, and Watchlist routes retain their contracts.
