@@ -12,6 +12,7 @@ from src.sources.procurement import lookup_awards
 from src.entities.api import dispatch_entity_api
 from src.public_config import SUPABASE_PUBLISHABLE_KEY
 from src.workspaces import dispatch_workspace_api
+from src.watchlists import dispatch_watchlist_api
 
 WEB = Path(__file__).parent / 'web'
 
@@ -37,6 +38,10 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
     if path.rstrip('/').startswith('/api/v1/workspaces'):
         return dispatch_workspace_api(
             'GET' if method == 'HEAD' else method, path, payload, authorization)
+    if (path.rstrip('/').startswith('/api/v1/watchlist')
+            or path.rstrip('/').startswith('/api/v1/alerts')):
+        return dispatch_watchlist_api(
+            'GET' if method == 'HEAD' else method, path, query, payload, authorization)
     if path.startswith('/api/v1/'):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None
@@ -80,7 +85,10 @@ def app(environ, start_response):
         method = environ.get('REQUEST_METHOD', 'GET').upper()
         path = environ.get('PATH_INFO', '/')
         request_payload = None
-        if path.rstrip('/').startswith('/api/v1/workspaces') and method in ('POST', 'PATCH'):
+        private_write = (path.rstrip('/').startswith('/api/v1/workspaces')
+                         or path.rstrip('/').startswith('/api/v1/watchlist')
+                         or path.rstrip('/').startswith('/api/v1/alerts'))
+        if private_write and method in ('POST', 'PATCH'):
             length = int(environ.get('CONTENT_LENGTH') or 0)
             if length <= 0 or length > 65536:
                 raise ValueError('Invalid request body length')

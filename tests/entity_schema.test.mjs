@@ -409,12 +409,77 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   assert.equal(workspaceItems.rows.every(row => row.owner_user_id === workspaceOwner), true);
   assert.equal(workspaceItems.rows.every(row => row.created_by_user_id === workspaceOwner), true);
   checks += 3;
+  await db.exec('reset role; set role service_role;');
+  await db.query(`insert into public.entities
+    (id,entity_type,canonical_name,display_name,source,source_id,identity_status,publication_status)
+    values
+    ('34343434-3434-4434-8434-343434343434','Judgment','測試判決','測試判決',
+      'fixture','watch-judgment','EXACT','published'),
+    ('35353535-3535-4535-8535-353535353535','Penalty','測試裁罰','測試裁罰',
+      'fixture','watch-penalty','EXACT','published')`);
+  await db.query(`insert into public.relationships
+    (id,source_entity_id,target_entity_id,relationship_type,primary_evidence_id,
+     observed_at,confidence,status) values
+    ('36363636-3636-4636-8636-363636363636',$1,$2,'DIRECTOR_OF',$3,
+      '2026-09-16T02:00:00Z','EXACT','published'),
+    ('37373737-3737-4737-8737-373737373737',$2,
+      '34343434-3434-4434-8434-343434343434','RELATED_TO_JUDGMENT',$3,
+      '2026-09-16T02:00:00Z','EXACT','published'),
+    ('38383838-3838-4838-8838-383838383838',$2,
+      '35353535-3535-4535-8535-353535353535','RELATED_TO_PENALTY',$3,
+      '2026-09-16T02:00:00Z','EXACT','published'),
+    ('39393939-3939-4939-8939-393939393939',$2,
+      '44444444-4444-4444-8444-444444444444','CONTRACT_WITH',$3,
+      '2026-09-16T02:00:00Z','EXACT','published')`,
+    [rel.source_entity_id, company.id, contributionEvidenceId]);
+  await db.exec('set constraints all immediate; reset role; set role authenticated;');
+  const watchlistId = '29292929-2929-4929-8929-292929292929';
+  await db.query(`insert into public.watchlist_entries(id,entity_id,created_at)
+    values ($1,$2,'2024-01-01T00:00:00Z')`, [watchlistId, company.id]);
+  await db.query(`insert into public.watchlist_entries
+    (id,entity_id,created_at) values
+    ('30303030-3030-4030-8030-303030303030',
+      '33333333-3333-4333-8333-333333333333','2024-01-01T00:00:00Z')`);
+  const firstSync = (await db.query('select public.sync_watchlist_events(25) result')).rows[0].result;
+  assert.equal(firstSync.watched, 2);
+  assert.equal(firstSync.inserted > 0, true);
+  checks += 2;
+  const watchEvents = await db.query(`select event_type,owner_user_id,read_at
+    from public.watchlist_events where watchlist_entry_id=$1 order by event_type`, [watchlistId]);
+  assert.equal(watchEvents.rows.every(row => row.owner_user_id === workspaceOwner), true);
+  assert.equal(watchEvents.rows.some(row => row.event_type === 'OFFICER'), true);
+  assert.equal(watchEvents.rows.some(row => row.event_type === 'POLITICAL_CONTRIBUTION'), true);
+  assert.equal(watchEvents.rows.some(row => row.event_type === 'PROCUREMENT'), true);
+  assert.equal(watchEvents.rows.some(row => row.event_type === 'JUDGMENT'), true);
+  assert.equal(watchEvents.rows.some(row => row.event_type === 'PENALTY'), true);
+  const politicianEvents = await db.query(`select event_type from public.watchlist_events
+    where entity_id='33333333-3333-4333-8333-333333333333'`);
+  assert.equal(politicianEvents.rows.some(row => row.event_type === 'ASSET_DECLARATION'), true);
+  checks += 7;
+  assert.equal((await db.query('select public.sync_watchlist_events(25) result')).rows[0].result.inserted, 0);
+  checks++;
+  const watchEventId = (await db.query(
+    'select id from public.watchlist_events where watchlist_entry_id=$1 limit 1', [watchlistId])).rows[0].id;
+  await rejects("update public.watchlist_events set read_at='2000-01-01T00:00:00Z' where id=$1",
+    'alert read time cannot predate detection', [watchEventId]);
+  await db.query('update public.watchlist_events set read_at=now() where id=$1', [watchEventId]);
+  assert.equal((await db.query('select read_at is not null as read from public.watchlist_events where id=$1',
+    [watchEventId])).rows[0].read, true);
+  checks++;
+  await rejects(`update public.watchlist_events set event_type=
+      case when event_type='JUDGMENT' then 'PENALTY' else 'JUDGMENT' end where id=$1`,
+    'alert identity is immutable', [watchEventId]);
+  await rejects(`insert into public.watchlist_entries(entity_id) values
+    ('44444444-4444-4444-8444-444444444444')`,
+    'unsupported agency cannot be watched');
   await db.exec('reset role;');
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [otherOwner]);
   await db.exec('set role authenticated;');
   assert.equal((await db.query('select count(*)::int n from public.investigation_workspaces')).rows[0].n, 0);
   assert.equal((await db.query('select count(*)::int n from public.workspace_items')).rows[0].n, 0);
-  checks += 2;
+  assert.equal((await db.query('select count(*)::int n from public.watchlist_entries')).rows[0].n, 0);
+  assert.equal((await db.query('select count(*)::int n from public.watchlist_events')).rows[0].n, 0);
+  checks += 4;
   await rejects(`insert into public.investigation_workspaces(id,owner_user_id,name)
     values (gen_random_uuid(),$1,'spoofed owner')`, 'workspace owner spoofing denied', [workspaceOwner]);
   await rejects(`insert into public.workspace_items(workspace_id,item_type,note_text)
@@ -423,10 +488,20 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   await rejects('select * from public.investigation_workspaces', 'anonymous workspace read denied');
   await rejects("insert into public.investigation_workspaces(name) values ('anonymous')",
     'anonymous workspace write denied');
+  await rejects('select * from public.watchlist_entries', 'anonymous watchlist read denied');
+  await rejects('select * from public.watchlist_events', 'anonymous alert read denied');
+  await rejects('select public.sync_watchlist_events(25)', 'anonymous watchlist sync denied');
   const workspaceIndexes = await db.query(`select indexname from pg_indexes where schemaname='public'
     and indexname in ('investigation_workspaces_owner_updated_idx',
       'workspace_items_workspace_created_idx','workspace_items_owner_type_idx')`);
   assert.equal(workspaceIndexes.rows.length, 3);
+  checks++;
+  const watchlistIndexes = await db.query(`select indexname from pg_indexes where schemaname='public'
+    and indexname in ('watchlist_entries_owner_created_idx','watchlist_entries_entity_idx',
+      'watchlist_events_owner_unread_idx','watchlist_events_owner_seen_idx',
+      'watchlist_events_entry_seen_idx','watchlist_events_evidence_idx',
+      'watchlist_events_relationship_idx','watchlist_events_asset_idx')`);
+  assert.equal(watchlistIndexes.rows.length, 8);
   checks++;
   await db.exec('reset role;');
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");

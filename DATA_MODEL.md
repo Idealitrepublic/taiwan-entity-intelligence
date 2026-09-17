@@ -78,6 +78,14 @@ Statuses are descriptive only: `BASELINE`, `NEW`, `INCREASED`, `DECREASED`, `CON
 
 Both tables revoke `anon` access, grant only authenticated CRUD, enable RLS, and define separate owner policies for select, insert, update, and delete. Deleting a workspace cascades only to its private items and never deletes bookmarked Entity, Relationship, or Evidence records.
 
+### Watchlist and dashboard alerts
+
+`watchlist_entries` stores one authenticated owner's subscription to one published `Company`, `Person`, or `Politician` Entity. The unique owner/Entity pair prevents duplicate subscriptions. A subscription begins at `created_at`; historical Evidence retrieved before that point is the baseline and is not emitted as a new alert.
+
+`watchlist_events` records only six evidence-backed update classes: procurement, judgment, penalty, officer/director, political contribution, and asset declaration. Relationship events retain the canonical Relationship and primary Evidence IDs; asset events retain the declaration and primary Evidence IDs. A source record can appear only once per watch entry, and all event identity fields are immutable after detection. `read_at` is the only mutable event state.
+
+Both tables repeat `owner_user_id`, use a composite owner foreign key, revoke anonymous access, and enforce owner-only RLS for every granted operation. The bounded `sync_watchlist_events` RPC is `SECURITY INVOKER`, scans at most 25 watched Entities and inserts at most 500 events per request. It accepts only published source records with active published Evidence retrieved after the watch began. Notifications remain inside the dashboard; Phase 10 adds no Email or external push channel.
+
 ## Read projections and APIs
 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
@@ -90,6 +98,9 @@ Both tables revoke `anon` access, grant only authenticated CRUD, enable RLS, and
 - `/api/v1/politicians/{entity_id}/asset-timeline`: latest 2–20 declaration years, capped at 500 rows, with per-type totals and evidence-backed adjacent-year comparisons.
 - `/api/v1/workspaces`: authenticated owner-scoped list/create API; `/api/v1/workspaces/{id}` reads, edits, or deletes one owned workspace.
 - `/api/v1/workspaces/{id}/items`: adds a typed bookmark; `/api/v1/workspaces/{id}/items/{item_id}` edits Note/title metadata or deletes an owned item.
+- `/api/v1/watchlist`: owner-scoped list/add; `/api/v1/watchlist/{id}` removes one subscription and its private alerts.
+- `/api/v1/watchlist/sync`: bounded, idempotent detection against published Relationships and asset declarations.
+- `/api/v1/alerts`: bounded all/read/unread dashboard feed; `/api/v1/alerts/{id}` changes one read state and `/api/v1/alerts/read-all` marks current unread rows read.
 - Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.
@@ -106,6 +117,7 @@ Before scaling, verify with real query plans:
 2. RLS policy predicates and publication filters use indexed columns.
 3. Graph source/target queries continue to use composite indexes.
 4. JSONB `source_locator` is indexed only when concrete containment queries justify it.
+5. Watchlist sync uses indexed Entity endpoints, asset owner/company keys, and owner-first partial indexes for unread alerts.
 
 ## RLS and privileges
 

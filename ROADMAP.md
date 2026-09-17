@@ -124,7 +124,19 @@ Status: implemented on `phase-9/investigation-workspace`; Preview acceptance and
 
 Exit gate: targeted tests, PostgreSQL owner-isolation checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
 
-## Phase 10 — Source adapter reliability
+## Phase 10 — Watchlist / Alert
+
+Status: implemented on `phase-10/watchlist-alert`; Preview acceptance and Production migration remain gated.
+
+- Track published Company, Person, and Politician Entities with owner-only RLS.
+- Detect new procurement, judgment, penalty, officer/director, political-contribution, and asset-declaration records after the watch baseline.
+- Require active published Evidence, preserve canonical source IDs, and deduplicate repeated scans.
+- Provide bounded Dashboard notifications with all/read/unread filters and single/all read controls.
+- Keep delivery in-app only; do not add Email, webhook, external push, Watchlist sharing, or report export.
+
+Exit gate: targeted tests, PostgreSQL owner-isolation/detection checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
+
+## Phase 11 — Source adapter reliability
 
 - Unify procurement, penalty, judicial, fraud/domain, and registry adapters behind consistent source-result contracts.
 - Repair the canonical judicial known-case path and add deterministic fixtures.
@@ -133,7 +145,7 @@ Exit gate: targeted tests, PostgreSQL owner-isolation checks, full build, GitHub
 
 Exit gate: each source has read-only Preview acceptance tests and observable failure states.
 
-## Phase 11 — Delivery and operations
+## Phase 12 — Delivery and operations
 
 - Standardize Python/Node versions across local, CI, and Vercel.
 - Replace Production-facing CI smoke tests with Preview gates; make ingestion jobs explicit and approved.
@@ -144,4 +156,4 @@ Exit gate: an accepted Preview artifact is the only path to Production.
 
 ## Deferred product work
 
-No unrelated UI/product features begin until Phases 1–3 establish trustworthy Entity, Relationship, Evidence, search, and Graph behavior. Saved investigations, reports, and AI assistance remain deferred.
+No unrelated UI/product features begin without an explicit phase. Report export and AI assistance remain deferred.
