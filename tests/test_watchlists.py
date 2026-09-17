@@ -57,7 +57,8 @@ class WatchlistTests(unittest.TestCase):
 
     def test_repository_forwards_user_jwt_and_never_service_role(self):
         with patch.dict(os.environ, {
-                "TEI_ENTITY_ANON_KEY": "public-key",
+                "TEI_PRIVATE_SUPABASE_URL": "https://preview.example.supabase.co",
+                "TEI_PRIVATE_SUPABASE_ANON_KEY": "public-key",
                 "SUPABASE_SERVICE_ROLE_KEY": "do-not-use"}, clear=True):
             repository = WatchlistRepository(TOKEN)
             with patch("urllib.request.urlopen") as open_url:

@@ -58,7 +58,8 @@ class WorkspaceTests(unittest.TestCase):
 
     def test_repository_forwards_user_jwt_and_never_service_role(self):
         with patch.dict(os.environ, {
-                "TEI_ENTITY_ANON_KEY": "public-key",
+                "TEI_PRIVATE_SUPABASE_URL": "https://preview.example.supabase.co",
+                "TEI_PRIVATE_SUPABASE_ANON_KEY": "public-key",
                 "SUPABASE_SERVICE_ROLE_KEY": "do-not-use"}, clear=True):
             repository = WorkspaceRepository(TOKEN)
             with patch("urllib.request.urlopen") as open_url:
@@ -107,7 +108,8 @@ class WorkspaceTests(unittest.TestCase):
     def test_public_auth_config_never_exposes_service_role(self):
         status = []
         with patch.dict(os.environ, {
-                "TEI_ENTITY_ANON_KEY": "browser-safe-key",
+                "TEI_PRIVATE_SUPABASE_URL": "https://preview.example.supabase.co",
+                "TEI_PRIVATE_SUPABASE_ANON_KEY": "browser-safe-key",
                 "SUPABASE_SERVICE_ROLE_KEY": "do-not-expose"}, clear=True):
             body = b"".join(app({"REQUEST_METHOD": "GET",
                                  "PATH_INFO": "/api/v1/workspace-config"},
@@ -116,6 +118,15 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(status, ["200 OK"])
         self.assertEqual(result["publishable_key"], "browser-safe-key")
         self.assertNotIn("do-not-expose", str(result))
+
+    def test_auth_config_fails_closed_without_explicit_private_pair(self):
+        with patch.dict(os.environ, {}, clear=True):
+            body = b"".join(app({"REQUEST_METHOD": "GET",
+                                 "PATH_INFO": "/api/v1/workspace-config"},
+                                lambda _value, _headers: None))
+        result = json.loads(body)
+        self.assertFalse(result["auth_enabled"])
+        self.assertEqual(result["publishable_key"], "")
 
     def test_ui_has_auth_crud_and_six_bookmark_types(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()

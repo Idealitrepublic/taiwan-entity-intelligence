@@ -1,6 +1,5 @@
 """Authenticated, owner-scoped Watchlist and dashboard Alert API."""
 import json
-import os
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -8,7 +7,7 @@ from urllib.parse import urlencode
 
 from src.entities.contracts import response
 from src.entities.models import uuid_string
-from src.public_config import SUPABASE_PUBLISHABLE_KEY
+from src.runtime_config import private_supabase_config
 from src.workspaces import WorkspaceUnauthorized, access_token_from_header
 
 WATCHLIST_FIELDS = (
@@ -64,11 +63,7 @@ class WatchlistRepository:
     """PostgREST client forwarding only the signed-in user's JWT."""
 
     def __init__(self, access_token, transport=None):
-        self.url = os.environ.get("TEI_ENTITY_SUPABASE_URL") or os.environ.get(
-            "SUPABASE_URL", "https://rztdbdurkjfrirsrrhtu.supabase.co")
-        self.key = os.environ.get("TEI_ENTITY_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY")
-        if not self.key and self.url.rstrip("/") == "https://rztdbdurkjfrirsrrhtu.supabase.co":
-            self.key = SUPABASE_PUBLISHABLE_KEY
+        self.url, self.key = private_supabase_config()
         self.access_token = access_token
         self.transport = transport or self._request
 

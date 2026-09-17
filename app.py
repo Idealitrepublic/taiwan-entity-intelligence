@@ -2,6 +2,9 @@
 import json
 import os
 import re
+import sys
+import time
+import uuid
 from pathlib import Path
 from urllib.parse import parse_qs
 from http import HTTPStatus
@@ -10,10 +13,11 @@ import urllib.request
 from src import cloud_company as core
 from src.sources.procurement import lookup_awards
 from src.entities.api import dispatch_entity_api
-from src.public_config import SUPABASE_PUBLISHABLE_KEY
+from src.runtime_config import private_supabase_config
 from src.reports import dispatch_report_api
 from src.workspaces import dispatch_workspace_api
 from src.watchlists import dispatch_watchlist_api
+from src.rate_limit import request_allowed
 
 WEB = Path(__file__).parent / 'web'
 
@@ -23,12 +27,15 @@ def db_count(table):
         return int(response.headers['Content-Range'].split('/')[-1])
 
 def workspace_public_config():
-    url = os.environ.get('TEI_ENTITY_SUPABASE_URL') or os.environ.get(
-        'SUPABASE_URL', 'https://rztdbdurkjfrirsrrhtu.supabase.co')
-    key = os.environ.get('TEI_ENTITY_ANON_KEY') or os.environ.get('SUPABASE_ANON_KEY')
-    if not key and url.rstrip('/') == 'https://rztdbdurkjfrirsrrhtu.supabase.co':
-        key = SUPABASE_PUBLISHABLE_KEY
+    url, key = private_supabase_config()
     return {'supabase_url': url, 'publishable_key': key, 'auth_enabled': bool(url and key)}
+
+
+def log_event(level, event, **fields):
+    """Emit one redacted JSON line for Vercel Runtime Logs and local stderr."""
+    record = {'level': level, 'event': event, **fields}
+    print(json.dumps(record, ensure_ascii=False, separators=(',', ':')),
+          file=sys.stderr, flush=True)
 
 
 def dispatch(path, query, method='GET', payload=None, authorization=None):
@@ -87,27 +94,49 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
     return 404, {'status': 'error', 'error': 'Not found'}, None
 
 def app(environ, start_response):
+    started = time.monotonic()
+    method = environ.get('REQUEST_METHOD', 'GET').upper()
+    path = environ.get('PATH_INFO', '/')
+    request_id = environ.get('HTTP_X_VERCEL_ID') or str(uuid.uuid4())
     try:
-        method = environ.get('REQUEST_METHOD', 'GET').upper()
-        path = environ.get('PATH_INFO', '/')
+        client = (environ.get('HTTP_X_FORWARDED_FOR') or
+                  environ.get('REMOTE_ADDR') or 'unknown').split(',', 1)[0].strip()
+        if not request_allowed(path, client):
+            code, payload, content_type = 429, {
+                'status': 'error', 'error': '請稍後再試 / Too many requests'}, None
+        else:
+            code = None
         request_payload = None
         private_write = (path.rstrip('/').startswith('/api/v1/workspaces')
                          or path.rstrip('/').startswith('/api/v1/watchlist')
                          or path.rstrip('/').startswith('/api/v1/alerts'))
-        if private_write and method in ('POST', 'PATCH'):
+        if code is None and private_write and method in ('POST', 'PATCH'):
             length = int(environ.get('CONTENT_LENGTH') or 0)
             if length <= 0 or length > 65536:
                 raise ValueError('Invalid request body length')
             request_payload = json.loads(environ.get('wsgi.input').read(length))
-        code, payload, content_type = dispatch(
-            path, parse_qs(environ.get('QUERY_STRING', '')),
-            method, request_payload, environ.get('HTTP_AUTHORIZATION'))
-    except (ValueError, json.JSONDecodeError):
+        if code is None:
+            code, payload, content_type = dispatch(
+                path, parse_qs(environ.get('QUERY_STRING', '')),
+                method, request_payload, environ.get('HTTP_AUTHORIZATION'))
+    except (ValueError, json.JSONDecodeError) as exc:
         code, payload, content_type = 400, {'error': 'Invalid JSON request'}, None
-    except Exception:
+        log_event('warning', 'request_rejected', request_id=request_id,
+                  method=method, path=path, error_type=type(exc).__name__)
+    except Exception as exc:
         code, payload, content_type = 502, {'status': 'error', 'error': '上游資料來源暫時無法連線，請稍後再試。'}, None
+        log_event('error', 'request_failed', request_id=request_id,
+                  method=method, path=path, error_type=type(exc).__name__)
     body = (payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)).encode()
-    start_response(f'{code} {HTTPStatus(code).phrase}', [('Content-Type', content_type or 'application/json; charset=utf-8'), ('Cache-Control','no-store'), ('Content-Length',str(len(body))), ('X-Content-Type-Options','nosniff')])
+    duration_ms = round((time.monotonic() - started) * 1000, 1)
+    log_event('info', 'request_complete', request_id=request_id,
+              method=method, path=path, status=code, duration_ms=duration_ms)
+    headers = [('Content-Type', content_type or 'application/json; charset=utf-8'),
+               ('Cache-Control','no-store'), ('Content-Length',str(len(body))),
+               ('X-Content-Type-Options','nosniff'), ('X-Request-Id', request_id)]
+    if code == 429:
+        headers.append(('Retry-After', '60'))
+    start_response(f'{code} {HTTPStatus(code).phrase}', headers)
     return [] if environ.get('REQUEST_METHOD') == 'HEAD' else [body]
 
 # Explicit WSGI alias for Vercel's Python entrypoint detector.

@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import json
-import os
 import urllib.error
 import urllib.parse
 import urllib.request
+
+from src.runtime_config import public_supabase_config
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import unquote, urlparse
 
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
-SUPABASE = os.environ.get("SUPABASE_URL", "https://rztdbdurkjfrirsrrhtu.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+SUPABASE, SUPABASE_KEY = public_supabase_config()
 JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/FJUD/qryresult.aspx?kw={}&judtype=JUDBOOK"
 
 
@@ -163,9 +163,9 @@ class handler(BaseHTTPRequestHandler):
             payload = build_company(uniform)
             self._send_json(404 if payload.get("status") == "not_found" else 200, payload)
         except urllib.error.HTTPError as exc:
-            self._send_json(502, {"status": "error", "error": "MOEA HTTPError", "detail": str(exc)})
-        except Exception as exc:
-            self._send_json(502, {"status": "error", "error": "公司查詢失敗", "detail": f"{type(exc).__name__}: {exc}"})
+            self._send_json(502, {"status": "error", "error": f"上游資料來源 HTTP {exc.code}"})
+        except Exception:
+            self._send_json(502, {"status": "error", "error": "公司查詢失敗"})
 
     def log_message(self, fmt, *args):
         return
