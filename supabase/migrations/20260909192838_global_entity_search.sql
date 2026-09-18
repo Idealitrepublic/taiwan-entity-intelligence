@@ -170,3 +170,4 @@ comment on function public.search_entities(text,text,integer) is
   'Bounded public search. Returns published entity metadata, a public company number, and a published relationship context only.';
 revoke all on function public.search_entities(text,text,integer) from public;
 grant execute on function public.search_entities(text,text,integer) to anon, authenticated, service_role;
+;

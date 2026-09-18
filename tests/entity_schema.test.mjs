@@ -19,7 +19,12 @@ try {
     $$;
     grant usage on schema auth to anon, authenticated, service_role;
     grant execute on function auth.uid() to anon, authenticated, service_role;`);
-  const files = fs.readdirSync('supabase/migrations').filter(x => x.endsWith('.sql')).sort();
+  // Earlier fetched migrations describe Supabase-managed baseline/storage state
+  // that PGlite cannot reproduce (for example pg_trgm and storage schemas).
+  // Exercise the application-owned Entity model and all later phases here.
+  const files = fs.readdirSync('supabase/migrations')
+    .filter(x => x.endsWith('.sql') && x >= '20260909143820')
+    .sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
   const bundle = JSON.parse(execFileSync(process.env.TEI_TEST_PYTHON || 'python', ['-c', `
 import json
