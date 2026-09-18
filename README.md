@@ -154,17 +154,35 @@ Expected development files:
 - `tenders_gpa.json`
 - future judicial / penalty / fraud source files
 
-## Run locally
+## Run locally on macOS
 
-Python 3.9+ is supported and the MVP uses the Python standard library.
+The deployed application is Python WSGI plus dependency-free browser JavaScript; it is not a Next.js application. Use Python 3.12+ (matching `pyproject.toml`) and Node.js 22+; the Vercel project currently uses Node.js 24.x.
 
 ```bash
-python3 -m unittest discover -s tests
-python3 -m src.main
-python3 -m src.server
+python3.12 -m venv .venv
+source .venv/bin/activate
+.venv/bin/python -m pip install -r requirements-dev.txt
+npm ci
+cp .env.example .env.local
+npm run build
+npm test
+npm run dev
 ```
 
-Then open `http://127.0.0.1:8000` and enter a company uniform number.
+Open `http://localhost:3000`. The default local configuration uses the existing public, RLS-restricted Supabase read path. Do not add `SUPABASE_SERVICE_ROLE_KEY` for normal browser/API development; it is reserved for explicitly reviewed server-side ingestion or backfill work.
+
+Vercel CLI, Supabase CLI, and Docker are optional for the current application runtime. Install them only for project linking, environment sync, or isolated local Supabase work. Never pull Production secrets into routine local development; use Development or Preview-scoped variables.
+
+## Development workflow
+
+All changes follow this promotion path:
+
+1. Run and test locally on a feature branch.
+2. Push the feature branch to GitHub to create a Vercel Preview deployment.
+3. Verify the Preview URL and its Development/Preview-scoped Supabase configuration.
+4. Merge only after acceptance; let the reviewed `main` commit become Production.
+
+Do not use `vercel --prod`, direct Production environment edits, or Production database migrations during ordinary development.
 
 ## Product direction
 

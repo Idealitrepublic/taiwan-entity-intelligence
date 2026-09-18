@@ -92,6 +92,7 @@ class GraphV2Tests(unittest.TestCase):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
         for token in ("GRAPH_PAGE_SIZE=12", "GRAPH_MAX_DEPTH=3", "GRAPH_MAX_NODES=60",
                       "expandKnowledgeNode", "showKnowledgeEdge", "relationshipFilter",
+                      "hopLimit", "graphDepthLimit", "manualPositions", "nodeDragState", "marker-end",
                       "關係證據 / Relationship evidence", "/api/v1/graph/"):
             self.assertIn(token, html)
 

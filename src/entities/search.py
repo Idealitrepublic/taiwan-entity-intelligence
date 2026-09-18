@@ -1,5 +1,6 @@
 """Validated public search input; names never imply entity identity resolution."""
 from dataclasses import dataclass
+from unicodedata import normalize
 
 from .models import ENTITY_TYPES
 
@@ -12,7 +13,10 @@ class SearchRequest:
 
 
 def parse_search_request(query: dict) -> SearchRequest:
-    term = query.get("q", [""])[0].strip()
+    raw_term = query.get("q", [""])[0]
+    if not isinstance(raw_term, str):
+        raise ValueError("Search term must be text")
+    term = normalize("NFKC", raw_term).strip()
     entity_type = query.get("entity_type", [None])[0] or None
     try:
         limit = int(query.get("limit", ["20"])[0])

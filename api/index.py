@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 import urllib.error
 import urllib.request
 
+from src.runtime_config import public_supabase_config
+
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
-SUPABASE = os.environ.get("SUPABASE_URL", "https://rztdbdurkjfrirsrrhtu.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+SUPABASE, SUPABASE_KEY = public_supabase_config()
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
 
@@ -174,7 +174,7 @@ def handler(request):
         return _response(404, {"status": "error", "error": "Not found"})
     except urllib.error.HTTPError as exc:
         return _response(502, {"status": "error", "error": f"上游資料來源 HTTP {exc.code}"})
-    except urllib.error.URLError as exc:
-        return _response(502, {"status": "error", "error": f"上游資料來源無法連線：{exc.reason}"})
-    except Exception as exc:
-        return _response(502, {"status": "error", "error": f"Vercel API 執行失敗：{type(exc).__name__}: {exc}"})
+    except urllib.error.URLError:
+        return _response(502, {"status": "error", "error": "上游資料來源暫時無法連線"})
+    except Exception:
+        return _response(502, {"status": "error", "error": "Vercel API 執行失敗"})

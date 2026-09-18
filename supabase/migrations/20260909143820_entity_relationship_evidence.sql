@@ -388,3 +388,4 @@ revoke all on function public.tei_ingest_bundle(jsonb) from public, anon, authen
 grant execute on function public.tei_ingest_bundle(jsonb) to service_role;
 revoke all on all functions in schema tei_private from public, anon, authenticated;
 grant execute on all functions in schema tei_private to service_role;
+;

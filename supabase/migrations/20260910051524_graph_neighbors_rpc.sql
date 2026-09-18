@@ -122,3 +122,4 @@ comment on function public.graph_entity_neighbors(uuid,integer,uuid,text) is
 revoke all on function public.graph_entity_neighbors(uuid,integer,uuid,text) from public;
 grant execute on function public.graph_entity_neighbors(uuid,integer,uuid,text)
   to anon, authenticated, service_role;
+;

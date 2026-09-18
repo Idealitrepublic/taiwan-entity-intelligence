@@ -2,22 +2,18 @@ name: Sync Taiwan public evidence
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'data/public_sync_status.json'
-      - 'data/public_sync_state.json'
-      - 'data/public_evidence.jsonl'
-      - 'data/judicial_company_index.json'
-  schedule:
-    # 01:30 Taiwan time (UTC+8), inside the Judicial Yuan API service window.
-    - cron: '30 17 * * *'
+    inputs:
+      confirmation:
+        description: 'Type SYNC_PUBLIC_EVIDENCE to run the source sync'
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   sync:
+    if: ${{ inputs.confirmation == 'SYNC_PUBLIC_EVIDENCE' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -46,11 +42,3 @@ jobs:
             data/judicial_company_index.json
           retention-days: 30
           compression-level: 6
-
-      - name: Publish sync status
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f data/public_sync_status.json data/judicial_company_index.json
-          git commit -m "chore: update public evidence sync status" || true
-          git push || true

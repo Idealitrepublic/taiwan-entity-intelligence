@@ -1,8 +1,10 @@
 import json
+import io
 import unittest
 from unittest.mock import patch
 from app import app
 from src import cloud_company
+from src.rate_limit import FixedWindowLimiter
 
 class CloudAppTests(unittest.TestCase):
     def request(self,path):
@@ -26,3 +28,22 @@ class CloudAppTests(unittest.TestCase):
     def test_domain_requires_a_domain(self):
         with self.assertRaises(ValueError):
             cloud_company.check_domain('localhost')
+    def test_runtime_error_is_redacted_and_request_is_logged(self):
+        status=[]
+        headers=[]
+        with patch('app.dispatch',side_effect=RuntimeError('secret-value')), \
+             patch('sys.stderr',new_callable=io.StringIO) as stderr:
+            body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/api/fail'},
+                              lambda s,h:(status.append(s),headers.extend(h))))
+        self.assertTrue(status[0].startswith('502'))
+        self.assertNotIn(b'secret-value',body)
+        events=[json.loads(line) for line in stderr.getvalue().splitlines()]
+        self.assertEqual([event['event'] for event in events],
+                         ['request_failed','request_complete'])
+        self.assertTrue(dict(headers).get('X-Request-Id'))
+    def test_rate_limiter_is_bounded_and_resets(self):
+        limiter=FixedWindowLimiter(window_seconds=60)
+        self.assertTrue(limiter.allow('client',2,now=1))
+        self.assertTrue(limiter.allow('client',2,now=2))
+        self.assertFalse(limiter.allow('client',2,now=3))
+        self.assertTrue(limiter.allow('client',2,now=61))

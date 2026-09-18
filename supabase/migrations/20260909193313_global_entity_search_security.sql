@@ -253,3 +253,4 @@ drop index if exists public.entity_aliases_prefix_idx;
 drop index if exists public.entities_published_display_trgm_idx;
 drop index if exists public.entities_published_canonical_trgm_idx;
 drop index if exists public.entity_aliases_trgm_idx;
+;

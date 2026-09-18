@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
-import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -11,11 +9,11 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import unquote
 
 from .public_evidence import collect_public_evidence
+from .runtime_config import public_supabase_config
 
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
-SUPABASE = os.environ.get("SUPABASE_URL", "https://rztdbdurkjfrirsrrhtu.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+SUPABASE, SUPABASE_KEY = public_supabase_config()
 JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/FJUD/qryresult.aspx?kw={}&judtype=JUDBOOK"
 
 def _json_get(url: str, timeout: int = 20, headers=None):
@@ -129,7 +127,7 @@ class Handler(BaseHTTPRequestHandler):
             uid = unquote(path.split("/api/company/", 1)[1])
             if not uid.isdigit() or len(uid) != 8: return self._send(400, {"error": "統編必須是 8 碼數字。"})
             try: return self._send(200, build_company(uid))
-            except Exception as exc: return self._send(500, {"error": str(exc), "traceback": traceback.format_exc()})
+            except Exception: return self._send(500, {"error": "公司查詢失敗"})
         if path == "/api/status":
             return self._send(200, {"status":"ok", "version":"4.3-diagnostic", "supabase":{"configured":bool(SUPABASE_KEY)}, "source_catalog":source_catalog()})
         self._send(404, {"error":"Not found"})

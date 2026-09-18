@@ -2,14 +2,18 @@ name: Seed T.E.I. test entities
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+    inputs:
+      confirmation:
+        description: 'Type SEED_SHARED_SUPABASE to confirm the shared-data write'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   seed:
+    if: ${{ inputs.confirmation == 'SEED_SHARED_SUPABASE' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

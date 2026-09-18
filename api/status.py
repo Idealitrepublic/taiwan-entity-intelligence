@@ -23,9 +23,9 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         configured = bool(
-            os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-            or os.environ.get("SUPABASE_ANON_KEY")
+            os.environ.get("SUPABASE_ANON_KEY")
             or os.environ.get("VITE_SUPABASE_ANON_KEY")
+            or os.environ.get("TEI_ENTITY_ANON_KEY")
         )
         self._send_json(
             200,
