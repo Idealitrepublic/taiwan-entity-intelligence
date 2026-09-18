@@ -1,6 +1,7 @@
 """Public, bounded PostgREST reads. Never use service-role credentials here."""
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from urllib.parse import urlencode
@@ -12,7 +13,7 @@ from .contracts import (
     ASSET_DECLARATION_FIELDS as PUBLIC_ASSET_DECLARATION_FIELDS,
     select_list,
 )
-from .models import uuid_string
+from .models import stable_id, uuid_string
 from src.asset_timeline import MAX_TIMELINE_ROWS, build_asset_timeline
 from src.public_config import SUPABASE_PUBLISHABLE_KEY
 
@@ -21,6 +22,8 @@ EVIDENCE_FIELDS = select_list(PUBLIC_EVIDENCE_FIELDS)
 RELATIONSHIP_FIELDS = select_list(PUBLIC_RELATIONSHIP_FIELDS)
 POLITICIAN_TERM_FIELDS = select_list(PUBLIC_POLITICIAN_TERM_FIELDS)
 ASSET_DECLARATION_FIELDS = select_list(PUBLIC_ASSET_DECLARATION_FIELDS)
+MOEA_COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
+MOEA_COMPANY_SEARCH_API = "https://data.gcis.nat.gov.tw/od/data/api/6BBA2268-1367-4B42-9CCA-BC17499EBE8C"
 
 
 class EntityStoreUnavailable(RuntimeError):
@@ -60,6 +63,52 @@ class EntityRepository:
         if not isinstance(rows, list):
             raise EntityStoreUnavailable("Unexpected entity database response")
         return rows
+
+    def _moea_company_search(self, term, limit):
+        """Bounded live registry fallback; it never writes or claims publication."""
+        if re.fullmatch(r"[0-9]{8}", term):
+            endpoint = MOEA_COMPANY_API
+            expression = f"Business_Accounting_NO eq {term}"
+        else:
+            endpoint = MOEA_COMPANY_SEARCH_API
+            expression = f"Company_Name like {term} and Company_Status eq 01"
+        request = urllib.request.Request(
+            f"{endpoint}?{urlencode({'$format': 'json', '$filter': expression, '$skip': '0', '$top': str(limit)})}",
+            headers={"Accept": "application/json", "User-Agent": "T.E.I./search-fallback"})
+        try:
+            with urllib.request.urlopen(request, timeout=12) as response:
+                raw = response.read().decode("utf-8-sig", "replace").strip()
+                payload = json.loads(raw) if raw else []
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError,
+                ValueError, json.JSONDecodeError):
+            return []
+        rows = payload if isinstance(payload, list) else []
+        results = []
+        normalized = term.casefold()
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            uniform = str(row.get("Business_Accounting_NO") or "").strip()
+            name = str(row.get("Company_Name") or "").strip()
+            if not re.fullmatch(r"[0-9]{8}", uniform) or not name:
+                continue
+            folded_name = name.casefold()
+            match_type = ("identifier_exact" if uniform == term else
+                          "name_exact" if folded_name == normalized else
+                          "name_prefix" if folded_name.startswith(normalized) else
+                          "name_contains")
+            results.append({
+                "entity_id": stable_id("entity", "tw:uniform_number", uniform),
+                "entity_type": "Company",
+                "canonical_name": name,
+                "display_name": name,
+                "identity_status": "EXACT",
+                "public_identifier": uniform,
+                "context_label": "經濟部即時公司登記 / MOEA live registry",
+                "match_type": match_type,
+                "is_live_fallback": True,
+            })
+        return results[:limit]
 
     def entity(self, entity_id):
         rows = self.transport("entities", {"select": ENTITY_FIELDS, "id": f"eq.{uuid_string(entity_id)}",
@@ -117,6 +166,12 @@ class EntityRepository:
         if entity_type:
             params["entity_type_filter"] = entity_type
         rows = self.transport("rpc/search_entities", params)
+        if entity_type in (None, "Company") and len(rows) < limit:
+            indexed_uniforms = {row.get("public_identifier") for row in rows
+                                if row.get("entity_type") == "Company"}
+            live_rows = self._moea_company_search(term, limit - len(rows))
+            rows.extend(row for row in live_rows
+                        if row.get("public_identifier") not in indexed_uniforms)
         groups = {}
         for row in rows:
             kind = row.get("entity_type")

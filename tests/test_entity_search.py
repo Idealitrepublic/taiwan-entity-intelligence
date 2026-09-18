@@ -1,5 +1,6 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+import json
 from pathlib import Path
 
 from src.entities.api import dispatch_entity_api
@@ -53,10 +54,35 @@ class EntitySearchTests(unittest.TestCase):
             return [{"entity_id": "1", "entity_type": "Company"},
                     {"entity_id": "2", "entity_type": "Person"}]
 
-        result = EntityRepository(transport=get).search("測試", entity_type="Company", limit=7)
+        repository = EntityRepository(transport=get)
+        with patch.object(repository, "_moea_company_search", return_value=[]):
+            result = repository.search("測試", entity_type="Company", limit=7)
         self.assertEqual(calls, [("rpc/search_entities", {
             "search_query": "測試", "result_limit": 7, "entity_type_filter": "Company"})])
         self.assertEqual(result["groups"], {"Company": 1, "Person": 1})
+
+    def test_repository_adds_bounded_live_company_fallback(self):
+        repository = EntityRepository(transport=lambda table, params: [])
+        response = Mock()
+        response.read.return_value = json.dumps([{
+            "Business_Accounting_NO": "04541302",
+            "Company_Name": "鴻海精密工業股份有限公司",
+        }], ensure_ascii=False).encode()
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        with patch("src.entities.repository.urllib.request.urlopen", return_value=response):
+            result = repository.search("鴻海精密", entity_type="Company", limit=5)
+        self.assertEqual(result["result_count"], 1)
+        self.assertEqual(result["items"][0]["public_identifier"], "04541302")
+        self.assertTrue(result["items"][0]["is_live_fallback"])
+
+    def test_live_company_fallback_failure_keeps_index_results(self):
+        indexed = [{"entity_id": "1", "entity_type": "Company",
+                    "public_identifier": "12345678"}]
+        repository = EntityRepository(transport=lambda table, params: list(indexed))
+        with patch("src.entities.repository.urllib.request.urlopen", side_effect=TimeoutError):
+            result = repository.search("測試公司", entity_type="Company", limit=5)
+        self.assertEqual(result["items"], indexed)
 
     def test_homepage_exposes_global_search_and_legacy_company_path(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
@@ -65,6 +91,8 @@ class EntitySearchTests(unittest.TestCase):
         self.assertIn("async function searchCompany", html)
         self.assertIn("同名人物會分開顯示", html)
         self.assertIn("value.normalize('NFKC')", html)
+        self.assertIn("item.is_live_fallback", html)
+        self.assertIn("經濟部即時公司登記", html)
         self.assertIn('value="GovernmentAgency"', html)
         self.assertIn('value="LobbyingRecord"', html)
         self.assertNotIn('maxlength="8" inputmode="numeric"', html)

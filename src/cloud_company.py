@@ -24,7 +24,8 @@ WEBSITE_OVERRIDES = {
 def _json_get(url: str, timeout: int = 25):
     req = urllib.request.Request(url, headers={"User-Agent": "T.E.I./7.0", "Accept": "application/json, text/plain, */*"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode("utf-8-sig", "replace"))
+        raw = r.read().decode("utf-8-sig", "replace").strip()
+        return json.loads(raw) if raw else []
 
 
 def _rows(payload):

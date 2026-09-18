@@ -47,6 +47,15 @@ class VercelCoreTests(unittest.TestCase):
         self.assertEqual(calls, {"company": 1, "director": 1})
         self.assertEqual(len(data["people"]), 1)
 
+    def test_empty_moea_response_is_not_found_not_invalid_json(self):
+        response = unittest.mock.Mock()
+        response.read.return_value = b""
+        response.__enter__ = unittest.mock.Mock(return_value=response)
+        response.__exit__ = unittest.mock.Mock(return_value=False)
+        with patch("src.cloud_company.urllib.request.urlopen", return_value=response):
+            data = api_index.build_company("88597586")
+        self.assertEqual(data["status"], "not_found")
+
 
 if __name__ == "__main__":
     unittest.main()
