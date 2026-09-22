@@ -217,9 +217,9 @@ def build_company(uniform):
     judicial = records_for_company(data['company_name'])
     data['judicial_records'] = judicial['records']
     data['judicial_result'] = judicial
-    data['evidence_status']['司法院'] = {'status': judicial['status'], 'matched': judicial['matched'], 'message': judicial['interpretation'], 'url': data['judicial_search_url']}
+    data['evidence_status']['司法院'] = {'status': judicial['status'], 'matched': judicial['matched'], 'message': judicial['coverage_note'] + ' ' + judicial['interpretation'], 'url': data['judicial_search_url']}
     for row in judicial['records']:
-        data['evidence'].append({'id':'judicial:'+row['jid'], 'title':row['title'], 'summary':row['summary'], 'source_type':'judicial', 'source_url':row['source_url'], 'event_date':row.get('date'), 'match_rule':judicial['match_rule'], 'raw':row})
+        data['evidence'].append({'id':'judicial:'+row['jid'], 'title':row['title'], 'summary':row['summary'], 'source_type':'judicial', 'source_url':row['source_url'], 'source_record_id':row['jid'], 'retrieved_at':row.get('retrieved_at'), 'provenance':row.get('provenance'), 'event_date':row.get('date'), 'match_rule':judicial['match_rule'], 'raw':row})
     company_node = f"company:{uniform}"
     for idx, row in enumerate(data['labor_penalties']):
         node_id = 'penalty:' + str(row.get('_id') or idx)

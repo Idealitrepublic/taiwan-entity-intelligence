@@ -46,6 +46,21 @@ acceptance required. Production schema and data remain unchanged.
 Exit gate: targeted engine tests, PostgreSQL/RLS checks, quality sample, build,
 and Preview pass. Do not begin DATA Phase 5 without explicit approval.
 
+## DATA Phase 5 — Judiciary Coverage Audit & Repair
+
+Status: implemented on `data-phase-5/judiciary-coverage`; Preview acceptance
+required. Production is unchanged.
+
+- Validate JList/JDoc response shape, official JID and date, versioned Evidence,
+  removals, exact company-name occurrences, and partial-coverage responses.
+- Run the official-source verified-case benchmark and record sample coverage,
+  duplicate JIDs, freshness, and remaining historical gaps.
+- Keep person names unresolved without verified identity evidence. No new
+  database migration or public API contract is required.
+
+Exit gate: targeted tests, necessary DB checks, benchmark, build, and Preview
+pass. Do not begin DATA Phase 6 without explicit approval.
+
 ## Phase 0 — Baseline and repository audit
 
 Status: complete on local branch; not deployed.

@@ -72,6 +72,10 @@ def main() -> int:
         consume(judicial_rows, existing, seen, counters, "judicial")
     else:
         counters["errors"].append({"source": "judicial", "error": "JUDICIAL_USER/JUDICIAL_PASSWORD not configured"})
+    judicial_errors = [item for item in counters["errors"] if item["source"] == "judicial"]
+    judicial_count = counters["by_source"].get("judicial", 0)
+    judicial_status = ("error" if judicial_errors else "empty_window" if judicial_count == 0
+                       else "ok")
 
     with EVIDENCE.open("w", encoding="utf-8") as fh:
         for eid in sorted(existing):
@@ -80,7 +84,8 @@ def main() -> int:
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     state = {
-        "last_sync": now,
+        "last_sync": now if not counters["errors"] and judicial_status == "ok" else state.get("last_sync"),
+        "last_attempt": now,
         "evidence_count": len(existing),
         "last_run_fetched": counters["fetched"],
         "last_run_new": counters["new"],
@@ -90,13 +95,16 @@ def main() -> int:
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
     status = {
-        "last_sync": now,
+        "last_sync": state["last_sync"],
+        "last_attempt": now,
         "evidence_count": len(existing),
         "new": counters["new"],
         "fetched": counters["fetched"],
         "by_source": counters["by_source"],
         "errors": counters["errors"],
         "judicial_enabled": bool(os.environ.get("JUDICIAL_USER") and os.environ.get("JUDICIAL_PASSWORD")),
+        "judicial_status": judicial_status,
+        "judicial_fetched": judicial_count,
     }
     STATUS.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
     JUDICIAL_INDEX.write_text(
@@ -104,7 +112,7 @@ def main() -> int:
         encoding="utf-8",
     )
     print(json.dumps(status, ensure_ascii=False, indent=2))
-    return 0
+    return 1 if counters["errors"] or judicial_status != "ok" else 0
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ FILES = [
     "app.py", "pyproject.toml", "requirements.txt", "src/__init__.py",
     "src/cloud_company.py", "src/public_config.py", "src/sources/judicial_index.py",
     "src/sources/procurement.py", "data/judicial_company_index.json",
+    "data/judicial_verified_cases.json",
     "web/index.html", "web/app.js", "web/tei-enhancements.js",
     "src/entities/__init__.py", "src/entities/models.py", "src/entities/repository.py",
     "src/entities/api.py", "src/entities/search.py", "src/relationships/__init__.py",

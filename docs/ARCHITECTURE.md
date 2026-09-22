@@ -297,3 +297,22 @@ Rollback removes the additive RPC, trigger, constraints, indexes, and candidate
 metadata columns. Canonical Entities, Evidence, and Relationships are untouched;
 accepted production decisions would require a separate audited reversal before
 schema rollback. Production remains unchanged during this phase.
+
+## v2 DATA Phase 5 — Judiciary coverage repair
+
+The manual sync path is official JList (seven-day changes) → JDoc per JID →
+versioned Evidence JSONL → deduplicated company-name index. The canonical
+company route reads that index plus a small, official-document-verified
+historical case set. It exposes source URL, JID, date, retrieval time, and
+provenance while marking unmatched results as partial coverage.
+
+JList schema errors and JDoc authentication failures stop the sync. Official
+removal messages create a new Evidence version and suppress the last active
+index entry. A file-only document without text remains Evidence but cannot
+enter the company-name index until text extraction is available. Person mentions
+remain unlinked. The older `src/server.py` demo still is not the canonical path.
+
+No database migration, RLS change, or Production data write occurs here.
+Rollback removes the verified-case projection and reverts the connector/index
+changes; immutable source Evidence in an accepted ingestion is retained for
+audit rather than overwritten.

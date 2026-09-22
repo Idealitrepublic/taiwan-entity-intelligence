@@ -117,3 +117,26 @@ official sources above and other existing evidence-backed adapters.
 - Quality checks use labeled representative pairs and report precision/recall at
   the `EXACT`/`HIGH` threshold. Rollback drops the additive ingestion function,
   constraints, indexes, and columns; it does not alter canonical Entities.
+
+## DATA Phase 5 — Judiciary coverage
+
+Primary provider: [Judicial Yuan JList/JDoc API specification](https://opendata.judicial.gov.tw/api/Newses/39/file).
+JList exposes a seven-day change window, not a historical search. JDoc retrieves
+one identified document. The public [court judgment page](https://judgment.judicial.gov.tw/FJUD/printData.aspx?id=KLDM%2C111%2C%E8%A8%B4%2C328%2C20230428%2C1)
+is the source URL used to cross-check known cases.
+
+- Ingestion requires `JUDICIAL_USER` and `JUDICIAL_PASSWORD` in the manual sync
+  job. Missing credentials or invalid API responses fail the run; an empty
+  seven-day window is reported distinctly from a verified zero match.
+- JID is the deduplication key. Document content hashes preserve corrections as
+  separate Evidence versions; a later removal suppresses the index entry.
+- Each record retains the official JID, normalized judgment date, source URL,
+  retrieval time, content hash, and raw JDoc provenance. File-only documents
+  without extracted text remain unindexed and are counted.
+- Company-name occurrences are observational search matches, not an Entity
+  identity decision or legal finding. Person names remain unresolved without
+  stronger identifiers.
+- The checked-in verified case set covers two older judgments mentioning
+  御首服務事業有限公司 and one recent judgment mentioning 中華郵政股份有限公司.
+  Run `python scripts/judicial_coverage.py --verify-official` to repeat the
+  known-case comparison. Sample recall is not historical population recall.

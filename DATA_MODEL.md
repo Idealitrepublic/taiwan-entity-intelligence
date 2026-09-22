@@ -36,6 +36,12 @@ Entity <- EntityEvidence -> Evidence
 
 `entity_sources` maps an entity to its source record. `entity_evidence` attaches evidence to a typed fact. Raw or sensitive identifiers must not be copied into public projections.
 
+Judicial JDoc Evidence is versioned by official JID and content hash. Its source
+record remains the stable JID while corrections and removal notices receive
+distinct Evidence IDs. The company judgment index is a read projection of name
+occurrences; it does not create a canonical Entity match or legal finding. A
+zero indexed match has `partial` coverage status.
+
 ### Relationship
 
 `relationships` connects two different entities using a constrained `relationship_type`. It carries time precision, quantities/amounts, source role, confidence, publication status, and a mandatory `primary_evidence_id`.
