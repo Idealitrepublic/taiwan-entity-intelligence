@@ -44,3 +44,31 @@ Official metadata and API documentation:
   200-row core and 1 MB transaction limits.
 - A zero-row source response is not accepted as a successful full refresh without
   an explicit source-health decision.
+
+## DATA Phase 2 — Political Contributions
+
+Primary provider: Control Yuan Political Contribution Public Access Platform.
+
+- Official platform: <https://ardata.cy.gov.tw/>
+- 11th Legislative Yuan election dataset: <https://data.gov.tw/dataset/168061>
+- 10th Legislative Yuan election dataset: <https://data.gov.tw/dataset/129495>
+
+The official files contain filing/row identity, candidate or party, election,
+transaction date, income/expense category, donor/payee, ID or uniform number,
+amount, donation method, and correction metadata. The adapter allowlists only
+the contribution fields needed by T.E.I.; addresses, telephone numbers, and
+personal national IDs are never retained in Evidence.
+
+### Identity, provenance, and quality rules
+
+- A Company match requires an exact normalized eight-digit `tw:uniform_number`.
+- A Politician match requires one exact official identifier supplied by the
+  source-to-master crosswalk. Candidate names are audit text, never match keys.
+- Evidence retains filing/row ID, candidate and donor source labels, election
+  year, source URL, retrieval time, and both exact matching methods.
+- Every build reports accepted/skipped rows, exact-match coverage, duplicate
+  source records, conflicting duplicates, and bounded batch count. Zero rows or
+  any conflicting source-record identity requires review before publication.
+- Output is draft-only and split into dependency-complete batches of at most 200
+  Relationships, 400 Evidence records, and 1 MB. A whole batch can be removed
+  while draft; published corrections use superseding Evidence, never mutation.

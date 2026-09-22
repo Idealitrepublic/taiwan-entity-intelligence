@@ -16,7 +16,14 @@ required. Production schema and data remain unchanged.
 - Exclude private contact fields and require separate review before publication.
 
 Exit gate: adapter tests, PostgreSQL/RLS checks, build, and read-only Preview pass.
-Do not begin DATA Phase 2 until explicit approval.
+## DATA Phase 2 — Political Contributions Ingestion
+
+- Normalize official Control Yuan contribution rows and preserve immutable source provenance.
+- Resolve donor companies only by exact uniform number and politicians only by official ID.
+- Report exact-match coverage, rejected rows, duplicates, and conflicts per run.
+- Keep ingestion bounded, draft-only, and backward compatible with Phase 6 reads.
+
+Do not begin DATA Phase 3 until explicit approval.
 
 ## Phase 0 — Baseline and repository audit
 

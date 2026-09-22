@@ -74,6 +74,9 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
     ('55555555-5555-4555-8555-555555555555', 'GovernmentOfficial', '王次長', '王次長', 'fixture', 'official', 'SOURCE_SCOPED', 'published'),
     ('88888888-8888-4888-8888-888888888888', 'PoliticalParty', '測試黨', '測試黨', 'fixture', 'party', 'EXACT', 'published'),
     ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'LegislativeBill', '測試法案', '測試法案', 'fixture', 'bill', 'EXACT', 'published')`);
+  await db.exec(`insert into public.entity_identifiers(entity_id,namespace,value,confidence)
+    values ('33333333-3333-4333-8333-333333333333',
+      'tw:legislative_yuan:legislator_number','119999','EXACT')`);
   await db.query(`insert into public.politician_terms
     (id, politician_entity_id, term_number, constituency, constituency_type,
      party_entity_id, start_date, end_date, primary_evidence_id, publication_status)
@@ -193,7 +196,7 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
      observed_at,retrieved_at,content_hash,status,publication_status)
     values ($1,'監察院政治獻金公開查閱平臺','112-legislator-A-0001','Government Open Data',
       'https://ardata.cy.gov.tw/data/search/advanced',
-      '{"dataset":"political_contribution_public_platform","source_record_id":"112-legislator-A-0001","match_method":"exact_uniform_number","uniform_number":"12345678"}'::jsonb,
+      '{"dataset":"political_contribution_public_platform","source_record_id":"112-legislator-A-0001","match_method":"exact_uniform_number","uniform_number":"12345678","politician_match_method":"exact_official_identifier","politician_identifier_namespace":"tw:legislative_yuan:legislator_number","politician_identifier_value":"119999","contribution_year":2024}'::jsonb,
       '政治獻金：測試公司','測試公司 → 林立委；120000 TWD；營利事業捐贈；2024-01-15',
       '2024-01-15T00:00:00Z','2026-09-16T02:00:00Z',$2,'active','published')`,
     [contributionEvidenceId, '0'.repeat(64)]);
@@ -224,6 +227,13 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     "select prosecdef from pg_proc where proname='political_contributions_for_entity'"
   )).rows[0].prosecdef, false);
   checks += 10;
+  await rejects('select public.tei_ingest_political_contribution_bundle($1::jsonb)',
+    'anon contribution ingestion denied', [JSON.stringify({})]);
+  await db.exec('reset role; set role service_role;');
+  await rejects(`select public.tei_ingest_political_contribution_bundle(
+    '{"entities":[],"identifiers":[],"evidence":[],"relationships":[{"relationship_type":"POLITICAL_CONTRIBUTION_TO","status":"published","confidence":"EXACT"}]}'::jsonb)`,
+    'ingestion accepts draft contribution edges only');
+  await db.exec('reset role; set role anon;');
   await rejects('select * from public.political_contributions_for_entity($1, 26, null)',
     'unbounded contribution read denied', [company.id]);
   await rejects("insert into public.relationships(source_entity_id,target_entity_id,relationship_type,primary_evidence_id,start_date,date_precision,observed_at,amount,currency,source_role,confidence,status) values ($1,'33333333-3333-4333-8333-333333333333','POLITICAL_CONTRIBUTION_TO',$2,'2024-01-15','day','2024-01-15T00:00:00Z',1,'TWD','營利事業捐贈','EXACT','published')",

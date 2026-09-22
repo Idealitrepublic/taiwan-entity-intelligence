@@ -188,6 +188,24 @@ The private write path is `web/index.html -> /api/v1/workspaces -> Supabase Data
 
 The UI supports create, rename/edit, delete, and selection of workspaces; saving the current canonical Entity, selected Graph edge and Evidence, bounded Graph state, an HTTP(S) source, or a Note; Note editing; and item deletion. It deliberately adds no member sharing, Watchlist, Alert, or Report Export behavior. If the additive schema is absent, the workspace returns an explicit unavailable state without affecting search, company, politician, Graph, or evidence features. The migration remains unapplied to Production until acceptance.
 
+## DATA Phase 2 political-contribution ingestion
+
+The official Control Yuan file is normalized before graph projection. Unicode,
+ROC/Gregorian dates, currency formatting, field aliases, and source identity are
+handled deterministically. Company resolution uses only exact uniform numbers;
+Politician resolution uses only an explicit official identifier crosswalk. Names
+are retained for audit display and are never used to merge an Entity.
+
+The adapter emits draft `Company -> POLITICAL_CONTRIBUTION_TO -> Politician`
+Relationships and immutable Evidence, plus acceptance, coverage, skip, duplicate,
+and conflict metrics. Dependency-complete batches stay below the core ingestion
+limits. `tei_ingest_political_contribution_bundle` is service-role-only,
+`SECURITY INVOKER`, cannot create Entities, and validates exact identifiers and
+provenance before calling the canonical ingestion function. Publication repeats
+both identifier checks in a deferred database constraint. The existing public
+read API and UI are unchanged. Rollback removes the additive RPC/validator and
+draft batch; published facts require a reviewed superseding record.
+
 ## Phase 10 Watchlist and Alert
 
 The private path remains browser session JWT → WSGI API → Supabase Data API/RPC. `src/watchlists.py` forwards the user's bearer token with the public key and never uses a service-role credential. Watchlist and alert routes are independent of every public Entity read endpoint, so missing additive schema returns an explicit unavailable state without changing search, company, politician, Graph, asset, or Workspace contracts.

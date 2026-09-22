@@ -67,6 +67,12 @@ A contribution is not a duplicate Entity. It is a directed `Company -> POLITICAL
 
 Company resolution is publishable only when the donor's normalized eight-digit uniform number exactly matches an `EXACT` `tw:uniform_number` identifier. Name-only, fuzzy, malformed, and unmatched records stay skipped/unresolved; adapters always emit draft rows for review. A deferred database constraint repeats this rule at publication time.
 
+DATA Phase 2 also requires the target Politician to match one `EXACT` official
+identifier. Evidence records the identifier namespace/value, contribution year,
+candidate and donor source labels, filing/row identity, URL, and retrieval time.
+The service-role-only ingestion wrapper rejects entity creation, non-draft facts,
+unbounded bundles, or missing provenance. This preserves the Phase 6 read API.
+
 ### Asset declarations
 
 `asset_declarations` stores one evidence-backed line from a legislator declaration. It preserves `politician_id`, `declaration_year`, `asset_type`, `asset_name`, optional amount/currency and quantity/unit, the source company name, an optional resolved `company_entity_id`, the optional derived Relationship, and mandatory primary Evidence. The allowlisted types are real estate, cash, deposits, stocks, bonds, funds, securities, claims, debts, business investments, insurance, vehicles, and other assets.

@@ -4,7 +4,10 @@ from unittest.mock import Mock
 
 from src.entities.api import dispatch_entity_api
 from src.entities.repository import EntityFeatureUnavailable, EntityRepository
-from src.political_contributions import build_political_contribution_bundle
+from src.political_contributions import (
+    build_political_contribution_batches,
+    build_political_contribution_bundle,
+)
 
 COMPANY = "11111111-1111-4111-8111-111111111111"
 POLITICIAN = "22222222-2222-4222-8222-222222222222"
@@ -91,10 +94,55 @@ class PoliticalContributionTests(unittest.TestCase):
         second = build_political_contribution_bundle([source_row()], **kwargs)[0]
         self.assertEqual(first["relationships"][0]["id"], second["relationships"][0]["id"])
         invalid, report = build_political_contribution_bundle(
-            [source_row(amount="NaN"), source_row(source_record_id="bad-date", date="2024/01/15")],
+            [source_row(amount="NaN"), source_row(source_record_id="bad-date", date="2024-13-15")],
             **kwargs)
         self.assertEqual(invalid["relationships"], [])
         self.assertEqual(len(report["skipped"]), 2)
+
+    def test_official_headers_roc_date_and_provenance_are_normalized(self):
+        company, politician = entities()
+        row = {"序號": "11-A-7", "申報序號／年度": "11-A／113",
+               "擬參選人／政黨": "林立委", "lgno": "110777",
+               "捐贈者／支出對象": "測試公司", "身分證／統一編號": "１２３４５６７８",
+               "交易日期": "113/01/15", "收入金額": "120,000元",
+               "收支科目": "營利事業捐贈收入", "年度": "113"}
+        bundle, report = build_political_contribution_bundle(
+            [row], companies_by_uniform={"12345678": company},
+            politicians_by_official_id={
+                ("tw:legislative_yuan:legislator_number", "110777"): politician},
+            retrieved_at="2026-09-16T10:00:00+08:00")
+        locator = bundle["evidence"][0]["source_locator"]
+        self.assertEqual(bundle["relationships"][0]["start_date"], "2024-01-15")
+        self.assertEqual(locator["contribution_year"], 2024)
+        self.assertEqual(locator["politician_match_method"], "exact_official_identifier")
+        self.assertEqual(locator["candidate_name"], "林立委")
+        self.assertNotIn("地址", locator)
+        self.assertEqual(report["quality"]["exact_match_coverage"], 1.0)
+
+    def test_names_never_resolve_people_and_conflicts_are_reported(self):
+        company, politician = entities()
+        rows = [source_row(politician_source_id="", candidate_name="林立委"),
+                source_row(), source_row(amount="130000")]
+        bundle, report = build_political_contribution_bundle(
+            rows, companies_by_uniform={"12345678": company},
+            politicians_by_official_id={"legislator-001": politician},
+            retrieved_at="2026-09-16T10:00:00+08:00")
+        self.assertEqual(len(bundle["relationships"]), 1)
+        self.assertIn("missing_politician_identifier",
+                      {item["reason"] for item in report["skipped"]})
+        self.assertEqual(report["quality"]["high_severity_issue_count"], 1)
+
+    def test_batches_are_bounded_and_dependency_complete(self):
+        company, politician = entities()
+        rows = [source_row(source_record_id=f"row-{number}") for number in range(205)]
+        batches, report = build_political_contribution_batches(
+            rows, companies_by_uniform={"12345678": company},
+            politicians_by_source_id={"legislator-001": politician},
+            retrieved_at="2026-09-16T10:00:00+08:00")
+        self.assertEqual([len(batch["relationships"]) for batch in batches], [200, 5])
+        self.assertTrue(all(len(batch["relationships"]) == len(batch["evidence"])
+                            for batch in batches))
+        self.assertEqual(report["batch_count"], 2)
 
     def test_repository_uses_one_bounded_rpc_and_projects_public_fields(self):
         calls = []
