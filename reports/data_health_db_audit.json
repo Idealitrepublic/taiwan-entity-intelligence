@@ -1,0 +1,25 @@
+{
+  "audited_at": "2026-09-22T19:20:00Z",
+  "project_ref": "rztdbdurkjfrirsrrhtu",
+  "scope": "shared Supabase project; privileged read-only SQL, all publication states",
+  "all_states_counts": {
+    "politician_entities": 0,
+    "politician_terms": 0,
+    "political_contributions": 0,
+    "asset_declarations": 0
+  },
+  "missing_migration_versions": [
+    "20260922170414",
+    "20260922173008",
+    "20260922174447",
+    "20260922182447"
+  ],
+  "ingest_functions_present": {
+    "political_master": false,
+    "political_contribution": false,
+    "asset_declaration_legacy": true,
+    "core_bundle": true
+  },
+  "preview_supabase_override_configured": false,
+  "production_data_mutated": false
+}

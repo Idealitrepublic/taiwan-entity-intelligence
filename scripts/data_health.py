@@ -119,7 +119,7 @@ def benchmark(now=None):
     }
 
 
-def markdown(report):
+def markdown(report, db_audit=None):
     def fmt(value):
         return "unknown" if value is None else str(value)
 
@@ -136,8 +136,19 @@ def markdown(report):
                   "- **High — judicial sync failure:** the checked-in status has an HTTP error although older `last_sync` exists. This report counts the error and never treats the timestamp as proof of a clean latest attempt. The sync now preserves the last usable index on failure; historical judiciary coverage remains a documented gap.",
                   "- **Medium — procurement/penalty provenance:** live mirror and legacy source records may lack per-row retrieval time, original record URL or provenance. Missing fields remain visible as unknown/partial; they are not fabricated.",
                   "- **Unknown — private resolution candidates:** anonymous read access is intentionally denied. Precision/recall from labeled tests does not establish live population quality.",
-                  "", "## Reproduce and rollback", "",
-                  "Run `python scripts/data_health.py --json reports/data_health.json --markdown docs/DATA_HEALTH.md`. Only GET requests are issued; no schema/data migration is included. Rollback removes the generated report and benchmark code; Production is unchanged.", ""])
+                  ""])
+    if db_audit:
+        lines.extend(["## Privileged, read-only database cross-check", "",
+                      f"Audited: {db_audit['audited_at']} against {db_audit['project_ref']}; this is a separate snapshot, not refreshed by the public benchmark.",
+                      "All publication states were counted using `scripts/data_health_remote.sql`:", ""])
+        for name, count in db_audit["all_states_counts"].items():
+            lines.append(f"- `{name}`: {count} rows across all states.")
+        lines.extend(["", "DATA Phase 1–4 migrations absent from that database: " +
+                      ", ".join(db_audit["missing_migration_versions"]) + ".",
+                      "The master/contribution ingestion entrypoints are absent; the older asset entrypoint exists. Anon RLS is publication-filtered but cannot explain zero rows across all states.",
+                      "Preview has no Supabase override in Vercel environment variables and falls back to this same public project. Therefore Preview cannot gain independent data without an isolated database.", ""])
+    lines.extend(["## Reproduce and rollback", "",
+                  "Run `python scripts/data_health.py --json reports/data_health.json --markdown docs/DATA_HEALTH.md`. For all-state database counts, rerun read-only `scripts/data_health_remote.sql` and refresh `reports/data_health_db_audit.json` before regeneration. No schema/data migration is included. Rollback removes the benchmark code and generated artifacts; Production is unchanged.", ""])
     return "\n".join(lines)
 
 
@@ -145,6 +156,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--json", type=Path)
     parser.add_argument("--markdown", type=Path)
+    parser.add_argument("--db-audit", type=Path, default=ROOT / "reports/data_health_db_audit.json")
     args = parser.parse_args()
     report = benchmark()
     if args.json:
@@ -152,7 +164,8 @@ def main():
         args.json.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     if args.markdown:
         args.markdown.parent.mkdir(parents=True, exist_ok=True)
-        args.markdown.write_text(markdown(report), encoding="utf-8")
+        audit = json.loads(args.db_audit.read_text(encoding="utf-8")) if args.db_audit.is_file() else None
+        args.markdown.write_text(markdown(report, audit), encoding="utf-8")
     print(json.dumps({"severity": {m["source"]: m["severity"] for m in report["metrics"]},
                       "report": str(args.markdown or args.json or "stdout")}, ensure_ascii=False))
 

@@ -24,7 +24,9 @@ JID = re.compile(r"^[A-Z]{4},\d{2,3},[^,\s]+,\d+,\d{8},\d+$")
 def normalize_jid(value: str) -> str:
     jid = str(value or "").strip()
     if not JID.fullmatch(jid):
-        raise ValueError("Invalid judicial JID")
+        # Official case IDs are public; preserve a bounded escaped sample so a
+        # failed sync can distinguish source format drift from malformed data.
+        raise ValueError(f"Invalid judicial JID: {ascii(jid)[:120]}")
     return jid
 
 

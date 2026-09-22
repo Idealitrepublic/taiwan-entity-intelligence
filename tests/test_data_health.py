@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from src.data_health import age_hours, metric, severity
 from scripts.sync_public_sources import should_publish_judicial_index
+from scripts.data_health import markdown
 
 
 class DataHealthTests(unittest.TestCase):
@@ -34,6 +35,16 @@ class DataHealthTests(unittest.TestCase):
         self.assertFalse(should_publish_judicial_index("error"))
         self.assertFalse(should_publish_judicial_index("empty_window"))
         self.assertTrue(should_publish_judicial_index("ok"))
+
+    def test_report_separates_public_probe_from_all_state_sql_audit(self):
+        report = {"generated_at": "2026-09-22T00:00:00Z", "metrics": []}
+        audit = {"audited_at": "2026-09-22T01:00:00Z", "project_ref": "example",
+                 "all_states_counts": {"politician_entities": 0},
+                 "missing_migration_versions": ["123"]}
+        output = markdown(report, audit)
+        self.assertIn("separate snapshot", output)
+        self.assertIn("`politician_entities`: 0", output)
+        self.assertIn("123", output)
 
 
 if __name__ == "__main__":

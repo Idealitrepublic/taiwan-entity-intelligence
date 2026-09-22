@@ -22,6 +22,12 @@ class JudicialCoverageTests(unittest.TestCase):
                 with self.assertRaises((RuntimeError, ValueError)):
                     judicial.changed_jids("token")
 
+    def test_invalid_jid_error_retains_bounded_escaped_diagnostic(self):
+        with self.assertRaisesRegex(ValueError, "Invalid judicial JID") as caught:
+            judicial.normalize_jid("bad\n" + "x" * 200)
+        self.assertLess(len(str(caught.exception)), 150)
+        self.assertIn("\\n", str(caught.exception))
+
     def test_case_date_and_wrapped_company_name_normalize(self):
         self.assertEqual(judicial.normalize_jdate("2023-04-28"), "2023-04-28")
         self.assertTrue(any("御首服務事業有限公司" in name for name in
