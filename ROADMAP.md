@@ -2,6 +2,22 @@
 
 All phases use: **Local -> Test -> Git -> Vercel Preview -> Acceptance -> Production**.
 
+## v2 DATA Phase 1 — Political Master Data
+
+Status: implemented on `data-phase-1/political-master-data`; Preview acceptance
+required. Production schema and data remain unchanged.
+
+- Ingest official Legislative Yuan member and committee observations as draft,
+  evidence-backed Entity/Relationship/term records.
+- Resolve a politician across records only by exact official `lgno`; keep missing
+  or ambiguous rows source-scoped and never merge people by name alone.
+- Preserve term, party, constituency, onboard/leave dates, committee session,
+  source record, source URL, retrieval time, and quality metrics.
+- Exclude private contact fields and require separate review before publication.
+
+Exit gate: adapter tests, PostgreSQL/RLS checks, build, and read-only Preview pass.
+Do not begin DATA Phase 2 until explicit approval.
+
 ## Phase 0 — Baseline and repository audit
 
 Status: complete on local branch; not deployed.

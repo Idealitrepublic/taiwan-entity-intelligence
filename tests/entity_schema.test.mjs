@@ -104,6 +104,38 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
     and indexname in ('politician_terms_entity_period_idx','politician_terms_party_idx','politician_terms_evidence_idx')`);
   assert.equal(politicianIndexes.rows.length, 3);
   checks++;
+  await db.exec('reset role; set role service_role;');
+  const politicalMasterBundle = JSON.parse(execFileSync(process.env.TEI_TEST_PYTHON || 'python', ['-c', `
+import json
+from src.political_master import build_political_master_bundle
+members=[{'term':'11','name':'資料委員','party':'資料黨','areaName':'新北市第1選舉區','onboardDate':'2024/02/01','leaveDate':None}]
+committees=[{'term':'11','sessionPeriod':'1','lgno':'110777','name':'資料委員','committee':'內政委員會','isCoChairman':'N'}]
+print(json.dumps(build_political_master_bundle(members, committees, retrieved_at='2026-09-23T10:00:00+08:00')[0]))
+`], { encoding: 'utf8' }));
+  const firstMasterResult = await db.query(
+    'select public.tei_ingest_political_master_bundle($1::jsonb) result',
+    [JSON.stringify(politicalMasterBundle)]);
+  await db.query('select public.tei_ingest_political_master_bundle($1::jsonb)',
+    [JSON.stringify(politicalMasterBundle)]);
+  assert.equal(firstMasterResult.rows[0].result.politician_terms_processed, 1);
+  const masterTerms = await db.query(`select term_number,constituency,legislator_number,
+      source_name,source_record_id,publication_status from public.politician_terms
+    where legislator_number='110777'`);
+  assert.equal(masterTerms.rows.length, 1, 'political master ingestion is idempotent');
+  assert.equal(masterTerms.rows[0].source_record_id, 'member:11:110777');
+  assert.equal(masterTerms.rows[0].publication_status, 'draft');
+  const masterIndexes = await db.query(`select indexname from pg_indexes where schemaname='public'
+    and indexname in ('politician_terms_source_record_idx','politician_terms_legislator_number_idx')`);
+  assert.equal(masterIndexes.rows.length, 2);
+  assert.equal((await db.query("select prosecdef from pg_proc where proname='tei_ingest_political_master_bundle'")).rows[0].prosecdef, false);
+  checks += 6;
+  const publishedMasterBundle = structuredClone(politicalMasterBundle);
+  publishedMasterBundle.politician_terms[0].publication_status = 'published';
+  await rejects('select public.tei_ingest_political_master_bundle($1::jsonb)',
+    'ingestion cannot bypass draft review', [JSON.stringify(publishedMasterBundle)]);
+  await db.exec('reset role; set role anon;');
+  await rejects('select public.tei_ingest_political_master_bundle($1::jsonb)',
+    'public political master writes denied', [JSON.stringify(politicalMasterBundle)]);
   const companySearch = await db.query("select * from public.search_entities('測試公司', null, 20)");
   assert.equal(companySearch.rows.length, 1);
   assert.equal(companySearch.rows[0].entity_type, 'Company');

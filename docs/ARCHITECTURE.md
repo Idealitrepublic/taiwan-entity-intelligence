@@ -203,3 +203,36 @@ The read path is `web/index.html -> /api/v1/reports/{scope}/{id} -> src/reports.
 Reports are generated on demand and are not stored. The shared contract includes Entity Profile, Key Relationships, Political Relationships, Government Contracts, Judgments, Penalties, Asset Records, Relationship Graph, and Sources. Evidence is normalized without losing its canonical fields and explicitly carries `source`, `source_url`, and `retrieved_at`. HTML is escaped, printable, and downloaded client-side as a Blob so private Workspace credentials never enter URLs.
 
 Reads remain bounded to 25 graph relationships/assets per Entity and five distinct Workspace roots; truncation flags are part of the report. This phase adds no schema, migration, write path, AI inference, legal conclusion, or Production change. Existing search, company, politician, graph, asset, Workspace, and Watchlist routes retain their contracts.
+
+## v2 DATA Phase 1 — Political Master Data
+
+The ingestion boundary is `src/political_master.py ->
+tei_ingest_political_master_bundle`. It consumes official Legislative Yuan
+datasets 16 and 14, emits draft Entity/Relationship/Evidence records, and adds
+draft `politician_terms` in the same transaction. Existing politician reads and
+the version-1 API remain unchanged; `legislator_number` is an additive term field.
+
+Politicians are consolidated only by official `lgno`. A dataset-internal exact
+term/name join may discover one unique `lgno`, but a name never merges people
+across terms or sources. Missing/ambiguous identifiers create source-scoped rows;
+identifier/name conflicts and unmatched committee rows are reported and skipped.
+Party and committee labels remain source-scoped Entities. Committee membership
+keeps term/session/co-chair context in an evidence-backed Relationship.
+
+`build_political_master_batches` partitions a refresh into dependency-complete
+batches below the core limits of 200 Entities/Relationships/terms, 400 Evidence
+records, and 1 MB. A committee batch repeats only the referenced Entity rows;
+idempotent source IDs make retries safe.
+
+The migration adds source identity and `lgno` indexes plus a service-role-only,
+`SECURITY INVOKER` ingestion RPC. It accepts at most 200 term rows, rejects
+non-draft input, and refuses to overwrite a published term without review. RLS
+and existing grants remain authoritative; no browser or anonymous write path is
+added. Preview validation uses PGlite and read-only deployment because the shared
+Supabase project must not be mutated.
+
+Rollback before acceptance is `git revert` of the additive migration and adapter.
+If applied to a non-production database, drop the ingestion RPC, the two new
+indexes, and the three additive term columns after exporting any draft rows.
+Source-data rollback retracts the affected Evidence/Relationships by source batch;
+it never deletes or rewrites unrelated Entity history.
