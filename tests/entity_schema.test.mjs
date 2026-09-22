@@ -461,6 +461,36 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   assert.deepEqual(remainingAssets.rows, [{id: unresolvedAssetId}],
     'retracted Evidence hides only its declaration');
   checks++;
+  await db.exec('reset role; set role service_role;');
+  const resolutionCandidateId = '29292929-2929-4929-8929-292929292929';
+  const resolutionBundle = {resolution_candidates: [{
+    id: resolutionCandidateId, source_entity_id: rel.source_entity_id,
+    candidate_entity_id: second.source_entity_id, confidence: 'HIGH', score: '0.90',
+    reason: 'multi_signal_context', signals: {normalized_name_match: true,
+      shared_exact_identifiers: [], shared_company_ids: [company.id],
+      shared_roles: ['董事'], time_overlap: true}, evidence_id: evidenceId,
+    matching_evidence_ids: [evidenceId, nonExactEvidenceId],
+    engine_version: 'tei-resolution-v1', status: 'pending'}]};
+  await db.query('select public.tei_ingest_resolution_candidates($1::jsonb)',
+    [JSON.stringify(resolutionBundle)]);
+  await db.query('select public.tei_ingest_resolution_candidates($1::jsonb)',
+    [JSON.stringify(resolutionBundle)]);
+  const resolutionRows = await db.query(`select confidence,score,signals,
+    cardinality(matching_evidence_ids) evidence_count,status
+    from public.resolution_candidates where id=$1`, [resolutionCandidateId]);
+  assert.equal(resolutionRows.rows[0].confidence, 'HIGH');
+  assert.equal(resolutionRows.rows[0].score, '0.900');
+  assert.equal(resolutionRows.rows[0].evidence_count, 2);
+  assert.equal(resolutionRows.rows[0].status, 'pending');
+  checks += 4;
+  await rejects(`update public.resolution_candidates set confidence='LOW',score=.25
+    where id=$1`, 'resolution matching evidence is immutable', [resolutionCandidateId]);
+  await db.query(`update public.resolution_candidates set status='accepted',
+    decided_at=now(),decision_reason='manual evidence review' where id=$1`,
+    [resolutionCandidateId]);
+  assert.equal((await db.query('select status from public.resolution_candidates where id=$1',
+    [resolutionCandidateId])).rows[0].status, 'accepted');
+  checks++;
   await db.exec('reset role; set role authenticated;');
   await rejects('select * from public.entity_identifiers', 'authenticated role cannot read private IDs');
   await rejects("delete from public.relationships", 'authenticated role cannot write');

@@ -275,3 +275,25 @@ If applied to a non-production database, drop the ingestion RPC, the two new
 indexes, and the three additive term columns after exporting any draft rows.
 Source-data rollback retracts the affected Evidence/Relationships by source batch;
 it never deletes or rewrites unrelated Entity history.
+
+## v2 DATA Phase 4 — Entity Resolution / Confidence Engine
+
+`src/entities/resolution.py` is a deterministic candidate generator between
+source observations and canonical Entities. It preserves the legacy exact-ID
+helpers while adding normalized, explainable signals. Shared, unique official
+identifiers yield `EXACT`; Company, role, overlapping dates, and independent
+source corroboration may yield `HIGH` or `MEDIUM`. A same-name pair alone remains
+`LOW`, and type/identifier conflicts remain `UNRESOLVED`.
+
+The engine only emits pending candidates. It never updates an Entity or creates a
+Relationship. The private `resolution_candidates` table stores score, signals,
+matching Evidence IDs, engine version, and reviewed decision metadata. Database
+validation restricts acceptance to `EXACT`/`HIGH`, repeats the no-name-only rule,
+and makes matching inputs immutable after insertion. The bounded ingestion RPC is
+service-role-only; public and authenticated clients receive no new write access.
+
+Quality is measured from labeled pairs at the Relationship-eligible threshold.
+Rollback removes the additive RPC, trigger, constraints, indexes, and candidate
+metadata columns. Canonical Entities, Evidence, and Relationships are untouched;
+accepted production decisions would require a separate audited reversal before
+schema rollback. Production remains unchanged during this phase.

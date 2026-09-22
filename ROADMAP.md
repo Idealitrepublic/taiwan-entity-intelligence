@@ -30,7 +30,21 @@ Exit gate: adapter tests, PostgreSQL/RLS checks, build, and read-only Preview pa
 - Resolve Politicians and Companies only by exact verifiable identifiers.
 - Report category coverage, acceptance, unresolved Companies, duplicates and conflicts.
 
-Do not begin DATA Phase 4 until explicit approval.
+## DATA Phase 4 — Entity Resolution / Confidence Engine
+
+Status: implemented on `data-phase-4/entity-resolution-confidence`; Preview
+acceptance required. Production schema and data remain unchanged.
+
+- Emit reviewable candidates across Company, Person, Politician, contribution,
+  declaration, and other source observations without mutating canonical Entities.
+- Prefer exact official identifiers; otherwise require corroborating Company,
+  role, time, and source signals and retain matching Evidence.
+- Enforce `EXACT / HIGH / MEDIUM / LOW / UNRESOLVED` bands; only reviewed
+  `EXACT`/`HIGH` results may support formal Relationships.
+- Measure labeled-sample precision/recall at the publication threshold.
+
+Exit gate: targeted engine tests, PostgreSQL/RLS checks, quality sample, build,
+and Preview pass. Do not begin DATA Phase 5 without explicit approval.
 
 ## Phase 0 — Baseline and repository audit
 

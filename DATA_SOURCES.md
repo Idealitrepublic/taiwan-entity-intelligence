@@ -101,3 +101,19 @@ address, contact, spouse, and minor-child fields are excluded from ingestion.
 - Draft-only batches contain at most 200 declaration lines/Relationships, 400
   Evidence records, and 1 MB. Zero-row loads and source-record conflicts require
   review. Rollback removes the draft batch; published corrections are superseded.
+
+## DATA Phase 4 — Cross-source entity resolution
+
+Phase 4 introduces no new provider. It compares normalized observations from the
+official sources above and other existing evidence-backed adapters.
+
+- Exact Company and Politician identifiers have priority; conflicting or
+  non-unique identifiers remain unresolved.
+- Context signals—Company, role, overlapping dates, and independent source—must
+  be traceable to immutable Evidence. Names are comparison signals, not keys.
+- Candidates are private, service-role-only, bounded to 200 per ingestion call,
+  and remain pending until reviewed. `MEDIUM`, `LOW`, and `UNRESOLVED` cannot be
+  accepted or create formal Relationships.
+- Quality checks use labeled representative pairs and report precision/recall at
+  the `EXACT`/`HIGH` threshold. Rollback drops the additive ingestion function,
+  constraints, indexes, and columns; it does not alter canonical Entities.

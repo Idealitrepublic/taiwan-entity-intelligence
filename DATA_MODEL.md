@@ -44,7 +44,18 @@ Publication requires `EXACT` or `HIGH` confidence. `relationship_evidence` adds 
 
 ### Resolution
 
-`resolution_candidates` stores reviewable possible identity matches with evidence and decision state. It must never silently merge same-name people. `legacy_entity_map` provides deterministic migration continuity from old records.
+`resolution_candidates` stores reviewable possible identity matches; it never
+merges Entities. DATA Phase 4 records an immutable score, structured matching
+signals, all supporting Evidence IDs, and the engine version. Confidence bands
+are `EXACT` (1.00), `HIGH` (0.75–0.99), `MEDIUM` (0.50–0.74), `LOW`
+(0.25–0.49), and `UNRESOLVED` (below 0.25).
+
+`EXACT` requires one unambiguous shared official identifier. Context scoring may
+use normalized name, verified Company, role, overlapping dates, and independent
+sources, but a name alone is `LOW` and never sufficient for a Relationship.
+Only reviewed `EXACT`/`HIGH` candidates can be accepted or used for a published
+Relationship; lower bands remain review signals. `legacy_entity_map` continues
+to provide deterministic migration continuity from old records.
 
 ### Politician and legislative terms
 
