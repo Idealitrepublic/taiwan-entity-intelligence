@@ -151,3 +151,12 @@ not population recall. Published-data presence for politician, contribution and
 asset rows is separate from draft adapter test coverage; private resolution
 candidates are intentionally unobservable to the anonymous role. Unindexed
 `source_records.dataset` population counts are not used after timed-out queries.
+
+The current repository has normalizers for political master, contributions and
+asset declarations, but no scheduled job that fetches their official files,
+performs reviewed identifier mapping, calls the draft-only ingestion functions,
+and publishes verified records. Adapter fixture coverage is not live coverage.
+The Integrity Gazette currently offers full electronic books only for recently
+published issues; older issue listings alone cannot establish historical line
+coverage. The absence of a reliable official candidate-to-`lgno` crosswalk
+prevents automatic Company→Politician contribution edges from name-only files.

@@ -2,6 +2,7 @@
 """Read-only, bounded cross-source benchmark. No ingestion or DB writes."""
 import argparse
 import json
+import subprocess
 import sys
 import urllib.parse
 import urllib.request
@@ -22,6 +23,7 @@ SAMPLE = (
     ("22099131", "台灣積體電路製造股份有限公司"),
     ("96979933", "中華電信股份有限公司"),
 )
+LEGISLATIVE_COMMITTEES = "https://data.ly.gov.tw/odw/ID14Action.action?committee=&name=&fileType=json"
 
 
 def public_rows(table, filters=None, limit=100):
@@ -44,6 +46,22 @@ def probe(name, fn):
         return fn(), None
     except Exception as exc:
         return None, type(exc).__name__
+
+
+def official_term_11_ids():
+    # The official host uses legacy TLS renegotiation that Python's OpenSSL
+    # rejects on some Macs. curl supports this endpoint without disabling TLS.
+    response = subprocess.run(["curl", "-fsSL", "--max-time", "25", LEGISLATIVE_COMMITTEES],
+                              capture_output=True, check=True, timeout=30)
+    payload = json.loads(response.stdout)
+    rows = payload.get("dataList") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError("Legislative Yuan committee payload is invalid")
+    identifiers = {str(row.get("lgno")) for row in rows if isinstance(row, dict)
+                   and str(row.get("term")) == "11" and str(row.get("lgno") or "").isdigit()}
+    if not identifiers:
+        raise ValueError("Legislative Yuan term 11 identifiers are empty")
+    return identifiers
 
 
 def benchmark(now=None):
@@ -99,16 +117,27 @@ def benchmark(now=None):
                          errors=len(sync.get("errors") or []), scope="3 official known-case JIDs; not historical recall",
                          note="Prior sync status contains an error; historical index remains incomplete.", now=now))
 
+    source_ids, source_err = probe("politicians", official_term_11_ids)
+    terms, terms_err = probe("politicians", lambda: public_rows("politician_terms", {"term_number": "eq.11"}, 250))
+    matched_ids = ({str(row.get("legislator_number")) for row in terms if row.get("legislator_number") in source_ids}
+                   if terms is not None and source_ids else set())
+    output.append(metric("politicians", observed=len(matched_ids) if terms is not None and source_ids else None,
+                         expected=len(source_ids) if source_ids else None,
+                         rows=terms, identity="id", timestamp=None, errors=int(bool(source_err)) + int(bool(terms_err)),
+                         scope="official term-11 committee lgno matched to published politician_terms; not all legislators",
+                         note="Exact official identifier overlap, never name-only; source is Legislative Yuan dataset 14.",
+                         required_data=True, now=now))
+
     for name, table, filters in (
-        ("politicians", "entities", {"entity_type": "eq.Politician"}),
         ("political_contributions", "relationships", {"relationship_type": "eq.POLITICAL_CONTRIBUTION_TO"}),
         ("asset_declarations", "asset_declarations", {}),
     ):
         rows, err = probe(name, lambda table=table, filters=filters: public_rows(table, filters, 100))
-        output.append(metric(name, observed=len(rows) if rows is not None else None, expected=1,
+        output.append(metric(name, observed=len(rows) if rows is not None else None, expected=None,
                              rows=rows, identity="id", timestamp=None, errors=int(bool(err)),
-                             scope="public published-data presence floor (>=1); not population coverage",
-                             note="Draft adapter acceptance is not published live coverage.", now=now))
+                             scope="public published-data sample; source denominator not yet established",
+                             note="Zero real rows is High; fixture/schema coverage is excluded; national recall remains unknown.",
+                             required_data=True, now=now))
     output.append(metric("entity_resolution", observed=None, expected=None, errors=0,
                          scope="private resolution_candidates excluded by RLS",
                          note="Public anon role cannot audit private candidate precision; run a privileged offline export separately.", now=now))
@@ -125,17 +154,18 @@ def markdown(report, db_audit=None):
 
     lines = ["# Data Health — DATA Phase 6", "", f"Generated: {report['generated_at']}",
              "", "This is a read-only, fixed-sample benchmark, **not national coverage**.",
-             "Unknown values are not zero. Political rows test public publication presence, not adapter fixtures.",
-             "", "| Source | Scope | Coverage | Freshness h | Errors | Duplicate | Provenance | Severity |",
-             "|---|---|---:|---:|---:|---:|---:|---|"]
+             "Unknown values are not zero. Politician coverage uses official `lgno` overlap; contribution and asset denominators remain unknown. Adapter fixtures are excluded.",
+             "", "| Source | Scope | Observed | Expected | Coverage | Freshness h | Errors | Duplicate | Provenance | Severity |",
+             "|---|---|---:|---:|---:|---:|---:|---:|---:|---|"]
     for item in report["metrics"]:
         lines.append("| " + " | ".join(fmt(item[key]).replace("|", "/") for key in
-                     ("source", "scope", "coverage", "freshness_hours", "error_count", "duplicate_rate", "provenance_rate", "severity")) + " |")
+                     ("source", "scope", "observed", "expected", "coverage", "freshness_hours", "error_count", "duplicate_rate", "provenance_rate", "severity")) + " |")
     lines.extend(["", "## Findings and disposition", "",
                   "- **High — publicly visible political data absent:** public presence probes returned zero, so draft ingestion has not yet become verified public coverage. Do not publish or mutate the shared Production database from this audit; review official source batches, RLS and publication separately. This release gate remains open.",
                   "- **High — judicial sync failure:** the checked-in status has an HTTP error although older `last_sync` exists. This report counts the error and never treats the timestamp as proof of a clean latest attempt. The sync now preserves the last usable index on failure; historical judiciary coverage remains a documented gap.",
                   "- **Medium — procurement/penalty provenance:** live mirror and legacy source records may lack per-row retrieval time, original record URL or provenance. Missing fields remain visible as unknown/partial; they are not fabricated.",
                   "- **Unknown — private resolution candidates:** anonymous read access is intentionally denied. Precision/recall from labeled tests does not establish live population quality.",
+                  "- **Source-to-ingestion gap:** official [Legislative Yuan member data](https://data.ly.gov.tw/getds.action?id=16), [Control Yuan contribution ZIP files](https://data.gov.tw/dataset/168061), and [Integrity Gazette](https://sunshine.cy.gov.tw/News.aspx?PageSize=200&n=17&page=1&sms=8861) exist, but no scheduled political ingestion or reviewed publication job is configured. Contribution files do not directly supply the Legislative Yuan `lgno`; name-only matching remains prohibited. Gazette documents require evidence-preserving extraction and historical full-text availability is limited.",
                   ""])
     if db_audit:
         lines.extend(["## Privileged, read-only database cross-check", "",
@@ -147,6 +177,13 @@ def markdown(report, db_audit=None):
                       ", ".join(db_audit["missing_migration_versions"]) + ".",
                       "The master/contribution ingestion entrypoints are absent; the older asset entrypoint exists. Anon RLS is publication-filtered but cannot explain zero rows across all states.",
                       "Preview has no Supabase override in Vercel environment variables and falls back to this same public project. Therefore Preview cannot gain independent data without an isolated database.", ""])
+        judicial = db_audit.get("judicial_latest_attempt")
+        if judicial:
+            lines.extend(["## Latest official judiciary sync", "",
+                          f"[GitHub Actions run]({judicial['run_url']}): {judicial['outcome']}; "
+                          f"{judicial['fetched_before_failure']} documents read before failure. "
+                          f"Cause: {judicial['reason']}. No Production data was written.",
+                          "The connector now accepts both five- and six-part official JIDs and retains successful documents while recording individual JDoc failures. A failed window cannot replace the last usable index; source-side gaps remain High until a clean verified run.", ""])
     lines.extend(["## Reproduce and rollback", "",
                   "Run `python scripts/data_health.py --json reports/data_health.json --markdown docs/DATA_HEALTH.md`. For all-state database counts, rerun read-only `scripts/data_health_remote.sql` and refresh `reports/data_health_db_audit.json` before regeneration. No schema/data migration is included. Rollback removes the benchmark code and generated artifacts; Production is unchanged.", ""])
     return "\n".join(lines)

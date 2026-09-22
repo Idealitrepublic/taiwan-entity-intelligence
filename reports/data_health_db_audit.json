@@ -21,5 +21,12 @@
     "core_bundle": true
   },
   "preview_supabase_override_configured": false,
+  "judicial_latest_attempt": {
+    "run_url": "https://github.com/Idealitrepublic/taiwan-entity-intelligence/actions/runs/35774296486",
+    "outcome": "failed",
+    "fetched_before_failure": 15,
+    "reason": "official JDoc returned a server-side null-object error for one listed JID",
+    "production_data_written": false
+  },
   "production_data_mutated": false
 }

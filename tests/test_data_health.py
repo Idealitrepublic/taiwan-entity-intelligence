@@ -26,6 +26,12 @@ class DataHealthTests(unittest.TestCase):
         item = metric("labor_penalties", observed=3, expected=3, errors=1, scope="sample")
         self.assertEqual(severity(item), "High")
 
+    def test_zero_real_data_is_high_without_invented_denominator(self):
+        item = metric("asset_declarations", observed=0, expected=None,
+                      required_data=True, scope="public")
+        self.assertIsNone(item["coverage"])
+        self.assertEqual(severity(item), "High")
+
     def test_invalid_or_naive_freshness_is_unknown(self):
         now = datetime(2026, 9, 23, tzinfo=timezone.utc)
         self.assertIsNone(age_hours("2026-09-22", now))

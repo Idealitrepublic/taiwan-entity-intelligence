@@ -30,7 +30,8 @@ def age_hours(value: str | None, now: datetime) -> float | None:
 def metric(name: str, *, observed: int | None, expected: int | None,
            rows: list[dict] | None = None, identity: str | None = None,
            timestamp: str | None = None, errors: int = 0,
-           scope: str, note: str = "", now: datetime | None = None) -> dict:
+           scope: str, note: str = "", required_data: bool = False,
+           now: datetime | None = None) -> dict:
     """Measure only observed records, never infer population completeness."""
     if name not in SOURCES:
         raise ValueError(name)
@@ -45,12 +46,13 @@ def metric(name: str, *, observed: int | None, expected: int | None,
         "freshness_hours": age_hours(timestamp, now), "error_count": errors,
         "duplicate_rate": ratio(len(keys) - len(set(keys)), len(keys)) if keys else None,
         "provenance_rate": ratio(provenance, len(rows)), "sample_size": len(rows),
-        "note": note,
+        "note": note, "required_data": required_data,
     }
 
 
 def severity(item: dict) -> str:
-    if item["error_count"] or (item["coverage"] is not None and item["coverage"] < 0.5):
+    if (item["error_count"] or (item["required_data"] and item["observed"] == 0)
+            or (item["coverage"] is not None and item["coverage"] < 0.5)):
         return "High"
     if item["provenance_rate"] is not None and item["provenance_rate"] < 1:
         return "Medium"

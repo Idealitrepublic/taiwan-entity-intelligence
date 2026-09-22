@@ -67,6 +67,19 @@ class JudicialCoverageTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 list(judicial.evidence_rows())
 
+    def test_jdoc_server_failure_is_reported_without_losing_other_cases(self):
+        failures = []
+        with patch.object(judicial, "get_token", return_value="token"), \
+             patch.object(judicial, "changed_jids", return_value=[JID, OTHER]), \
+             patch.object(judicial, "fetch_judgment", side_effect=[
+                 {"error": "並未將物件參考設定為物件的執行個體。"},
+                 {"JID": OTHER, "JDATE": "20231003", "JTITLE": "判決",
+                  "JFULLX": {"JFULLCONTENT": "御首服務事業有限公司"}}]):
+            rows = list(judicial.evidence_rows(on_error=lambda jid, exc: failures.append((jid, exc))))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["source"]["record_id"], OTHER)
+        self.assertEqual(failures[0][0], JID)
+
     def test_empty_jdoc_is_not_a_valid_judgment(self):
         with patch.object(judicial, "get_token", return_value="token"), \
              patch.object(judicial, "changed_jids", return_value=[JID]), \

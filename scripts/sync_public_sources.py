@@ -69,12 +69,19 @@ def main() -> int:
                 row = json.loads(line)
                 existing[row["evidence_id"]] = row
 
-    counters = {"fetched": 0, "new": 0, "seen_again": 0, "errors": [], "by_source": {}}
+    counters = {"fetched": 0, "new": 0, "seen_again": 0, "errors": [], "by_source": {},
+                "judicial_failed": 0}
     consume(public_rows, existing, seen, counters, "government_open_data")
 
     # Judicial API is credential-protected; run only when GitHub Secrets exist.
     if os.environ.get("JUDICIAL_USER") and os.environ.get("JUDICIAL_PASSWORD"):
-        consume(judicial_rows, existing, seen, counters, "judicial")
+        def record_judicial_error(jid, exc):
+            counters["judicial_failed"] += 1
+            if sum(item["source"] == "judicial" for item in counters["errors"]) < 20:
+                counters["errors"].append({"source": "judicial", "jid": jid, "error": str(exc)})
+
+        consume(lambda: judicial_rows(on_error=record_judicial_error), existing, seen,
+                counters, "judicial")
     else:
         counters["errors"].append({"source": "judicial", "error": "JUDICIAL_USER/JUDICIAL_PASSWORD not configured"})
     judicial_errors = [item for item in counters["errors"] if item["source"] == "judicial"]
@@ -110,6 +117,7 @@ def main() -> int:
         "judicial_enabled": bool(os.environ.get("JUDICIAL_USER") and os.environ.get("JUDICIAL_PASSWORD")),
         "judicial_status": judicial_status,
         "judicial_fetched": judicial_count,
+        "judicial_failed": counters["judicial_failed"],
     }
     STATUS.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
     if should_publish_judicial_index(judicial_status):

@@ -100,14 +100,24 @@ def _versioned_evidence(row: Dict[str, Any], payload: Dict[str, Any]) -> Dict[st
     return row
 
 
-def evidence_rows() -> Iterable[Dict[str, Any]]:
+def evidence_rows(on_error=None) -> Iterable[Dict[str, Any]]:
     token = get_token()
     for jid in changed_jids(token):
-        doc = fetch_judgment(token, jid)
+        try:
+            doc = fetch_judgment(token, jid)
+        except Exception as exc:
+            if on_error is None:
+                raise
+            on_error(jid, exc)
+            continue
         error = str(doc.get("error") or "")
         if error:
             if not any(marker in error for marker in ("移除", "不存在", "不公開", "已刪除")):
-                raise RuntimeError(f"Judicial JDoc rejected {ascii(jid)[:80]}: {ascii(error)[:160]}")
+                failure = RuntimeError(f"Judicial JDoc rejected {ascii(jid)[:80]}: {ascii(error)[:160]}")
+                if on_error is None:
+                    raise failure
+                on_error(jid, failure)
+                continue
             # The official API may signal that a previously public judgment was removed.
             yield _versioned_evidence(make_evidence(
                 source_type="judicial",
