@@ -54,6 +54,11 @@ def consume(loader, existing, seen, counters, source_label):
         counters["errors"].append({"source": source_label, "error": str(exc)})
 
 
+def should_publish_judicial_index(judicial_status: str) -> bool:
+    """Never replace the last usable index with a partial/failed JList window."""
+    return judicial_status == "ok"
+
+
 def main() -> int:
     state = load_state()
     seen = set(state.get("evidence_ids", []))
@@ -107,10 +112,11 @@ def main() -> int:
         "judicial_fetched": judicial_count,
     }
     STATUS.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
-    JUDICIAL_INDEX.write_text(
-        json.dumps(build_index(existing.values(), now), ensure_ascii=False, separators=(",", ":")),
-        encoding="utf-8",
-    )
+    if should_publish_judicial_index(judicial_status):
+        JUDICIAL_INDEX.write_text(
+            json.dumps(build_index(existing.values(), now), ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
     print(json.dumps(status, ensure_ascii=False, indent=2))
     return 1 if counters["errors"] or judicial_status != "ok" else 0
 

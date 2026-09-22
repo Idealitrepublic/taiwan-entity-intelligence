@@ -162,6 +162,13 @@ The read path is `web/index.html -> /api/v1/entities/{uuid}/political-contributi
 
 The indexed Entity company page and Politician page render the same bidirectional card contract. The legacy eight-digit company investigation first requires an `identifier_exact` global-search result before requesting contributions; contribution lookup failure does not break existing company results. Production schema and data remain unchanged until explicit acceptance.
 
+## DATA Phase 6 — Cross-source health
+
+The read-only `scripts/data_health.py` benchmark and `src/data_health.py` metric
+definitions sample public MOEA, PCC mirror, Supabase and the judicial index.
+They add no database migration. Private resolution quality is unobservable to
+public RLS; failed or empty judicial syncs cannot replace the last usable index.
+
 ## Phase 7 Asset Declaration
 
 The ingestion boundary is `src/asset_declarations.py -> tei_ingest_asset_declaration_bundle`. Source rows become immutable Evidence plus a typed `asset_declarations` projection. All thirteen required categories share the same contract while retaining nullable amount/currency, quantity/unit, source company name, and original source location.

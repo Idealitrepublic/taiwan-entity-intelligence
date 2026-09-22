@@ -140,3 +140,14 @@ is the source URL used to cross-check known cases.
   御首服務事業有限公司 and one recent judgment mentioning 中華郵政股份有限公司.
   Run `python scripts/judicial_coverage.py --verify-official` to repeat the
   known-case comparison. Sample recall is not historical population recall.
+
+## DATA Phase 6 — Cross-source quality benchmark
+
+Run `python scripts/data_health.py --json reports/data_health.json --markdown docs/DATA_HEALTH.md`.
+This read-only benchmark uses three fixed valid company identifiers and three
+official known-case judicial JIDs. It measures coverage, freshness, errors,
+duplicates and provenance across nine source families. Its sample coverage is
+not population recall. Published-data presence for politician, contribution and
+asset rows is separate from draft adapter test coverage; private resolution
+candidates are intentionally unobservable to the anonymous role. Unindexed
+`source_records.dataset` population counts are not used after timed-out queries.

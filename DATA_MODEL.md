@@ -67,6 +67,11 @@ to provide deterministic migration continuity from old records.
 
 A legislator is a canonical `Politician` Entity; the name is not a unique identity key. `politician_terms` stores one evidence-backed term observation with term number, constituency/type, dates, optional `PoliticalParty` Entity, and mandatory primary Evidence. Only published politicians, parties, and active published Evidence may appear in a published term.
 
+DATA Phase 6 adds no persistence schema. Data Health metrics are read-only,
+sample-scoped observations with nullable coverage, freshness, duplicate and
+provenance values; null means not measurable, never zero. Draft ingestion
+acceptance is distinct from published-data coverage.
+
 Party membership, legislature, committee service, proposal, and co-sponsorship remain directed Relationships (`MEMBER_OF`, `LEGISLATOR_OF`, `COMMITTEE_MEMBER`, `PROPOSED_BILL`, `CO_SPONSORED_BILL`). Committees are `GovernmentAgency` Entities and bills are `LegislativeBill` Entities, so Graph and path queries remain reusable.
 
 DATA Phase 1 adds a draft-only Legislative Yuan master-data projection. An exact
