@@ -2,7 +2,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-from src.asset_declarations import ASSET_TYPES, build_asset_declaration_bundle
+from src.asset_declarations import (
+    ASSET_TYPES,
+    build_asset_declaration_batches,
+    build_asset_declaration_bundle,
+)
 from src.entities.api import dispatch_entity_api
 from src.entities.repository import EntityFeatureUnavailable, EntityRepository
 
@@ -109,6 +113,74 @@ class AssetDeclarationTests(unittest.TestCase):
             retrieved_at="2026-09-16T12:00:00+08:00")
         self.assertEqual(bundle["asset_declarations"][0]["company_entity_id"], COMPANY)
         self.assertEqual(bundle["relationships"], [])
+
+    def test_official_headers_roc_year_and_version_provenance_are_normalized(self):
+        politician, company = entities()
+        row = {"資料編號": "302-110777-stock-1-v2", "申報編號": "302-110777",
+               "項次": "1", "lgno": "110777", "申報人姓名": "林立委",
+               "申報年度": "115年", "更正次數": "2", "財產類別": "股票",
+               "財產名稱": "測試公司普通股", "金額": "1,200,000元",
+               "數量": "30,000股", "單位": "股", "公司名稱": "測試公司",
+               "統一編號": "１２３４５６７８", "申報日期": "2026-03-31T00:00:00+08:00",
+               "刊期": "廉政專刊第302期"}
+        bundle, report = build_asset_declaration_bundle(
+            [row], politicians_by_official_id={
+                ("tw:legislative_yuan:legislator_number", "110777"): politician},
+            companies_by_uniform={"12345678": company},
+            retrieved_at="2026-09-16T12:00:00+08:00")
+        item, locator = (bundle["asset_declarations"][0],
+                         bundle["evidence"][0]["source_locator"])
+        self.assertEqual((item["declaration_year"], item["declaration_version"]),
+                         (2026, 2))
+        self.assertRegex(item["declaration_key"], r"^[0-9a-f]{64}$")
+        self.assertEqual(locator["politician_match_method"],
+                         "exact_official_identifier")
+        self.assertEqual(report["quality"]["company_exact_match_rate"], 1.0)
+
+    def test_name_only_politician_never_resolves_and_invalid_uniform_is_rejected(self):
+        politician, company = entities()
+        rows = [asset_row(politician_source_id="", politician_name="林立委"),
+                asset_row(source_record_id="bad-uniform", company_uniform_number="測試公司")]
+        bundle, report = build_asset_declaration_bundle(
+            rows, politicians_by_official_id={"legislator-001": politician},
+            companies_by_uniform={"12345678": company},
+            retrieved_at="2026-09-16T12:00:00+08:00")
+        self.assertEqual(bundle["asset_declarations"], [])
+        self.assertEqual({item["reason"] for item in report["skipped"]},
+                         {"missing_politician_identifier", "invalid_company_uniform_number"})
+
+    def test_duplicate_versions_are_rejected_and_batches_are_bounded(self):
+        politician, _ = entities()
+        duplicate = [asset_row(line_number="1", company_name=None, company_uniform_number=None),
+                     asset_row(source_record_id="another", line_number="1", company_name=None,
+                               company_uniform_number=None)]
+        _, report = build_asset_declaration_bundle(
+            duplicate, politicians_by_source_id={"legislator-001": politician},
+            companies_by_uniform={}, retrieved_at="2026-09-16T12:00:00+08:00")
+        self.assertIn("duplicate_declaration_version",
+                      {item["reason"] for item in report["skipped"]})
+        rows = [asset_row(source_record_id=f"record-{index}", filing_id=f"filing-{index}",
+                          company_name=None, company_uniform_number=None)
+                for index in range(205)]
+        batches, batch_report = build_asset_declaration_batches(
+            rows, politicians_by_source_id={"legislator-001": politician},
+            companies_by_uniform={}, retrieved_at="2026-09-16T12:00:00+08:00")
+        self.assertEqual([len(batch["asset_declarations"]) for batch in batches], [200, 5])
+        self.assertEqual(batch_report["batch_count"], 2)
+
+    def test_quality_report_covers_all_required_asset_types(self):
+        politician, _ = entities()
+        rows = [asset_row(source_record_id=f"coverage-{index}", filing_id=f"filing-{index}",
+                          asset_type=asset_type, asset_name=f"asset-{index}",
+                          company_name=None, company_uniform_number=None,
+                          amount=None, quantity=None, quantity_unit=None)
+                for index, asset_type in enumerate(ASSET_TYPES)]
+        _, report = build_asset_declaration_bundle(
+            rows, politicians_by_source_id={"legislator-001": politician},
+            companies_by_uniform={}, retrieved_at="2026-09-16T12:00:00+08:00")
+        self.assertEqual(report["quality"]["row_acceptance_rate"], 1.0)
+        self.assertEqual(report["quality"]["asset_type_coverage"], 1.0)
+        self.assertEqual(report["quality"]["high_severity_issue_count"], 0)
 
     def test_repository_is_bounded_filtered_and_batched(self):
         politician, company = entities()

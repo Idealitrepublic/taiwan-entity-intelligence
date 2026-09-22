@@ -79,6 +79,13 @@ unbounded bundles, or missing provenance. This preserves the Phase 6 read API.
 
 A Company link is allowed only when the source record contains a normalized eight-digit company number that exactly matches an `EXACT` `tw:uniform_number`. Company names remain source text and never resolve identity. Stocks, bonds, funds, and securities may create `Politician -> ASSET_OWNERSHIP -> Company`; business investments may create `Politician -> BUSINESS_INVESTMENT -> Company`. Every derived edge must use the declaration Evidence and agree with its amount, currency, quantity, and source role.
 
+DATA Phase 3 adds an append-only annual version identity. `declaration_key`
+identifies one filing line; `declaration_version` orders corrections and
+`supersedes_declaration_id` links to an older withdrawn version. A partial unique
+index permits only one published version for a Politician/year/key. New published
+records require exact official Politician Evidence, URL/retrieval provenance, and
+matching version metadata. Existing pre-Phase-3 rows remain readable.
+
 ### Asset timeline projection
 
 The asset timeline is a read-only projection, not a new fact table. It groups at most 500 published declaration lines across the latest 2–20 requested years, then compares adjacent declaration years. If the cap cuts through the oldest returned year, that year is explicitly marked partial. Matching uses exact NFKC-normalized asset type/name plus an exact Company Entity ID when available; unresolved source company text is compared exactly and never resolves identity.

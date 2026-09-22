@@ -206,6 +206,27 @@ both identifier checks in a deferred database constraint. The existing public
 read API and UI are unchanged. Rollback removes the additive RPC/validator and
 draft batch; published facts require a reviewed superseding record.
 
+## DATA Phase 3 asset-declaration ingestion
+
+`src/asset_declarations.py` normalizes Control Yuan gazette/document rows into
+draft `asset_declarations`, immutable Evidence, and optional ownership/investment
+Relationships. Official Politician identifiers and Company uniform numbers are
+the only Entity-resolution keys. Names remain provenance text. Unicode, ROC year,
+numeric units, thirteen categories, duplicate records, and correction versions
+are handled deterministically.
+
+The additive schema uses a stable line key, ordered version, optional supersedes
+link, and one-published-version partial unique index. The service-role-only,
+`SECURITY INVOKER` ingestion RPC rejects Entity creation, non-draft data,
+unbounded batches, and missing Evidence identity/provenance. Publication repeats
+the exact Politician/Company identifier checks and requires an older superseded
+version to be withdrawn. Existing APIs remain backward compatible because the
+new columns are nullable for pre-Phase-3 rows.
+
+Rollback reverts the additive migration and removes only unaccepted draft data.
+After publication, corrections withdraw the old version and insert a new Evidence
+version; they never rewrite source history. No Production migration is run here.
+
 ## Phase 10 Watchlist and Alert
 
 The private path remains browser session JWT → WSGI API → Supabase Data API/RPC. `src/watchlists.py` forwards the user's bearer token with the public key and never uses a service-role credential. Watchlist and alert routes are independent of every public Entity read endpoint, so missing additive schema returns an explicit unavailable state without changing search, company, politician, Graph, asset, or Workspace contracts.

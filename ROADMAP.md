@@ -23,7 +23,14 @@ Exit gate: adapter tests, PostgreSQL/RLS checks, build, and read-only Preview pa
 - Report exact-match coverage, rejected rows, duplicates, and conflicts per run.
 - Keep ingestion bounded, draft-only, and backward compatible with Phase 6 reads.
 
-Do not begin DATA Phase 3 until explicit approval.
+## DATA Phase 3 — Asset Declaration Ingestion
+
+- Normalize official Integrity Gazette lines across all thirteen asset categories.
+- Preserve annual append-only versions, immutable Evidence, source URL and retrieval time.
+- Resolve Politicians and Companies only by exact verifiable identifiers.
+- Report category coverage, acceptance, unresolved Companies, duplicates and conflicts.
+
+Do not begin DATA Phase 4 until explicit approval.
 
 ## Phase 0 — Baseline and repository audit
 

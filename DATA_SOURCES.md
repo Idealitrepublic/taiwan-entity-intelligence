@@ -72,3 +72,32 @@ personal national IDs are never retained in Evidence.
 - Output is draft-only and split into dependency-complete batches of at most 200
   Relationships, 400 Evidence records, and 1 MB. A whole batch can be removed
   while draft; published corrections use superseding Evidence, never mutation.
+
+## DATA Phase 3 — Asset Declarations
+
+Primary provider: Control Yuan Sunshine Acts portal and Integrity Gazette.
+
+- Asset declaration portal: <https://sunshine.cy.gov.tw/>
+- Integrity Gazette index: <https://sunshine.cy.gov.tw/News.aspx?PageSize=200&n=17&page=1&sms=8861>
+- Public Officials Property Declaration Act: <https://www.cy.gov.tw/law/LawContent.aspx?id=FL010649>
+- Official form instructions: <https://multimedia.cy.gov.tw/law/LawContent.aspx?id=FL010661>
+
+The portal publishes declarations as gazette/document records rather than one
+stable bulk API. Extraction must therefore retain the issue, filing ID, line
+number, source URL, declaration date, retrieval time, and correction version.
+Only the thirteen T.E.I. asset categories are allowlisted. Personal identity,
+address, contact, spouse, and minor-child fields are excluded from ingestion.
+
+### Identity, versioning, and quality rules
+
+- Politicians resolve only through an exact official identifier crosswalk.
+- Companies resolve only through an exact normalized eight-digit uniform number;
+  a company name remains source text and never forces a merge.
+- A deterministic declaration key identifies the same filing line across
+  corrections. Versions are append-only; a later version references the older,
+  withdrawn version, and only one version may be published for a key.
+- Every run reports row acceptance, all-category coverage, exact Company match
+  rate, unresolved Companies, duplicates, and conflicting source records.
+- Draft-only batches contain at most 200 declaration lines/Relationships, 400
+  Evidence records, and 1 MB. Zero-row loads and source-record conflicts require
+  review. Rollback removes the draft batch; published corrections are superseded.

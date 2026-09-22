@@ -339,15 +339,35 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   const assetRelationshipId = '13131313-1313-4313-8313-131313131313';
   const linkedAssetId = '14141414-1414-4414-8414-141414141414';
   const unresolvedAssetId = '15151515-1515-4515-8515-151515151515';
+  const unresolvedAssetEvidenceId = '18181818-1818-4818-8818-181818181818';
+  const linkedAssetKey = '3'.repeat(64);
+  const unresolvedAssetKey = '4'.repeat(64);
   await db.query(`insert into public.evidence_records
     (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
      observed_at,retrieved_at,content_hash,status,publication_status)
     values ($1,'監察院廉政專刊財產申報資料','302-legislator-asset-1','Government Open Data',
       'https://sunshine.cy.gov.tw/',
-      '{"dataset":"asset_declaration","source_record_id":"302-legislator-asset-1","company_match_method":"exact_uniform_number","uniform_number":"12345678"}'::jsonb,
+      jsonb_build_object('dataset','asset_declaration','source_record_id','302-legislator-asset-1',
+        'company_match_method','exact_uniform_number','uniform_number','12345678',
+        'politician_match_method','exact_official_identifier',
+        'politician_identifier_namespace','tw:legislative_yuan:legislator_number',
+        'politician_identifier_value','119999','declaration_key',$3::text,'declaration_version',1),
       '財產申報：測試公司股票','林立委持有測試公司股票 1000 股',
       '2025-11-01T00:00:00Z','2026-09-16T03:00:00Z',$2,'active','published')`,
-    [assetEvidenceId, '2'.repeat(64)]);
+    [assetEvidenceId, '2'.repeat(64), linkedAssetKey]);
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'監察院廉政專刊財產申報資料','302-legislator-asset-2','Government Open Data',
+      'https://sunshine.cy.gov.tw/',
+      jsonb_build_object('dataset','asset_declaration','source_record_id','302-legislator-asset-2',
+        'company_match_method','no_exact_identifier',
+        'politician_match_method','exact_official_identifier',
+        'politician_identifier_namespace','tw:legislative_yuan:legislator_number',
+        'politician_identifier_value','119999','declaration_key',$3::text,'declaration_version',1),
+      '財產申報：來源僅載名稱之保險','同名公司未識別',
+      '2025-11-01T00:00:00Z','2026-09-16T03:00:00Z',$2,'active','published')`,
+    [unresolvedAssetEvidenceId, '5'.repeat(64), unresolvedAssetKey]);
   await db.query(`insert into public.relationships
     (id,source_entity_id,target_entity_id,relationship_type,primary_evidence_id,
      observed_at,amount,currency,quantity,quantity_unit,source_role,confidence,status)
@@ -355,23 +375,37 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
       '2025-11-01T00:00:00Z',300000,'TWD',1000,'股','STOCK','EXACT','published')`,
     [assetRelationshipId, company.id, assetEvidenceId]);
   await db.query(`insert into public.asset_declarations
-    (id,politician_id,declaration_year,asset_type,asset_name,amount,currency,quantity,
+    (id,politician_id,declaration_year,declaration_key,declaration_version,
+     asset_type,asset_name,amount,currency,quantity,
      quantity_unit,company_name,company_entity_id,relationship_id,primary_evidence_id,
      publication_status)
     values
-    ($1,'33333333-3333-4333-8333-333333333333',2025,'STOCK','測試公司普通股',
-      300000,'TWD',1000,'股','測試公司',$2,$3,$4,'published'),
-    ($5,'33333333-3333-4333-8333-333333333333',2025,'INSURANCE','來源僅載名稱之保險',
-      null,null,1,'張','同名但未識別公司',null,null,$6,'published')`,
-    [linkedAssetId, company.id, assetRelationshipId, assetEvidenceId, unresolvedAssetId,
-      nonExactEvidenceId]);
+    ($1,'33333333-3333-4333-8333-333333333333',2025,$2,1,'STOCK','測試公司普通股',
+      300000,'TWD',1000,'股','測試公司',$3,$4,$5,'published'),
+    ($6,'33333333-3333-4333-8333-333333333333',2025,$7,1,'INSURANCE','來源僅載名稱之保險',
+      null,null,1,'張','同名但未識別公司',null,null,$8,'published')`,
+    [linkedAssetId, linkedAssetKey, company.id, assetRelationshipId, assetEvidenceId,
+      unresolvedAssetId, unresolvedAssetKey, unresolvedAssetEvidenceId]);
   const draftAssetId = '17171717-1717-4717-8717-171717171717';
-  const assetBundle = {entities: [], identifiers: [], evidence: [], entity_evidence: [],
+  const draftAssetEvidenceId = '19191919-1919-4919-8919-191919191919';
+  const draftAssetKey = '6'.repeat(64);
+  const assetBundle = {entities: [], identifiers: [], evidence: [{
+      id: draftAssetEvidenceId, source_name: '監察院廉政專刊財產申報資料',
+      source_record_id: 'draft-asset-1', source_class: 'Primary Source',
+      source_url: 'https://sunshine.cy.gov.tw/',
+      source_locator: {declaration_key: draftAssetKey, declaration_version: 1,
+        politician_match_method: 'exact_official_identifier',
+        politician_identifier_namespace: 'tw:legislative_yuan:legislator_number',
+        politician_identifier_value: '119999'}, title: '財產申報：現金', summary: '現金',
+      observed_at: '2025-11-01T00:00:00Z', retrieved_at: '2026-09-16T03:00:00Z',
+      content_hash: '7'.repeat(64), status: 'active', publication_status: 'draft'}],
+    entity_evidence: [],
     relationships: [], relationship_evidence: [], legacy_map: [], asset_declarations: [{
       id: draftAssetId, politician_id: '33333333-3333-4333-8333-333333333333',
-      declaration_year: 2025, asset_type: 'CASH', asset_name: '現金', amount: '50000',
+      declaration_year: 2025, declaration_key: draftAssetKey, declaration_version: 1,
+      supersedes_declaration_id: null, asset_type: 'CASH', asset_name: '現金', amount: '50000',
       currency: 'TWD', quantity: null, quantity_unit: null, company_name: null,
-      company_entity_id: null, relationship_id: null, primary_evidence_id: evidenceId,
+      company_entity_id: null, relationship_id: null, primary_evidence_id: draftAssetEvidenceId,
       publication_status: 'draft'}]};
   await db.query('select public.tei_ingest_asset_declaration_bundle($1::jsonb)',
     [JSON.stringify(assetBundle)]);
@@ -383,19 +417,25 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   await db.exec('set constraints all immediate; reset role; set role anon;');
   const assetRows = await db.query(`select id,politician_id,declaration_year,asset_type,
     asset_name,amount,quantity,company_name,company_entity_id,relationship_id,
-    primary_evidence_id from public.asset_declarations order by id`);
+    primary_evidence_id,declaration_key,declaration_version,supersedes_declaration_id
+    from public.asset_declarations order by id`);
   assert.equal(assetRows.rows.length, 2);
   assert.equal(assetRows.rows[0].asset_type, 'STOCK');
   assert.equal(assetRows.rows[0].company_entity_id, company.id);
   assert.equal(assetRows.rows[0].relationship_id, assetRelationshipId);
   assert.equal(assetRows.rows[1].company_name, '同名但未識別公司');
   assert.equal(assetRows.rows[1].company_entity_id, null, 'name-only company remains unresolved');
-  checks += 6;
+  assert.equal(assetRows.rows[0].declaration_key, linkedAssetKey);
+  assert.equal(assetRows.rows[0].declaration_version, 1);
+  assert.equal(assetRows.rows[0].supersedes_declaration_id, null);
+  checks += 9;
   const assetIndexes = await db.query(`select indexname from pg_indexes where schemaname='public'
     and indexname in ('asset_declarations_politician_id_idx',
       'asset_declarations_politician_year_idx','asset_declarations_politician_type_idx',
-      'asset_declarations_company_idx','asset_declarations_evidence_idx')`);
-  assert.equal(assetIndexes.rows.length, 5);
+      'asset_declarations_company_idx','asset_declarations_evidence_idx',
+      'asset_declaration_version_identity_idx','asset_declaration_one_published_version_idx',
+      'asset_declaration_supersedes_idx')`);
+  assert.equal(assetIndexes.rows.length, 8);
   checks++;
   await rejects(`insert into public.asset_declarations
     (politician_id,declaration_year,asset_type,asset_name,primary_evidence_id)
