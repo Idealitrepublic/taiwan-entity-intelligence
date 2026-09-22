@@ -107,7 +107,7 @@ def evidence_rows() -> Iterable[Dict[str, Any]]:
         error = str(doc.get("error") or "")
         if error:
             if not any(marker in error for marker in ("移除", "不存在", "不公開", "已刪除")):
-                raise RuntimeError("Judicial JDoc rejected the request")
+                raise RuntimeError(f"Judicial JDoc rejected {ascii(jid)[:80]}: {ascii(error)[:160]}")
             # The official API may signal that a previously public judgment was removed.
             yield _versioned_evidence(make_evidence(
                 source_type="judicial",
