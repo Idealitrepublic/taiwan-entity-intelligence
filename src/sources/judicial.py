@@ -18,7 +18,8 @@ from .judicial_index import judgment_url
 
 BASE = "https://data.judicial.gov.tw/jdg/api"
 USER_AGENT = "Taiwan-Entity-Intelligence/0.1"
-JID = re.compile(r"^[A-Z]{4},\d{2,3},[^,\s]+,\d+,\d{8},\d+$")
+# JList includes both five-part IDs and IDs with a final check/sequence number.
+JID = re.compile(r"^[A-Z]{4},\d{2,3},[^,\s]+,\d+,\d{8}(?:,\d+)?$")
 
 
 def normalize_jid(value: str) -> str:

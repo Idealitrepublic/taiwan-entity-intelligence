@@ -28,6 +28,12 @@ class JudicialCoverageTests(unittest.TestCase):
         self.assertLess(len(str(caught.exception)), 150)
         self.assertIn("\\n", str(caught.exception))
 
+    def test_official_jlist_five_part_id_without_final_sequence(self):
+        five_part = "JCCC,115,審裁,1234,20260722"
+        self.assertEqual(judicial.normalize_jid(five_part), five_part)
+        with patch.object(judicial, "post", return_value=[{"LIST": [five_part, JID]}]):
+            self.assertEqual(judicial.changed_jids("token"), [five_part, JID])
+
     def test_case_date_and_wrapped_company_name_normalize(self):
         self.assertEqual(judicial.normalize_jdate("2023-04-28"), "2023-04-28")
         self.assertTrue(any("御首服務事業有限公司" in name for name in
