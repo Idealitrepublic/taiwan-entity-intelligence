@@ -7,6 +7,21 @@ on:
         description: 'Type SYNC_PUBLIC_EVIDENCE to run the source sync'
         required: true
         type: string
+      judicial_batch_index:
+        description: 'Zero-based JList batch (25 JIDs per run); prior branch cache is restored automatically'
+        required: false
+        default: '0'
+        type: string
+      judicial_retry_failed:
+        description: 'Retry only recorded failed JIDs from the restored branch cache'
+        required: false
+        default: false
+        type: boolean
+      judicial_recheck_unavailable:
+        description: 'Recheck previously verified upstream-unavailable JIDs'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -15,7 +30,7 @@ jobs:
   sync:
     if: ${{ inputs.confirmation == 'SYNC_PUBLIC_EVIDENCE' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,11 +40,40 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Sync public evidence
+      - name: Restore prior public-evidence batch
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/public_evidence.jsonl
+            data/public_sync_state.json
+            data/public_sync_status.json
+            data/judicial_company_index.json
+          key: tei-public-evidence-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            tei-public-evidence-${{ github.ref_name }}-
+
+      - name: Sync non-judicial public evidence
+        if: ${{ inputs.judicial_batch_index == '0' && !inputs.judicial_retry_failed && !inputs.judicial_recheck_unavailable }}
+        timeout-minutes: 15
+        run: python3 scripts/sync_public_sources.py --source government
+
+      - name: Sync bounded judicial batch
+        if: always()
+        timeout-minutes: 25
         env:
           JUDICIAL_USER: ${{ secrets.JUDICIAL_USER }}
           JUDICIAL_PASSWORD: ${{ secrets.JUDICIAL_PASSWORD }}
-        run: python3 scripts/sync_public_sources.py
+          JUDICIAL_BATCH_INDEX: ${{ inputs.judicial_batch_index }}
+          JUDICIAL_RETRY_FAILED: ${{ inputs.judicial_retry_failed }}
+          JUDICIAL_RECHECK_UNAVAILABLE: ${{ inputs.judicial_recheck_unavailable }}
+        run: |
+          if [ "$JUDICIAL_RETRY_FAILED" = "true" ]; then
+            python3 scripts/sync_public_sources.py --source judicial --judicial-batch-size 25 --judicial-retry-failed
+          elif [ "$JUDICIAL_RECHECK_UNAVAILABLE" = "true" ]; then
+            python3 scripts/sync_public_sources.py --source judicial --judicial-batch-size 25 --judicial-recheck-unavailable
+          else
+            python3 scripts/sync_public_sources.py --source judicial --judicial-batch-index "$JUDICIAL_BATCH_INDEX" --judicial-batch-size 25
+          fi
 
       - name: Upload evidence artifact
         if: always()
@@ -43,3 +87,14 @@ jobs:
             data/judicial_company_index.json
           retention-days: 30
           compression-level: 6
+
+      - name: Save public-evidence batch for resume
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            data/public_evidence.jsonl
+            data/public_sync_state.json
+            data/public_sync_status.json
+            data/judicial_company_index.json
+          key: tei-public-evidence-${{ github.ref_name }}-${{ github.run_id }}

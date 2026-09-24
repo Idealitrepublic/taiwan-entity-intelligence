@@ -152,11 +152,49 @@ asset rows is separate from draft adapter test coverage; private resolution
 candidates are intentionally unobservable to the anonymous role. Unindexed
 `source_records.dataset` population counts are not used after timed-out queries.
 
-The current repository has normalizers for political master, contributions and
-asset declarations, but no scheduled job that fetches their official files,
-performs reviewed identifier mapping, calls the draft-only ingestion functions,
-and publishes verified records. Adapter fixture coverage is not live coverage.
+The repository has normalizers for political master, contributions and asset
+declarations, plus bounded Development ingestion scripts. There is still no
+scheduled, reviewed national ingestion job. Adapter fixture coverage is not
+live coverage.
 The Integrity Gazette currently offers full electronic books only for recently
 published issues; older issue listings alone cannot establish historical line
 coverage. The absence of a reliable official candidate-to-`lgno` crosswalk
 prevents automatic Company→Politician contribution edges from name-only files.
+
+The reviewed Development sample uses Control Yuan Taipei donation row
+`168061:taipei:incomes:886`, exact donor uniform number `29072066` checked
+against MOEA, LY term-11 `lgno` `00007` and Taipei third-district term, with
+an independent [CEC district record](https://web.cec.gov.tw/central/article/60070).
+Gazette issue 319's vehicle line is checked against LY `lgno` `00082`, office,
+term, and resignation/declaration date on the
+[LY member page](https://www.ly.gov.tw/Pages/List.aspx?nodeid=46830).
+Both are reviewed source chains, not source-issued `lgno` or automatic
+name-only joins. Only one record of each type has been published in the
+isolated Development DB; national coverage remains unknown.
+
+### Phase 6 acceptance and source limitations
+
+The [offline acceptance record](docs/DATA_PHASE_6_OFFLINE_ACCEPTANCE.md)
+separates saved row-level Evidence from an earlier public sample and a
+Development DB count snapshot. A fixture, adapter success, source listing, or
+one published row is not population coverage. `reports/data_health.json` is a
+sample-scoped, timestamped observation and must be refreshed after the final
+judicial sync; the privileged Development DB audit has its own timestamp.
+
+The Judicial Yuan API specification limits JList/JDoc service to 00:00–06:00
+Asia/Taipei. JList is a seven-day change feed, not a historical corpus. A
+stable HTTP 200 JDoc error may be classified as upstream unavailable only
+after matching official error fingerprints on separate bounded runs with
+retained JList metadata. It remains recheckable; a transport error, closed
+service window, or pending retry is not evidence of permanent unavailability.
+The fixed snapshot/checkpoint procedure and rollback boundary are documented
+in the offline acceptance record. No conclusion about unprocessed JIDs is
+permitted before all batches are attempted.
+
+Procurement results use an OpenFun mirror of official PCC notices. Its
+`source_url` or official search entry is not necessarily a stable row-level
+primary Evidence URL, and the existing benchmark reports provenance as
+incomplete. Labor penalty legacy matching may use a company name without an
+official uniform number; a name-only hit is not an Entity identity decision.
+Both require row-level official-source comparison before making a coverage or
+identity claim.

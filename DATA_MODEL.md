@@ -67,7 +67,15 @@ to provide deterministic migration continuity from old records.
 
 A legislator is a canonical `Politician` Entity; the name is not a unique identity key. `politician_terms` stores one evidence-backed term observation with term number, constituency/type, dates, optional `PoliticalParty` Entity, and mandatory primary Evidence. Only published politicians, parties, and active published Evidence may appear in a published term.
 
-DATA Phase 6 adds no persistence schema. Data Health metrics are read-only,
+DATA Phase 6's reviewed-ingestion remediation adds
+`political_identity_crosswalks`, a private RLS-protected audit table. Each
+approved row binds one official source record/Evidence to one published
+Politician, exact LY `lgno`, matching term/Evidence, independent official URL,
+review method, reviewer and timestamp. Contribution rows also bind an exact
+Company uniform-number identifier. Publication of a crosswalk-sourced fact
+requires that approved row; source names alone cannot create identity.
+
+Data Health metrics remain read-only,
 sample-scoped observations with nullable coverage, freshness, duplicate and
 provenance values; null means not measurable, never zero. Draft ingestion
 acceptance is distinct from published-data coverage.

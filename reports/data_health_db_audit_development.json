@@ -1,0 +1,32 @@
+{
+  "audited_at": "2026-09-23T08:40:18Z",
+  "project_ref": "canqjiokrtcxkwblhmml",
+  "scope": "isolated Free Development project; privileged read-only SQL, all publication states",
+  "all_states_counts": {
+    "politician_entities": 123,
+    "politician_terms": 123,
+    "political_contributions": 1,
+    "asset_declarations": 1
+  },
+  "published_counts": {
+    "politician_terms": 121,
+    "political_contributions": 1,
+    "asset_declarations": 1
+  },
+  "approved_official_crosswalks": 2,
+  "verified_published_provenance": {"political_contributions": "1/1", "asset_declarations": "1/1"},
+  "migration_count": 25,
+  "public_tables": 29,
+  "rls_tables": 29,
+  "public_indexes": 115,
+  "unmatched_corporate_contribution_evidence_draft": 616,
+  "judicial_latest_attempt": {
+    "run_url": "https://github.com/Idealitrepublic/taiwan-entity-intelligence/actions/runs/35775150111",
+    "outcome": "cancelled at the 30-minute job limit",
+    "fetched_before_failure": "unknown",
+    "reason": "the sequential official JList/JDoc sync exceeded the GitHub Actions job timeout; an earlier JDoc also returned a server-side null-object error",
+    "production_data_written": false
+  },
+  "preview_supabase_override_configured": true,
+  "production_data_mutated": false
+}

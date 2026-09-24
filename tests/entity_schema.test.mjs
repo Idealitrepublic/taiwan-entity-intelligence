@@ -607,6 +607,8 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     'anonymous workspace write denied');
   await rejects('select * from public.watchlist_entries', 'anonymous watchlist read denied');
   await rejects('select * from public.watchlist_events', 'anonymous alert read denied');
+  await rejects('select * from public.political_identity_crosswalks',
+    'reviewed source identity map is private');
   await rejects('select public.sync_watchlist_events(25)', 'anonymous watchlist sync denied');
   const workspaceIndexes = await db.query(`select indexname from pg_indexes where schemaname='public'
     and indexname in ('investigation_workspaces_owner_updated_idx',

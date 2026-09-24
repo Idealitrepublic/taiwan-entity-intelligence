@@ -51,10 +51,13 @@ def metric(name: str, *, observed: int | None, expected: int | None,
 
 
 def severity(item: dict) -> str:
-    if (item["error_count"] or (item["required_data"] and item["observed"] == 0)
+    if (item["error_count"] or item.get("unprocessed_batches", 0) > 0 or
+            (item["required_data"] and item["observed"] == 0)
             or (item["coverage"] is not None and item["coverage"] < 0.5)):
         return "High"
     if item["provenance_rate"] is not None and item["provenance_rate"] < 1:
+        return "Medium"
+    if item.get("upstream_unavailable_rate", 0) > 0:
         return "Medium"
     if item["coverage"] is None or item["provenance_rate"] is None:
         return "Unknown"

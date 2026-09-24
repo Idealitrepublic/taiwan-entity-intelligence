@@ -63,15 +63,19 @@ pass. Do not begin DATA Phase 6 without explicit approval.
 
 ## DATA Phase 6 — Cross-source Data Quality / Coverage Audit
 
-Status: read-only benchmark and report implemented on `data-phase-6/data-health-audit`;
-Preview acceptance pending. No Production data or schema change.
+Status: isolated Development ingestion and reviewed sample published on
+`data-phase-6/data-health-audit`; judiciary High and Preview acceptance pending.
+No Production data or schema change.
 
 - Compare nine source families on explicit sample scope, coverage, freshness,
   errors, duplicates and provenance; distinguish unknown from zero.
 - Prevent failed or empty judiciary sync attempts from replacing the last
   usable index. Retain the historical coverage gap as a named risk.
-- Published political data remains absent in anonymous reads; separate reviewed
-  publication is required, not an automatic audit-side mutation.
+- One contribution and one asset line are publicly readable in Development
+  after official-source crosswalk review; remaining source rows stay draft.
+  Do not infer national coverage from this sample.
+- Run resumable, bounded JDoc batches until one unchanged JList window
+  completes without errors; do not clear the judiciary High from local tests.
 
 Exit gate: targeted tests, necessary DB checks, report, build and Preview.
 Do not enter OPS Phase 1 without explicit approval.

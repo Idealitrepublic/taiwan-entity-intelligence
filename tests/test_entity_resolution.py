@@ -86,6 +86,34 @@ class EntityResolutionTests(unittest.TestCase):
         self.assertEqual(result.reason, "entity_type_mismatch")
         self.assertEqual(result.confidence, "UNRESOLVED")
 
+    def test_same_company_name_with_different_uniform_numbers_never_merges(self):
+        source = observation(entity_type="Company", name="同名企業", identifiers=[
+            {"namespace": "tw:uniform_number", "value": "12345678", "confidence": "EXACT"}])
+        other = candidate(entity_type="Company", name="同名企業", identifiers=[
+            {"namespace": "tw:uniform_number", "value": "87654321", "confidence": "EXACT"}])
+        result = resolve_entity_candidates(source, [other])[0]
+        self.assertEqual((result.confidence, result.reason),
+                         ("UNRESOLVED", "conflicting_official_identifiers"))
+
+    def test_company_name_change_with_same_uniform_is_exact(self):
+        identifier = {"namespace": "tw:uniform_number", "value": "12345678",
+                      "confidence": "EXACT"}
+        result = resolve_entity_candidates(
+            observation(entity_type="Company", name="舊名", identifiers=[identifier]),
+            [candidate(entity_type="Company", name="新名", identifiers=[identifier])])[0]
+        self.assertEqual(result.confidence, "EXACT")
+        self.assertFalse(result.signals["normalized_name_match"])
+
+    def test_same_name_politicians_with_distinct_official_ids_never_merge(self):
+        source = observation(entity_type="Politician", identifiers=[
+            {"namespace": "tw:legislative_yuan:legislator_number", "value": "00007",
+             "confidence": "EXACT"}])
+        other = candidate(entity_type="Politician", identifiers=[
+            {"namespace": "tw:legislative_yuan:legislator_number", "value": "00082",
+             "confidence": "EXACT"}])
+        self.assertEqual(resolve_entity_candidates(source, [other])[0].confidence,
+                         "UNRESOLVED")
+
     def test_labeled_quality_gate_has_perfect_precision_and_recall(self):
         identifier = {"namespace": "official:id", "value": "A", "confidence": "EXACT"}
         exact = resolve_entity_candidates(observation(identifiers=[identifier]),

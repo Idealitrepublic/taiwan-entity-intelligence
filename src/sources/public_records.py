@@ -8,11 +8,10 @@ import csv
 import hashlib
 import io
 import json
-import os
 import re
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 from ..evidence import make_evidence
 
@@ -208,12 +207,14 @@ def ingest_penalty_dataset(dataset_id: str, title: str) -> List[Dict[str, Any]]:
     return output
 
 
-def evidence_rows() -> Iterable[Dict[str, Any]]:
+def evidence_rows(on_error=None) -> Iterable[Dict[str, Any]]:
     for loader in (ingest_165_blocked_sites, ingest_165_rumors, ingest_165_fake_investment):
         try:
             yield from loader()
         except Exception as exc:
             print("[WARN] {}: {}".format(loader.__name__, exc))
+            if on_error is not None:
+                on_error(loader.__name__, exc)
 
     try:
         penalty_datasets = discover_penalty_datasets()
@@ -223,5 +224,9 @@ def evidence_rows() -> Iterable[Dict[str, Any]]:
                 yield from ingest_penalty_dataset(dataset["dataset_id"], dataset["title"])
             except Exception as exc:
                 print("[WARN] penalty {} {}: {}".format(dataset["dataset_id"], dataset["title"], exc))
+                if on_error is not None:
+                    on_error("penalty:" + dataset["dataset_id"], exc)
     except Exception as exc:
         print("[WARN] penalty discovery: {}".format(exc))
+        if on_error is not None:
+            on_error("penalty_discovery", exc)

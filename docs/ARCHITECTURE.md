@@ -169,6 +169,23 @@ definitions sample public MOEA, PCC mirror, Supabase and the judicial index.
 They add no database migration. Private resolution quality is unobservable to
 public RLS; failed or empty judicial syncs cannot replace the last usable index.
 
+The Development-only remediation adds a private, RLS-protected
+`political_identity_crosswalks` table. A reviewed source row is linked to an
+exact LY `lgno` and a published term/Evidence record, plus either election,
+Taipei constituency and independent CEC evidence or a Gazette office/date
+overlapping the LY term. Company donors additionally require an exact MOEA
+uniform-number identifier. The crosswalk is not a public API; published facts
+carry only a locator to the approved crosswalk and retain source Evidence.
+Name-only rows remain draft. The initial reviewed sample is one donation and
+one declaration, not a claim of population coverage.
+
+Judiciary syncing now splits public-data and JList/JDoc work. JDoc calls have
+bounded timeout/retry; each manual run processes 25 JIDs and caches batch
+progress by a hash of the official JList window. A partial or failed window
+cannot publish a replacement index, and per-source errors remain recorded.
+An unchanged seven-day window is required to resume; window drift restarts the
+batch progress while preserving already collected immutable Evidence.
+
 ## Phase 7 Asset Declaration
 
 The ingestion boundary is `src/asset_declarations.py -> tei_ingest_asset_declaration_bundle`. Source rows become immutable Evidence plus a typed `asset_declarations` projection. All thirteen required categories share the same contract while retaining nullable amount/currency, quantity/unit, source company name, and original source location.
