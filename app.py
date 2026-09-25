@@ -17,7 +17,7 @@ from src.runtime_config import private_supabase_config
 from src.reports import dispatch_report_api
 from src.workspaces import dispatch_workspace_api
 from src.watchlists import dispatch_watchlist_api
-from src.rate_limit import request_allowed
+from src.rate_limit import client_identity, request_allowed
 
 WEB = Path(__file__).parent / 'web'
 
@@ -99,8 +99,7 @@ def app(environ, start_response):
     path = environ.get('PATH_INFO', '/')
     request_id = environ.get('HTTP_X_VERCEL_ID') or str(uuid.uuid4())
     try:
-        client = (environ.get('HTTP_X_FORWARDED_FOR') or
-                  environ.get('REMOTE_ADDR') or 'unknown').split(',', 1)[0].strip()
+        client = client_identity(environ)
         if not request_allowed(path, client):
             code, payload, content_type = 429, {
                 'status': 'error', 'error': '請稍後再試 / Too many requests'}, None

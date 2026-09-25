@@ -63,8 +63,9 @@ pass. Do not begin DATA Phase 6 without explicit approval.
 
 ## DATA Phase 6 — Cross-source Data Quality / Coverage Audit
 
-Status: isolated Development ingestion and reviewed sample published on
-`data-phase-6/data-health-audit`; judiciary High and Preview acceptance pending.
+Status: complete at `0bc5fd2`; 724/724 batches processed, Data Health High=0,
+160 DB checks and Preview passed. The 2,720 verified JDoc source gaps remain
+Medium and do not imply national judicial coverage. Production unchanged.
 No Production data or schema change.
 
 - Compare nine source families on explicit sample scope, coverage, freshness,
@@ -78,7 +79,15 @@ No Production data or schema change.
   completes without errors; do not clear the judiciary High from local tests.
 
 Exit gate: targeted tests, necessary DB checks, report, build and Preview.
-Do not enter OPS Phase 1 without explicit approval.
+OPS Phase 1 was explicitly approved after this gate.
+
+## OPS Phase 1 — Production Operations preparation
+
+Status: implementing on `ops-phase-1/production-operations`; Development and
+Preview only. See `docs/OPS_PHASE_1_DESIGN.md` and
+`docs/OPS_PHASE_1_RUNBOOK.md` for signals, recovery and external prerequisites.
+Entity/Relationship schema and Production remain unchanged. VALIDATION Phase 1
+pilot requires separate approval after OPS acceptance.
 
 ## Phase 0 — Baseline and repository audit
 

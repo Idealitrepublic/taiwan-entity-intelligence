@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import threading
 import time
+import ipaddress
+import os
 
 
 class FixedWindowLimiter:
@@ -30,6 +32,20 @@ class FixedWindowLimiter:
 
 
 LIMITER = FixedWindowLimiter()
+
+
+def client_identity(environ):
+    """Use Vercel's overwritten client-IP header, never arbitrary local XFF."""
+    candidates = []
+    if os.environ.get('VERCEL'):
+        candidates.append(environ.get('HTTP_X_VERCEL_FORWARDED_FOR'))
+    candidates.append(environ.get('REMOTE_ADDR'))
+    for candidate in candidates:
+        try:
+            return str(ipaddress.ip_address(str(candidate).strip()))
+        except ValueError:
+            continue
+    return 'unknown'
 
 
 def request_allowed(path, client):

@@ -1,8 +1,9 @@
-# OPS Phase 1 — design only (not started)
+# OPS Phase 1 — implementation contract
 
-This document is a proposal. It creates no schema, job, alert, environment
-variable, deployment, backup or Production change. DATA Phase 6 must first
-reach High=0 and be separately accepted.
+DATA Phase 6 reached High=0 on `0bc5fd2`. This design is now implemented on a
+separate OPS branch without changing Entity/Relationship schema or Production.
+The operator commands, thresholds, failure simulations, and remaining external
+backup/WAF prerequisites are in [the runbook](OPS_PHASE_1_RUNBOOK.md).
 
 | Concern | Proposed signal | Proposed action/guardrail |
 |---|---|---|
@@ -13,6 +14,8 @@ reach High=0 and be separately accepted.
 | Rate limits | Per-source concurrency, bounded batch size, timeout/retry budget, `Retry-After`, service hours | Stop and checkpoint on 429/transport errors; do not retry permanent source-document errors indefinitely |
 | Operational recovery | Resume cursor, idempotent source-record/evidence keys, failed-JID queue, verified upstream-unavailable recheck | Test restore/resume on Development; never auto-promote a partial index or infer national recall |
 
-Suggested acceptance later: one Development dry run across a full source
-window, reproducible health report, restore rehearsal, alert simulation and
-documented on-call owner. None of these operations is authorized by this design.
+Acceptance requires a Development status run, stale/failure/restore alert
+simulations, a verified encrypted Development database+sync backup, isolated
+restore rehearsal, full DB checks/build, and Preview runtime verification.
+No Production WAF publication, secrets, database write, or deployment is
+authorized by this phase.

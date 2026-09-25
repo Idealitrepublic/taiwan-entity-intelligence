@@ -11,6 +11,8 @@ import json
 import argparse
 import os
 import sys
+import time
+import uuid
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,7 +62,7 @@ def consume(loader, existing, seen, counters, source_label):
             counters["errors"].append({"source": source_label, **exc.diagnostic})
         else:
             counters["errors"].append({"source": source_label, "error_type": type(exc).__name__,
-                                       "error": str(exc) if source_label != "judicial" else "judicial_source_error"})
+                                       "error": "source_unavailable"})
 
 
 def should_publish_judicial_index(judicial_status: str) -> bool:
@@ -79,6 +81,9 @@ def verified_upstream_document_error(previous, detail, jlist_metadata) -> bool:
 
 
 def main(argv=None, *, emit_status=True, retry_selection=None) -> int:
+    started = time.monotonic()
+    started_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    run_id = uuid.uuid4().hex
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", choices=("all", "government", "judicial"), default="all")
     parser.add_argument("--judicial-batch-index", type=int, default=0)
@@ -128,7 +133,7 @@ def main(argv=None, *, emit_status=True, retry_selection=None) -> int:
         def record_public_error(source, exc):
             if sum(item["source"] == "government_open_data" for item in counters["errors"]) < 20:
                 counters["errors"].append({"source": "government_open_data",
-                                           "dataset": source, "error": str(exc)})
+                                           "dataset": source, "error_type": type(exc).__name__})
 
         consume(lambda: public_rows(on_error=record_public_error), existing, seen,
                 counters, "government_open_data")
@@ -314,6 +319,11 @@ def main(argv=None, *, emit_status=True, retry_selection=None) -> int:
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
     status = {
+        "run": {"id": run_id, "environment": os.environ.get("TEI_ENVIRONMENT", "local"),
+                "source": args.source, "started_at": started_at, "ended_at": now,
+                "duration_ms": round((time.monotonic() - started) * 1000, 1),
+                "window_id": window.get("window_id"),
+                "batch_index": window.get("batch_index")},
         "last_sync": state["last_sync"],
         "last_attempt": now,
         "evidence_count": len(existing),

@@ -51,6 +51,11 @@ class JudicialSyncBatchTests(unittest.TestCase):
             status = json.loads((root / "status.json").read_text())
             self.assertEqual(status["evidence_count"], 1)
             self.assertEqual(status["errors"][0]["dataset"], "penalty:example")
+            self.assertEqual(status["errors"][0]["error_type"], "RuntimeError")
+            self.assertNotIn("upstream timeout", json.dumps(status))
+            self.assertEqual(status["run"]["source"], "government")
+            self.assertEqual(len(status["run"]["id"]), 32)
+            self.assertGreaterEqual(status["run"]["duration_ms"], 0)
 
     def test_two_batches_resume_without_early_index_publication(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from app import app
 from src import cloud_company
-from src.rate_limit import FixedWindowLimiter
+from src.rate_limit import FixedWindowLimiter, client_identity
 
 class CloudAppTests(unittest.TestCase):
     def request(self,path):
@@ -47,3 +47,10 @@ class CloudAppTests(unittest.TestCase):
         self.assertTrue(limiter.allow('client',2,now=2))
         self.assertFalse(limiter.allow('client',2,now=3))
         self.assertTrue(limiter.allow('client',2,now=61))
+    def test_rate_limit_identity_ignores_spoofed_forwarded_for(self):
+        environ = {'HTTP_X_FORWARDED_FOR': '1.2.3.4', 'REMOTE_ADDR': '192.0.2.10'}
+        with patch.dict('os.environ', {'VERCEL': ''}):
+            self.assertEqual(client_identity(environ), '192.0.2.10')
+        environ['HTTP_X_VERCEL_FORWARDED_FOR'] = '198.51.100.5'
+        with patch.dict('os.environ', {'VERCEL': '1'}):
+            self.assertEqual(client_identity(environ), '198.51.100.5')

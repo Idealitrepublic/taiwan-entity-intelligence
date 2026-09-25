@@ -28,6 +28,10 @@ The deployed service is Python, not Next.js. `package.json` exists only to provi
 - Vercel project setting observed during Phase 0: Node 24.x.
 - Production is Git-integrated from `Idealitrepublic/taiwan-entity-intelligence`, branch `main`.
 - Supabase is accessed over HTTP with a public read credential for browser/API reads. Service-role access is restricted to ingestion/backfill paths.
+- OPS Phase 1 adds a local operator-only health/alert evaluator over saved sync,
+  checkpoint and Data Health artifacts. It does not add a public API or database
+  table. Development backups are encrypted streams with a separate manifest;
+  WAF remains a platform setting and is not modified by a Preview code deploy.
 
 ## Application boundaries
 
