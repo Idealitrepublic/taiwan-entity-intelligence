@@ -83,9 +83,11 @@ OPS Phase 1 was explicitly approved after this gate.
 
 ## OPS Phase 1 — Production Operations preparation
 
-Status: implementing on `ops-phase-1/production-operations`; Development and
-Preview only. See `docs/OPS_PHASE_1_DESIGN.md` and
-`docs/OPS_PHASE_1_RUNBOOK.md` for signals, recovery and external prerequisites.
+Status: accepted on `ops-phase-1/production-operations`; encrypted Development
+backup and isolated local application-scope restore passed on 2026-09-25.
+Supabase-managed platform extensions/ACL recovery and off-site retention remain
+documented operational limits. See `docs/OPS_PHASE_1_DESIGN.md` and
+`docs/OPS_PHASE_1_RUNBOOK.md` for evidence, signals and recovery procedures.
 Entity/Relationship schema and Production remain unchanged. VALIDATION Phase 1
 pilot requires separate approval after OPS acceptance.
 

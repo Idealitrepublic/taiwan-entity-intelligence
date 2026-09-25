@@ -114,8 +114,22 @@ def verify_archive(path, identity):
         return verify_bundle(path, identity)
     age = subprocess.Popen([executable("age"), "-d", "-i", str(identity), str(path)],
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    consumer = subprocess.Popen([executable("pg_restore"), "--list"], stdin=age.stdout,
+    consumer = subprocess.Popen([executable("pg_restore"), "--list"], stdin=subprocess.PIPE,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # pg_restore --list may stop reading after the archive TOC. Keep draining
+    # age into memory/discard so its authentication tag is checked without
+    # writing a plaintext archive or mistaking expected SIGPIPE for failure.
+    consumer_closed = False
+    for chunk in iter(lambda: age.stdout.read(1024 * 1024), b""):
+        if consumer_closed:
+            continue
+        try:
+            consumer.stdin.write(chunk)
+        except BrokenPipeError:
+            consumer_closed = True
+            consumer.stdin.close()
+    if not consumer_closed:
+        consumer.stdin.close()
     age.stdout.close()
     consumer_ok = consumer.wait() == 0
     age_ok = age.wait() == 0

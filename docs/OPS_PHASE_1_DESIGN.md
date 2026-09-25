@@ -1,4 +1,4 @@
-# OPS Phase 1 — implementation contract
+# OPS Phase 1 — implementation contract (accepted)
 
 DATA Phase 6 reached High=0 on `0bc5fd2`. This design is now implemented on a
 separate OPS branch without changing Entity/Relationship schema or Production.
@@ -14,8 +14,10 @@ backup/WAF prerequisites are in [the runbook](OPS_PHASE_1_RUNBOOK.md).
 | Rate limits | Per-source concurrency, bounded batch size, timeout/retry budget, `Retry-After`, service hours | Stop and checkpoint on 429/transport errors; do not retry permanent source-document errors indefinitely |
 | Operational recovery | Resume cursor, idempotent source-record/evidence keys, failed-JID queue, verified upstream-unavailable recheck | Test restore/resume on Development; never auto-promote a partial index or infer national recall |
 
-Acceptance requires a Development status run, stale/failure/restore alert
-simulations, a verified encrypted Development database+sync backup, isolated
-restore rehearsal, full DB checks/build, and Preview runtime verification.
+Acceptance was completed with a Development status run, stale/failure/restore
+alert simulations, a verified encrypted Development database+sync backup,
+isolated application-scope restore rehearsal, full DB checks/build, and Preview
+runtime verification. The restore evidence and platform-level limitations are
+recorded in [the runbook](OPS_PHASE_1_RUNBOOK.md).
 No Production WAF publication, secrets, database write, or deployment is
 authorized by this phase.

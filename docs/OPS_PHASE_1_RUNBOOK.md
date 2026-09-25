@@ -69,16 +69,44 @@ Copy the verified encrypted directory to an access-restricted off-site target
 and record its retention period. This step requires an operator-selected
 destination; it is never automatic.
 
-For an isolated restore drill, provision a **new disposable Development-only
-database**, verify its exact project ref differs from both Development and
-Production, and obtain an operator's explicit restore window. Decrypt the
-database archive through a pipe to `pg_restore --no-owner --no-privileges`
-against that isolated target; never use `--clean` on tei-development or any
-Production target. Restore the local sync bundle into a fresh temporary
-directory, verify every manifest hash, run `--check-only`, migration/RLS checks,
-and a public-read smoke test. Record restore time, missing objects and user
-ownership semantics. Do not claim a restore rehearsal from `pg_restore --list`
-alone. Rehearsal remains pending until isolated target credentials are supplied.
+For an isolated restore drill, use a disposable **local** PostgreSQL database
+on an owner-only Unix socket (or a separately approved Development-only
+target). Verify the target is neither tei-development nor Production. Decrypt
+the database archive through a pipe to `pg_restore --no-owner --no-privileges`;
+never use `--clean` on tei-development or Production. A plain PostgreSQL
+instance does not provide Supabase-managed extensions such as `pg_net`, so
+restore the application schemas `auth`, `public`, `supabase_migrations`, and
+`tei_private` after provisioning their local-only prerequisites. Restore the
+sync bundle into a fresh temporary directory and compare every manifest hash.
+Compare migration versions, table definitions, row counts, RLS/policies, and
+indexes against the Development source; simulate public reads under `anon`.
+This application-scope drill does not prove full Supabase platform recovery,
+extension portability, or original ACL/ownership restoration.
+
+### Acceptance record — 2026-09-25 UTC
+
+- Source: verified `tei-development` project; target: disposable local
+  PostgreSQL 18 over an owner-only Unix socket. Production was not connected
+  or modified. The encrypted `pg_dump` and matching six-file sync bundle were
+  published outside Git; age decryption, archive listing, bundle hashes, and
+  encrypted-file SHA-256 checks passed. No plaintext archive was saved.
+- A full platform restore attempt stopped at missing local `pg_net`. The
+  application-scope restore then succeeded for `auth`, `public`,
+  `supabase_migrations`, and `tei_private` without `--clean`.
+- Source versus restore: 29/29 public tables and exact row counts, 268/268
+  columns, 115/115 indexes, 80/80 RLS policies, and all 25 migration versions
+  matched. RLS was enabled on all 29 public tables. Key restored counts:
+  `entities` 140, `relationships` 1,030, `evidence_records` 1,527,
+  `asset_declarations` 1. The six sync files were decrypted into a disposable
+  directory and matched their recorded SHA-256 hashes.
+- Local `anon` role, after local-only SELECT grants necessitated by
+  `--no-privileges`, read 138 published entities, 1,026 relationships, and one
+  asset declaration, while Workspace returned zero rows. This validates RLS
+  behavior but does not assert Supabase's original grants were restored.
+- Remaining recovery limits: Supabase-managed extensions/platform services
+  and original ACL/ownership were not rehearsed on plain PostgreSQL; retain
+  this as a known Medium operational risk. Off-site retention still requires
+  a separate operator-selected destination and policy.
 
 ## Rate limits, WAF and incident recovery
 
@@ -114,4 +142,4 @@ decision.
 | 5xx / 429 / p95 synthetic logs | Separate severity and stable deduplicated codes |
 | Repeated then recovered alert | Repeat count increments; resolution timestamp recorded |
 | Production or passwordless DB URL | Backup refuses before connecting |
-| Encrypted Development backup / isolated restore | Must be evidenced separately; not implied by unit tests |
+| Encrypted Development backup / isolated restore | Passed for application schemas and six sync files on 2026-09-25; see acceptance record and stated platform limits |
