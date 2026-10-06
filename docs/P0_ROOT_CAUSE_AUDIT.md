@@ -229,7 +229,10 @@ data, identity matching, ownership, RLS, Graph layout or Production change.
 | Actual P05 content / PDF layout | PASS (local projection) | Read-only Development SQL under P05 RLS retrieved the existing six items; public anon Entity reads assembled two Profiles, one Relationship/Penalty, one saved Evidence, two Graph nodes/one edge and three Sources. All 26 PDF pages were rendered and visually inspected; character geometry stayed inside page margins. This is explicitly not a replacement for a logged-in HTTP download. |
 | Authentication / same projection / binary response / HEAD | PASS (regression) | Tests reject unauthenticated Workspace PDF, use the existing service, verify PDF MIME/attachment/no-store/Content-Length, and zero HEAD body. |
 | Targeted suite / DB / build | PASS | 52 targeted tests; 160 PGlite DB checks; Ruff/web syntax; 50-module WSGI build including an actual Chinese PDF render. Initial DB runner lacked `python` on PATH; corrected to the existing venv and reran successfully. |
-| New Preview PDF / P05 UI download / printed artifact | PARTIAL | Pending deployment and actual download from the new Preview. The old Desktop HTML remains unchanged; it is not renamed to PDF. |
+| New Preview company PDF / actual UI download | PASS | Corrected Preview `796a4fc` READY; PDF endpoint returns HTTP 200/application-pdf/attachment, 16-page actual PDF with disposition/amount/source. Browser clicked Company Download and created a new valid `.pdf` in Downloads. All 16 Preview PDF pages rendered and visually inspected. Anonymous Workspace PDF request returns 401. |
+| P05 Workspace PDF / actual owner-scoped download | PASS | User signed P05 into the new Preview. Its six existing bookmarks loaded; actual Download created a genuine 26-page `.pdf`, retaining Profiles, Relationship/Penalty, saved Evidence, Graph endpoints/edge and Sources. All 26 downloaded pages were rendered and inspected, with no out-of-margin characters. No token/session copying or RLS change was used. |
+| Manual browser print / HTML preview visual | PARTIAL | PDF layout is directly verified, but actual browser print dialog/output and blocked `blob:` HTML preview were not inspected. No security/tool-access workaround was used; the old Desktop HTML is unchanged. |
+| Mobile Workspace / download control | PASS (bounded check) | Actual viewport 390px, document width 375px, dialog width 337px, Download visible and in bounds. Button clicked without errors; no claim that every mobile page has passed. |
 
 The temporary 26-page PDF is local QA output generated from a read-only owner
 snapshot, not a new public record or an admin-authenticated HTTP export.
@@ -242,3 +245,46 @@ Deployment self-audit caught Vercel installing from `pyproject.toml`, not
 as a working runtime. Added the same three pinned dependencies to pyproject and
 a bundle-check assertion that both manifests agree; reran the build after this
 configuration change. Only the corrected Preview is eligible for PDF acceptance.
+
+Corrected runtime commit: `796a4fc5fede8fdfb4872d79ae0103cde3bc740c`.
+Git push succeeded on the non-production `product-consolidation/p0-p2` branch.
+Deployment `dpl_Br4bJNqujtEk55AuQXvfkRoj13U5`: READY, target Preview,
+Python 3.12, build log completed without error; configuration read confirms the
+Development private URL and a public credential only. No Production change.
+
+Preview: https://taiwan-entity-intelligence-1xtdv6kh9-coldlight871029-9944.vercel.app/
+
+Company UI download retained:
+`/Users/lengguangchen/Downloads/tei-entity-a3bcec97-5ef2-5bb3-ba8f-bde444835ec5.pdf`.
+Vercel error/fatal logs for this deployment, window ending
+2026-10-06T13:11:04Z: none. The signed-in P05 browser also has no warning/error
+logs in the captured window. A separate-account browser access attempt and
+manual preview/print acceptance are still required; P0 remains OPEN, not Product
+Consolidation COMPLETE. Unrelated Pilot working-tree changes were preserved and
+not committed.
+
+### P05 fresh end-to-end follow-up on corrected Preview
+
+The user's newly signed-in tab (not the stale sign-in tab) was used to download
+the private PDF. Retained artifact:
+`/Users/lengguangchen/Downloads/tei-workspace-552ce1b7-1550-49a3-b058-3db5af16b7fb.pdf`.
+PDF generation carries the actual owner-filtered items, not the earlier local
+snapshot adapter. Full-page rendering confirms bilingual content, identifiers,
+URLs, table boundaries, repeated headers and pagination on all 26 pages.
+
+Then independently reran Search → canonical Company Profile → Graph → Path
+depth 1/2/3 → Edge Evidence → existing owner Workspace → Watchlist sync. All
+three Path limits produced the same correct one-hop sample with official source,
+date and amount. Graph Fit at measured 1440/1280/1024/768px retained nonzero SVG
+width 760/600/1009/753px and no horizontal document overflow. The Graph node and
+Evidence controls were operated by keyboard; this does not prove every pointer
+hit target. Watchlist retained one real Company and no fabricated notifications.
+
+Read-only data recheck after downloads: raw rows 80122, canonical Companies 2,
+People 0, Politicians 123, total Entity Evidence links 910, Evidence records 1529,
+Relationships 1031, Workspace items 7, broken bookmark foreign keys 0. No data
+changed in this follow-up, other than the normal owner-scoped Watchlist sync.
+
+PDF download regression is resolved. Overall audit stays PARTIAL because a
+different account's real browser attempt and manual preview/printing are pending;
+whole-product mobile and paused P1/P2 terminology/layout work are not accepted.
