@@ -7,6 +7,7 @@ import time
 import uuid
 from pathlib import Path
 from urllib.parse import parse_qs
+from urllib.parse import urlencode
 from http import HTTPStatus
 from concurrent.futures import ThreadPoolExecutor
 import urllib.request
@@ -21,8 +22,9 @@ from src.rate_limit import client_identity, request_allowed
 
 WEB = Path(__file__).parent / 'web'
 
-def db_count(table):
-    req = urllib.request.Request(f'{core.SUPABASE}/rest/v1/{table}?select=*', method='HEAD', headers={'apikey': core.SUPABASE_KEY, 'Authorization': f'Bearer {core.SUPABASE_KEY}', 'Prefer': 'count=exact'})
+def db_count(table, **filters):
+    query = urlencode({'select': '*', **filters})
+    req = urllib.request.Request(f'{core.SUPABASE}/rest/v1/{table}?{query}', method='HEAD', headers={'apikey': core.SUPABASE_KEY, 'Authorization': f'Bearer {core.SUPABASE_KEY}', 'Prefer': 'count=exact'})
     with urllib.request.urlopen(req, timeout=8) as response:
         return int(response.headers['Content-Range'].split('/')[-1])
 
@@ -71,6 +73,18 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
                 tables = ['source_files', 'companies', 'people', 'evidence', 'source_records']
                 with ThreadPoolExecutor(max_workers=4) as pool:
                     db.update(zip(tables, pool.map(db_count, tables)))
+                db['legacy'] = {key: db[key] for key in ('companies', 'people', 'evidence')}
+                counts = {
+                    'companies': ('entities', {'entity_type': 'eq.Company'}),
+                    'people': ('entities', {'entity_type': 'in.(Person,Politician,GovernmentOfficial)'}),
+                    'entities': ('entities', {}),
+                    'entity_evidence': ('entity_evidence', {}),
+                    'evidence_records': ('evidence_records', {}),
+                    'relationships': ('relationships', {}),
+                }
+                with ThreadPoolExecutor(max_workers=4) as pool:
+                    values = list(pool.map(lambda spec: db_count(spec[0], **spec[1]), counts.values()))
+                db['canonical'] = dict(zip(counts, values))
                 db['connected'] = True
             except Exception:
                 db['error'] = '資料庫連線失敗，請檢查伺服器金鑰與資料表權限。'

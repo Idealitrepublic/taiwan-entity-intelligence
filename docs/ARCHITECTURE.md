@@ -45,6 +45,15 @@ The deployed service is Python, not Next.js. `package.json` exists only to provi
 | Graph expansion | `graph_entity_neighbors` RPC | bounded, cursor-based one-hop expansion |
 | Ingestion | scripts and Supabase Edge Functions | privileged source sync and persistence |
 
+Product Consolidation P0 audit: `companies`, `people`, and `evidence` are legacy
+tables and may be empty in Development while canonical `entities`,
+`entity_evidence`, and `evidence_records` are populated. `/api/status` retains
+legacy keys and separately exposes public-RLS canonical counts. Raw source
+indexing is not canonical publication. Existing MOL ingestion may invoke the
+identifier-only Development materialization stage; live/name-only matches remain
+observations until resolved. Workspace reports project actual owner bookmarks,
+include Source/Note directly, and resolve only published canonical references.
+
 ## Verified Phase 0 baseline
 
 - `npm run dev`: starts on `127.0.0.1:3000`.

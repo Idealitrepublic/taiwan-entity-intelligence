@@ -14,6 +14,15 @@ Entity <- EntityEvidence -> Evidence
 
 ## Core records
 
+The legacy `companies`/`people`/`evidence` tables are not the canonical Entity
+counts. An indexed `source_record` alone creates neither a canonical Entity nor
+a published Relationship. Product Consolidation's existing-source MOL stage
+materializes only explicit uniform numbers independently verified against MOEA,
+and retains the source-row/snapshot IDs in immutable Evidence and a legacy map.
+Name-only penalties retain candidate status. Workspace bookmarks are private
+references: Source and Note enter the report directly without a publication
+column; saved canonical facts still require public publication and active Evidence.
+
 ### Entity
 
 `entities` is the stable internal identity. It stores type, canonical/display names, source-scoped identity, publication state, and timestamps. `entity_types` constrains the allowed taxonomy.

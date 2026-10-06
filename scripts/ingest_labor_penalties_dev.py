@@ -22,10 +22,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.public_evidence import _dataset_resources, _get  # noqa: E402
+from scripts.ops_backup import database_environment  # noqa: E402
 
 DATASETS = ("109896", "109897", "110908")
 REQUIRED = {"主管機關", "處分日期", "處分字號", "事業單位名稱或負責人", "違法法規法條"}
-DEV_REF = "canqjiokrtcxkwblhmml"
 
 
 def official_rows(dataset_id):
@@ -93,25 +93,31 @@ def sql_snapshot(dataset_id, source_url, payload, rows):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true", help="write only to tei-development")
+    parser.add_argument("--materialize", action="store_true", help="publish only explicit, registry-verified identifier matches after indexing")
     args = parser.parse_args()
+    if args.materialize and not args.apply:
+        parser.error("--materialize requires --apply")
     connection = os.environ.get("TEI_DEV_DATABASE_URL", "")
-    if args.apply and (DEV_REF not in connection or "rztdbdurkjfrirsrrhtu" in connection):
-        raise SystemExit("tei-development connection required")
+    database_env = database_environment(connection) if args.apply else {}
     for dataset_id in DATASETS:
         source_url, payload, rows = official_rows(dataset_id)
         print(f"{dataset_id}: {len(rows)} official rows, {len(payload)} bytes")
         if not args.apply:
             continue
         env = os.environ.copy()
+        env.update(database_env)
         env["PGCONNECT_TIMEOUT"] = "10"
         process = subprocess.run(
-            ["psql", connection, "-X", "-q", "-v", "ON_ERROR_STOP=1"],
+            ["psql", "-X", "-q", "-v", "ON_ERROR_STOP=1"],
             input=sql_snapshot(dataset_id, source_url, payload, rows),
             text=True, capture_output=True, env=env, timeout=180,
         )
         if process.returncode:
             raise SystemExit(f"Development import failed for {dataset_id}; transaction rolled back")
         print(f"{dataset_id}: Development import committed")
+    if args.materialize:
+        subprocess.run([sys.executable, str(ROOT / "scripts/materialize_labor_penalties_dev.py"), "--apply"],
+                       check=True, env=os.environ.copy())
 
 
 if __name__ == "__main__":

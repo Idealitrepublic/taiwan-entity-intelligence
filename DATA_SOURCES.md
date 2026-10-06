@@ -16,6 +16,14 @@ dataset or search entry rather than a permanent row URL; the UI distinguishes
 these. The Development snapshot is external-only and does not imply a Storage
 object was uploaded.
 
+The Product Consolidation root audit adds a separate exact-identifier
+materialization stage for these same sources. Explicit uniform-number fields or
+a terminal, tab-separated source identifier must agree with MOEA's identifier
+and official name. Only such verified records may create canonical Penalty
+Entities, Company fact Evidence and `RELATED_TO_PENALTY`; name-only rows remain
+indexed candidates. The 2026-10-06 snapshot contains one such materialized record
+out of 80,122 indexed rows. That is not 100% canonical resolution coverage.
+
 ## DATA Phase 1 — Political Master Data
 
 Primary provider: Legislative Yuan Open Data Service (`data.ly.gov.tw`).

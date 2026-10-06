@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from app import app, dispatch
-from src.reports import SECTION_TITLES, ReportNotFound, ReportService, dispatch_report_api, render_report_html
+from src.reports import EmptyWorkspaceReport, SECTION_TITLES, ReportNotFound, ReportService, dispatch_report_api, render_report_html
 
 ENTITY = "11111111-1111-4111-8111-111111111111"
 OTHER = "22222222-2222-4222-8222-222222222222"
@@ -69,6 +69,8 @@ class ReportTests(unittest.TestCase):
 
     def test_workspace_report_forwards_owner_token_and_includes_saved_sources(self):
         repository = Mock()
+        repository.entity.return_value = entity()
+        repository.graph_neighbors.return_value = graph("RELATED_TO_JUDGMENT")
         repository.evidence.return_value = evidence("Saved evidence")
         repository.relationship.return_value = {
             "id": REL, "source_entity_id": ENTITY, "target_entity_id": OTHER,
@@ -96,6 +98,60 @@ class ReportTests(unittest.TestCase):
         self.assertEqual({row["source"] for row in report["sources"]},
                          {"Official source", "人工來源"})
         self.assertEqual(report["judgments"][0]["relationship"]["id"], REL)
+
+    def test_source_and_note_bookmarks_are_reported_without_inventing_entities(self):
+        repository = Mock()
+        workspaces = Mock()
+        workspaces.return_value.get.return_value = {"name": "P01", "items": [
+            {"id": ENTITY, "item_type": "SOURCE", "title": "官方原始入口",
+             "source_url": "https://data.gcis.nat.gov.tw/", "created_at": "2026-09-29T15:47:44Z"},
+            {"id": OTHER, "item_type": "NOTE", "note_text": "先核對原始資料"}]}
+        report = ReportService(repository, workspace_factory=workspaces).workspace_report(WORKSPACE, TOKEN)
+        self.assertEqual(report["entity_profiles"], [])
+        self.assertEqual(len(report["sources"]), 1)
+        repository.entity.assert_not_called()
+        html = render_report_html(report)
+        self.assertIn("先核對原始資料", html)
+        self.assertIn("官方原始入口", html)
+
+    def test_empty_workspace_does_not_export_a_misleading_all_empty_report(self):
+        workspaces = Mock()
+        workspaces.return_value.get.return_value = {"items": []}
+        service = ReportService(Mock(), workspace_factory=workspaces)
+        with self.assertRaises(EmptyWorkspaceReport):
+            service.workspace_report(WORKSPACE, TOKEN)
+        code, body, _ = dispatch_report_api(f"/api/v1/reports/workspace/{WORKSPACE}", {},
+                                           authorization="Bearer " + TOKEN, service=service)
+        self.assertEqual((code, body["status"]), (422, "empty_workspace"))
+
+    def test_saved_relationship_resolves_endpoint_profiles_and_graph(self):
+        repository = Mock()
+        repository.entity.side_effect = lambda identifier: {**entity(), "id": identifier}
+        repository.graph_neighbors.return_value = graph("RELATED_TO_PENALTY")
+        repository.relationship.return_value = {"id": REL, "source_entity_id": ENTITY,
+            "target_entity_id": OTHER, "relationship_type": "RELATED_TO_PENALTY",
+            "primary_evidence_id": EVIDENCE, "evidence": [{"evidence": evidence()}]}
+        workspaces = Mock()
+        workspaces.return_value.get.return_value = {"items": [
+            {"item_type": "RELATIONSHIP", "relationship_id": REL}]}
+        report = ReportService(repository, workspace_factory=workspaces).workspace_report(WORKSPACE, TOKEN)
+        self.assertEqual({v["id"] for v in report["entity_profiles"]}, {ENTITY, OTHER})
+        self.assertEqual(len(report["relationship_graph"]["nodes"]), 2)
+        self.assertEqual(len(report["relationship_graph"]["edges"]), 1)
+        self.assertEqual(len(report["penalties"]), 1)
+
+    def test_withdrawn_saved_reference_does_not_hide_other_saved_sources(self):
+        repository = Mock()
+        repository.entity.return_value = None
+        repository.evidence.return_value = None
+        workspaces = Mock()
+        workspaces.return_value.get.return_value = {"items": [
+            {"item_type": "ENTITY", "entity_id": ENTITY},
+            {"item_type": "EVIDENCE", "evidence_id": EVIDENCE},
+            {"item_type": "SOURCE", "source_url": "https://example.gov.tw/", "id": OTHER}]}
+        report = ReportService(repository, workspace_factory=workspaces).workspace_report(WORKSPACE, TOKEN)
+        self.assertEqual(len(report["coverage"]["unavailable_saved_references"]), 2)
+        self.assertEqual(len(report["sources"]), 1)
 
     def test_dispatch_validates_scope_format_and_workspace_auth(self):
         service = Mock()

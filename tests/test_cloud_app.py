@@ -25,6 +25,21 @@ class CloudAppTests(unittest.TestCase):
             status,body=self.request('/api/status')
         self.assertTrue(status.startswith('503'))
         self.assertFalse(json.loads(body)['supabase']['connected'])
+    def test_status_separates_empty_legacy_tables_from_public_canonical_counts(self):
+        def count(table, **filters):
+            if table == 'entities':
+                return 2 if filters.get('entity_type') == 'eq.Company' else 121 if filters else 140
+            return {'source_files': 3, 'source_records': 80122, 'entity_evidence': 908,
+                    'evidence_records': 911, 'relationships': 1027}.get(table, 0)
+        with patch('app.db_count', side_effect=count), patch('app.core.SUPABASE_KEY', 'anon-test'):
+            status, body = self.request('/api/status')
+        data = json.loads(body)['supabase']
+        self.assertTrue(status.startswith('200'))
+        self.assertEqual(data['legacy'], {'companies': 0, 'people': 0, 'evidence': 0})
+        self.assertEqual(data['canonical']['companies'], 2)
+        self.assertEqual(data['canonical']['people'], 121)
+        self.assertEqual(data['canonical']['entity_evidence'], 908)
+        self.assertEqual(data['source_records'], 80122)
     def test_domain_requires_a_domain(self):
         with self.assertRaises(ValueError):
             cloud_company.check_domain('localhost')

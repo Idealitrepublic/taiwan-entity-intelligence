@@ -42,6 +42,10 @@ class ReportValidationError(ValueError):
     pass
 
 
+class EmptyWorkspaceReport(ReportValidationError):
+    pass
+
+
 def _now():
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -227,12 +231,28 @@ class ReportService:
         if not workspace:
             raise ReportNotFound("Owned Workspace not found")
         items = workspace.get("items", [])
+        if not items:
+            raise EmptyWorkspaceReport("Save a Workspace item before exporting")
         roots = []
+        saved_relationships = {}
+        unavailable = []
         for item in items:
             root = item.get("entity_id") or item.get("graph_root_entity_id")
             if root and root not in roots:
                 roots.append(root)
-        child_reports = [self._entity_report(root) for root in roots[:MAX_WORKSPACE_ROOTS]]
+            if item.get("item_type") == "RELATIONSHIP" and item.get("relationship_id"):
+                relationship = self.entities.relationship(item["relationship_id"])
+                saved_relationships[item["relationship_id"]] = relationship
+                if relationship:
+                    for endpoint in ("source_entity_id", "target_entity_id"):
+                        if relationship.get(endpoint) and relationship[endpoint] not in roots:
+                            roots.append(relationship[endpoint])
+        child_reports = []
+        for root in roots[:MAX_WORKSPACE_ROOTS]:
+            try:
+                child_reports.append(self._entity_report(root))
+            except ReportNotFound:
+                unavailable.append({"entity_id": root, "reason": "not_publicly_available"})
         report = {
             "report_version": REPORT_VERSION,
             "report_type": "WORKSPACE",
@@ -246,9 +266,11 @@ class ReportService:
                 "workspace_items_truncated": bool(workspace.get("items_has_more")),
                 "entity_root_limit": MAX_WORKSPACE_ROOTS,
                 "entity_roots_truncated": len(roots) > MAX_WORKSPACE_ROOTS,
+                "unavailable_saved_references": unavailable,
             },
             "workspace": {key: value for key, value in workspace.items() if key != "items"},
             "workspace_items": items,
+            "saved_evidence": [],
             "entity_profiles": [], "key_relationships": [],
             "political_relationships": [], "government_contracts": [],
             "judgments": [], "penalties": [], "asset_records": [],
@@ -276,8 +298,15 @@ class ReportService:
                 evidence = _evidence(self.entities.evidence(item["evidence_id"]))
                 if evidence:
                     saved_sources.append(evidence)
+                    report["saved_evidence"].append(evidence)
+                else:
+                    unavailable.append({"workspace_item_id": item.get("id"),
+                                        "evidence_id": item["evidence_id"], "reason": "not_publicly_available"})
             elif item.get("item_type") == "RELATIONSHIP" and item.get("relationship_id"):
-                relationship = self.entities.relationship(item["relationship_id"])
+                relationship = saved_relationships.get(item["relationship_id"])
+                if not relationship:
+                    unavailable.append({"workspace_item_id": item.get("id"),
+                                        "relationship_id": item["relationship_id"], "reason": "not_publicly_available"})
                 for link in (relationship or {}).get("evidence", []):
                     evidence = _evidence(link.get("evidence"))
                     if evidence:
@@ -308,6 +337,14 @@ class ReportService:
         sources = _source_map(report)
         sources.update({source["id"]: source for source in saved_sources})
         report["sources"] = list(sources.values())
+        for key in ("entity_profiles", "key_relationships", "political_relationships",
+                    "government_contracts", "judgments", "penalties", "asset_records"):
+            unique = {}
+            for row in report[key]:
+                row_id = row.get("relationship", {}).get("id") or row.get("id")
+                if row_id:
+                    unique[row_id] = row
+            report[key] = list(unique.values())
         report["relationship_graph"]["edges"] = list(edge_map.values())
         return report
 
@@ -343,6 +380,11 @@ def _render_value(value, key=""):
 
 
 def render_report_html(report):
+    workspace_sections = ""
+    if report.get("report_type") == "WORKSPACE":
+        workspace_sections = (
+            f'<section><h2>Saved Workspace Items / 已收藏項目</h2>{_render_value(report.get("workspace_items", []))}</section>'
+            f'<section><h2>Saved Evidence / 已收藏證據</h2>{_render_value(report.get("saved_evidence", []))}</section>')
     sections = "".join(
         f"<section><h2>{escape(title)}</h2>{_render_value(report.get(key))}</section>"
         for key, title in SECTION_TITLES)
@@ -358,7 +400,7 @@ a{{color:#1769aa;overflow-wrap:anywhere;word-break:break-word}}.empty{{color:#71
 </style></head><body><header><h1>{escape(report['title'])}</h1>
 <p>{escape(report['methodology'])}</p><dl><dt>Report type</dt><dd>{escape(report['report_type'])}</dd>
 <dt>Generated at</dt><dd>{escape(report['generated_at'])}</dd><dt>Coverage</dt><dd>{_render_value(report['coverage'])}</dd></dl></header>
-{sections}</body></html>"""
+{workspace_sections}{sections}</body></html>"""
 
 
 def dispatch_report_api(path, query, authorization=None, service=None):
@@ -377,6 +419,9 @@ def dispatch_report_api(path, query, authorization=None, service=None):
             report = service.workspace_report(record_id, token)
         else:
             report = getattr(service, f"{scope}_report")(record_id)
+    except EmptyWorkspaceReport:
+        return 422, {"error": "Workspace 尚無收藏項目；請先收藏再匯出 / Save an item before exporting",
+                     "status": "empty_workspace"}, None
     except (ReportValidationError, ValueError, TypeError):
         return 400, {"error": "報告參數錯誤 / Invalid report parameters"}, None
     except WorkspaceUnauthorized:

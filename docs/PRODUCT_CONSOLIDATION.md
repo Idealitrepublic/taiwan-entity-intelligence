@@ -2,6 +2,12 @@
 
 Status: P0 in progress (2026-10-06). Development and Preview only. The unrelated Pilot preparation working-tree changes are preserved.
 
+The follow-up [P0 root cause audit](P0_ROOT_CAUSE_AUDIT.md) distinguishes empty
+legacy counters, missing exact-identifier labor materialization, and the P01
+report generated before its first Source bookmark. It records actual canonical
+counts, owner/RLS/FK checks, the official labor provenance chain, repairs,
+71 targeted tests and 160 DB checks. P0 acceptance remains open.
+
 ## P0.1 — Labor penalty regression
 
 - Root causes: `tei-development` had zero `source_records` and `source_files` rows. The Labor Standards Act fallback URL resolved to an unrelated five-column file, while the data.gov.tw metadata parser ignored the nested `result` and current `resourceDownloadUrl` field.
