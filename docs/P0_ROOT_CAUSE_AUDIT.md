@@ -103,6 +103,15 @@ merges. No new source was introduced.
 
 ## Verification and remaining P0 gate
 
+Implementation commit: `3f29c00a77086e9e08024195d1eb53fcc1c25a26`.
+Preview: <https://taiwan-entity-intelligence-pvg9tnm2p-coldlight871029-9944.vercel.app/>.
+Deployment `dpl_3UpBYxT5b2j59dWmHC1k4xWgNN1Q` is READY and has Preview target
+(`target=null`). The workspace configuration explicitly points to Development.
+Preview Search/Entity/Graph/Path/Evidence/Entity Report and status all returned
+HTTP 200 with the expected canonical sample; unauthenticated P01 Workspace Report
+returned HTTP 401. Deployment-scoped runtime logs contained no 5xx entries in the
+30-minute verification window. This does not imply authenticated UI acceptance.
+
 - 71 targeted tests passed: materialization, source regression, status counters,
   reports, Workspace, Watchlist, Search, Graph and Path Finder.
 - 160 PGlite DB checks passed: migrations, idempotency, constraints, RLS and
@@ -122,6 +131,10 @@ merges. No new source was introduced.
 - Actual P01 browser Auth → Workspace → Watchlist → Report on the repaired
   Preview remains pending: a current P01 sign-in is required. No password reset,
   token extraction, session copying, admin-auth bypass or ownership edit was used.
+  A repaired Preview tab is left on the sign-in form with the P01 email filled;
+  no password was supplied or read. The intended next step is to sign in there,
+  select the existing P01 Workspace, save the real canonical Company/Relationship/
+  Evidence/Graph, verify Watchlist and export again. Existing SOURCE remains intact.
 - Populated-report print/PDF visual acceptance remains pending. Layout regression
   checks alone do not prove long-content pagination. No substitute/fake data was
   used to fill empty domain sections.
