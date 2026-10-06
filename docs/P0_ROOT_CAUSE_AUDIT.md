@@ -236,3 +236,9 @@ snapshot, not a new public record or an admin-authenticated HTTP export.
 Duplicate provenance is preserved for compatibility; compact presentation and
 full bilingual field consolidation remain paused P2 work. Cross-account browser
 acceptance still needs another real account, which the user has deferred.
+
+Deployment self-audit caught Vercel installing from `pyproject.toml`, not
+`requirements.txt`. The first PDF Preview (`93f813f`) was therefore not accepted
+as a working runtime. Added the same three pinned dependencies to pyproject and
+a bundle-check assertion that both manifests agree; reran the build after this
+configuration change. Only the corrected Preview is eligible for PDF acceptance.

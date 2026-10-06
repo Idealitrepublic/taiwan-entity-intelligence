@@ -11,6 +11,10 @@ sys.path.insert(0, str(ROOT))
 def main():
     config = tomllib.loads((ROOT / "pyproject.toml").read_text())
     assert config["tool"]["vercel"]["entrypoint"] == "app:app"
+    # Vercel selects pyproject.toml over requirements.txt; keep both in sync.
+    runtime_dependencies = {line.strip() for line in (ROOT / "requirements.txt").read_text().splitlines()
+                            if line.strip() and not line.lstrip().startswith("#")}
+    assert set(config["project"].get("dependencies", [])) == runtime_dependencies
     files = [ROOT / "app.py", *sorted((ROOT / "src").rglob("*.py"))]
     for file in files:
         ast.parse(file.read_text(), filename=str(file))
