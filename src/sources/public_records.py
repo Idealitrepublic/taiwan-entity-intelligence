@@ -50,7 +50,8 @@ def row_hash(source: str, row: Dict[str, Any]) -> str:
 
 
 def dataset_meta(dataset_id: str) -> Dict[str, Any]:
-    return parse_json_bytes(fetch(DATAGOV_META.format(dataset_id)))
+    payload = parse_json_bytes(fetch(DATAGOV_META.format(dataset_id)))
+    return payload.get("result", payload) if isinstance(payload, dict) else {}
 
 
 def resource_urls(dataset_id: str, preferred_formats=("CSV", "JSON", "XML")) -> List[str]:
@@ -63,8 +64,9 @@ def resource_urls(dataset_id: str, preferred_formats=("CSV", "JSON", "XML")) -> 
     for item in distributions:
         if not isinstance(item, dict):
             continue
-        url = item.get("resourceDownloadURL") or item.get("downloadURL") or item.get("url")
-        fmt = str(item.get("format") or item.get("mediaType") or "").upper()
+        url = (item.get("resourceDownloadUrl") or item.get("resourceDownloadURL")
+               or item.get("downloadURL") or item.get("url"))
+        fmt = str(item.get("resourceFormat") or item.get("format") or item.get("mediaType") or "").upper()
         if url and (not fmt or any(x in fmt for x in preferred_formats)):
             found.append(url)
     return list(dict.fromkeys(found))

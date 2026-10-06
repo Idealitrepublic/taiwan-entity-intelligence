@@ -1,5 +1,21 @@
 # T.E.I. v2 data sources
 
+## Existing labor-penalty source restoration (Product Consolidation P0)
+
+The existing MOL datasets [109896](https://data.gov.tw/dataset/109896),
+[109897](https://data.gov.tw/dataset/109897), and
+[110908](https://data.gov.tw/dataset/110908) supply official penalty rows. The
+resource URL is resolved from the nested data.gov.tw catalog response and each
+CSV is checked for agency, disposition date/number, business name, and statute
+columns before Development indexing. The indexed row preserves the official
+raw payload, dataset URL, snapshot hash, and retrieval time. Reimport is
+idempotent. A company-name match is a candidate source association; it is not
+an exact legal-entity resolution or a published canonical Relationship when the
+official row lacks a verified uniform number. The source generally supplies a
+dataset or search entry rather than a permanent row URL; the UI distinguishes
+these. The Development snapshot is external-only and does not imply a Storage
+object was uploaded.
+
 ## DATA Phase 1 — Political Master Data
 
 Primary provider: Legislative Yuan Open Data Service (`data.ly.gov.tw`).

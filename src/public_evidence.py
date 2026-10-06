@@ -4,7 +4,6 @@ from __future__ import annotations
 import csv
 import io
 import json
-import os
 import re
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -23,7 +22,6 @@ DATASET_LABELS = {
     "161985": "數位發展部／歷年採購案件", "91516": "交通部高速公路局／採購標案",
 }
 DIRECT_RESOURCES = {
-    "109896": "https://apiservice.mol.gov.tw/OdService/download/A17000000J-020050-MUA",
     "109897": "https://apiservice.mol.gov.tw/OdService/download/A17000000J-030226-sop",
     "110908": "https://apiservice.mol.gov.tw/OdService/download/A17000000J-030228-p2G",
     "176455": "https://opdadm.moi.gov.tw/api/v1/no-auth/resource/api/dataset/29E8E643-88ED-4952-B21E-BD42A3B7108C/resource/EF3880BD-4C86-4D5E-9C3E-1CBF70919743/download",
@@ -70,18 +68,21 @@ def _dataset_resources(dataset_id: str) -> list[str]:
     if dataset_id in RETIRED_DATASETS:
         return []
     urls: list[str] = []
-    direct = DIRECT_RESOURCES.get(dataset_id)
-    if direct:
-        urls.append(direct)
     meta = _json(f"https://data.gov.tw/api/v2/rest/dataset/{dataset_id}")
+    if isinstance(meta.get("result"), dict):
+        meta = meta["result"]
     distributions = meta.get("distribution") or meta.get("distributions") or []
     if isinstance(distributions, dict):
         distributions = list(distributions.values())
     for item in distributions:
         if isinstance(item, dict):
-            u = item.get("resourceDownloadURL") or item.get("downloadURL") or item.get("url")
+            u = (item.get("resourceDownloadUrl") or item.get("resourceDownloadURL")
+                 or item.get("downloadURL") or item.get("url"))
             if u:
                 urls.append(u)
+    direct = DIRECT_RESOURCES.get(dataset_id)
+    if direct:
+        urls.append(direct)
     if not urls:
         urls.extend(_html_resource_fallback(dataset_id))
     return list(dict.fromkeys(urls))
@@ -138,16 +139,23 @@ def _collect_dataset(dataset_key: str, needles: list[str], source_name: str, fac
         return [], {"status": "source_unavailable", "dataset_id": dataset_id, "label": DATASET_LABELS[dataset_id], "matched": 0, "rows_read": 0}
     out, rows_read, last_error = [], 0, None
     for url in resources:
-        try: rows = _read_rows(url); rows_read += len(rows)
-        except Exception as exc: last_error = str(exc); continue
+        try:
+            rows = _read_rows(url, limit=250000 if dataset_id == "109896" else 20000)
+            rows_read += len(rows)
+        except Exception as exc:
+            last_error = str(exc)
+            continue
         for idx, row in enumerate(rows):
             if _match_row(row, needles):
                 terms = [n for n in needles if n in _norm(" ".join(str(v) for v in row.values()))]
                 out.append(_evidence(source_name, dataset_id, row, idx, fact_type, terms))
-                if len(out) >= max_rows: break
-        if len(out) >= max_rows: break
+                if len(out) >= max_rows:
+                    break
+        if len(out) >= max_rows:
+            break
     result = {"status": "ok" if rows_read > 0 else "source_unavailable", "dataset_id": dataset_id, "label": DATASET_LABELS[dataset_id], "matched": len(out), "rows_read": rows_read}
-    if last_error and rows_read == 0: result["message"] = last_error
+    if last_error and rows_read == 0:
+        result["message"] = last_error
     return out, result
 
 
@@ -195,7 +203,8 @@ def collect_public_evidence(company_name: str, people=None):
         bucket["matched"] += int(st.get("matched") or 0)
         bucket["rows_read"] += int(st.get("rows_read") or 0)
         bucket["datasets"].append(st)
-        if st.get("status") == "source_unavailable": bucket["status"] = "partial"
+        if st.get("status") == "source_unavailable":
+            bucket["status"] = "partial"
 
     judicial, jstatus = _judicial_recent(needles)
     evidence.extend(judicial)

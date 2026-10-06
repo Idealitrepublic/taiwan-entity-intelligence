@@ -334,8 +334,8 @@ def _render_value(value, key=""):
             if child_key in ("content_hash",):
                 continue
             rows.append(
-                f"<dt>{escape(str(child_key).replace('_', ' '))}</dt>"
-                f"<dd>{_render_value(child, child_key)}</dd>")
+                f'<div class="report-field"><dt>{escape(str(child_key).replace("_", " "))}</dt>'
+                f"<dd>{_render_value(child, child_key)}</dd></div>")
         return f"<dl>{''.join(rows)}</dl>"
     url = _safe_url(value) if key == "source_url" else None
     text = escape(str(value))
@@ -349,11 +349,12 @@ def render_report_html(report):
     return f"""<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>{escape(report['title'])}</title><style>
-body{{font:15px/1.55 system-ui,sans-serif;color:#17202a;max-width:1040px;margin:auto;padding:32px;background:#f5f7f9}}
-header,section,article{{background:white;border:1px solid #dce3e8;border-radius:10px;padding:18px;margin:14px 0}}
+*{{box-sizing:border-box}}html{{min-width:0}}body{{font:15px/1.55 system-ui,"Noto Sans TC",sans-serif;color:#17202a;max-width:1120px;margin:auto;padding:28px;background:#f5f7f9;overflow-wrap:break-word}}
+header,section,article{{min-width:0;max-width:100%;background:white;border:1px solid #dce3e8;border-radius:10px;padding:16px;margin:12px 0}}
 article{{background:#fafbfc}}h1{{font-size:26px}}h2{{font-size:19px;border-bottom:1px solid #e4e9ed;padding-bottom:8px}}
-dl{{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:6px 14px;margin:4px 0}}dt{{color:#5c6975}}dd{{margin:0;overflow-wrap:anywhere}}
-a{{color:#1769aa}}.empty{{color:#71808e}}@media print{{body{{background:white;padding:0}}section,header,article{{break-inside:avoid}}}}
+dl{{display:block;min-width:0;margin:4px 0}}.report-field{{display:grid;grid-template-columns:minmax(145px,23%) minmax(0,1fr);gap:12px;min-width:0;padding:4px 0;border-bottom:1px solid #eef1f3}}.report-field:last-child{{border-bottom:0}}dt{{color:#5c6975;overflow-wrap:break-word}}dd{{min-width:0;margin:0;overflow-wrap:break-word;word-break:normal;white-space:pre-wrap}}dd dl{{white-space:normal}}
+a{{color:#1769aa;overflow-wrap:anywhere;word-break:break-word}}.empty{{color:#71808e}}@media(max-width:640px){{body{{padding:12px}}.report-field{{grid-template-columns:minmax(0,1fr);gap:2px}}}}
+@page{{size:A4 landscape;margin:12mm}}@media print{{html,body{{width:auto;max-width:none;margin:0;padding:0;background:white;font-size:10pt}}header,section,article{{border-color:#dce3e8;box-shadow:none;margin:0 0 7mm;padding:4mm;break-inside:auto;page-break-inside:auto}}h1,h2,dt{{break-after:avoid-page}}.report-field{{break-inside:avoid-page;page-break-inside:avoid}}a{{color:#1769aa;text-decoration:underline}}}}
 </style></head><body><header><h1>{escape(report['title'])}</h1>
 <p>{escape(report['methodology'])}</p><dl><dt>Report type</dt><dd>{escape(report['report_type'])}</dd>
 <dt>Generated at</dt><dd>{escape(report['generated_at'])}</dd><dt>Coverage</dt><dd>{_render_value(report['coverage'])}</dd></dl></header>

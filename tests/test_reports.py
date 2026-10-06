@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from app import app, dispatch
-from src.reports import ReportNotFound, ReportService, dispatch_report_api, render_report_html
+from src.reports import SECTION_TITLES, ReportNotFound, ReportService, dispatch_report_api, render_report_html
 
 ENTITY = "11111111-1111-4111-8111-111111111111"
 OTHER = "22222222-2222-4222-8222-222222222222"
@@ -121,6 +121,21 @@ class ReportTests(unittest.TestCase):
         self.assertIn("Relationship Graph / 關係圖", html)
         self.assertIn("&lt;unsafe&gt;", html)
         self.assertNotIn("<unsafe>", html)
+
+    def test_download_layout_handles_long_values_and_landscape_pages(self):
+        report = {"title": "跨年度調查報告", "methodology": "公開來源", "report_type": "ENTITY",
+                  "generated_at": "2026-10-06", "coverage": {},
+                  **{key: [] for key, _ in SECTION_TITLES}}
+        report["sources"] = [{"source_url": "https://example.gov.tw/" + "very-long-path-" * 30,
+                              "source_name": "長中文來源" * 30,
+                              "source_record_id": "LONGUNBROKENENGLISH" * 20}]
+        html = render_report_html(report)
+        self.assertIn("@page{size:A4 landscape", html)
+        self.assertIn("grid-template-columns:minmax(145px,23%) minmax(0,1fr)", html)
+        self.assertIn("break-inside:avoid-page", html)
+        self.assertIn("overflow-wrap:anywhere", html)
+        self.assertIn("長中文來源" * 30, html)
+        self.assertIn("LONGUNBROKENENGLISH" * 20, html)
 
     def test_wsgi_routes_report_get_and_denies_write(self):
         self.assertEqual(dispatch(f"/api/v1/reports/entity/{ENTITY}", {}, method="POST")[0], 405)

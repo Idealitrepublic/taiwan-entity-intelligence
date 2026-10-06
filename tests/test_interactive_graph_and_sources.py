@@ -34,6 +34,15 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
         self.assertIn("政府網站無法直接連到此筆紀錄", html)
         self.assertIn("開啟政府查詢入口（不會定位本筆）", html)
 
+    def test_graph_responsive_layout_and_fit_bounds_remain_available(self):
+        _, html, _ = dispatch("/", {})
+        self.assertIn("@media(max-width:1120px)", html)
+        self.assertIn(".main{display:flex;flex-direction:column;min-width:0}", html)
+        self.assertIn(".graph svg{inset:170px 0 44px", html)
+        self.assertIn("knowledgePositions([...knowledgeGraph.nodes.values()])", html)
+        self.assertIn("840/Math.max(240,maxX-minX+180)", html)
+        self.assertIn("panX=-zoom*", html)
+
     def test_ui_uses_progressive_category_graph(self):
         _, html, _ = dispatch("/", {})
         self.assertIn("hubDefinitions", html)

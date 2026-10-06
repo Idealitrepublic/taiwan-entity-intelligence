@@ -148,7 +148,7 @@ def indexed_records(uniform, company_name):
         with urllib.request.urlopen(req, timeout=8) as response:
             return json.load(response)
     records = fetch('uniform_number', uniform) + fetch('company_name', company_name)
-    return list({json.dumps(row['raw'], sort_keys=True, ensure_ascii=False): row for row in records}.values())
+    return list({row['id']: row for row in records}.values())
 
 
 _base_company = build_company
@@ -201,15 +201,27 @@ def build_company(uniform):
                 row['raw'],
                 _id=row.get('id'),
                 _source_name=row.get('title'),
+                _source_url=row.get('source_url'),
+                _retrieved_at=row.get('indexed_at'),
+                _match_rule='exact_uniform_number' if row.get('uniform_number') == uniform else 'exact_company_name_candidate',
                 _record_url=source['record_url'],
                 _dataset_url=source['dataset_url'],
                 _source_link_status=source['link_status'],
                 _source_message=source['message'],
             ))
-        data['evidence_status']['裁罰'] = {'status': 'ok', 'matched': len(penalty), 'message': '已匯入公開裁罰資料；公司名稱精確比對，仍須核對原文。'}
+        data['evidence_status']['裁罰'] = {'status': 'ok', 'matched': len(penalty), 'message': '已索引勞動部公開裁罰；無統編者為公司名稱精確比對候選，須核對原文。'}
         for row in rows:
             source = penalty_source_info(row) if row['dataset'] == 'penalties' else {'record_url': row.get('source_url')}
-            data['evidence'].append({'id':row['id'], 'title':row['title'], 'summary':row['summary'], 'source_type':row['dataset'], 'source_url':source.get('record_url'), 'event_date':row['raw'].get('處分日期') or row['raw'].get('date'), 'match_rule':'exact_company_name_or_uniform', 'raw':row['raw']})
+            data['evidence'].append({'id':row['id'], 'title':row['title'], 'summary':row['summary'],
+                                     'source_type':row['dataset'], 'source_name':'勞動部' if row['dataset'] == 'penalties' else row['dataset'],
+                                     'source_url':source.get('record_url') or row.get('source_url'),
+                                     'source_locator_type':source.get('link_status', 'record'),
+                                     'source_record_id':row['raw'].get('處分字號') or row['id'],
+                                     'retrieved_at':row.get('indexed_at'),
+                                     'provenance':{'source_file_id':row.get('source_file_id'), 'dataset':row['dataset']},
+                                     'event_date':row['raw'].get('處分日期') or row['raw'].get('date'),
+                                     'match_rule':'exact_uniform_number' if row.get('uniform_number') == uniform else 'exact_company_name_candidate',
+                                     'raw':row['raw']})
         data['evidence_count'] = len(data['evidence'])
     except Exception:
         data['evidence_status']['裁罰'] = {'status':'partial','matched':0,'message':'裁罰索引暫時無法讀取。'}
@@ -225,7 +237,10 @@ def build_company(uniform):
         node_id = 'penalty:' + str(row.get('_id') or idx)
         title = row.get('違法法規法條') or row.get('法規名稱') or row.get('_source_name') or '裁罰紀錄'
         data['graph']['nodes'].append({'id':node_id, 'type':'penalty', 'label':str(title), 'properties':{'date':row.get('處分日期') or row.get('date'), 'agency':row.get('主管機關'), 'fine':row.get('罰鍰金額'), 'disposition':row.get('處分字號'), 'fact':row.get('違反法規內容')}})
-        data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'labor_penalty', 'properties':{'source':row.get('_source_name'), 'evidence_id':row.get('_id')}})
+        data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'labor_penalty',
+                                       'properties':{'source':row.get('_source_name'), 'evidence_id':row.get('_id'),
+                                                     'match_rule':row.get('_match_rule'), 'source_url':row.get('_source_url'),
+                                                     'retrieved_at':row.get('_retrieved_at')}})
     for row in judicial['records']:
         node_id = 'judicial:' + row['jid']
         data['graph']['nodes'].append({'id':node_id, 'type':'judicial', 'label':str(row.get('title') or '裁判書'), 'properties':{'date':row.get('date'), 'jid':row['jid'], 'source_url':row['source_url']}})
