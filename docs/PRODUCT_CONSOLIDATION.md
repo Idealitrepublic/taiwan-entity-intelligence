@@ -22,7 +22,8 @@ Status: P0 in progress (2026-10-06). Development and Preview only. The unrelated
 
 ## Verification gate and remaining work
 
-- Targeted P0 tests: 23 passing at the last run; source/index/read checks above passed. New Preview deployment and the full authenticated core flow remain pending.
+- Targeted P0 tests: 23 passing at the last run; source/index/read checks above passed. Preview deployment [25def31](https://github.com/Idealitrepublic/taiwan-entity-intelligence/commit/25def3165db9540adeb64336290751faefae82cf) is READY at https://taiwan-entity-intelligence-kwr8xtrok-coldlight871029-9944.vercel.app/ (Preview target, not Production). Its workspace configuration points to `tei-development`.
+- Preview read-only API checks: status reports 80,122 `source_records`; company 23060248 returns two labor penalties, two legacy Graph edges, and two Evidence records with source and retrieval metadata. Global Search for 全家便利商店 returns a live-fallback company result (HTTP 200). These checks do not substitute for the full authenticated browser journey.
 - P0 is not accepted until a person opens/downloads a populated report in the new Preview and verifies landscape print/PDF, URL wrapping, and page breaks. The current browser session is signed in as a different pilot test account than the earlier P01 notes, so authenticated testing must use the intended Development test account.
 - P1 high-density Graph clustering and mobile flow: not started.
 - P2 terminology consolidation and Path Finder wording: not started.
