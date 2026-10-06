@@ -288,3 +288,59 @@ changed in this follow-up, other than the normal owner-scoped Watchlist sync.
 PDF download regression is resolved. Overall audit stays PARTIAL because a
 different account's real browser attempt and manual preview/printing are pending;
 whole-product mobile and paused P1/P2 terminology/layout work are not accepted.
+
+## Final Phase A reopening — 2026-10-07
+
+**P0 OPEN; Product Consolidation NOT COMPLETE.** Historical PDF downloads above
+do not establish that a fresh Workspace export currently works.
+
+- The user confirmed intentionally clearing P05's previous bookmarks. This is
+  not evidence of data loss or a pipeline regression; no deleted items were
+  restored. Fresh public totals remain: Company 2, Person 0, Politician 123,
+  Entity Evidence links 910, Evidence 1,529, Relationships 1,031 and indexed
+  source records 80,122. Legacy company/people/evidence counters remain zero;
+  canonical and legacy tables are deliberately distinguished.
+- P05 created `Final Phase A P05 2026-10-07` through the actual Development
+  browser. Five real bookmarks reference the Company, its labor Relationship,
+  Evidence, Graph and official MOL source. Read-only checks confirm the owner,
+  intact foreign keys and the published exact-identifier labor chain, date
+  2024-07-17, amount TWD 50,000 and source/retrieval provenance. No public data,
+  schema, RLS, source-ingestion checkpoint or Production setting changed.
+- Fresh Workspace Download on the previous Preview failed: the user saw no
+  file or error; a 20-second browser download observation also expired, and
+  the expected file was absent. Preview runtime nevertheless recorded the
+  authenticated `format=pdf` request as HTTP 200 after 10,364.6 ms. This narrows
+  the failure to browser delivery, not proof of a failed owner/RLS query.
+  The precise browser suppression reason is not yet independently proven.
+- The old code asynchronously clicked a detached anchor and provided no
+  pending/success/error state or user-activated retry. The repair retains a
+  genuine PDF download link in the active modal subtree, or the public report
+  panel when no modal is open, with an explicit Save PDF retry and bounded URL
+  cleanup. It validates MIME and PDF signature, bounds generation time,
+  prevents duplicate requests and clears expired private authentication. It
+  never embeds a token in a URL or navigates/closes the main application.
+- Path repair keeps the existing shortest-path API and 1/2/3 semantics,
+  presents Relationship Range, aborts obsolete selections/requests and exposes
+  bounded-search/no-route states without asserting absence of relationships.
+  A legacy company gets canonical Path actions only after a published exact
+  uniform-number match, never from a same-name fallback.
+- Graph lazy loading no longer automatically opens the root information
+  overlay, which was observed obscuring a narrow-window edge pointer target.
+  Stale graph responses cannot replace a newer graph. No clustering/layout
+  redesign was started; existing responsive and labor ingestion repairs remain.
+
+| Current gate | Result / actual method |
+|---|---|
+| Owner bookmark writes / labor provenance | PASS: actual P05 UI plus read-only Development SQL. |
+| Different-account browser isolation | PARTIAL: user can currently use only P05. SQL authenticated-role checks reject P01's Workspace for P05, but are not a second-account login. |
+| 1/2/3 shortest-path backend cases | PASS: real Development public RPC gives a 2-edge Company→Committee and 3-edge Company→Politician case, with shorter ranges returning no route. Fresh repaired UI remains pending. |
+| Targeted code regression | PASS: 62 Python tests and 14 shipped-JavaScript function cases; these are not a full browser acceptance. |
+| Fresh owner PDF file / full render / browser print | FAIL / pending repaired Preview: no fresh file yet. Do not reuse yesterday's artifact as proof. |
+| Full self-audit / remaining Final Phases B–H | NOT TESTED / deferred until Phase A P0 passes. |
+
+Browser `chrome://downloads` and direct Blob navigation were blocked by tool
+policy; no alternate automation/security bypass was used. Local file checks and
+normal browser downloads remain valid checks. Preview configuration extraction
+through CLI failed before returning data; it was not treated as an empty env or
+permission to connect a local server to Production. Runtime logs are scoped to
+Preview only; a failed wider log query is not recorded as zero runtime errors.

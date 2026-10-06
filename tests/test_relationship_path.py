@@ -68,6 +68,52 @@ class RelationshipPathTests(unittest.TestCase):
                       {"source": [SOURCE], "target": [TARGET], "max_depth": ["4"]}):
             self.assertEqual(dispatch_entity_api("/api/v1/paths", query, repo)[0], 400)
 
+    def test_fallback_depths_preserve_shortest_path_and_edge_evidence(self):
+        nodes = [SOURCE, TARGET, "55555555-5555-4555-8555-555555555555",
+                 "66666666-6666-4666-8666-666666666666"]
+        edges = [{"id": f"33333333-3333-4333-8333-{index:012d}",
+                  "source_entity_id": nodes[index], "target_entity_id": nodes[index + 1],
+                  "relationship_type": "MEMBER_OF", "primary_evidence_id": TARGET}
+                 for index in range(3)]
+
+        def get(table, params):
+            if table == "rpc/find_entity_relationship_path":
+                raise EntityFeatureUnavailable("not installed")
+            focus = params["focus_id"]
+            return [{"focus_entity": {"id": focus}, "relationship": edge,
+                     "source_entity": {"id": edge["source_entity_id"]},
+                     "target_entity": {"id": edge["target_entity_id"]},
+                     "primary_evidence": {"id": TARGET,
+                                          "source_url": "https://official.example/record",
+                                          "retrieved_at": "2026-10-07T00:00:00Z"}}
+                    for edge in edges
+                    if focus in (edge["source_entity_id"], edge["target_entity_id"])]
+
+        for depth in (1, 2, 3):
+            with self.subTest(depth=depth):
+                result = EntityRepository(transport=get).relationship_path(
+                    nodes[0], nodes[3], max_depth=depth)
+                self.assertEqual(result["found"], depth == 3)
+                self.assertEqual(len(result["segments"]), 3 if depth == 3 else 0)
+                if depth == 3:
+                    self.assertTrue(all(segment["evidence"]["retrieved_at"]
+                                        for segment in result["segments"]))
+
+    def test_fallback_cycles_and_reverse_edges_do_not_duplicate_nodes(self):
+        def get(table, params):
+            if table == "rpc/find_entity_relationship_path":
+                raise EntityFeatureUnavailable("not installed")
+            return [{"focus_entity": {"id": params["focus_id"]},
+                     "relationship": {"id": SOURCE, "source_entity_id": TARGET,
+                                      "target_entity_id": SOURCE,
+                                      "primary_evidence_id": TARGET},
+                     "source_entity": {"id": TARGET}, "target_entity": {"id": SOURCE},
+                     "primary_evidence": {"id": TARGET}}]
+
+        result = EntityRepository(transport=get).relationship_path(SOURCE, TARGET, max_depth=3)
+        self.assertEqual(result["depth"], 1)
+        self.assertEqual(result["segments"][0]["traversal_direction"], "reverse")
+
     def test_api_returns_404_when_an_endpoint_is_not_public(self):
         repo = Mock()
         repo.relationship_path.return_value = None
@@ -78,7 +124,7 @@ class RelationshipPathTests(unittest.TestCase):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
         for token in ("pathSource", "pathTarget", "findRelationshipPath",
                       "/api/v1/paths", "traversal_direction",
-                      "原始來源 / Original source", "max depth 3"):
+                      "原始來源 / Original source", "最多 2 個中介 / Up to 2 intermediaries"):
             self.assertIn(token, html)
 
 
