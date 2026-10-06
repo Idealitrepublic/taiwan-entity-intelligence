@@ -139,3 +139,100 @@ returned HTTP 401. Deployment-scoped runtime logs contained no 5xx entries in th
   checks alone do not prove long-content pagination. No substitute/fake data was
   used to fill empty domain sections.
 - P0 stays open; P1/P2 and new-feature work remain stopped.
+
+## Independent Final Self-Audit — 2026-10-06, round 1
+
+**Overall: PARTIAL. P0 OPEN. Product Consolidation NOT COMPLETE.**
+This is a fresh browser/user-journey audit of implementation `3f29c00`, not a
+promotion of the earlier unit-test/build results to UI acceptance. The user
+explicitly authorized using the already signed-in **P05** account instead of P01
+and subsequently chose to keep using P05 for now. P01's private data were not
+edited. P1/P2 remain paused; findings in those scopes are recorded, not implemented.
+
+Test target: the repaired Preview URL above, Development only. No code, schema,
+RLS policy, Production configuration or public data was changed during this round.
+
+| Requirement / boundary | Result | Actual verification / limitation |
+|---|---|---|
+| Authenticated P05 session | PASS | Workspace loaded owner-scoped rows and actual Create/bookmark/Watchlist requests succeeded. UI identifies `tei-pilot-p05@example.invalid`. This does not claim a fresh password login or refresh/expiry test. |
+| Global Search / existing company-ID flow | PASS | Browser queried `04690983`: official registry company, one real labor penalty and existing officers/procurement flow remained visible. A name query `大魯閣` returned the published Company and separate live-registry results; selected the exact canonical result. |
+| Company Overview / labor provenance | PASS | Canonical Profile displays the disposition, official penalty Evidence, MOEA identity Evidence and both official source URLs. Edge Evidence displays date 2024-07-17, TWD 50000, EXACT, original row ID and retrieved timestamp. |
+| Desktop / narrowed Graph | PASS | Fresh checks verified actual inner widths 1440/1280/1024/768, two nodes/one edge, nonzero SVG, in-bounds Fit/Zoom controls and no document horizontal overflow. SVG widths 760/600/1009/753. Fit actually clicked at every size. |
+| Mobile Graph / whole-product mobile acceptance | PARTIAL | Actual 390px public view has no horizontal overflow and retains Graph/controls, but node labels are very small and no simplified mobile mode exists. Later private-dialog resize requests measured 1440px, not 390px, so they are explicitly NOT accepted as mobile checks. Full mobile Search/Evidence/Workspace/Watchlist/Report flow remains unverified. Mobile redesign belongs to paused P1. |
+| Path Finder Depth 1 / 2 / 3 | PASS (bounded sample) | Browser selected Company A and real Penalty B, ran all three limits, and independently observed the same correct one-hop shortest path with date/amount/Evidence/source. This does not prove a real two/three-hop intermediary scenario. |
+| Relationship Range wording / tooltip / full bilingual terminology | PARTIAL | UI still exposes `max depth`, raw enum/source labels, English-only bookmark type buttons and technical Owner IDs. P2 wording/terminology work is not started; do not mark it PASS or silently begin it under a P0-only instruction. |
+| Empty Workspace Report | PASS | Created a new P05 test Workspace and clicked View report before bookmarking. UI explicitly rejects export: Save an item before exporting; no misleading all-empty report is accepted. |
+| Workspace owner / six bookmark types | PASS | P05 used a newly isolated Workspace and actually saved ENTITY, GRAPH, RELATIONSHIP, EVIDENCE, SOURCE and a factual NOTE. Six saved rows show identical owner/creator IDs; no pre-existing Workspace/item was deleted. |
+| Populated Workspace Report assembly / download | PASS | Browser View report generated a titled report tab and Download produced a 43,712-byte HTML. User moved that same file to Desktop; static parsing confirms six saved items, one saved Evidence, two Profiles, one Key Relationship, one Penalty and three Sources. Graph contains the two real endpoints and one edge. Empty political/contracts/judgments/assets sections are correct for this sample, not filled with synthetic records. |
+| Report preview visual / landscape print / pagination / tables | PARTIAL | Automation explicitly blocks the report's `blob:` URL. No alternate browser, file navigation or indirect workaround was used. User supplied the Desktop HTML, not a printed PDF. Content inspection and CSS cannot establish rendered wrapping, clipping or page breaks; the actual printed PDF and manual preview acceptance remain required. |
+| Watchlist / Alerts | PASS (available-data subset) | P05 actually added the real Company, ran sync (one watched Entity, zero new notifications), selected read/unread filters and clicked read-all without an application error. Existing Evidence predates subscription, so zero notifications is correct. A genuine new alert's read↔unread transition remains unverified; no public fact or fake alert was created to force it. |
+| Owner RLS / anonymous boundary | PASS (database level) | Fresh read-only SQL: P05 claims see own six items and zero P01 items; P01 claims see its original one item and zero P05 items. Anonymous table read is denied (SQLSTATE 42501). These are database-role checks, not a second browser login. |
+| Cross-account browser attempt | PARTIAL | P05 Workspace selector shows only its own projects. User chose P05 only; a real second-account login and direct attempt to retrieve the new P05 Workspace/Report have not occurred. Do not replace this gate with admin/role impersonation. |
+| Data retention / FK integrity | PASS (current-state check) | Company 2, Person 0, Politician 123, total Entity Evidence links 910, Evidence records 1529, Relationships 1031, raw source rows 80122 remain unchanged. Workspace items increase 1→7 only because of the six new P05 bookmarks. Broken bookmark references 0; original P01 SOURCE remains 1. Historical deletions are still not provable without an audit log. |
+| Console / runtime | PASS (observed window) | Browser warning/error collection returned none for the checked page. Deployment-scoped Vercel error/fatal query for the 30-minute window ending 2026-10-06T12:47:57Z returned no entries. This is not a claim about all deployments or all historical HTTP responses. |
+| Fresh targeted regression run | PASS | 47 tests rerun: reports, workspaces, watchlists, labor materialization/source regression, Graph v2 and relationship paths. No full build was rerun: only acceptance documentation changes, with runtime still `3f29c00`. Earlier 71 tests/160 DB/build are historical results, not this run's counts. |
+
+### Retained real verification artifacts
+
+- P05 acceptance Workspace: `552ce1b7-1550-49a3-b058-3db5af16b7fb`, named
+  `P0 Self-Audit P05 2026-10-06`.
+- Owner/creator: `c1c8b90f-7f39-4bba-a36a-14c69f685160` (P05).
+- Six bookmarks and one watched Company are intentionally retained for inspection;
+  they contain existing official records and the factual acceptance note only.
+- User-provided downloaded HTML:
+  `/Users/lengguangchen/Desktop/tei-workspace-552ce1b7-1550-49a3-b058-3db5af16b7fb.html`.
+- The current-state read-only check and HTML parsing were rerun independently.
+  An initial read-only query referred to the wrong table name, and a combined
+  query intentionally denied at its anonymous-read step; neither performed writes.
+  Corrected owner-role checks were separately verified. An unavailable optional
+  HTML parser was replaced with Python's standard-library parser without installing
+  dependencies. These diagnostic failures are not application-data regressions.
+
+### Remaining acceptance gates (no automatic phase advancement)
+
+1. User prints the actual populated report to PDF and supplies that PDF for
+   visual page-by-page review, plus confirms browser preview legibility. The
+   current HTML does not substitute for a printed artifact.
+2. A different test account actually signs in and attempts the P05 Workspace and
+   its report; P05-only SQL checks do not complete the browser gate.
+3. Full mobile flow and actual notification-state transitions remain PARTIAL.
+   P1 mobile/high-density graph and P2 terminology/Relationship Range remain
+   deferred; they cannot make Product Consolidation COMPLETE while paused.
+
+Do not repair an authentication/tool handoff by copying tokens, resetting passwords,
+weakening RLS or manufacturing source records. Continue only within authorized P0
+regressions; all unverified requirements retain PARTIAL until fresh evidence exists.
+
+## P0 follow-up — actual PDF download, 2026-10-06
+
+The user's downloaded artifact was HTML, not PDF. The round-1 download PASS
+above means successful **HTML delivery only**, not acceptance of a PDF download.
+This newly identified P0 requirement failed at baseline and is repaired in the
+existing report boundary; overall acceptance remains **PARTIAL / P0 OPEN**.
+
+Root cause: both View and Download requested `format=html`; Download created a
+`text/html` Blob with an `.html` filename. No PDF renderer existed. This was not
+lost data, a publication/RLS issue, or a malformed PDF accidentally named HTML.
+
+Bounded changes: preserve JSON and HTML previews; add actual `format=pdf`
+rendering from the identical report projection, PDF binary WSGI transport and
+attachment header. Download now checks MIME and `%PDF-` bytes, and saves `.pdf`.
+ReportLab uses a checked-in, OFL-licensed Chinese font, landscape A4, full-width
+field/value tables, long-string wrapping, row splitting and repeating headers.
+URLs are references only; the renderer never fetches them. No schema, public
+data, identity matching, ownership, RLS, Graph layout or Production change.
+
+| Verification | Result | Evidence / boundary |
+|---|---|---|
+| Genuine PDF / Chinese embedding / landscape / source links | PASS (local) | Parsed PDF bytes, embedded TrueType font, A4 width > height, expected Chinese/source/date content and original URL annotations. |
+| Long Chinese, unbroken English identifier, 539-character URL / pagination | PASS (local) | Full text retained across four pages; all four rendered pages inspected, no clipping, single-character column or table overflow. Known repeated headers/footer are removed only for the text continuity assertion. |
+| Actual P05 content / PDF layout | PASS (local projection) | Read-only Development SQL under P05 RLS retrieved the existing six items; public anon Entity reads assembled two Profiles, one Relationship/Penalty, one saved Evidence, two Graph nodes/one edge and three Sources. All 26 PDF pages were rendered and visually inspected; character geometry stayed inside page margins. This is explicitly not a replacement for a logged-in HTTP download. |
+| Authentication / same projection / binary response / HEAD | PASS (regression) | Tests reject unauthenticated Workspace PDF, use the existing service, verify PDF MIME/attachment/no-store/Content-Length, and zero HEAD body. |
+| Targeted suite / DB / build | PASS | 52 targeted tests; 160 PGlite DB checks; Ruff/web syntax; 50-module WSGI build including an actual Chinese PDF render. Initial DB runner lacked `python` on PATH; corrected to the existing venv and reran successfully. |
+| New Preview PDF / P05 UI download / printed artifact | PARTIAL | Pending deployment and actual download from the new Preview. The old Desktop HTML remains unchanged; it is not renamed to PDF. |
+
+The temporary 26-page PDF is local QA output generated from a read-only owner
+snapshot, not a new public record or an admin-authenticated HTTP export.
+Duplicate provenance is preserved for compatibility; compact presentation and
+full bilingual field consolidation remain paused P2 work. Cross-account browser
+acceptance still needs another real account, which the user has deferred.

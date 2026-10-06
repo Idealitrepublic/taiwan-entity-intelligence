@@ -411,7 +411,7 @@ def dispatch_report_api(path, query, authorization=None, service=None):
     try:
         record_id = uuid_string(parts[4])
         output_format = query.get("format", ["json"])[0]
-        if scope not in ("entity", "politician", "workspace") or output_format not in ("json", "html"):
+        if scope not in ("entity", "politician", "workspace") or output_format not in ("json", "html", "pdf"):
             raise ReportValidationError("Invalid report request")
         service = service or ReportService()
         if scope == "workspace":
@@ -432,4 +432,7 @@ def dispatch_report_api(path, query, authorization=None, service=None):
         return 503, {"status": "unavailable", "error": "報告資料暫時無法使用 / Report data unavailable"}, None
     if output_format == "html":
         return 200, render_report_html(report), "text/html; charset=utf-8"
+    if output_format == "pdf":
+        from src.report_pdf import render_report_pdf
+        return 200, render_report_pdf(report), "application/pdf"
     return 200, response(report), None

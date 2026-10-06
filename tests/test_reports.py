@@ -164,7 +164,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(dispatch_report_api(
             f"/api/v1/reports/workspace/{WORKSPACE}", {}, service=service)[0], 401)
         self.assertEqual(dispatch_report_api(
-            f"/api/v1/reports/entity/{ENTITY}", {"format": ["pdf"]}, service=service)[0], 400)
+            f"/api/v1/reports/entity/{ENTITY}", {"format": ["csv"]}, service=service)[0], 400)
 
     def test_html_is_readable_and_escapes_data(self):
         report = {"title": "<unsafe>", "methodology": "Facts only", "report_type": "ENTITY",

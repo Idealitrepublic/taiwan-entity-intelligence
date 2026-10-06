@@ -54,6 +54,17 @@ identifier-only Development materialization stage; live/name-only matches remain
 observations until resolved. Workspace reports project actual owner bookmarks,
 include Source/Note directly, and resolve only published canonical references.
 
+P0 PDF download repair retains the existing report API and its owner-scoped
+projection. `format=html` still provides the browser preview, `format=json`
+remains compatible, and `format=pdf` renders actual PDF bytes with ReportLab in
+`src/report_pdf.py`. An embedded OFL-licensed Noto Sans TC font supports Chinese;
+landscape A4 tables wrap long identifiers/URLs and split oversized rows across
+pages. The renderer does not fetch URLs or load user-supplied images/files.
+Workspace authentication/RLS and public publication predicates are unchanged.
+The browser validates PDF MIME/signature before saving a `.pdf` attachment;
+renaming HTML to PDF is explicitly not used. No migration or new data model is
+required.
+
 ## Verified Phase 0 baseline
 
 - `npm run dev`: starts on `127.0.0.1:3000`.

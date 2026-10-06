@@ -140,7 +140,8 @@ def app(environ, start_response):
         code, payload, content_type = 502, {'status': 'error', 'error': '上游資料來源暫時無法連線，請稍後再試。'}, None
         log_event('error', 'request_failed', request_id=request_id,
                   method=method, path=path, error_type=type(exc).__name__)
-    body = (payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)).encode()
+    body = payload if isinstance(payload, bytes) else (
+        payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)).encode()
     duration_ms = round((time.monotonic() - started) * 1000, 1)
     log_event('info', 'request_complete', request_id=request_id,
               method=method, path=path, status=code, duration_ms=duration_ms)
@@ -149,6 +150,10 @@ def app(environ, start_response):
                ('X-Content-Type-Options','nosniff'), ('X-Request-Id', request_id)]
     if code == 429:
         headers.append(('Retry-After', '60'))
+    if code == 200 and content_type == 'application/pdf':
+        # UUID/scopes were validated by the existing report endpoint.
+        scope, record_id = path.rstrip('/').split('/')[-2:]
+        headers.append(('Content-Disposition', f'attachment; filename="tei-{scope}-{record_id}.pdf"'))
     start_response(f'{code} {HTTPStatus(code).phrase}', headers)
     return [] if environ.get('REQUEST_METHOD') == 'HEAD' else [body]
 
