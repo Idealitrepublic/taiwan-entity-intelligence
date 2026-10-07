@@ -45,17 +45,21 @@
   const GRAPH_PAGE_SIZE=12,GRAPH_MAX_DEPTH=3,GRAPH_MAX_NODES=60;
   let current=null,currentCheck=null,currentManual=false,zoom=1,panX=0,panY=0,selectedNodeId=null,selectedEdgeId=null,expandedHub=null,expandedProcurementCounty=null,graphRoot=null,lastGraphView=null,dragState=null,nodeDragState=null,suppressNodeClick=false,searchItems=new Map(),graphMode='legacy',knowledgeGraph=null,pathSelection={source:null,target:null},companyRequestSerial=0;
   let workspaceConfig=null,workspaceSession=null,workspaceList=[],activeWorkspace=null,watchlistEntries=[],dashboardAlerts=[];
+  let workspaceEpoch=0;
+  const privateReportCleanups=new Set();
   try{workspaceSession=JSON.parse(sessionStorage.getItem('tei_workspace_session')||'null')}catch{workspaceSession=null}
   function workspaceMessage(text,bad=false){$('workspaceMessage').textContent=text;$('workspaceMessage').className='notice'+(bad?' source-warning':'')}
   function workspaceAuthView(){const signedIn=Boolean(workspaceSession?.access_token);$('workspaceLogin').hidden=signedIn;$('workspaceApp').hidden=!signedIn;$('workspaceOwner').textContent=signedIn?`使用者 / User：${workspaceSession.user?.email||workspaceSession.user?.id||'authenticated'}`:'';if(!signedIn){$('alertBadge').hidden=true}}
+  function clearWorkspaceState(){workspaceEpoch++;activeWorkspace=null;workspaceList=[];watchlistEntries=[];dashboardAlerts=[];for(const cleanup of privateReportCleanups)cleanup();privateReportCleanups.clear();for(const id of ['workspaceName','workspaceDescription','workspaceSourceTitle','workspaceSourceUrl','workspaceNote','workspacePassword'])$(id).value='';$('workspaceSelect').innerHTML='<option value="">尚無專案 / No workspace</option>';$('alertState').value='all';renderWorkspaceItems();renderWatchlist();renderAlerts();workspaceMessage('請登入後使用調查工作區 / Authentication required');$('watchlistMessage').textContent='僅追蹤新增後取得的公開 Evidence；不寄送 Email 或外部推播。'}
+  function clearWorkspaceSession(){workspaceSession=null;sessionStorage.removeItem('tei_workspace_session');clearWorkspaceState();workspaceAuthView()}
   async function loadWorkspaceConfig(){if(workspaceConfig)return workspaceConfig;const response=await fetch('/api/v1/workspace-config',{cache:'no-store'});workspaceConfig=await response.json();if(!response.ok||!workspaceConfig.auth_enabled)throw Error('Workspace Auth 尚未設定 / Auth unavailable');return workspaceConfig}
-  async function workspaceRequest(path,options={}){const headers={'Content-Type':'application/json',...(options.headers||{})};if(workspaceSession?.access_token)headers.Authorization=`Bearer ${workspaceSession.access_token}`;const response=await fetch(path,{...options,headers,cache:'no-store'}),payload=await response.json().catch(()=>({}));if(response.status===401){workspaceSession=null;sessionStorage.removeItem('tei_workspace_session');workspaceAuthView()}if(!response.ok)throw Error(payload.error||'Workspace request failed');return payload.data}
+  async function workspaceRequest(path,options={}){const epoch=workspaceEpoch,headers={'Content-Type':'application/json',...(options.headers||{})};if(workspaceSession?.access_token)headers.Authorization=`Bearer ${workspaceSession.access_token}`;const response=await fetch(path,{...options,headers,cache:'no-store'}),payload=await response.json().catch(()=>({}));if(epoch!==workspaceEpoch)throw Error('帳號已切換，請重試 / Account changed; retry');if(response.status===401)clearWorkspaceSession();if(!response.ok)throw Error(payload.error||'Workspace request failed');return payload.data}
   const reportRequests=new Set();
   async function exportReport(scope,id,download=false){
     if(!id)throw Error('請先選擇報告目標 / Select a report target');
     const requestKey=`${scope}:${id}:${download}`;
     if(reportRequests.has(requestKey))return;
-    const headers={};
+    const headers={},epoch=workspaceEpoch;
     if(scope==='workspace'){
       if(!workspaceSession?.access_token)throw Error('請先登入 / Sign in first');
       headers.Authorization=`Bearer ${workspaceSession.access_token}`;
@@ -64,12 +68,22 @@
     if(!download&&!preview)throw Error('瀏覽器封鎖報告視窗，請允許此站彈出視窗後重試。 / Allow report pop-ups and retry.');
     if(preview)preview.opener=null;
     reportRequests.add(requestKey);
-    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),60000);
+    const controller=new AbortController();let timeout=null;
     try{
+      // Open the picker during the click's user activation, before network work.
+      // Only a closed writable stream is confirmation that a file was saved.
+      let fileHandle=null;
+      if(download&&typeof window.showSaveFilePicker==='function'){
+        try{fileHandle=await window.showSaveFilePicker({suggestedName:`tei-${scope}-${id}.pdf`,startIn:'downloads',types:[{description:'PDF report',accept:{'application/pdf':['.pdf']}}]})}
+        catch(error){if(error.name==='AbortError'){workspaceMessage('已取消儲存 / Save cancelled');return}throw Error('無法開啟儲存對話框，請以瀏覽器直接操作下載按鈕。 / Cannot open Save dialog; click Download directly in your browser.')}
+      }
+      if(scope==='workspace'&&epoch!==workspaceEpoch)throw Error('帳號已切換，請重試 / Account changed; retry');
+      timeout=setTimeout(()=>controller.abort(),60000);
       const format=download?'pdf':'html',response=await fetch(`/api/v1/reports/${encodeURIComponent(scope)}/${encodeURIComponent(id)}?format=${format}`,{headers,cache:'no-store',signal:controller.signal});
+      if(scope==='workspace'&&epoch!==workspaceEpoch)throw Error('帳號已切換，請重試 / Account changed; retry');
       if(!response.ok){
         const payload=await response.json().catch(()=>({}));
-        if(scope==='workspace'&&response.status===401){workspaceSession=null;sessionStorage.removeItem('tei_workspace_session');workspaceAuthView()}
+        if(scope==='workspace'&&response.status===401)clearWorkspaceSession();
         throw Error(payload.error||'報告匯出失敗 / Report export failed');
       }
       let blob;
@@ -78,6 +92,17 @@
         blob=await response.blob();
         if((await blob.slice(0,5).text())!=='%PDF-')throw Error('報告不是有效 PDF / Invalid PDF report');
       }else blob=new Blob([await response.text()],{type:'text/html;charset=utf-8'});
+      if(scope==='workspace'&&epoch!==workspaceEpoch)throw Error('帳號已切換，請重試 / Account changed; retry');
+      if(download&&fileHandle){
+        const writable=await fileHandle.createWritable();
+        try{
+          if(scope==='workspace'&&epoch!==workspaceEpoch)throw Error('帳號已切換，請重試 / Account changed; retry');
+          await writable.write(blob);
+          if(scope==='workspace'&&epoch!==workspaceEpoch)throw Error('帳號已切換，請重試 / Account changed; retry');
+          await writable.close();
+        }catch(error){await writable.abort().catch(()=>{});throw error}
+        workspaceMessage('PDF 已儲存 / PDF saved');return;
+      }
       const url=URL.createObjectURL(blob);
       if(download){
         const link=document.createElement('a');link.href=url;link.download=`tei-${scope}-${id}.pdf`;
@@ -95,12 +120,16 @@
           notice.textContent='PDF 已備妥 / PDF ready: ';document.querySelector('.pane').prepend(notice);
         }
         notice.appendChild(link);
-        setTimeout(()=>{URL.revokeObjectURL(url);link.remove();if(!insideDialog)notice.remove()},600000);
+        const cleanup=()=>{URL.revokeObjectURL(url);link.remove();if(!insideDialog)notice.remove();privateReportCleanups.delete(cleanup)};
+        if(scope==='workspace')privateReportCleanups.add(cleanup);
+        setTimeout(cleanup,600000);
         link.click();
       }else if(preview.closed){URL.revokeObjectURL(url);throw Error('報告視窗已關閉，請重新開啟。 / Report window was closed; retry.');}
       else{
         preview.location=url;
-        const cleanup=setInterval(()=>{if(preview.closed){clearInterval(cleanup);URL.revokeObjectURL(url)}},5000);
+        const revoke=()=>{if(scope==='workspace'&&!preview.closed)preview.close();URL.revokeObjectURL(url);clearInterval(timer);privateReportCleanups.delete(revoke)};
+        const timer=setInterval(()=>{if(preview.closed)revoke()},5000);
+        if(scope==='workspace')privateReportCleanups.add(revoke);
       }
     }catch(error){
       if(preview&&!preview.closed)preview.close();
@@ -110,7 +139,7 @@
   }
   function workspaceItemTarget(item){return item.entity_id||item.relationship_id||item.evidence_id||item.graph_root_entity_id||item.source_url||item.note_text||'—'}
   function renderWorkspaceItems(){const items=activeWorkspace?.items||[];$('workspaceCount').textContent=`${items.length} 筆 / items`;$('workspaceItems').innerHTML=items.length?items.map(item=>{const target=workspaceItemTarget(item),href=item.item_type==='ENTITY'?`/entity/${item.entity_id}`:item.item_type==='GRAPH'?`/graph/${item.graph_root_entity_id}`:item.item_type==='SOURCE'?safeSourceUrl(item.source_url):'';return`<article class="workspace-item" data-workspace-item="${esc(item.id)}"><b>${esc(item.item_type)} · ${esc(item.title||'未命名 / Untitled')}</b><small>${href?`<a href="${esc(href)}"${item.item_type==='SOURCE'?' target="_blank" rel="noreferrer"':''}>${esc(target)}</a>`:esc(target)}</small><small>Owner ${esc(item.owner_user_id)} · Created by ${esc(item.created_by_user_id)}</small><div class="workspace-actions">${item.item_type==='NOTE'?'<button class="toolbtn workspace-edit-note">編輯 Note / Edit</button>':''}<button class="toolbtn danger workspace-delete-item">刪除 / Delete</button></div></article>`}).join(''):'<div class="notice">尚無收藏項目 / No saved items</div>'}
-  async function selectWorkspace(id){if(!id){activeWorkspace=null;renderWorkspaceItems();return}activeWorkspace=await workspaceRequest(`/api/v1/workspaces/${encodeURIComponent(id)}`);$('workspaceName').value=activeWorkspace.name||'';$('workspaceDescription').value=activeWorkspace.description||'';$('workspaceSelect').value=activeWorkspace.id;workspaceMessage('owner-only RLS 已啟用；僅目前使用者可讀寫。 / Private owner boundary active.');renderWorkspaceItems()}
+  async function selectWorkspace(id){if(!id){activeWorkspace=null;$('workspaceName').value='';$('workspaceDescription').value='';renderWorkspaceItems();return}activeWorkspace=await workspaceRequest(`/api/v1/workspaces/${encodeURIComponent(id)}`);$('workspaceName').value=activeWorkspace.name||'';$('workspaceDescription').value=activeWorkspace.description||'';$('workspaceSelect').value=activeWorkspace.id;workspaceMessage('owner-only RLS 已啟用；僅目前使用者可讀寫。 / Private owner boundary active.');renderWorkspaceItems()}
   async function loadWorkspaces(preferred){const data=await workspaceRequest('/api/v1/workspaces');workspaceList=data.items||[];$('workspaceSelect').innerHTML=workspaceList.length?workspaceList.map(item=>`<option value="${esc(item.id)}">${esc(item.name)}</option>`).join(''):'<option value="">尚無專案 / No workspace</option>';await selectWorkspace(preferred||workspaceList[0]?.id)}
   function watchedEntity(){const root=knowledgeGraph?.nodes.get(knowledgeGraph.rootId),selected=selectedNodeId&&knowledgeGraph?.nodes.get(selectedNodeId),entity=selected||root;if(!entity||!['Company','Person','Politician'].includes(entity.entity_type))throw Error('請先選擇 Company、Person 或 Politician Entity');return entity}
   function renderWatchlist(){ $('watchlistCount').textContent=`${watchlistEntries.length} 筆`; $('watchlistItems').innerHTML=watchlistEntries.length?watchlistEntries.map(item=>{const entity=item.entity||{};return`<article class="workspace-item" data-watchlist-entry="${esc(item.id)}"><b>${esc(entity.display_name||entity.canonical_name||item.entity_id)}</b><small>${esc(entityTypeLabels[entity.entity_type]||entity.entity_type||'Entity')} · ${esc(item.entity_id)}</small><button class="toolbtn danger watchlist-remove">停止追蹤 / Remove</button></article>`}).join(''):'<div class="notice">尚無追蹤 Entity / No watched entities</div>'}
@@ -122,8 +151,8 @@
   function workspaceItemFor(type){if(!activeWorkspace)throw Error('請先建立或選擇專案 / Select a workspace');const root=knowledgeGraph?.nodes.get(knowledgeGraph.rootId),selectedNode=selectedNodeId&&knowledgeGraph?.nodes.get(selectedNodeId),edge=selectedKnowledgeEdge();if(type==='ENTITY'){const entity=selectedNode||root;if(!entity)throw Error('請先選擇 Entity / Select an Entity');return{item_type:type,entity_id:entity.id,title:entity.display_name||entity.canonical_name||entity.id}}if(type==='RELATIONSHIP'){if(!edge)throw Error('請先點選 Graph 關係 / Select an edge');return{item_type:type,relationship_id:edge.id,title:relationshipLabels[edge.relationship_type]||edge.relationship_type}}if(type==='EVIDENCE'){const evidence=edge?.primary_evidence;if(!evidence?.id)throw Error('所選關係沒有 Evidence / No Evidence selected');return{item_type:type,evidence_id:evidence.id,title:evidence.title||evidence.source_name||evidence.id}}if(type==='GRAPH'){if(!root)throw Error('請先開啟 Entity Graph / Open a graph');return{item_type:type,graph_root_entity_id:root.id,title:`${root.display_name||root.id} Graph`,metadata:{max_hops:graphDepthLimit(),relationship_filter:$('relationshipFilter').value||null,node_ids:[...knowledgeGraph.nodes.keys()].slice(0,GRAPH_MAX_NODES)}}}throw Error('Unsupported item type')}
   async function addWorkspaceItem(item){await workspaceRequest(`/api/v1/workspaces/${activeWorkspace.id}/items`,{method:'POST',body:JSON.stringify(item)});await selectWorkspace(activeWorkspace.id)}
   function openDashboard(){$('workspaceDialog').showModal();initWorkspace()}$('workspaceOpen').addEventListener('click',openDashboard);$('watchlistOpen').addEventListener('click',openDashboard);$('workspaceClose').addEventListener('click',()=>$('workspaceDialog').close());
-  $('workspaceLogin').addEventListener('submit',event=>workspaceMutation(async()=>{event.preventDefault();const config=await loadWorkspaceConfig(),response=await fetch(`${config.supabase_url.replace(/\/$/,'')}/auth/v1/token?grant_type=password`,{method:'POST',headers:{apikey:config.publishable_key,'Content-Type':'application/json'},body:JSON.stringify({email:$('workspaceEmail').value.trim(),password:$('workspacePassword').value})}),payload=await response.json();if(!response.ok||!payload.access_token)throw Error('登入失敗 / Sign-in failed');workspaceSession={access_token:payload.access_token,refresh_token:payload.refresh_token,user:payload.user};sessionStorage.setItem('tei_workspace_session',JSON.stringify(workspaceSession));workspaceAuthView();await loadWorkspaces();await loadWatchlistDashboard()}));
-  $('workspaceLogout').addEventListener('click',()=>workspaceMutation(async()=>{if(workspaceConfig&&workspaceSession?.access_token)await fetch(`${workspaceConfig.supabase_url.replace(/\/$/,'')}/auth/v1/logout`,{method:'POST',headers:{apikey:workspaceConfig.publishable_key,Authorization:`Bearer ${workspaceSession.access_token}`}}).catch(()=>{});workspaceSession=null;activeWorkspace=null;workspaceList=[];watchlistEntries=[];dashboardAlerts=[];sessionStorage.removeItem('tei_workspace_session');workspaceAuthView();workspaceMessage('已登出 / Signed out')}));
+  $('workspaceLogin').addEventListener('submit',event=>workspaceMutation(async()=>{event.preventDefault();const epoch=workspaceEpoch,config=await loadWorkspaceConfig(),response=await fetch(`${config.supabase_url.replace(/\/$/,'')}/auth/v1/token?grant_type=password`,{method:'POST',headers:{apikey:config.publishable_key,'Content-Type':'application/json'},body:JSON.stringify({email:$('workspaceEmail').value.trim(),password:$('workspacePassword').value})}),payload=await response.json();if(epoch!==workspaceEpoch)throw Error('帳號已切換，請重試 / Account changed; retry');if(!response.ok||!payload.access_token)throw Error('登入失敗 / Sign-in failed');clearWorkspaceState();workspaceSession={access_token:payload.access_token,refresh_token:payload.refresh_token,user:payload.user};sessionStorage.setItem('tei_workspace_session',JSON.stringify(workspaceSession));workspaceAuthView();await loadWorkspaces();await loadWatchlistDashboard()}));
+  $('workspaceLogout').addEventListener('click',()=>workspaceMutation(async()=>{const previous=workspaceSession;clearWorkspaceSession();workspaceMessage('已登出 / Signed out');if(workspaceConfig&&previous?.access_token)await fetch(`${workspaceConfig.supabase_url.replace(/\/$/,'')}/auth/v1/logout`,{method:'POST',headers:{apikey:workspaceConfig.publishable_key,Authorization:`Bearer ${previous.access_token}`}}).catch(()=>{})}));
   $('workspaceCreate').addEventListener('click',()=>workspaceMutation(async()=>{const created=await workspaceRequest('/api/v1/workspaces',{method:'POST',body:JSON.stringify({name:$('workspaceName').value,description:$('workspaceDescription').value||null})});await loadWorkspaces(created.id)}));
   $('workspaceSave').addEventListener('click',()=>workspaceMutation(async()=>{if(!activeWorkspace)throw Error('請先選擇專案 / Select a workspace');await workspaceRequest(`/api/v1/workspaces/${activeWorkspace.id}`,{method:'PATCH',body:JSON.stringify({name:$('workspaceName').value,description:$('workspaceDescription').value||null})});await loadWorkspaces(activeWorkspace.id)}));
   $('workspaceDelete').addEventListener('click',()=>workspaceMutation(async()=>{if(!activeWorkspace)throw Error('請先選擇專案 / Select a workspace');if(!confirm('確定刪除此調查專案與其收藏項目？ / Delete this workspace and its items?'))return;await workspaceRequest(`/api/v1/workspaces/${activeWorkspace.id}`,{method:'DELETE'});activeWorkspace=null;await loadWorkspaces()}));

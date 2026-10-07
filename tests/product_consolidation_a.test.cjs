@@ -28,16 +28,17 @@ function pathHarness() {
     ${shipped('  async function findRelationshipPath()', "  pathRange.addEventListener")}`,context);
   return {context,elements,requests,renders};
 }
-function reportHarness({popup=null,status=200,mime='application/pdf',bytes='%PDF-1.7 valid',modal=true}={}) {
+function reportHarness({popup=null,status=200,mime='application/pdf',bytes='%PDF-1.7 valid',modal=true,picker=null}={}) {
   const events=[],requests=[],timers=[];
   const notice={appendChild:()=>events.push('append-active'),remove:()=>events.push('notice-remove')};
   const elements={workspaceDialog:{open:modal},workspaceMessage:notice};
   const link={remove:()=>events.push('remove'),click:()=>events.push('click')};
   const context=vm.createContext({AbortController,Blob,console,
-    workspaceSession:{access_token:'test-session-only'},reportRequests:new Set(),$:id=>elements[id],
+    workspaceSession:{access_token:'test-session-only'},workspaceEpoch:0,privateReportCleanups:new Set(),reportRequests:new Set(),$:id=>elements[id],
+    clearWorkspaceSession:()=>{events.push('session-cleared');events.push('signed-out')},
     workspaceAuthView:()=>events.push('signed-out'),workspaceMessage:message=>events.push(message),
     sessionStorage:{removeItem:()=>events.push('session-cleared')},
-    window:{open:()=>popup},document:{createElement:tag=>tag==='a'?link:notice,querySelector:()=>({prepend:()=>events.push('prepend-notice')})},
+    window:{open:()=>popup,...(picker?{showSaveFilePicker:picker}:{})},document:{createElement:tag=>tag==='a'?link:notice,querySelector:()=>({prepend:()=>events.push('prepend-notice')})},
     URL:{createObjectURL:()=>{events.push('object-url');return 'blob:test'},revokeObjectURL:()=>events.push('revoke')},
     setTimeout:(callback,delay)=>{timers.push({callback,delay});return timers.length},clearTimeout:()=>{},setInterval:()=>1,clearInterval:()=>{},
     fetch:async(url,options)=>{requests.push({url,options});return {ok:status===200,status,
@@ -149,5 +150,50 @@ test('report preview navigation affects new window only',async()=>{
   await vm.runInContext("exportReport('entity','id',false)",h.context);
   assert(h.requests[0].url.endsWith('?format=html'));
   assert.equal(popup.location,'blob:test');assert.equal(popup.opener,null);assert.equal(popup.closed,false);
+});
+test('native Save picker runs before fetch; success requires write and close',async()=>{
+  const steps=[],handle={createWritable:async()=>({write:async blob=>{assert.equal(await blob.slice(0,5).text(),'%PDF-');steps.push('write')},close:async()=>steps.push('close'),abort:async()=>steps.push('abort')})};
+  let h;h=reportHarness({picker:async options=>{assert.equal(h.requests.length,0);assert.equal(options.suggestedName,'tei-workspace-id.pdf');steps.push('picker');return handle}});
+  await vm.runInContext("exportReport('workspace','id',true)",h.context);
+  assert.deepEqual(steps,['picker','write','close']);assert(h.events.includes('PDF 已儲存 / PDF saved'));assert(!h.events.includes('object-url'));
+});
+test('picker cancellation does not fetch or claim saved; request can retry',async()=>{
+  const h=reportHarness({picker:async()=>{throw Object.assign(new Error('cancel'),{name:'AbortError'})}});
+  await vm.runInContext("exportReport('workspace','id',true)",h.context);
+  assert.equal(h.requests.length,0);assert(h.events.includes('已取消儲存 / Save cancelled'));assert.equal(h.context.reportRequests.size,0);
+});
+test('file write failure aborts temporary write and never claims saved',async()=>{
+  const events=[],h=reportHarness({picker:async()=>({createWritable:async()=>({write:async()=>{throw Error('disk failed')},abort:async()=>events.push('abort'),close:async()=>events.push('close')})})});
+  await assert.rejects(vm.runInContext("exportReport('workspace','id',true)",h.context),/disk failed/);
+  assert.deepEqual(events,['abort']);assert(!h.events.includes('PDF 已儲存 / PDF saved'));
+});
+test('account changes during report fetch prevent old-owner download',async()=>{
+  const h=reportHarness();let resolve;
+  h.context.fetch=()=>new Promise(done=>{resolve=done});
+  const pending=vm.runInContext("exportReport('workspace','id',true)",h.context);
+  h.context.workspaceEpoch++;
+  resolve({ok:true,status:200,headers:{get:()=> 'application/pdf'},blob:async()=>new Blob(['%PDF-1.7'])});
+  await assert.rejects(pending,/Account changed/);assert(!h.events.includes('object-url'));
+});
+test('account clearing resets all private forms, rows, notification state and URLs',()=>{
+  const ids=['workspaceName','workspaceDescription','workspaceSourceTitle','workspaceSourceUrl','workspaceNote','workspacePassword','workspaceSelect','alertState','workspaceMessage','watchlistMessage'];
+  const elements=Object.fromEntries(ids.map(id=>[id,{value:'P05 private',innerHTML:'P05',textContent:'P05'}]));
+  let cleaned=0;const context=vm.createContext({workspaceEpoch:0,activeWorkspace:{},workspaceList:[{}],watchlistEntries:[{}],dashboardAlerts:[{}],privateReportCleanups:new Set([()=>cleaned++]),$:id=>elements[id],renderWorkspaceItems:()=>{},renderWatchlist:()=>{},renderAlerts:()=>{},workspaceMessage:()=>{}});
+  vm.runInContext(oneLine('clearWorkspaceState'),context);vm.runInContext('clearWorkspaceState()',context);
+  for(const id of ids.slice(0,6))assert.equal(elements[id].value,'');
+  assert.equal(elements.alertState.value,'all');assert.equal(context.activeWorkspace,null);assert.equal(context.workspaceList.length,0);assert.equal(cleaned,1);assert.equal(context.workspaceEpoch,1);
+});
+test('old-owner API response is rejected after a session boundary',async()=>{
+  let resolve;const context=vm.createContext({workspaceEpoch:0,workspaceSession:{access_token:'test-only'},fetch:()=>new Promise(done=>resolve=done),clearWorkspaceSession:()=>{}});
+  vm.runInContext(html.split('\n').find(row=>row.trimStart().startsWith('async function workspaceRequest(')),context);
+  const pending=vm.runInContext("workspaceRequest('/api/v1/workspaces')",context);context.workspaceEpoch++;
+  resolve({ok:true,status:200,json:async()=>({data:{items:[{name:'P05 private'}]}})});
+  await assert.rejects(pending,/Account changed/);
+});
+test('no workspace clears previously selected project fields',async()=>{
+  const elements={workspaceName:{value:'P05'},workspaceDescription:{value:'private'}};
+  const context=vm.createContext({activeWorkspace:{},$:id=>elements[id],renderWorkspaceItems:()=>{}});
+  vm.runInContext(html.split('\n').find(row=>row.trimStart().startsWith('async function selectWorkspace(')),context);
+  await vm.runInContext("selectWorkspace('')",context);assert.equal(elements.workspaceName.value,'');assert.equal(elements.workspaceDescription.value,'');
 });
 (async()=>{for(const {name,run} of cases){await run();console.log(`PASS ${name}`)}console.log(`${cases.length} browser-function regression cases passed (not real-browser acceptance).`)})().catch(error=>{console.error(error);process.exitCode=1});
