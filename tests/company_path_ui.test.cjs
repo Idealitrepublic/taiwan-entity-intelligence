@@ -35,6 +35,10 @@ test('company profile translates official fields once and keeps capital distinct
   assert(!fields.includes('Capital_Stock_Amount'));
   assert(!shipped('  function companyOverview(', '  function renderRecordPanes(').includes('rawGrid(company)'));
 });
+test('narrow path controls can shrink inside the mobile viewport', () => {
+  assert(html.includes('.path-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)'));
+  assert(html.includes('.path-controls select,.path-controls button{min-width:0;width:100%'));
+});
 
 function pathHarness(response) {
   const elements = {
