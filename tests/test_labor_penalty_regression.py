@@ -58,7 +58,7 @@ class LaborPenaltyRegressionTests(unittest.TestCase):
         self.assertEqual(result["evidence_status"]["裁罰"]["matched"], 1)
         self.assertEqual(result["labor_penalties"][0]["_retrieved_at"], record["indexed_at"])
         self.assertEqual(result["graph"]["edges"][0]["properties"]["match_rule"],
-                         "exact_company_name_candidate")
+                         "company_name_candidate_requires_verification")
         self.assertEqual(result["evidence"][0]["source_url"], record["source_url"])
         self.assertEqual(result["evidence"][0]["source_record_id"], "府勞字第1號")
 
