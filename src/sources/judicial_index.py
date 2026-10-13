@@ -5,6 +5,7 @@ import json
 import re
 import urllib.parse
 import unicodedata
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
@@ -37,6 +38,21 @@ def _normalized(value: str) -> str:
     return re.sub(r"\s+", "", unicodedata.normalize("NFKC", str(value or ""))).casefold()
 
 
+def normalized_dates(row: dict[str, Any]) -> dict[str, Any]:
+    """Correct the read projection, preserving publication metadata/provenance."""
+    parts = str(row.get('jid') or '').split(',')
+    date = None
+    if len(parts) == 6 and re.fullmatch(r'\d{8}', parts[4]):
+        try:
+            date = datetime.strptime(parts[4], '%Y%m%d').date().isoformat()
+        except ValueError:
+            pass
+    published = row.get('source_published_at', row.get('date'))
+    return {**row, 'date': date, 'source_published_at': published,
+            'date_basis': 'official_jid_date_requires_document_check' if date else 'unavailable',
+            'date_conflict': bool(date and published and str(published)[:10] != date)}
+
+
 def build_index(rows: Iterable[dict[str, Any]], generated_at: str | None = None) -> dict[str, Any]:
     records_by_jid = {}
     latest = {}
@@ -63,7 +79,7 @@ def build_index(rows: Iterable[dict[str, Any]], generated_at: str | None = None)
         names = company_names(" ".join((str(fact.get("title") or ""), summary)))
         if not names:
             continue
-        records_by_jid[jid] = {
+        records_by_jid[jid] = normalized_dates({
             "jid": jid,
             "title": fact.get("title") or "司法院裁判書",
             "date": source.get("published_at"),
@@ -74,7 +90,7 @@ def build_index(rows: Iterable[dict[str, Any]], generated_at: str | None = None)
             "evidence_id": row.get("evidence_id"),
             "source_record_id": jid,
             "provenance": "official_jdoc_api",
-        }
+        })
     records = list(records_by_jid.values())
     records.sort(key=lambda row: str(row.get("date") or ""), reverse=True)
     return {"generated_at": generated_at, "source": "司法院資料開放平台 JList / JDoc API",
@@ -107,7 +123,7 @@ def load_index(path: str = str(DEFAULT_INDEX), verified_path: str = str(VERIFIED
                         merged[jid][field] = row.get(field)
             else:
                 merged[jid] = row
-    return {**data, "records": list(merged.values()),
+    return {**data, "records": [normalized_dates(row) for row in merged.values()],
             "source": data.get("source") or ("Official court verified cases" if rows else None),
             "verified_case_count": len(rows)}
 
@@ -130,5 +146,6 @@ def records_for_company(company_name: str, limit: int = 50) -> dict[str, Any]:
         "generated_at": index.get("generated_at"),
         "match_rule": "NFKC exact full company-name occurrence in indexed official judgment",
         "coverage_note": "此為部分 JList/JDoc 索引與官方核對案例，並非完整裁判書查詢；零筆不代表沒有裁判紀錄。",
+        "date_note": "日期來自官方 JID，須核對裁判正文；來源發布日另行保留，不以同步批次日期代替裁判日期。",
         "interpretation": "名稱出現在裁判書不代表該公司為被告或敗訴；請閱讀當事人欄與主文。",
     }

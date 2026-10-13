@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -142,13 +143,21 @@ def build_company(uniform: str):
 
 
 def indexed_records(uniform, company_name):
-    def fetch(field, value):
-        params = urllib.parse.urlencode({'select': '*', field: 'eq.' + value, 'limit': '100', 'order': 'id'})
+    def fetch(field, value, operator='eq'):
+        params = urllib.parse.urlencode({'select': '*', field: operator + '.' + value, 'limit': '100', 'order': 'id'})
         req = urllib.request.Request(f'{SUPABASE}/rest/v1/source_records?{params}', headers={'apikey': SUPABASE_KEY, 'Authorization': f'Bearer {SUPABASE_KEY}'})
         with urllib.request.urlopen(req, timeout=8) as response:
             return json.load(response)
     records = fetch('uniform_number', uniform) + fetch('company_name', company_name)
-    return list({row['id']: row for row in records}.values())
+    # Surface representative-suffix records only as explicit candidates. This
+    # does not merge identities, publish Relationships or alter stored facts.
+    pattern = company_name.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_').replace('*', '\\*')
+    candidates = fetch('company_name', pattern + '*', 'like')
+    suffix = re.compile(re.escape(company_name) + r'[（(](?:負責人[：:]?)?[^()（）]{1,30}[)）]$')
+    records.extend(row for row in candidates
+                   if not row.get('uniform_number') and suffix.fullmatch(row.get('company_name') or ''))
+    return list({row['id']: row for row in records
+                 if not row.get('uniform_number') or row['uniform_number'] == uniform}.values())
 
 
 _base_company = build_company
@@ -203,13 +212,14 @@ def build_company(uniform):
                 _source_name=row.get('title'),
                 _source_url=row.get('source_url'),
                 _retrieved_at=row.get('indexed_at'),
-                _match_rule='exact_uniform_number' if row.get('uniform_number') == uniform else 'exact_company_name_candidate',
+                _match_rule='exact_uniform_number' if row.get('uniform_number') == uniform else 'company_name_candidate_requires_verification',
+                _identity_status='verified_identifier' if row.get('uniform_number') == uniform else 'candidate',
                 _record_url=source['record_url'],
                 _dataset_url=source['dataset_url'],
                 _source_link_status=source['link_status'],
                 _source_message=source['message'],
             ))
-        data['evidence_status']['裁罰'] = {'status': 'ok', 'matched': len(penalty), 'message': '已索引勞動部公開裁罰；無統編者為公司名稱精確比對候選，須核對原文。'}
+        data['evidence_status']['裁罰'] = {'status': 'ok', 'matched': len(penalty), 'message': '已索引勞動部公開裁罰；無統編者為公司名稱／負責人括號變體候選，須核對原文。每項查詢最多讀取 100 筆，不代表完整歷史 coverage。'}
         for row in rows:
             source = penalty_source_info(row) if row['dataset'] == 'penalties' else {'record_url': row.get('source_url')}
             data['evidence'].append({'id':row['id'], 'title':row['title'], 'summary':row['summary'],
@@ -220,7 +230,7 @@ def build_company(uniform):
                                      'retrieved_at':row.get('indexed_at'),
                                      'provenance':{'source_file_id':row.get('source_file_id'), 'dataset':row['dataset']},
                                      'event_date':row['raw'].get('處分日期') or row['raw'].get('date'),
-                                     'match_rule':'exact_uniform_number' if row.get('uniform_number') == uniform else 'exact_company_name_candidate',
+                                     'match_rule':'exact_uniform_number' if row.get('uniform_number') == uniform else 'company_name_candidate_requires_verification',
                                      'raw':row['raw']})
         data['evidence_count'] = len(data['evidence'])
     except Exception:
@@ -236,7 +246,7 @@ def build_company(uniform):
     for idx, row in enumerate(data['labor_penalties']):
         node_id = 'penalty:' + str(row.get('_id') or idx)
         title = row.get('違法法規法條') or row.get('法規名稱') or row.get('_source_name') or '裁罰紀錄'
-        data['graph']['nodes'].append({'id':node_id, 'type':'penalty', 'label':str(title), 'properties':{'date':row.get('處分日期') or row.get('date'), 'agency':row.get('主管機關'), 'fine':row.get('罰鍰金額'), 'disposition':row.get('處分字號'), 'fact':row.get('違反法規內容')}})
+        data['graph']['nodes'].append({'id':node_id, 'type':'penalty', 'label':str(title), 'properties':{'date':row.get('處分日期') or row.get('date'), 'agency':row.get('主管機關'), 'fine':row.get('罰鍰金額'), 'disposition':row.get('處分字號'), 'fact':row.get('違反法規內容'), 'identity_status':row.get('_identity_status'), 'identity_note':'名稱候選，須核對原文' if row.get('_identity_status') == 'candidate' else 'exact_uniform_number'}})
         data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'labor_penalty',
                                        'properties':{'source':row.get('_source_name'), 'evidence_id':row.get('_id'),
                                                      'match_rule':row.get('_match_rule'), 'source_url':row.get('_source_url'),

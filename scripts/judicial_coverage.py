@@ -23,7 +23,8 @@ def benchmark(verify_official=False):
     details = []
     for row in verified:
         company = row["companies"][0]
-        hit = any(item["jid"] == row["jid"] for item in records_for_company(company)["records"])
+        # Benchmark the complete local index, not the UI's newest-50 page.
+        hit = any(item["jid"] == row["jid"] for item in records_for_company(company, limit=len(records))["records"])
         official_ok = None
         if verify_official:
             response = subprocess.run(
