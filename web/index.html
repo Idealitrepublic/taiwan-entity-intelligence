@@ -308,7 +308,7 @@
       if(serial!==state.serial)return;
       if(!response.ok)throw Error(payload.error||'搜尋失敗 / Search failed');
       const items=(Array.isArray(payload.data?.items)?payload.data.items:[]).filter(item=>item.entity_id&&!item.is_live_fallback);state.items=new Map(items.map(item=>[String(item.entity_id),item]));
-      results.innerHTML=items.length?items.map(item=>`<button type="button" class="path-match" data-path-match="${esc(item.entity_id)}"><b>${esc(item.display_name)}</b><small>${esc(entityTypeLabels[item.entity_type]||item.entity_type)}${item.public_identifier?' · '+esc(item.public_identifier):''}</small></button>`).join(''):'<div class="notice">沒有可作為路徑端點的已發布實體。即時公司資料尚未建立已驗證關係。 / No published path endpoint; live registry results have no verified graph links.</div>';
+      results.innerHTML=items.length?items.map(item=>`<button type="button" class="path-match" data-path-match="${esc(item.entity_id)}"><b>${esc(item.display_name)}</b><small>${esc(entityTypeLabels[item.entity_type]||item.entity_type)}${item.public_identifier?' · '+esc(item.public_identifier):''}${item.context_label?' · '+esc(item.context_label):''} · Entity ${esc(String(item.entity_id).slice(0,8))}</small></button>`).join(''):'<div class="notice">沒有可作為路徑端點的已發布實體。即時公司資料尚未建立已驗證關係。 / No published path endpoint; live registry results have no verified graph links.</div>';
     }catch(error){if(serial!==state.serial||error.name==='AbortError')return;results.innerHTML=`<div class="notice source-warning">${esc(error.message)}</div>`}
     finally{if(serial===state.serial)state.controller=null}
   }

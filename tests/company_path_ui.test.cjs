@@ -63,12 +63,13 @@ function pathHarness(response) {
 }
 test('path endpoint search selects only published canonical entities', async () => {
   const h = pathHarness({ok:true,json:async()=>({data:{items:[
-    {entity_id:'canonical',display_name:'已發布公司',entity_type:'Company'},
+    {entity_id:'canonical',display_name:'已發布公司',entity_type:'Company',context_label:'官方識別'},
     {entity_id:'live',display_name:'即時資料',entity_type:'Company',is_live_fallback:true},
   ]}})});
   await vm.runInContext("searchPathEndpoint('source','中華電信')", h.context);
   assert.equal(vm.runInContext('pathSearchState.source.items.size', h.context), 1);
   assert(h.elements.pathSourceMatches.innerHTML.includes('已發布公司'));
+  assert(h.elements.pathSourceMatches.innerHTML.includes('官方識別'));
   assert(!h.elements.pathSourceMatches.innerHTML.includes('即時資料'));
   assert.equal(new URL(h.context.lastRequest.url,'https://test.invalid').searchParams.get('limit'),'12');
   vm.runInContext("setPathEndpoint('source',{id:'live',is_live_fallback:true})", h.context);
