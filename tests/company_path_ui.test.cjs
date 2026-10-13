@@ -39,6 +39,11 @@ test('narrow path controls can shrink inside the mobile viewport', () => {
   assert(html.includes('.path-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)'));
   assert(html.includes('.path-controls select,.path-controls button{min-width:0;width:100%'));
 });
+test('path match context replaces technical politician keys with a readable term', () => {
+  const label = vm.runInContext("pathContextLabel('term:11;session:5;co_chair:N · 內政委員會')", pathHarness({}).context);
+  assert.equal(label,'第 11 屆 · 第 5 會期 · 內政委員會');
+  assert(!label.includes('co_chair'));
+});
 
 function pathHarness(response) {
   const elements = {
