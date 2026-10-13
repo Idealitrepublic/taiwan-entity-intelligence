@@ -97,6 +97,14 @@ test('path endpoint search selects only published canonical entities', async () 
 test('path endpoint search reports no canonical match without claiming no live company', async () => {
   const h = pathHarness({ok:true,json:async()=>({data:{items:[{entity_id:'live',is_live_fallback:true}]}})});
   await vm.runInContext("searchPathEndpoint('target','中華電信')", h.context);
-  assert(h.elements.pathTargetMatches.innerHTML.includes('即時公司登記資料'));
+  assert(h.elements.pathTargetMatches.innerHTML.includes('即時登記結果'));
   assert.equal(h.elements.pathTargetMatches.hidden,false);
+});
+test('company match does not repeat the same official identifier in context', async () => {
+  const h = pathHarness({ok:true,json:async()=>({data:{items:[{
+    entity_id:'company-id',display_name:'測試公司',entity_type:'Company',
+    public_identifier:'04690983',context_label:'統一編號 / Company ID 04690983',
+  }]}})});
+  await vm.runInContext("searchPathEndpoint('source','04690983')", h.context);
+  assert.equal((h.elements.pathSourceMatches.innerHTML.match(/04690983/g)||[]).length,1);
 });
