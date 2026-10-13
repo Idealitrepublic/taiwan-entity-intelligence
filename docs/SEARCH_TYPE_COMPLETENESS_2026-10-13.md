@@ -24,3 +24,4 @@
 - `public.source_records` 的 labor 資料集為 80,122 筆；`public.asset_declarations` 為 1 筆；`public.evidence_records` 為 1,529 筆，`public.entity_evidence` 為 910 筆。來源筆數、Evidence 筆數、已發布實體筆數不應互換。
 - 本盤點不依賴測試 fixture 或 schema 存在性推算 coverage。即時經濟部、政府採購與司法查詢的當次可用性需個別驗證；本表不將來源層命中算作 Global Search 已發布 Entity。
 - 未經官方總量與抽樣召回率驗證，不給百分比完成度。建議在新增選單類型之前，優先完成現有來源的 canonical 發布、Evidence 串接與實際覆蓋率驗證。
+- 公司最短路徑的公開介面目前只接受兩家已發布 Company Entity；內部 1–3 hop 演算法可經過其他實體。Development 的兩家已發布公司（大魯閣實業股份有限公司、都一處有限公司）各有 1 條已發布相鄰關係，但彼此在 3 hop 內沒有已驗證路徑；不能以同名人物或即時登記資料補造路徑。

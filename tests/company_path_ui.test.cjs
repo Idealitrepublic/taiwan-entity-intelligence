@@ -44,6 +44,16 @@ test('path match context replaces technical politician keys with a readable term
   assert.equal(label,'第 11 屆 · 第 5 會期 · 內政委員會');
   assert(!label.includes('co_chair'));
 });
+test('path action buttons appear for published companies only; reports stay available', () => {
+  const context = vm.createContext({esc: value => String(value)});
+  vm.runInContext(shipped('  function pathEntityActions(', '  let pathRequestSerial='), context);
+  const company = vm.runInContext("pathEntityActions({id:'c',entity_type:'Company',display_name:'公司'})", context);
+  const politician = vm.runInContext("pathEntityActions({id:'p',entity_type:'Politician',display_name:'立委'})", context);
+  assert(company.includes('設為公司 A / Company A'));
+  assert(company.includes('設為公司 B / Company B'));
+  assert(!politician.includes('path-select'));
+  assert(politician.includes('閱讀報告'));
+});
 
 function pathHarness(response) {
   const elements = {
@@ -70,19 +80,23 @@ test('path endpoint search selects only published canonical entities', async () 
   const h = pathHarness({ok:true,json:async()=>({data:{items:[
     {entity_id:'canonical',display_name:'已發布公司',entity_type:'Company',context_label:'官方識別'},
     {entity_id:'live',display_name:'即時資料',entity_type:'Company',is_live_fallback:true},
+    {entity_id:'politician',display_name:'政治人物',entity_type:'Politician'},
   ]}})});
   await vm.runInContext("searchPathEndpoint('source','中華電信')", h.context);
   assert.equal(vm.runInContext('pathSearchState.source.items.size', h.context), 1);
   assert(h.elements.pathSourceMatches.innerHTML.includes('已發布公司'));
   assert(h.elements.pathSourceMatches.innerHTML.includes('官方識別'));
   assert(!h.elements.pathSourceMatches.innerHTML.includes('即時資料'));
+  assert(!h.elements.pathSourceMatches.innerHTML.includes('政治人物'));
   assert.equal(new URL(h.context.lastRequest.url,'https://test.invalid').searchParams.get('limit'),'12');
+  assert.equal(new URL(h.context.lastRequest.url,'https://test.invalid').searchParams.get('entity_type'),'Company');
   vm.runInContext("setPathEndpoint('source',{id:'live',is_live_fallback:true})", h.context);
+  vm.runInContext("setPathEndpoint('source',{id:'politician',entity_type:'Politician'})", h.context);
   assert.equal(h.elements.pathSource.textContent,'');
 });
 test('path endpoint search reports no canonical match without claiming no live company', async () => {
   const h = pathHarness({ok:true,json:async()=>({data:{items:[{entity_id:'live',is_live_fallback:true}]}})});
   await vm.runInContext("searchPathEndpoint('target','中華電信')", h.context);
-  assert(h.elements.pathTargetMatches.innerHTML.includes('即時公司資料'));
+  assert(h.elements.pathTargetMatches.innerHTML.includes('即時公司登記資料'));
   assert.equal(h.elements.pathTargetMatches.hidden,false);
 });
