@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -146,8 +147,17 @@ def indexed_records(uniform, company_name):
     def fetch(field, value, operator='eq'):
         params = urllib.parse.urlencode({'select': '*', field: operator + '.' + value, 'limit': '100', 'order': 'id'})
         req = urllib.request.Request(f'{SUPABASE}/rest/v1/source_records?{params}', headers={'apikey': SUPABASE_KEY, 'Authorization': f'Bearer {SUPABASE_KEY}'})
-        with urllib.request.urlopen(req, timeout=8) as response:
-            return json.load(response)
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(req, timeout=8) as response:
+                    return json.load(response)
+            except (urllib.error.URLError, TimeoutError) as exc:
+                # Retry transient transport/5xx failures once, never permission
+                # errors. Keep the request bounded and credentials out of logs.
+                if attempt or (isinstance(exc, urllib.error.HTTPError)
+                               and exc.code != 429 and exc.code < 500):
+                    raise
+                time.sleep(0.25)
     records = fetch('uniform_number', uniform) + fetch('company_name', company_name)
     # Surface representative-suffix records only as explicit candidates. This
     # does not merge identities, publish Relationships or alter stored facts.

@@ -2,6 +2,7 @@
 import io
 import json
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 from src import cloud_company
@@ -21,6 +22,16 @@ def notice(role, date='20261001', job='A'):
 
 
 class CompanyAuditRepairs(unittest.TestCase):
+    def test_transient_retry_is_bounded_and_permission_error_not_retried(self):
+        with patch('urllib.request.urlopen', side_effect=[TimeoutError(), io.StringIO('[]'), io.StringIO('[]'), io.StringIO('[]')]) as request, patch('time.sleep'):
+            self.assertEqual(cloud_company.indexed_records('96979933', '中華電信股份有限公司'), [])
+            self.assertEqual(request.call_count, 4)
+        for error in (TimeoutError(), urllib.error.HTTPError('https://example.invalid', 403, 'Denied', {}, None)):
+            with patch('urllib.request.urlopen', side_effect=error) as request, patch('time.sleep'):
+                with self.assertRaises(type(error)):
+                    cloud_company.indexed_records('96979933', '中華電信股份有限公司')
+                self.assertEqual(request.call_count, 1 if isinstance(error, urllib.error.HTTPError) else 2)
+
     def test_identifier_path_not_other_bidder_or_position(self):
         self.assertEqual(procurement.award_role(notice('未得標廠商'), '96979933'), 'nonwinner')
         self.assertEqual(procurement.award_role(notice('得標廠商'), '96979933'), 'winner')

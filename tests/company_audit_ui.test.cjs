@@ -5,6 +5,9 @@ const html = fs.readFileSync('web/index.html', 'utf8');
 const ctx = vm.createContext({esc:String,num:Number,recordText:String,recordDate:r=>r.date||'',recordYear:()=> '2026',
   filterState:{},uniqueValues:()=>[],filterBox:()=>'',filterSelect:()=>'',countyRank:()=>0,
   procurementCounty:()=> '未分類',rawGrid:()=>'',penaltyArticles:()=>[]});
+vm.runInContext(html.split('\n').find(line=>line.includes('function penaltySignal(')),ctx);
+assert(vm.runInContext("penaltySignal([],{status:'partial'})",ctx).includes('Count unknown, not zero'));
+assert(!vm.runInContext("penaltySignal([],{status:'ok'})",ctx).includes('source unavailable'));
 for (const [start,end] of [['penaltyRecord','penaltyCard'],['judicialCard','procurementCard'],['procurementCard','mergeProcurement']]) {
   const a=html.indexOf(`  function ${start}(`), b=html.indexOf(`  function ${end}(`,a);
   assert(a>=0 && b>a);
@@ -20,4 +23,4 @@ ctx.result={records:[{company_names:['WINNER','LOSER'],awardee_names:['WINNER'],
 rendered=vm.runInContext('procurementCard(result)',ctx);
 assert(rendered.includes('WINNER'));
 assert(!rendered.includes('LOSER'));
-console.log('5 source-projection UI regression checks passed');
+console.log('7 source-projection UI regression checks passed');
