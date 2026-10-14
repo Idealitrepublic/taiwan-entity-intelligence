@@ -151,6 +151,7 @@ Status: implemented on `phase-4/relationship-path-finder`; Preview acceptance an
 - Return relationship direction/type, dates, amounts, primary Evidence, and original source details for every segment.
 - Preserve the version-1 API envelope, Global Entity Search, Graph 2.0, and legacy company investigation behavior.
 - Verify the RPC under anonymous RLS with deterministic PostgreSQL fixtures and deploy only to Vercel Preview.
+- Product Consolidation follow-up: the two-company UI now renders a verified shortest path in the SVG, and an additive Development-only RPC checks every published direct/shared canonical node before the bounded three-hop fallback; this does not increase company data coverage or merge names.
 
 Exit gate: targeted tests, bounded traversal DB checks, full build, and protected Preview runtime checks pass without a Production mutation.
 

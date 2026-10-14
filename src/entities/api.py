@@ -28,7 +28,8 @@ def dispatch_entity_api(path, query, repository=None):
             source_id = uuid_string(query.get("source", [None])[0])
             target_id = uuid_string(query.get("target", [None])[0])
             max_depth = int(query.get("max_depth", ["3"])[0])
-            if source_id == target_id or not 1 <= max_depth <= 3:
+            company_only = query.get("company_only", ["0"])[0]
+            if source_id == target_id or not 1 <= max_depth <= 3 or company_only not in ("0", "1"):
                 raise ValueError("Invalid path bounds")
         except (TypeError, ValueError):
             return 400, {"error": "請提供不同的 Entity UUID，max depth 須為 1–3 / Invalid path parameters"}, None
@@ -36,7 +37,11 @@ def dispatch_entity_api(path, query, repository=None):
             return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
         repository = repository or EntityRepository()
         try:
-            result = repository.relationship_path(source_id, target_id, max_depth=max_depth)
+            if company_only == "1":
+                result = repository.company_relationship_path(
+                    source_id, target_id, max_depth=max_depth)
+            else:
+                result = repository.relationship_path(source_id, target_id, max_depth=max_depth)
         except EntityStoreUnavailable:
             return 503, {"status": "unavailable", "error": "關係路徑資料暫時無法使用 / Path store unavailable"}, None
         if result is None:

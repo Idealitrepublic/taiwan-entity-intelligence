@@ -622,6 +622,80 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
       'watchlist_events_relationship_idx','watchlist_events_asset_idx')`);
   assert.equal(watchlistIndexes.rows.length, 8);
   checks++;
+  // A shared canonical agency may be beyond the generic finder's first 50 edges.
+  // The company-specific lookup must still find it without merging names.
+  await db.exec('reset role; set role service_role;');
+  const pathEvidenceId = 'e0000000-0000-4000-8000-000000000001';
+  await db.query(`insert into public.evidence_records
+    (id, source_name, source_record_id, source_class, source_url, title,
+     observed_at, retrieved_at, content_hash, status, publication_status)
+    values ($1, 'Path fixture', 'shared-agency', 'Official Registry',
+      'https://example.gov.tw/shared-agency', 'Shared agency evidence',
+      '2025-01-01T00:00:00Z', '2025-01-02T00:00:00Z', repeat('a',64),
+      'active', 'published')`, [pathEvidenceId]);
+  await db.query(`insert into public.entities
+    (id, entity_type, canonical_name, display_name, source, source_id,
+     identity_status, publication_status)
+    select ('10000000-0000-4000-8000-' || lpad(to_hex(i),12,'0'))::uuid,
+      'GovernmentAgency', '測試機關 ' || i, '測試機關 ' || i,
+      'path-fixture', i::text, 'EXACT', 'published'
+    from generate_series(1,55) i`);
+  await db.query(`insert into public.relationships
+    (id, source_entity_id, target_entity_id, relationship_type,
+     primary_evidence_id, observed_at, confidence, status)
+    select ('10000000-0000-4000-9000-' || lpad(to_hex(i),12,'0'))::uuid,
+      $1, ('10000000-0000-4000-8000-' || lpad(to_hex(i),12,'0'))::uuid,
+      'CONTRACT_WITH', $2, '2025-01-01T00:00:00Z', 'EXACT', 'published'
+    from generate_series(1,55) i`, [company.id, pathEvidenceId]);
+  await db.query(`insert into public.relationships
+    (id, source_entity_id, target_entity_id, relationship_type,
+     primary_evidence_id, observed_at, confidence, status)
+    values ('f0000000-0000-4000-8000-000000000001', $1,
+      '44444444-4444-4444-8444-444444444444', 'CONTRACT_WITH', $2,
+      '2025-01-01T00:00:00Z', 'EXACT', 'published')`, [lifecycleId, pathEvidenceId]);
+  await db.exec('set constraints all immediate; reset role; set role anon;');
+  const sharedCompanyPath = (await db.query(
+    'select path_result from public.find_company_shared_node_path($1,$2,2)',
+    [company.id, lifecycleId])).rows[0].path_result;
+  assert.equal(sharedCompanyPath.depth, 2);
+  assert.equal(sharedCompanyPath.segments[0].to_entity.id,
+    '44444444-4444-4444-8444-444444444444');
+  assert.equal(sharedCompanyPath.segments[1].to_entity.id, lifecycleId);
+  assert.equal(sharedCompanyPath.segments[1].traversal_direction, 'reverse');
+  assert.equal(sharedCompanyPath.segments[1].evidence.id, pathEvidenceId);
+  assert.equal(Boolean(sharedCompanyPath.segments[0].evidence.source_url), true);
+  assert.equal(sharedCompanyPath.shared_node_complete, true);
+  assert.equal((await db.query(
+    'select count(*)::int n from public.find_company_shared_node_path($1,$2,1)',
+    [company.id, lifecycleId])).rows[0].n, 0);
+  assert.equal((await db.query(
+    'select path_result from public.find_entity_relationship_path($1,$2,2)',
+    [company.id, lifecycleId])).rows[0].path_result.found, false);
+  assert.equal((await db.query(
+    'select count(*)::int n from public.find_company_shared_node_path($1,$2,2)',
+    [rel.source_entity_id, lifecycleId])).rows[0].n, 0,
+    'non-company endpoint cannot use the company finder');
+  assert.equal((await db.query(
+    "select prosecdef from pg_proc where proname='find_company_shared_node_path'"
+  )).rows[0].prosecdef, false);
+  checks += 10;
+  await rejects('select * from public.find_company_shared_node_path($1,$1,2)',
+    'identical company endpoints denied', [company.id]);
+  await rejects('select * from public.find_company_shared_node_path($1,$2,4)',
+    'unbounded company depth denied', [company.id, lifecycleId]);
+  await db.exec('reset role; set role service_role;');
+  await db.query(`insert into public.relationships
+    (id, source_entity_id, target_entity_id, relationship_type,
+     primary_evidence_id, observed_at, confidence, status)
+    values ('f0000000-0000-4000-8000-000000000002', $1, $2,
+      'DIRECTOR_OF', $3, '2025-01-01T00:00:00Z', 'EXACT', 'published')`,
+    [company.id, lifecycleId, pathEvidenceId]);
+  await db.exec('set constraints all immediate; reset role; set role anon;');
+  assert.equal((await db.query(
+    'select path_result from public.find_company_shared_node_path($1,$2,2)',
+    [company.id, lifecycleId])).rows[0].path_result.depth, 1,
+    'direct path outranks a shared intermediary');
+  checks++;
   await db.exec('reset role;');
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);

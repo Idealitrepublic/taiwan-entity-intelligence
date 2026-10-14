@@ -67,7 +67,7 @@ function pathHarness(response) {
   const context = vm.createContext({
     AbortController, URLSearchParams, console,
     $: id => elements[id], esc: value => String(value),
-    entityTypeLabels: {Company:'公司 / Company'},
+    entityTypeLabels: {Company:'公司 / Company'},graphMode:'legacy',
     clearTimeout: () => {},
     fetch: async (url, options) => {context.lastRequest = {url,options};return response},
   });

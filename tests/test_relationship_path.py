@@ -31,6 +31,48 @@ class RelationshipPathTests(unittest.TestCase):
             EntityRepository(transport=lambda *_: [{"path_result": None}]).relationship_path(
                 SOURCE, TARGET)
 
+    def test_company_shared_node_path_takes_priority_without_first_page_cutoff(self):
+        calls = []
+
+        def get(table, params):
+            calls.append(table)
+            if table == "rpc/find_company_shared_node_path":
+                return [{"path_result": {"found": True, "depth": 2,
+                                         "shared_node_complete": True, "segments": []}}]
+            raise AssertionError("The bounded generic finder must not hide a shared node")
+
+        result = EntityRepository(transport=get).company_relationship_path(
+            SOURCE, TARGET, max_depth=2)
+        self.assertEqual(result["depth"], 2)
+        self.assertEqual(calls, ["rpc/find_company_shared_node_path"])
+
+    def test_company_path_retains_bounded_three_hop_fallback(self):
+        calls = []
+
+        def get(table, params):
+            calls.append(table)
+            if table == "rpc/find_company_shared_node_path":
+                return []
+            return [{"path_result": {"found": True, "depth": 3,
+                    "source_entity": {"entity_type": "Company"},
+                    "target_entity": {"entity_type": "Company"}, "segments": []}}]
+
+        result = EntityRepository(transport=get).company_relationship_path(SOURCE, TARGET)
+        self.assertEqual(result["depth"], 3)
+        self.assertEqual(calls, ["rpc/find_company_shared_node_path",
+                                 "rpc/find_entity_relationship_path"])
+
+    def test_company_path_rejects_non_company_fallback_and_old_schema_works(self):
+        def get(table, params):
+            if table == "rpc/find_company_shared_node_path":
+                raise EntityFeatureUnavailable("not installed")
+            return [{"path_result": {"found": True, "depth": 1,
+                    "source_entity": {"entity_type": "Person"},
+                    "target_entity": {"entity_type": "Company"}, "segments": []}}]
+
+        self.assertIsNone(EntityRepository(transport=get).company_relationship_path(
+            SOURCE, TARGET))
+
     def test_repository_falls_back_to_bounded_graph_for_older_schema(self):
         def get(table, params):
             if table == "rpc/find_entity_relationship_path":
@@ -65,8 +107,21 @@ class RelationshipPathTests(unittest.TestCase):
         repo.relationship_path.assert_called_once_with(SOURCE, TARGET, max_depth=3)
         for query in ({}, {"source": [SOURCE], "target": [SOURCE]},
                       {"source": [SOURCE], "target": [TARGET], "max_depth": ["0"]},
-                      {"source": [SOURCE], "target": [TARGET], "max_depth": ["4"]}):
+                      {"source": [SOURCE], "target": [TARGET], "max_depth": ["4"]},
+                      {"source": [SOURCE], "target": [TARGET], "company_only": ["yes"]}):
             self.assertEqual(dispatch_entity_api("/api/v1/paths", query, repo)[0], 400)
+
+    def test_api_routes_two_company_search_to_shared_node_finder(self):
+        repo = Mock()
+        repo.company_relationship_path.return_value = {"found": True, "depth": 2,
+                                                       "segments": []}
+        code, body, _ = dispatch_entity_api("/api/v1/paths", {
+            "source": [SOURCE], "target": [TARGET], "max_depth": ["2"],
+            "company_only": ["1"]}, repo)
+        self.assertEqual(code, 200)
+        self.assertEqual(body["data"]["depth"], 2)
+        repo.company_relationship_path.assert_called_once_with(SOURCE, TARGET, max_depth=2)
+        repo.relationship_path.assert_not_called()
 
     def test_fallback_depths_preserve_shortest_path_and_edge_evidence(self):
         nodes = [SOURCE, TARGET, "55555555-5555-4555-8555-555555555555",

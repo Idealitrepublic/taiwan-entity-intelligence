@@ -54,7 +54,8 @@ class EntityRepository:
                 rows = json.load(response)
         except urllib.error.HTTPError as exc:
             if exc.code == 404 and table in (
-                    "rpc/find_entity_relationship_path", "rpc/political_contributions_for_entity",
+                    "rpc/find_entity_relationship_path", "rpc/find_company_shared_node_path",
+                    "rpc/political_contributions_for_entity",
                     "politician_terms", "asset_declarations"):
                 raise EntityFeatureUnavailable("Additive Entity feature is not installed") from exc
             raise EntityStoreUnavailable("Entity database unavailable") from exc
@@ -436,6 +437,31 @@ class EntityRepository:
         result = rows[0].get("path_result")
         if not isinstance(result, dict):
             raise EntityStoreUnavailable("Unexpected path response")
+        return result
+
+    def company_relationship_path(self, source_entity_id, target_entity_id, *, max_depth=3):
+        source_entity_id = uuid_string(source_entity_id)
+        target_entity_id = uuid_string(target_entity_id)
+        try:
+            rows = self.transport("rpc/find_company_shared_node_path", {
+                "start_entity_id": source_entity_id,
+                "end_entity_id": target_entity_id,
+                "max_depth": max_depth,
+            })
+        except EntityFeatureUnavailable:
+            rows = []
+        if rows:
+            result = rows[0].get("path_result")
+            if not isinstance(result, dict) or not result.get("found"):
+                raise EntityStoreUnavailable("Unexpected company path response")
+            return result
+        # Preserve the existing bounded three-hop finder when there is no direct
+        # or shared-node match, including deployments before the additive RPC.
+        result = self.relationship_path(source_entity_id, target_entity_id,
+                                        max_depth=max_depth)
+        if result and (result.get("source_entity", {}).get("entity_type") != "Company" or
+                       result.get("target_entity", {}).get("entity_type") != "Company"):
+            return None
         return result
 
     def _relationship_path_from_graph(self, source_entity_id, target_entity_id, *, max_depth):

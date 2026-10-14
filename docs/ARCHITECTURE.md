@@ -168,6 +168,8 @@ For backward compatibility while the additive migration awaits acceptance, the r
 
 No public table or write path is added. The existing source/target relationship indexes remain the access paths; the API preserves the version-1 envelope and all Graph 2.0 endpoints. Each segment includes relationship type, available dates and amounts, primary Evidence, source record ID, and original source URL. The migration remains unapplied to Production until Preview acceptance.
 
+Product Consolidation adds a Company A/B path view without changing the generic API. `company_only=1` first calls the additive `find_company_shared_node_path` read RPC: direct links and the exact same canonical intermediary Entity ID are checked across both companies' published, evidence-backed edges, independent of the generic finder's first-50 ordering. If neither exists, the existing bounded finder handles a possible three-hop route. A found response is validated for contiguous Entity IDs and matching primary Evidence before its segments are drawn in the central SVG; each graph edge opens the original Evidence details. Name equality never creates a shared node. The new RPC is installed only on `tei-development`; Production remains unchanged.
+
 ## Phase 5 Politician Entity
 
 The legislator profile path is `web/index.html -> /api/v1/politicians/{entity_id} -> politician_terms + bounded Relationships`. The canonical identity remains a `Politician` Entity. An additive, evidence-backed term table records term number, constituency, party Entity, and term dates; committee and bill activity reuse the existing Relationship and Evidence model.
