@@ -74,7 +74,7 @@ class EntityRepository:
             endpoint = MOEA_COMPANY_SEARCH_API
             expression = f"Company_Name like {term} and Company_Status eq 01"
         request = urllib.request.Request(
-            f"{endpoint}?{urlencode({'$format': 'json', '$filter': expression, '$skip': '0', '$top': str(limit)})}",
+            f"{endpoint}?{urlencode({'$format': 'json', '$filter': expression, '$skip': '0', '$top': str(min(50, max(limit, 20)))})}",
             headers={"Accept": "application/json", "User-Agent": "T.E.I./search-fallback"})
         try:
             with urllib.request.urlopen(request, timeout=12) as response:
@@ -109,6 +109,10 @@ class EntityRepository:
                 "match_type": match_type,
                 "is_live_fallback": True,
             })
+        rank = {"identifier_exact": 0, "name_exact": 0,
+                "name_prefix": 1, "name_contains": 2}
+        results.sort(key=lambda item: (rank.get(item["match_type"], 3),
+                                       len(item["display_name"]), item["display_name"]))
         return results[:limit]
 
     def entity(self, entity_id):

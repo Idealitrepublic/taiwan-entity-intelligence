@@ -34,6 +34,12 @@ test('company profile translates official fields once and keeps capital distinct
   assert(fields.includes('登記機關 / Registry authority'));
   assert(!fields.includes('Capital_Stock_Amount'));
   assert(!shipped('  function companyOverview(', '  function renderRecordPanes(').includes('rawGrid(company)'));
+  registry.websiteCard=()=>'';
+  vm.runInContext(shipped('  function companyOverview(', '  function renderRecordPanes('),registry);
+  const overview=vm.runInContext("companyOverview({company_name:'測試公司',uniform_number:'96979933'},{Company_Status_Desc:'核准設立'},[],null,false)",registry);
+  assert.equal((overview.match(/測試公司/g)||[]).length,1);
+  assert.equal((overview.match(/96979933/g)||[]).length,1);
+  assert(!overview.includes('企業 / Company · 96979933'));
 });
 test('narrow path controls can shrink inside the mobile viewport', () => {
   assert(html.includes('.path-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)'));
@@ -53,6 +59,9 @@ test('path action buttons appear for published companies only; reports stay avai
   assert(company.includes('設為公司 B / Company B'));
   assert(!politician.includes('path-select'));
   assert(politician.includes('閱讀報告'));
+  const live = vm.runInContext("pathEntityActions({id:'l',entity_type:'Company',display_name:'即時公司',public_identifier:'96979933',is_live_fallback:true})", context);
+  assert(live.includes('data-path-uniform="96979933"'));
+  assert(!live.includes('report-export'));
 });
 
 function pathHarness(response) {
@@ -68,7 +77,7 @@ function pathHarness(response) {
     AbortController, URLSearchParams, console,
     $: id => elements[id], esc: value => String(value),
     entityTypeLabels: {Company:'公司 / Company'},graphMode:'legacy',
-    clearTimeout: () => {},
+    clearTimeout: () => {}, clearPathGraph: () => {},
     fetch: async (url, options) => {context.lastRequest = {url,options};return response},
   });
   vm.runInContext(`let pathRequestSerial=0,pathRequestController=null,pathLoading=false;
@@ -76,28 +85,30 @@ function pathHarness(response) {
     ${shipped('  function invalidatePathRequest()', '  function renderPathResult(').replace(/  for\(const role of\['source','target'\]\)[\s\S]*$/, '')}`, context);
   return {context,elements};
 }
-test('path endpoint search selects only published canonical entities', async () => {
+test('path endpoint search accepts exact-ID live registry companies but not people', async () => {
   const h = pathHarness({ok:true,json:async()=>({data:{items:[
     {entity_id:'canonical',display_name:'已發布公司',entity_type:'Company',context_label:'官方識別'},
-    {entity_id:'live',display_name:'即時資料',entity_type:'Company',is_live_fallback:true},
+    {entity_id:'live',display_name:'即時資料',entity_type:'Company',public_identifier:'96979933',is_live_fallback:true},
     {entity_id:'politician',display_name:'政治人物',entity_type:'Politician'},
   ]}})});
   await vm.runInContext("searchPathEndpoint('source','中華電信')", h.context);
-  assert.equal(vm.runInContext('pathSearchState.source.items.size', h.context), 1);
+  assert.equal(vm.runInContext('pathSearchState.source.items.size', h.context), 2);
   assert(h.elements.pathSourceMatches.innerHTML.includes('已發布公司'));
   assert(h.elements.pathSourceMatches.innerHTML.includes('官方識別'));
-  assert(!h.elements.pathSourceMatches.innerHTML.includes('即時資料'));
+  assert(h.elements.pathSourceMatches.innerHTML.includes('即時資料'));
   assert(!h.elements.pathSourceMatches.innerHTML.includes('政治人物'));
   assert.equal(new URL(h.context.lastRequest.url,'https://test.invalid').searchParams.get('limit'),'12');
   assert.equal(new URL(h.context.lastRequest.url,'https://test.invalid').searchParams.get('entity_type'),'Company');
-  vm.runInContext("setPathEndpoint('source',{id:'live',is_live_fallback:true})", h.context);
+  vm.runInContext("setPathEndpoint('source',{id:'live',display_name:'即時資料',entity_type:'Company',public_identifier:'96979933',is_live_fallback:true})", h.context);
+  assert(h.elements.pathSource.textContent.includes('即時資料'));
+  assert(h.elements.pathSource.textContent.includes('即時登記'));
   vm.runInContext("setPathEndpoint('source',{id:'politician',entity_type:'Politician'})", h.context);
-  assert.equal(h.elements.pathSource.textContent,'');
+  assert(h.elements.pathSource.textContent.includes('即時資料'));
 });
-test('path endpoint search reports no canonical match without claiming no live company', async () => {
+test('path endpoint search rejects live company without verified eight-digit identifier', async () => {
   const h = pathHarness({ok:true,json:async()=>({data:{items:[{entity_id:'live',is_live_fallback:true}]}})});
   await vm.runInContext("searchPathEndpoint('target','中華電信')", h.context);
-  assert(h.elements.pathTargetMatches.innerHTML.includes('即時登記結果'));
+  assert(h.elements.pathTargetMatches.innerHTML.includes('查無可選公司'));
   assert.equal(h.elements.pathTargetMatches.hidden,false);
 });
 test('company match does not repeat the same official identifier in context', async () => {
@@ -107,4 +118,23 @@ test('company match does not repeat the same official identifier in context', as
   }]}})});
   await vm.runInContext("searchPathEndpoint('source','04690983')", h.context);
   assert.equal((h.elements.pathSourceMatches.innerHTML.match(/04690983/g)||[]).length,1);
+});
+test('live shared-record result shows provenance without broken unpublished Entity links', () => {
+  const elements={pathResult:{innerHTML:''}};
+  const context=vm.createContext({$:id=>elements[id],esc:value=>String(value),
+    num:Number,pathRangeLabels:{2:'最多 1 個中介'},relationshipLabels:{CONTRACT_WITH:'政府標案'},
+    safeSourceUrl:value=>value||'',renderPathGraph:()=>true});
+  vm.runInContext(shipped('  function renderPathResult(', '  function renderPathGraph('),context);
+  vm.runInContext(`renderPathResult({found:true,backend:'live_verified_shared_records',
+    depth:2,max_depth:2,interpretation:'不代表兩家公司有股權關係',coverage_note:'僅第一頁',
+    segments:[{from_entity:{id:'a',display_name:'甲'},to_entity:{id:'g',display_name:'機關'},
+      relationship:{relationship_type:'CONTRACT_WITH',start_date:'2026-01-01'},
+      evidence:{id:'e',title:'公告',source_name:'政府來源',source_record_id:'case',
+        source_url:'https://example.gov.tw/case',retrieved_at:'2026-10-15'}}]})`,context);
+  const output=elements.pathResult.innerHTML;
+  assert(output.includes('可驗證共用紀錄路徑'));
+  assert(output.includes('不代表兩家公司有股權關係'));
+  assert(output.includes('https://example.gov.tw/case'));
+  assert(!output.includes('/entity/a'));
+  assert(!output.includes('No published records'));
 });

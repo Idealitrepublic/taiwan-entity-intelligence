@@ -61,12 +61,12 @@ def award_role(row: dict[str, Any], uniform: str) -> str:
     return 'unresolved'
 
 
-def lookup_awards(uniform: str, limit: int = 100) -> dict[str, Any]:
+def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str, Any]:
     if not uniform.isdigit() or len(uniform) != 8:
         raise ValueError("統編必須是 8 碼數字。")
     url = API + "?" + urllib.parse.urlencode({"query": uniform, "page": 1})
     try:
-        payload = _json_get(url)
+        payload = _json_get(url, timeout=timeout)
         rows = payload.get("records") if isinstance(payload.get("records"), list) else []
         notices = [row for row in rows if isinstance(row, dict)
                    and '決標' in str((row.get('brief') or {}).get('type') or '')]

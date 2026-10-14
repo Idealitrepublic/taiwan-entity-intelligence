@@ -76,6 +76,21 @@ class EntitySearchTests(unittest.TestCase):
         self.assertEqual(result["items"][0]["public_identifier"], "04541302")
         self.assertTrue(result["items"][0]["is_live_fallback"])
 
+    def test_exact_registry_company_ranks_before_name_contains_for_path_selection(self):
+        repository = EntityRepository(transport=lambda table, params: [])
+        response = Mock()
+        response.read.return_value = json.dumps([
+            {"Business_Accounting_NO": "22843574", "Company_Name": "美商台灣大哥大股份有限公司"},
+            {"Business_Accounting_NO": "97176270", "Company_Name": "台灣大哥大股份有限公司"},
+        ], ensure_ascii=False).encode()
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        with patch("src.entities.repository.urllib.request.urlopen", return_value=response) as opened:
+            result = repository.search("台灣大哥大股份有限公司", entity_type="Company", limit=2)
+        self.assertEqual([item["public_identifier"] for item in result["items"]],
+                         ["97176270", "22843574"])
+        self.assertIn("%24top=20", opened.call_args.args[0].full_url)
+
     def test_live_company_fallback_failure_keeps_index_results(self):
         indexed = [{"entity_id": "1", "entity_type": "Company",
                     "public_identifier": "12345678"}]

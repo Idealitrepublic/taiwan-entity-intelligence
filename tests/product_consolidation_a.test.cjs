@@ -62,14 +62,14 @@ test('stale response cannot overwrite changed endpoints',async()=>{
   h.requests[0].resolve({ok:true,json:async()=>({data:{found:true,old:true}})});
   await pending;
   assert.equal(h.renders.length,0);
-  assert.equal(h.elements.pathTarget.textContent,'C · 公司 / Company');
+  assert.equal(h.elements.pathTarget.textContent,'C · 已發布 / Published');
   assert.equal(h.elements.pathFind.disabled,false);
 });
 test('changing range clears stale result and retains selected endpoints',()=>{
   const h=pathHarness();h.elements.pathResult.innerHTML='old route';
   vm.runInContext('invalidatePathRequest();renderPathSelection()',h.context);
   assert.equal(h.elements.pathResult.innerHTML,'');
-  assert.equal(h.elements.pathSource.textContent,'A · 公司 / Company');
+  assert.equal(h.elements.pathSource.textContent,'A · 已發布 / Published');
 });
 test('each range uses its existing exact max_depth and renders response',async()=>{
   for(const depth of ['1','2','3']){
@@ -84,7 +84,7 @@ test('empty/truncated path does not claim absence of relationships',()=>{
   const h=pathHarness();h.context.num=Number;h.context.pathRangeLabels={};
   vm.runInContext(shipped('  function renderPathResult(', '  async function findRelationshipPath('),h.context);
   vm.runInContext('renderPathResult({found:false,truncated:true})',h.context);
-  assert(h.elements.pathResult.innerHTML.includes('不代表兩者沒有任何關係'));
+  assert(h.elements.pathResult.innerHTML.includes('不代表兩家公司沒有關係'));
   assert(h.elements.pathResult.innerHTML.includes('High-degree nodes truncated'));
 });
 test('path API error reenables button without bogus result',async()=>{

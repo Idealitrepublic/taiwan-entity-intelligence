@@ -1,11 +1,12 @@
 """Read-only Entity API with bounded search and lazy graph expansion."""
 import os
 from .contracts import response
-from .models import uuid_string
+from .models import stable_id, uuid_string
 from .repository import EntityRepository, EntityStoreUnavailable
 from .search import parse_search_request
 from src.relationships.models import RELATIONSHIP_TYPES
 from src.asset_declarations import ASSET_TYPES
+from src.live_company_path import CompanyRegistryUnavailable, live_company_path
 
 
 def dispatch_entity_api(path, query, repository=None):
@@ -29,19 +30,51 @@ def dispatch_entity_api(path, query, repository=None):
             target_id = uuid_string(query.get("target", [None])[0])
             max_depth = int(query.get("max_depth", ["3"])[0])
             company_only = query.get("company_only", ["0"])[0]
-            if source_id == target_id or not 1 <= max_depth <= 3 or company_only not in ("0", "1"):
+            live_requested = query.get("live", ["0"])[0]
+            source_uniform = query.get("source_uniform", [None])[0]
+            target_uniform = query.get("target_uniform", [None])[0]
+            if (source_id == target_id or not 1 <= max_depth <= 3
+                    or company_only not in ("0", "1") or live_requested not in ("0", "1")):
                 raise ValueError("Invalid path bounds")
+            if (source_uniform is not None or target_uniform is not None) and (
+                    company_only != "1" or not source_uniform or not target_uniform):
+                raise ValueError("Incomplete company identifiers")
+            if source_uniform and target_uniform and (
+                    source_id != stable_id("entity", "tw:uniform_number", source_uniform)
+                    or target_id != stable_id("entity", "tw:uniform_number", target_uniform)):
+                raise ValueError("Company ID and uniform number mismatch")
+            if live_requested == "1" and (company_only != "1" or not source_uniform):
+                raise ValueError("Live company identifiers required")
         except (TypeError, ValueError):
             return 400, {"error": "請提供不同的 Entity UUID，max depth 須為 1–3 / Invalid path parameters"}, None
         if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
             return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
         repository = repository or EntityRepository()
         try:
-            if company_only == "1":
+            if live_requested == "1":
+                result = live_company_path(source_uniform, target_uniform,
+                                           max_depth=max_depth)
+            elif company_only == "1":
                 result = repository.company_relationship_path(
                     source_id, target_id, max_depth=max_depth)
+                if source_uniform and target_uniform and (
+                        result is None or not result.get("found")
+                        or (isinstance(result.get("depth"), int) and result["depth"] > 2)):
+                    live_result = live_company_path(source_uniform, target_uniform,
+                                                    max_depth=max_depth)
+                    if live_result and (result is None or not result.get("found")
+                                        or (live_result.get("found") and
+                                            isinstance(result.get("depth"), int) and
+                                            live_result["depth"] < result["depth"])):
+                        result = live_result
+                    elif result is None:
+                        result = live_result
             else:
                 result = repository.relationship_path(source_id, target_id, max_depth=max_depth)
+        except (ValueError, CompanyRegistryUnavailable) as exc:
+            if isinstance(exc, CompanyRegistryUnavailable):
+                return 503, {"status": "unavailable", "error": "經濟部公司登記暫時無法查詢 / Company registry unavailable"}, None
+            return 400, {"error": "公司統編須為不同的八碼數字 / Invalid company identifiers"}, None
         except EntityStoreUnavailable:
             return 503, {"status": "unavailable", "error": "關係路徑資料暫時無法使用 / Path store unavailable"}, None
         if result is None:

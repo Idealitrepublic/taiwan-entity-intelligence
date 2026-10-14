@@ -21,5 +21,5 @@ def get_company(uniform_number: str, timeout: int = 15) -> Optional[Dict[str, An
         headers={"User-Agent": "TaiwanEntityIntelligence/0.1"},
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
-        data = json.loads(response.read().decode("utf-8"))
+        data = json.loads(response.read().decode("utf-8-sig"))
     return data[0] if data else None
