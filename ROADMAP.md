@@ -152,6 +152,7 @@ Status: implemented on `phase-4/relationship-path-finder`; Preview acceptance an
 - Preserve the version-1 API envelope, Global Entity Search, Graph 2.0, and legacy company investigation behavior.
 - Verify the RPC under anonymous RLS with deterministic PostgreSQL fixtures and deploy only to Vercel Preview.
 - Product Consolidation follow-up: the two-company UI now renders a verified shortest path in the SVG, and an additive Development-only RPC checks every published direct/shared canonical node before the bounded three-hop fallback; this does not increase company data coverage or merge names.
+- Development-only live company fallback permits exact-ID endpoints outside the two published companies and draws only sourced shared-record observations; first-page procurement and partial court coverage still limit the result. Penalty browsing now collapses all cases by year/county or Labor Standards Act cases by year/article, newest-first within loaded records. Neither change publishes new canonical companies or modifies Production.
 
 Exit gate: targeted tests, bounded traversal DB checks, full build, and protected Preview runtime checks pass without a Production mutation.
 
