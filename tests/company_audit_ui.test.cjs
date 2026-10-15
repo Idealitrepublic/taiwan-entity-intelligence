@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync('web/index.html', 'utf8');
-const ctx = vm.createContext({esc:String,num:Number,recordText:String,recordDate:r=>r.date||'',recordYear:()=> '2026',
+const ctx = vm.createContext({esc:String,num:Number,recordText:String,recordDate:r=>r.date||'',penaltyDate:r=>r['處分日期']||r.date||'',recordYear:()=> '2026',
   filterState:{},uniqueValues:()=>[],filterBox:()=>'',filterSelect:()=>'',countyRank:()=>0,
   procurementCounty:()=> '未分類',rawGrid:()=>'',penaltyArticles:()=>[]});
 vm.runInContext(html.split('\n').find(line=>line.includes('function penaltySignal(')),ctx);

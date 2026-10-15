@@ -63,7 +63,7 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
         for key in (
             "judicialType", "judicialDate", "procurementType",
             "procurementCounty", "procurementAgency", "procurementYear",
-            "penaltyLaw", "penaltyYear",
+            "penaltyLaw", "penaltyYear", "penaltyCounty",
         ):
             with self.subTest(key=key):
                 self.assertIn(f"filterSelect('{key}'", html)
@@ -71,7 +71,10 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
             with self.subTest(label=label):
                 self.assertIn(label, html)
         self.assertIn("record-group", html)
-        self.assertIn("相同法條集中顯示", html)
+        self.assertIn('data-filter="penaltyView"', html)
+        self.assertIn("全部裁罰：年度 → 縣市", html)
+        self.assertIn("勞基法：年度 → 法條", html)
+        self.assertIn("同案涉及多條時", html)
 
     def test_right_panel_has_requested_sections_without_evidence_tab(self):
         _, html, _ = dispatch("/", {})
