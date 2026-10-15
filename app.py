@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 import urllib.request
 from src import cloud_company as core
 from src.sources.procurement import lookup_awards
+from src.live_related_companies import related_companies
 from src.entities.api import dispatch_entity_api
 from src.runtime_config import private_supabase_config
 from src.reports import dispatch_report_api
@@ -99,6 +100,17 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
         if not re.fullmatch(r'[0-9]{8}', uniform):
             return 400, {'status': 'error', 'error': '統編必須是 8 碼數字。'}, None
         return 200, lookup_awards(uniform), None
+    if path.startswith('/api/company-related/'):
+        if method not in ('GET', 'HEAD'):
+            return 405, {'error': 'Method not allowed'}, None
+        uniform = path[len('/api/company-related/'):]
+        if not re.fullmatch(r'[0-9]{8}', uniform):
+            return 400, {'error': '統編必須是 8 碼數字。'}, None
+        try:
+            result = related_companies(uniform)
+        except RuntimeError:
+            return 503, {'status': 'unavailable', 'error': '官方公司登記暫時無法查詢。'}, None
+        return (200 if result else 404), result or {'status': 'not_found', 'items': []}, None
     if path.startswith('/api/company/') or path == '/api/company-sources':
         uniform = path[len('/api/company/'):] if path.startswith('/api/company/') else query.get('uniform', [''])[0]
         if not re.fullmatch(r'[0-9]{8}', uniform):

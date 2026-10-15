@@ -110,3 +110,59 @@ def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str
             "official_search_url": OFFICIAL_SEARCH,
             "message": f"決標資料暫時無法讀取：{type(exc).__name__}",
         }
+
+
+def lookup_co_awardees(uniform: str, limit: int = 6, timeout: int = 8) -> dict[str, Any]:
+    """Find other exact-ID winners in the same notice, never name-only bidders.
+
+    This is a bounded observation, not a corporate-affiliation assertion. The
+    source API returns one page, so an empty result is not a coverage claim.
+    """
+    if not re.fullmatch(r"[0-9]{8}", uniform) or not 1 <= limit <= 10:
+        raise ValueError("Invalid company ID or co-awardee limit")
+    try:
+        url = API + "?" + urllib.parse.urlencode({"query": uniform, "page": 1})
+        payload = _json_get(url, timeout=timeout)
+        rows = payload.get("records") if isinstance(payload.get("records"), list) else []
+        latest = {}
+        ambiguous = set()
+        for row in sorted(rows, key=lambda item: str(item.get("date") or "")
+                          if isinstance(item, dict) else ""):
+            if not isinstance(row, dict) or "決標" not in str((row.get("brief") or {}).get("type") or ""):
+                continue
+            key = (row.get("unit_id"), row.get("job_number"))
+            if not all(key):
+                key = ("notice", row.get("filename"), row.get("date"))
+            previous = latest.get(key)
+            if previous and row.get("date") == previous.get("date"):
+                if (row.get("brief") or {}).get("companies") != (previous.get("brief") or {}).get("companies"):
+                    ambiguous.add(key)
+            else:
+                ambiguous.discard(key)
+            latest[key] = row
+        found = {}
+        for row in sorted((row for key, row in latest.items() if key not in ambiguous),
+                          key=lambda item: str(item.get("date") or ""), reverse=True):
+            if award_role(row, uniform) != "winner":
+                continue
+            notice = _normalize(row, uniform)
+            if not notice.get("source_url"):
+                continue
+            companies = (row.get("brief") or {}).get("companies") or {}
+            for other_id in (companies.get("id_key") or {}):
+                if (not isinstance(other_id, str) or not re.fullmatch(r"[0-9]{8}", other_id)
+                        or other_id == uniform or award_role(row, other_id) != "winner"):
+                    continue
+                names = matched_names(row, other_id)
+                if len(set(names)) != 1:
+                    continue
+                found.setdefault(other_id, {
+                    "uniform_number": other_id, "company_name": names[0],
+                    "notice": notice,
+                })
+        items = list(found.values())
+        return {"status": "ok", "items": items[:limit],
+                "limited": int(payload.get("total_records") or 0) > len(rows)
+                or len(items) > limit}
+    except Exception:
+        return {"status": "partial", "items": [], "limited": True}
