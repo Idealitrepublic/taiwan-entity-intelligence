@@ -94,7 +94,32 @@ function inspectGraph() {
         await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_LABOR_SCREENSHOT});
     }
     await page.locator('#fit').click();
-    assert.deepEqual((await page.evaluate(inspectGraph)).clipped,[], 'Fit restores the full graph overview');
+    assert(Number((await page.locator('#zoomValue').textContent()).replace('%',''))>=115,
+      'Fit keeps the expanded branch readable instead of shrinking all labels');
+    await page.locator('#collapse').click();
+    assert.deepEqual((await page.evaluate(inspectGraph)).clipped,[], 'Collapse restores the full graph overview');
+    await page.setViewportSize({width:1440,height:900});
+    await page.locator('#svg .node[data-hub="person"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="person"]').count(),13);
+    for(const width of [1440,1280,1024,768]){
+      await page.setViewportSize({width,height:900});
+      await page.locator('#fit').click();
+      await page.locator('#minus').click();
+      const visible=await page.evaluate(()=>{
+        const viewport=document.querySelector('#svg').getBoundingClientRect();
+        return [...document.querySelectorAll('#svg .node[data-type="person"]')].map(node=>({
+          text:node.querySelector('text.child-label').getBoundingClientRect(),
+          circle:node.querySelector('circle:not(.hit)').getBoundingClientRect()
+        })).filter(node=>node.text.left>=viewport.left&&node.text.right<=viewport.right&&
+          node.text.top>=viewport.top&&node.text.bottom<=viewport.bottom);
+      });
+      assert(visible.length>=2,`${width}px: refocused people remain visible`);
+      assert(visible.every(node=>node.text.height>=12&&node.circle.width>=24),
+        `${width}px: refocused people text and circles remain readable`);
+      assert(Number((await page.locator('#zoomValue').textContent()).replace('%',''))>=115,
+        `${width}px: Fit and zoom-out cannot shrink expanded people into a tiny overview`);
+    }
+    await page.locator('#collapse').click();
     await page.setViewportSize({width:1440,height:900});
     await page.locator('#svg .node[data-hub="judicial"]').click();
     for(const width of [1440,1280,1024,768]){

@@ -116,7 +116,7 @@ async function assertReadableBranch(page, childType, label) {
     ];
     for (const [hubType, childType, count] of cases) {
       if (hubType !== 'related') {
-        await page.locator('#fit').click();
+        await page.locator('#collapse').click();
         await page.locator(`#svg .node[data-hub="${hubType}"]`).click();
       }
       const layout = await page.evaluate(({ hubType, childType }) => {
