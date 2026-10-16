@@ -35,11 +35,15 @@ async function assertLayout(page, label) {
     const clipped = nodes.filter(node => node.box.left < viewport.left-2 || node.box.right > viewport.right+2 ||
       node.box.top < viewport.top-2 || node.box.bottom > viewport.bottom+2).map(node => node.id);
     const ellipses = nodes.filter(node => node.text.some(value => value.includes('…'))).map(node => node.id);
-    return { count:nodes.length, overlaps, clipped, ellipses };
+    const info = document.querySelector('#nodeInfo'), infoBox = info.hidden ? null : info.getBoundingClientRect();
+    const covered = infoBox ? nodes.filter(node => Math.min(node.box.right,infoBox.right)-Math.max(node.box.left,infoBox.left)>1 &&
+      Math.min(node.box.bottom,infoBox.bottom)-Math.max(node.box.top,infoBox.top)>1).map(node => node.id) : [];
+    return { count:nodes.length, overlaps, clipped, ellipses, covered };
   });
   assert.deepEqual(result.overlaps,[],`${label}: no node/label overlap`);
   assert.deepEqual(result.clipped,[],`${label}: all labels stay inside graph viewport`);
   assert.deepEqual(result.ellipses,[],`${label}: no label truncation`);
+  assert.deepEqual(result.covered,[],`${label}: detail panel does not cover nodes or labels`);
   return result;
 }
 
@@ -64,6 +68,28 @@ async function assertLayout(page, label) {
     await page.locator('#q').fill('22099131');
     await page.locator('#search').click();
     await page.locator('#svg .node[data-hub="procurement"]').waitFor();
+    await page.locator('#svg .node[data-hub="related"]').click();
+    const panel = await page.evaluate(() => {
+      const info=document.querySelector('#nodeInfo'),box=info.getBoundingClientRect(),graph=document.querySelector('.graph').getBoundingClientRect();
+      return {left:box.left,graphRight:graph.right,visible:info.contains(document.elementFromPoint(box.left+20,box.top+20))};
+    });
+    assert(panel.left>=panel.graphRight-2 && panel.visible,'Desktop details remain visible beside, not over, the graph');
+    const anchors = await page.evaluate(() => {
+      const center = document.querySelector('#svg .node[data-type="company"]');
+      const hubs = [...document.querySelectorAll('#svg .node.hub')];
+      const point = element => { const circle = element.querySelector('circle:not(.hit)');
+        return {x:Number(circle.getAttribute('cx')),y:Number(circle.getAttribute('cy'))}; };
+      return {center:point(center),label: center.querySelector('text').getBoundingClientRect().toJSON(),
+        circle:center.querySelector('circle:not(.hit)').getBoundingClientRect().toJSON(),
+        hubs:hubs.map(hub=>({kind:hub.dataset.hub,...point(hub)}))};
+    });
+    const hubYs = anchors.hubs.map(hub=>hub.y), steps = hubYs.slice(1).map((y,index)=>y-hubYs[index]);
+    assert(anchors.label.bottom < anchors.circle.top, 'Company root label aligns above the circle like category labels');
+    assert(anchors.hubs.every(hub=>hub.x===anchors.hubs[0].x), 'All categories share one column');
+    assert(Math.abs(anchors.center.y-(hubYs[0]+hubYs.at(-1))/2)<.01, 'Company root is centered on category column');
+    assert(steps.every(step=>Math.abs(step-steps[0])<.01), 'Connected companies and awards match all category spacing');
+    await assertLayout(page, 'collapsed category layout');
+    await page.locator('#svg .node[data-hub="related"]').click();
     const cases = [
       ['related', 'related_company', 2], ['person', 'person', 3], ['penalty', 'law_group', 3], ['judicial', 'judicial_year', 2], ['procurement', 'procurement_city', 2]
     ];
@@ -91,7 +117,17 @@ async function assertLayout(page, label) {
       assert(layout.branches.every(branch => branch.y1 === branch.y2 && branch.x2 > branch.x1),
         `${hubType} branches are horizontal`);
       assert(layout.spine && layout.spine.includes(`${layout.hub.y}`), `${hubType} has a parent rail`);
+      const column = await page.evaluate(() => {
+        const position = element => {const circle=element.querySelector('circle:not(.hit)');return{x:Number(circle.getAttribute('cx')),y:Number(circle.getAttribute('cy'))}};
+        return {root:position(document.querySelector('#svg .node[data-type="company"]')),
+          hubs:[...document.querySelectorAll('#svg .node.hub')].map(position)};
+      });
+      assert(column.hubs.every(point=>point.x===column.hubs[0].x),`${hubType}: category hubs stay in one column`);
+      assert(Math.abs(column.root.y-(column.hubs[0].y+column.hubs.at(-1).y)/2)<.01,
+        `${hubType}: root stays centered between connected companies and awards`);
       await assertLayout(page, `${hubType} expanded`);
+      if (hubType === 'related' && process.env.TEI_GRAPH_RELATED_SCREENSHOT)
+        await page.locator('.graph').screenshot({ path: process.env.TEI_GRAPH_RELATED_SCREENSHOT });
       if (hubType === 'procurement' || hubType === 'judicial') {
         await page.locator(`#svg .node[data-type="${childType}"]`).first().click();
         const descendants = await page.evaluate(type => {
@@ -134,7 +170,18 @@ async function assertLayout(page, label) {
       assert(graph && graph.width > 200 && graph.height > 200, `Graph visible at ${width}px`);
       assert.equal(await page.locator('#svg .node[data-type="procurement_year"]').count(), 2);
       await assertLayout(page, `${width}px`);
+      if (width===768 && process.env.TEI_GRAPH_NARROW_SCREENSHOT)
+        await page.locator('.graph').screenshot({path:process.env.TEI_GRAPH_NARROW_SCREENSHOT});
     }
+    await page.locator('#svg .node[data-type="procurement_city"]').first().click();
+    await assertLayout(page,'768px with award details open');
+    const narrowPanel = await page.evaluate(() => {
+      const svg=document.querySelector('#svg').getBoundingClientRect(),info=document.querySelector('#nodeInfo').getBoundingClientRect();
+      return {svgBottom:svg.bottom,infoTop:info.top};
+    });
+    assert(narrowPanel.svgBottom<narrowPanel.infoTop,'Narrow-screen details sit below the graph, not over its nodes');
+    if (process.env.TEI_GRAPH_NARROW_DETAILS_SCREENSHOT)
+      await page.locator('.graph').screenshot({path:process.env.TEI_GRAPH_NARROW_DETAILS_SCREENSHOT});
     assert.deepEqual(errors, []);
     console.log('All expanded graph categories, judgment years and award years align with horizontal branches.');
   } finally {
