@@ -5,10 +5,11 @@ const { chromium } = require('playwright');
 
 const html = fs.readFileSync('web/index.html', 'utf8');
 const companyId = 'company:96979933';
+const laborArticles = ['第13條第2項','第24條','第24條第1項','第32條第1項','第32條第2項','第36條第1項','第36條第2項','第38條第4項','第39條','第49條第1項'];
 const graphNodes = [
   {id:companyId,type:'company',label:'中華電信股份有限公司'},
   ...Array.from({length:13},(_,index)=>({id:`person:${index}`,type:'person',label:`關係人 ${index+1}`,properties:{position:'董事'}})),
-  ...Array.from({length:50},(_,index)=>({id:`penalty:${index}`,type:'penalty',label:'勞動基準法第24條',properties:{date:'2025-01-01'}})),
+  ...Array.from({length:50},(_,index)=>({id:`penalty:${index}`,type:'penalty',label:`勞動基準法${laborArticles[index%laborArticles.length]}`,properties:{date:'2025-01-01'}})),
   ...Array.from({length:50},(_,index)=>({id:`judicial:${index}`,type:'judicial',label:`司法院判決 ${index+1}`,properties:{date:'2026-01-01'}})),
   {id:'website:cht',type:'website',label:'cht.com.tw'}
 ];
@@ -70,6 +71,31 @@ function inspectGraph() {
     assert(baseline.spine?.includes(`V ${baseline.website.y}`),'The root rail reaches the last direct node');
     assert.deepEqual(baseline.overlap,[]);
     assert.deepEqual(baseline.clipped,[]);
+    await page.locator('#svg .node[data-hub="penalty"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="law_group"]').count(),10);
+    for(const width of [1440,1280,1024,768]){
+      await page.setViewportSize({width,height:900});
+      const layout=await page.evaluate(inspectGraph);
+      const visible=await page.evaluate(()=>{
+        const viewport=document.querySelector('#svg').getBoundingClientRect();
+        return [...document.querySelectorAll('#svg .node[data-type="law_group"]')].map(node=>({
+          text:node.querySelector('text.child-label').getBoundingClientRect(),
+          circle:node.querySelector('circle:not(.hit)').getBoundingClientRect()
+        })).filter(node=>node.text.left>=viewport.left&&node.text.right<=viewport.right&&
+          node.text.top>=viewport.top&&node.text.bottom<=viewport.bottom);
+      });
+      assert.deepEqual(layout.overlap,[],`${width}px: no overlap with ten expanded labor articles`);
+      assert(visible.length>=2,`${width}px: readable labor articles remain visible without fitting all ten`);
+      assert(visible.every(node=>node.text.height>=12&&node.circle.width>=24),
+        `${width}px: visible labor text and circles meet readable on-screen size`);
+      assert(Number((await page.locator('#zoomValue').textContent()).replace('%',''))>=115,
+        `${width}px: expansion does not auto-shrink the graph`);
+      if(width===1440&&process.env.TEI_CHUNGHWA_LABOR_SCREENSHOT)
+        await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_LABOR_SCREENSHOT});
+    }
+    await page.locator('#fit').click();
+    assert.deepEqual((await page.evaluate(inspectGraph)).clipped,[], 'Fit restores the full graph overview');
+    await page.setViewportSize({width:1440,height:900});
     await page.locator('#svg .node[data-hub="judicial"]').click();
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
@@ -77,7 +103,8 @@ function inspectGraph() {
       assert.equal(layout.root.y,layout.hubs.judicial.y,`${width}px: judicial anchor remains aligned`);
       assert.equal(layout.judicialChildren,1,`${width}px: judgment year stays expandable`);
       assert.deepEqual(layout.overlap,[],`${width}px: no node or label overlap`);
-      assert.deepEqual(layout.clipped,[],`${width}px: all nodes remain visible`);
+      assert(await page.locator('#svg .node[data-type="judicial_year"]').count()>0,
+        `${width}px: judgment year remains available after refocusing`);
       if(width===1440&&process.env.TEI_CHUNGHWA_GRAPH_SCREENSHOT)
         await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_GRAPH_SCREENSHOT});
     }

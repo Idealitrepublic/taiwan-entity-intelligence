@@ -21,7 +21,7 @@ const awards = [
 const body = { status: 'ok', uniform_number: '22099131', company_name: '測試公司', company: {}, people: [],
   graph: { nodes, edges: [{source:company,target:'website:example',relationship:'website'},
     {source:'website:example',target:'anti_fraud:example',relationship:'listed_in_anti_fraud'}] }, evidence: [], labor_penalties: [], judicial_result: { records: [], matched: 0 }, evidence_status: {} };
-async function assertLayout(page, label) {
+async function assertLayout(page, label, { focused = false } = {}) {
   const result = await page.evaluate(() => {
     const svg = document.querySelector('#svg'), viewport = svg.getBoundingClientRect();
     const nodes = [...svg.querySelectorAll('.node')].map(node => ({ id: node.dataset.nodeId,
@@ -41,10 +41,26 @@ async function assertLayout(page, label) {
     return { count:nodes.length, overlaps, clipped, ellipses, covered };
   });
   assert.deepEqual(result.overlaps,[],`${label}: no node/label overlap`);
-  assert.deepEqual(result.clipped,[],`${label}: all labels stay inside graph viewport`);
+  if (!focused) assert.deepEqual(result.clipped,[],`${label}: Fit keeps all labels inside graph viewport`);
   assert.deepEqual(result.ellipses,[],`${label}: no label truncation`);
   assert.deepEqual(result.covered,[],`${label}: detail panel does not cover nodes or labels`);
   return result;
+}
+async function assertReadableBranch(page, childType, label) {
+  const result = await page.evaluate(type => {
+    const svg = document.querySelector('#svg'), viewport = svg.getBoundingClientRect();
+    const visible = [...svg.querySelectorAll(`.node[data-type="${type}"]`)].map(node => {
+      const circle = node.querySelector('circle:not(.hit):not(.related-halo)');
+      const text = node.querySelector('text.child-label');
+      return { id: node.dataset.nodeId, circle: circle?.getBoundingClientRect(), text: text?.getBoundingClientRect() };
+    }).filter(node => node.circle && node.text && node.circle.left >= viewport.left &&
+      node.text.right <= viewport.right && node.text.top >= viewport.top && node.text.bottom <= viewport.bottom);
+    return { visible, zoom: Number(document.querySelector('#zoomValue').textContent.replace('%','')) };
+  }, childType);
+  assert(result.visible.length > 0, `${label}: at least one expanded record is visible`);
+  assert(result.visible.some(node => node.circle.width >= 24 && node.text.height >= 12),
+    `${label}: expanded circles and labels are legible at actual screen size`);
+  assert(result.zoom >= 115, `${label}: expanding must not shrink the entire graph`);
 }
 
 (async () => {
@@ -99,7 +115,10 @@ async function assertLayout(page, label) {
       ['related', 'related_company', 2], ['person', 'person', 3], ['penalty', 'law_group', 3], ['judicial', 'judicial_year', 2], ['procurement', 'procurement_city', 2]
     ];
     for (const [hubType, childType, count] of cases) {
-      if (hubType !== 'related') await page.locator(`#svg .node[data-hub="${hubType}"]`).click();
+      if (hubType !== 'related') {
+        await page.locator('#fit').click();
+        await page.locator(`#svg .node[data-hub="${hubType}"]`).click();
+      }
       const layout = await page.evaluate(({ hubType, childType }) => {
         const position = element => {
           const circle = element.querySelector('circle:not(.hit):not(.related-halo)');
@@ -130,7 +149,8 @@ async function assertLayout(page, label) {
       assert(column.hubs.every(point=>point.x===column.hubs[0].x),`${hubType}: category hubs stay in one column`);
       assert.equal(column.root.y,column.hubs.find(hub=>hub.kind==='judicial').y,
         `${hubType}: root stays anchored to the judicial row`);
-      await assertLayout(page, `${hubType} expanded`);
+      await assertLayout(page, `${hubType} expanded`, { focused: true });
+      await assertReadableBranch(page, childType, `${hubType} expanded`);
       if (hubType === 'related' && process.env.TEI_GRAPH_RELATED_SCREENSHOT)
         await page.locator('.graph').screenshot({ path: process.env.TEI_GRAPH_RELATED_SCREENSHOT });
       if (hubType === 'procurement' || hubType === 'judicial') {
@@ -149,7 +169,8 @@ async function assertLayout(page, label) {
         assert.equal(descendants.points.length, hubType === 'judicial' ? 8 : 2);
         assert.equal((descendants.points[0].y + descendants.points.at(-1).y) / 2, descendants.parent.y);
         assert(descendants.lines.every(([y1, y2]) => y1 === y2), 'Nested branches are horizontal');
-        await assertLayout(page, `${hubType} nested`);
+        await assertLayout(page, `${hubType} nested`, { focused: true });
+        await assertReadableBranch(page, hubType === 'judicial' ? 'judicial' : 'procurement_year', `${hubType} nested`);
         if (hubType === 'judicial') {
           if (process.env.TEI_GRAPH_JUDICIAL_SCREENSHOT)
             await page.locator('.graph').screenshot({ path: process.env.TEI_GRAPH_JUDICIAL_SCREENSHOT });
@@ -174,12 +195,13 @@ async function assertLayout(page, label) {
       const graph = await page.locator('#svg').boundingBox();
       assert(graph && graph.width > 200 && graph.height > 200, `Graph visible at ${width}px`);
       assert.equal(await page.locator('#svg .node[data-type="procurement_year"]').count(), 2);
-      await assertLayout(page, `${width}px`);
+      await assertLayout(page, `${width}px`, { focused: true });
+      await assertReadableBranch(page, 'procurement_year', `${width}px`);
       if (width===768 && process.env.TEI_GRAPH_NARROW_SCREENSHOT)
         await page.locator('.graph').screenshot({path:process.env.TEI_GRAPH_NARROW_SCREENSHOT});
     }
     await page.locator('#svg .node[data-type="procurement_city"]').first().click();
-    await assertLayout(page,'768px with award details open');
+    await assertLayout(page,'768px with award details open', { focused: true });
     const narrowPanel = await page.evaluate(() => {
       const svg=document.querySelector('#svg').getBoundingClientRect(),info=document.querySelector('#nodeInfo').getBoundingClientRect();
       return {svgBottom:svg.bottom,infoTop:info.top};
