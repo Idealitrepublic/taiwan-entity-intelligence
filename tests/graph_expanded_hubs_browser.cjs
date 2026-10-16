@@ -86,8 +86,13 @@ async function assertLayout(page, label) {
     const hubYs = anchors.hubs.map(hub=>hub.y), steps = hubYs.slice(1).map((y,index)=>y-hubYs[index]);
     assert(anchors.label.bottom < anchors.circle.top, 'Company root label aligns above the circle like category labels');
     assert(anchors.hubs.every(hub=>hub.x===anchors.hubs[0].x), 'All categories share one column');
-    assert(Math.abs(anchors.center.y-(hubYs[0]+hubYs.at(-1))/2)<.01, 'Company root is centered on category column');
+    assert.equal(anchors.center.y,anchors.hubs.find(hub=>hub.kind==='judicial').y,
+      'Company root and judicial hub share the reference row');
     assert(steps.every(step=>Math.abs(step-steps[0])<.01), 'Connected companies and awards match all category spacing');
+    assert.equal(await page.locator('#svg .root-branch').count(),anchors.hubs.length+1,
+      'Every company category and its website connect through the same root rail');
+    assert.match(await page.locator('#svg .ancillary-spine').getAttribute('d'),/^M .* H .* V .* H /,
+      'The website-to-anti-fraud connection also follows an orthogonal branch');
     await assertLayout(page, 'collapsed category layout');
     await page.locator('#svg .node[data-hub="related"]').click();
     const cases = [
@@ -102,11 +107,11 @@ async function assertLayout(page, label) {
         };
         const hub = position(document.querySelector(`#svg .node[data-hub="${hubType}"]`));
         const children = [...document.querySelectorAll(`#svg .node[data-type="${childType}"]`)].map(position);
-        const branches = [...document.querySelectorAll('#svg .graph-branch')].map(line => ({
+        const branches = [...document.querySelectorAll('#svg .graph-branch:not(.root-branch)')].map(line => ({
           x1: Number(line.getAttribute('x1')), y1: Number(line.getAttribute('y1')),
           x2: Number(line.getAttribute('x2')), y2: Number(line.getAttribute('y2'))
         }));
-        const spine = document.querySelector('#svg .graph-spine')?.getAttribute('d');
+        const spine = document.querySelector('#svg .graph-spine:not(.root-spine)')?.getAttribute('d');
         return { hub, children, branches, spine };
       }, { hubType, childType });
       assert.equal(layout.children.length, count, `${hubType} keeps every source-backed node`);
@@ -120,11 +125,11 @@ async function assertLayout(page, label) {
       const column = await page.evaluate(() => {
         const position = element => {const circle=element.querySelector('circle:not(.hit)');return{x:Number(circle.getAttribute('cx')),y:Number(circle.getAttribute('cy'))}};
         return {root:position(document.querySelector('#svg .node[data-type="company"]')),
-          hubs:[...document.querySelectorAll('#svg .node.hub')].map(position)};
+          hubs:[...document.querySelectorAll('#svg .node.hub')].map(hub=>({kind:hub.dataset.hub,...position(hub)}))};
       });
       assert(column.hubs.every(point=>point.x===column.hubs[0].x),`${hubType}: category hubs stay in one column`);
-      assert(Math.abs(column.root.y-(column.hubs[0].y+column.hubs.at(-1).y)/2)<.01,
-        `${hubType}: root stays centered between connected companies and awards`);
+      assert.equal(column.root.y,column.hubs.find(hub=>hub.kind==='judicial').y,
+        `${hubType}: root stays anchored to the judicial row`);
       await assertLayout(page, `${hubType} expanded`);
       if (hubType === 'related' && process.env.TEI_GRAPH_RELATED_SCREENSHOT)
         await page.locator('.graph').screenshot({ path: process.env.TEI_GRAPH_RELATED_SCREENSHOT });
