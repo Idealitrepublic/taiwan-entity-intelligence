@@ -40,7 +40,8 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
         self.assertIn(".main{display:flex;flex-direction:column;min-width:0}", html)
         self.assertIn(".graph svg{inset:170px 0 44px", html)
         self.assertIn("knowledgePositions([...knowledgeGraph.nodes.values()])", html)
-        self.assertIn("840/Math.max(240,maxX-minX+180)", html)
+        self.assertIn("graphRoot.getBBox()", html)
+        self.assertIn("900/Math.max(180,box.width+60)", html)
         self.assertIn("panX=-zoom*", html)
 
     def test_ui_uses_progressive_category_graph(self):
@@ -54,8 +55,9 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
         self.assertIn("全部收合 / Collapse", html)
         self.assertIn("同一筆紀錄涉及多條法規時", html)
         self.assertIn("由左向右分層", html)
-        self.assertIn("x:620", html)
-        self.assertIn("x:860", html)
+        self.assertIn("const hubYs=graphStack(hubs", html)
+        self.assertIn("hubLabelWidth+82", html)
+        self.assertIn("subhubWidth+90", html)
         self.assertNotIn("Math.PI*2*slot/count", html)
 
     def test_right_panel_has_requested_filters_and_grouping(self):

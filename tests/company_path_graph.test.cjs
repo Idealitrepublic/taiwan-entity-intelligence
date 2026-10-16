@@ -80,13 +80,17 @@ test('missing evidence, wrong endpoint or cyclic path never draws a graph',()=>{
 });
 test('path node positions honor actual segment count even when ordinary graph hop filter is one',()=>{
   const context=vm.createContext({graphMode:'path',knowledgeGraph:{manualPositions:new Map()},
-    graphDepthLimit:()=>1,num:Number});
-  vm.runInContext(line('knowledgePositions'),context);
+    graphDepthLimit:()=>1,num:Number,graphContext:null,entityTypeLabels:{Company:'公司 / Company'}});
+  vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+
+    shipped('  function knowledgeMetrics(', '  function showKnowledgeNode('),context);
   const positions=vm.runInContext('knowledgePositions(nodes)',Object.assign(context,
-    {nodes:[{id:'a',depth:0},{id:'shared',depth:1},{id:'b',depth:2}]}));
-  assert.equal(positions.get('a').x,100);
-  assert.equal(positions.get('shared').x,445);
-  assert.equal(positions.get('b').x,790);
+    {nodes:[{id:'a',depth:0,entity_type:'Company',display_name:'Company A'},
+      {id:'shared',depth:1,entity_type:'GovernmentAgency',display_name:'Officially identified agency'},
+      {id:'b',depth:2,entity_type:'Company',display_name:'Company B'}]}));
+  assert.equal(positions.size,3);
+  assert(positions.get('a').x<positions.get('shared').x);
+  assert(positions.get('shared').x<positions.get('b').x);
+  assert(positions.get('shared').x-positions.get('a').x>100);
 });
 test('path range request invokes company-only finder and result is wired into graph renderer',()=>{
   assert(html.includes("company_only:'1'"));
