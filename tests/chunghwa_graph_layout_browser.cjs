@@ -8,7 +8,7 @@ const companyId = 'company:96979933';
 const laborArticles = ['第13條第2項','第24條','第24條第1項','第32條第1項','第32條第2項','第36條第1項','第36條第2項','第38條第4項','第39條','第49條第1項'];
 const graphNodes = [
   {id:companyId,type:'company',label:'中華電信股份有限公司'},
-  ...Array.from({length:13},(_,index)=>({id:`person:${index}`,type:'person',label:`關係人 ${index+1}`,properties:{position:'董事'}})),
+  ...Array.from({length:13},(_,index)=>({id:`person:${index}`,type:'person',label:`關係人 ${index+1}`,properties:{position:index===0?'董事長':index===1?'監察人':'董事'}})),
   ...Array.from({length:50},(_,index)=>({id:`penalty:${index}`,type:'penalty',label:`勞動基準法${laborArticles[index%laborArticles.length]}`,properties:{date:'2025-01-01'}})),
   ...Array.from({length:50},(_,index)=>({id:`judicial:${index}`,type:'judicial',label:`司法院判決 ${index+1}`,properties:{date:'2026-01-01'}})),
   {id:'website:cht',type:'website',label:'cht.com.tw'}
@@ -74,7 +74,9 @@ function inspectGraph() {
     assert.deepEqual(baseline.overlap,[]);
     assert.deepEqual(baseline.clipped,[]);
     await page.locator('#svg .node[data-hub="penalty"]').click();
-    assert.equal(await page.locator('#svg .node[data-type="law_group"]').count(),10);
+    assert.equal(await page.locator('#svg .node[data-type="penalty_law"]').count(),1);
+    await page.locator('#svg .node[data-type="penalty_law"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="penalty_article"]').count(),10);
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
       const layout=await page.evaluate(inspectGraph);
@@ -82,7 +84,7 @@ function inspectGraph() {
         `${width}px: ten expanded labor groups do not add empty space between category hubs`);
       const visible=await page.evaluate(()=>{
         const viewport=document.querySelector('#svg').getBoundingClientRect();
-        return [...document.querySelectorAll('#svg .node[data-type="law_group"]')].map(node=>({
+        return [...document.querySelectorAll('#svg .node[data-type="penalty_article"]')].map(node=>({
           text:node.querySelector('text.child-label').getBoundingClientRect(),
           circle:node.querySelector('circle:not(.hit)').getBoundingClientRect()
         })).filter(node=>node.text.left>=viewport.left&&node.text.right<=viewport.right&&
@@ -97,6 +99,13 @@ function inspectGraph() {
       if(width===1440&&process.env.TEI_CHUNGHWA_LABOR_SCREENSHOT)
         await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_LABOR_SCREENSHOT});
     }
+    await page.setViewportSize({width:1440,height:900});
+    await page.locator('#svg .node[data-type="penalty_article"]').nth(4).click();
+    assert.equal(await page.locator('#svg .node[data-type="penalty_year"]').count(),1);
+    await page.locator('#svg .node[data-type="penalty_year"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="penalty_county"]').count(),1);
+    await page.locator('#svg .node[data-type="penalty_county"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="penalty"]').count(),5);
     await page.locator('#fit').click();
     assert(Number((await page.locator('#zoomValue').textContent()).replace('%',''))>=115,
       'Fit keeps the expanded branch readable instead of shrinking all labels');
@@ -105,6 +114,7 @@ function inspectGraph() {
     await page.setViewportSize({width:1440,height:900});
     await page.locator('#svg .node[data-hub="person"]').click();
     assert.equal(await page.locator('#svg .node[data-type="person"]').count(),13);
+    assert.match(await page.locator('#svg .node[data-type="person"]').first().getAttribute('aria-label'),/關係人 1 · 董事長/);
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
       await page.locator('#fit').click();
@@ -147,6 +157,12 @@ function inspectGraph() {
       if(width===1440&&process.env.TEI_CHUNGHWA_GRAPH_SCREENSHOT)
         await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_GRAPH_SCREENSHOT});
     }
+    await page.setViewportSize({width:1440,height:900});
+    await page.locator('#svg .node[data-type="judicial_year"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="judicial_month"]').count(),1);
+    assert.match(await page.locator('#svg .node[data-type="judicial_month"]').getAttribute('aria-label'),/01 月/);
+    await page.locator('#svg .node[data-type="judicial_month"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="judicial"]').count(),8);
     await page.locator('#collapse').click();
     await page.setViewportSize({width:1440,height:900});
     await page.locator('#svg .node[data-hub="procurement"]').click();

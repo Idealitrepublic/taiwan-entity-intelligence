@@ -7,9 +7,14 @@ const html = fs.readFileSync('web/index.html', 'utf8');
 const company = 'company:22099131';
 const nodes = [
   { id: company, type: 'company', label: '測試公司／Test Company with longer name' },
-  ...['甲', '乙', '丙'].map((name, index) => ({ id: `person:${index}`, type: 'person', label: `董事${name}／Director with long English name ${index}`, properties: { position: '董事' } })),
-  ...['第24條', '第32條', '第36條'].map((law, index) => ({ id: `penalty:${index}`, type: 'penalty', label: `勞動基準法${law}：出勤與工資紀錄`, properties: { date: `2025-0${index + 1}-01`, fine: '10000' } })),
-  ...Array.from({ length: 50 }, (_, index) => ({ id: `judicial:${index}`, type: 'judicial', label: `裁判 ${index + 1}／Court decision concerning extended public source record`, properties: { date: `${index < 49 ? 2026 : 2025}-01-01`, jid: `J-${index}`, source_url: 'https://judicial.gov.tw/record' } })),
+  ...['甲', '乙', '丙', '丁'].map((name, index) => ({ id: `person:${index}`, type: 'person', label: `關係人${name}／Related person with long English name ${index}`, properties: { position: ['監察人','董事長','董事','副董事長'][index] } })),
+  ...['第24條', '第32條', '第36條'].map((law, index) => ({ id: `penalty:${index}`, type: 'penalty', label: `勞動基準法${law}`, properties: { law_text: `勞動基準法${law}`, date: `2025-0${index + 1}-01`, agency:'臺北市政府', fine: '10000', source_url:'https://data.gov.tw/dataset/109896' } })),
+  {id:'penalty:gender',type:'penalty',label:'性別平等工作法第13條',properties:{law_text:'性別平等工作法第13條',date:'2024-04-05',agency:'高雄市政府'}},
+  {id:'penalty:employment',type:'penalty',label:'就業服務法第5條',properties:{law_text:'就業服務法第5條',date:'2023-03-01',agency:'臺中市政府'}},
+  {id:'penalty:safety',type:'penalty',label:'職業安全衛生法第6條',properties:{law_text:'職業安全衛生法第6條',date:'2022-03-01',agency:'新北市政府'}},
+  ...Array.from({ length: 50 }, (_, index) => ({ id: `judicial:${index}`, type: 'judicial', label: `裁判 ${index + 1}／Court decision concerning extended public source record`, properties: { date: index<49?`2026-01-${String(index%28+1).padStart(2,'0')}`:'2025-01-01', jid: `J-${index}`, source_url: 'https://judicial.gov.tw/record' } })),
+  {id:'judicial:feb',type:'judicial',label:'二月裁判',properties:{date:'2026-02-01',jid:'J-FEB',source_url:'https://judicial.gov.tw/feb'}},
+  {id:'judicial:mar',type:'judicial',label:'三月裁判',properties:{date:'2026-03-01',jid:'J-MAR',source_url:'https://judicial.gov.tw/mar'}},
   {id:'website:example',type:'website',label:'company-website-with-very-long-public-domain.example.tw'},
   {id:'anti_fraud:example',type:'anti_fraud',label:'公開反詐來源中需要完整閱讀的長名稱／Fraud source record'}
 ];
@@ -112,7 +117,7 @@ async function assertReadableBranch(page, childType, label) {
     await assertLayout(page, 'collapsed category layout');
     await page.locator('#svg .node[data-hub="related"]').click();
     const cases = [
-      ['related', 'related_company', 2], ['person', 'person', 3], ['penalty', 'law_group', 3], ['judicial', 'judicial_year', 2], ['procurement', 'procurement_city', 2]
+      ['related', 'related_company', 2], ['person', 'person', 4], ['penalty', 'penalty_law', 4], ['judicial', 'judicial_year', 2], ['procurement', 'procurement_city', 2]
     ];
     for (const [hubType, childType, count] of cases) {
       if (hubType !== 'related') {
@@ -154,8 +159,28 @@ async function assertReadableBranch(page, childType, label) {
         `${hubType}: expanded records never create extra vertical gaps between category hubs`);
       await assertLayout(page, `${hubType} expanded`, { focused: true });
       await assertReadableBranch(page, childType, `${hubType} expanded`);
+      if(hubType==='person'){
+        const labels=await page.locator('#svg .node[data-type="person"]').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')));
+        assert(labels[0].includes('董事長')&&labels[1].includes('副董事長')&&labels[2].includes('董事')&&labels[3].includes('監察人'),
+          'People labels include roles and sort by position before name');
+      }
       if (hubType === 'related' && process.env.TEI_GRAPH_RELATED_SCREENSHOT)
         await page.locator('.graph').screenshot({ path: process.env.TEI_GRAPH_RELATED_SCREENSHOT });
+      if (hubType === 'penalty') {
+        const labels=await page.locator('#svg .node[data-type="penalty_law"]').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')));
+        assert(labels.some(label=>label.includes('勞動基準法'))&&labels.some(label=>label.includes('性別平等工作法'))&&labels.some(label=>label.includes('就業服務法'))&&labels.some(label=>label.includes('職業安全衛生法')));
+        await page.locator('#svg .node[data-type="penalty_law"]').filter({hasText:'勞動基準法'}).click();
+        assert.equal(await page.locator('#svg .node[data-type="penalty_article"]').count(),3);
+        await page.locator('#svg .node[data-type="penalty_article"]').first().click();
+        assert.equal(await page.locator('#svg .node[data-type="penalty_year"]').count(),1);
+        await page.locator('#svg .node[data-type="penalty_year"]').click();
+        assert.equal(await page.locator('#svg .node[data-type="penalty_county"]').count(),1);
+        await page.locator('#svg .node[data-type="penalty_county"]').click();
+        assert.equal(await page.locator('#svg .node[data-type="penalty"]').count(),1);
+        await page.locator('#svg .node[data-type="penalty"]').click();
+        assert.equal(await page.locator('#nodeInfoBody a[href^="https://data.gov.tw/"]').count(),1);
+        await assertLayout(page,'penalty law → article → year → county → record',{focused:true});
+      }
       if (hubType === 'procurement' || hubType === 'judicial') {
         await page.locator(`#svg .node[data-type="${childType}"]`).first().click();
         const descendants = await page.evaluate(type => {
@@ -164,12 +189,12 @@ async function assertReadableBranch(page, childType, label) {
             return { x: Number(circle.getAttribute('cx')), y: Number(circle.getAttribute('cy')) };
           };
           const parent = position(document.querySelector(`#svg .node[data-type="${type}"]`));
-          const childType = type === 'judicial_year' ? 'judicial' : 'procurement_year';
+          const childType = type === 'judicial_year' ? 'judicial_month' : 'procurement_year';
           const points = [...document.querySelectorAll(`#svg .node[data-type="${childType}"]`)].map(position);
-          const lines = [...document.querySelectorAll('#svg .graph-branch')].filter(line => Number(line.getAttribute('x1')) === 740);
+          const lines = [...document.querySelectorAll('#svg .graph-branch:not(.root-branch)')];
           return { parent, points, lines: lines.map(line => [line.getAttribute('y1'), line.getAttribute('y2')]) };
         }, childType);
-        assert.equal(descendants.points.length, hubType === 'judicial' ? 8 : 2);
+        assert.equal(descendants.points.length, hubType === 'judicial' ? 3 : 2);
         assert.equal((descendants.points[0].y + descendants.points.at(-1).y) / 2, descendants.parent.y);
         assert(descendants.lines.every(([y1, y2]) => y1 === y2), 'Nested branches are horizontal');
         const nestedPitches=await page.locator('#svg .node.hub circle:not(.hit)').evaluateAll(circles=>
@@ -177,12 +202,19 @@ async function assertReadableBranch(page, childType, label) {
         assert(nestedPitches.every(pitch=>pitch===nestedPitches[0]),
           `${hubType}: opening a year does not push other categories apart`);
         await assertLayout(page, `${hubType} nested`, { focused: true });
-        await assertReadableBranch(page, hubType === 'judicial' ? 'judicial' : 'procurement_year', `${hubType} nested`);
+        await assertReadableBranch(page, hubType === 'judicial' ? 'judicial_month' : 'procurement_year', `${hubType} nested`);
         if (hubType === 'judicial') {
+          const monthOrder=await page.locator('#svg .node[data-type="judicial_month"]').evaluateAll(items=>items.map(item=>item.dataset.groupKey));
+          assert.deepEqual(monthOrder,['03','02','01'],'Judgment months are newest first inside their year');
+          await page.locator('#svg .node[data-type="judicial_month"][data-group-key="01"]').click();
+          await assertLayout(page,'judgment month expanded',{focused:true});
+          await assertReadableBranch(page,'judicial','judgment month expanded');
           if (process.env.TEI_GRAPH_JUDICIAL_SCREENSHOT)
             await page.locator('.graph').screenshot({ path: process.env.TEI_GRAPH_JUDICIAL_SCREENSHOT });
           await page.locator('#svg .node[data-type="judicial"] circle:not(.hit)').first().click();
           assert.equal(await page.locator('#nodeInfoBody a[href^="https://judicial.gov.tw/"]').count(), 1);
+          assert.match(await page.locator('#nodeInfoBody').textContent(),/2026-01-28/,
+            'Judgments within a month appear newest first');
           const seen = new Set();
           for (let pageNumber = 0; pageNumber < 7; pageNumber++) {
             const ids = await page.locator('#svg .node[data-type="judicial"]').evaluateAll(elements => elements.map(element => element.dataset.nodeId));
@@ -194,6 +226,11 @@ async function assertReadableBranch(page, childType, label) {
         }
         if (hubType === 'procurement' && process.env.TEI_GRAPH_SCREENSHOT)
           await page.locator('.graph').screenshot({ path: process.env.TEI_GRAPH_SCREENSHOT });
+        if (hubType === 'procurement') {
+          const labels=await page.locator('#svg .node[data-type="procurement_year"]').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')));
+          assert(labels.every(label=>!/(\d{4}).*\1/.test(label)),
+            'Award year appears only once in each graph label');
+        }
       }
       if (await page.locator('#closeNode').isVisible()) await page.locator('#closeNode').click();
     }

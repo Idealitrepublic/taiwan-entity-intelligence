@@ -176,10 +176,7 @@ _base_company = build_company
 def penalty_source_info(row):
     """Describe source availability without pretending a dataset page is a record URL."""
     url = str(row.get('source_url') or '').strip()
-    raw = row.get('raw') or {}
-    legal_text = ' '.join(str(raw.get(key, '')) for key in ('違法法規法條', '違反法規內容', '法規名稱'))
-    is_labor = '勞動' in legal_text or '勞基法' in legal_text or 'labor' in str(row.get('title') or '').lower()
-    portal = 'https://announcement.mol.gov.tw/' if is_labor else 'https://www.moenv.gov.tw/'
+    portal = 'https://announcement.mol.gov.tw/'
     return {
         'record_url': None,
         'dataset_url': url or portal,
@@ -256,7 +253,24 @@ def build_company(uniform):
     for idx, row in enumerate(data['labor_penalties']):
         node_id = 'penalty:' + str(row.get('_id') or idx)
         title = row.get('違法法規法條') or row.get('法規名稱') or row.get('_source_name') or '裁罰紀錄'
-        data['graph']['nodes'].append({'id':node_id, 'type':'penalty', 'label':str(title), 'properties':{'date':row.get('處分日期') or row.get('date'), 'agency':row.get('主管機關'), 'fine':row.get('罰鍰金額'), 'disposition':row.get('處分字號'), 'fact':row.get('違反法規內容'), 'identity_status':row.get('_identity_status'), 'identity_note':'名稱候選，須核對原文' if row.get('_identity_status') == 'candidate' else 'exact_uniform_number'}})
+        data['graph']['nodes'].append({
+            'id': node_id, 'type': 'penalty', 'label': str(title),
+            'properties': {
+                'date': row.get('處分日期') or row.get('date'),
+                'agency': row.get('主管機關'),
+                'county': row.get('縣市') or row.get('縣市別'),
+                'law_text': row.get('違法法規法條') or row.get('法規名稱'),
+                'fine': row.get('罰鍰金額'),
+                'disposition': row.get('處分字號'),
+                'fact': row.get('違反法規內容'),
+                'source_url': row.get('_dataset_url'),
+                'source_record_id': row.get('_id'),
+                'retrieved_at': row.get('_retrieved_at'),
+                'identity_status': row.get('_identity_status'),
+                'identity_note': ('名稱候選，須核對原文' if row.get('_identity_status') == 'candidate'
+                                  else 'exact_uniform_number'),
+            },
+        })
         data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'labor_penalty',
                                        'properties':{'source':row.get('_source_name'), 'evidence_id':row.get('_id'),
                                                      'match_rule':row.get('_match_rule'), 'source_url':row.get('_source_url'),

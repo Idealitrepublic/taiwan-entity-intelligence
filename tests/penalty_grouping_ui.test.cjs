@@ -14,8 +14,30 @@ const ctx = vm.createContext({
   rawGrid: () => '',
   filterState: {penaltyView: 'all', penaltyYear: '', penaltyCounty: '', penaltyLaw: ''},
 });
-vm.runInContext(section('normalizeLaw', 'groupedLawNodes'), ctx);
+vm.runInContext(section('normalizeLaw', 'groupedProcurementCityNodes'), ctx);
 vm.runInContext(section('uniqueValues', 'judicialCard'), ctx);
+const citations=JSON.parse(JSON.stringify(vm.runInContext(
+  'penaltyCitations({label:"來源紀錄",properties:{law_text:"勞基法第24條第1項；第32條、性別工作平等法第13條；職業安全衛生法第6條：原始敘述"}})',ctx)));
+assert.deepEqual(citations,[
+  {law:'勞動基準法',article:'第24條第1項'},
+  {law:'勞動基準法',article:'第32條'},
+  {law:'性別平等工作法',article:'第13條'},
+  {law:'職業安全衛生法',article:'第6條'}
+]);
+assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext(
+  'penaltyCitations({properties:{law_text:"勞動基準法第24條第1項、第2項"}})',ctx))),[
+  {law:'勞動基準法',article:'第24條第1項'},
+  {law:'勞動基準法',article:'第24條第2項'}
+]);
+assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext(
+  'penaltyCitations({label:"某公司",properties:{}})',ctx))),
+  [{law:'法規未標示 / Law unavailable',article:'條款未標示 / Article unavailable'}]);
+ctx.penaltyNodes=[{id:'same-record',label:'原始資料',properties:{law_text:'勞基法第24條；性別平等工作法第13條',date:'2026-01-01',agency:'臺北市政府'}}];
+const legalGroups=JSON.parse(JSON.stringify(vm.runInContext('groupedLawNodes(penaltyNodes)',ctx)));
+assert.equal(legalGroups.length,2,'One source record can appear under each cited law');
+assert(legalGroups.every(group=>group.count===1),'Each law counts the original record once');
+assert.equal(JSON.parse(JSON.stringify(vm.runInContext(
+  'groupedPenaltyArticleNodes(penaltyNodes,"勞動基準法")',ctx)))[0].label,'第24條 · 1 筆');
 
 const rows = [
   {處分日期: '20260105', 主管機關: '台北市勞動局', 違法法規法條: '勞基法第24條', 違反法規內容: 'EARLY-2026'},

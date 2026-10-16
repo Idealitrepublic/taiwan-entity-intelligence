@@ -48,7 +48,9 @@ class LaborPenaltyRegressionTests(unittest.TestCase):
                   "uniform_number": None, "title": "勞動基準法第24條", "summary": "官方紀錄",
                   "source_url": "https://data.gov.tw/dataset/109896", "source_file_id": "official-snapshot",
                   "indexed_at": "2026-01-02T00:00:00Z",
-                  "raw": {"處分字號": "府勞字第1號", "處分日期": "2026/01/01"}}
+                  "raw": {"處分字號": "府勞字第1號", "處分日期": "2026/01/01",
+                          "違法法規法條": "勞動基準法第24條", "主管機關": "臺北市政府",
+                          "縣市": "臺北市"}}
         judicial = {"records": [], "status": "ok", "matched": 0,
                     "coverage_note": "索引", "interpretation": "非法律結論", "match_rule": "exact"}
         with patch("src.cloud_company._base_company", return_value=base), \
@@ -61,6 +63,11 @@ class LaborPenaltyRegressionTests(unittest.TestCase):
                          "company_name_candidate_requires_verification")
         self.assertEqual(result["evidence"][0]["source_url"], record["source_url"])
         self.assertEqual(result["evidence"][0]["source_record_id"], "府勞字第1號")
+        penalty_node = next(node for node in result["graph"]["nodes"]
+                            if node["type"] == "penalty")
+        self.assertEqual(penalty_node["properties"]["law_text"], "勞動基準法第24條")
+        self.assertEqual(penalty_node["properties"]["county"], "臺北市")
+        self.assertEqual(penalty_node["properties"]["source_record_id"], "mol:abc")
 
 
 if __name__ == "__main__":

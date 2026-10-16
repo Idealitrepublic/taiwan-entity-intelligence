@@ -15,6 +15,8 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
         self.assertIsNone(info["record_url"])
         self.assertEqual(info["link_status"], "dataset_only")
         self.assertIn("無法直接定位", info["message"])
+        gender = penalty_source_info({"raw": {"違法法規法條": "性別平等工作法第13條"}})
+        self.assertEqual(gender["dataset_url"], "https://announcement.mol.gov.tw/")
 
     def test_procurement_route_validates_and_returns_lookup(self):
         expected = {"status": "ok", "matched": 2, "records": []}
@@ -53,12 +55,17 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
         self.assertIn("expandedProcurementCounty", html)
         self.assertIn("dataset.hub", html)
         self.assertIn("全部收合 / Collapse", html)
-        self.assertIn("同一筆紀錄涉及多條法規時", html)
+        self.assertIn("依原始法規欄位分類；沒有法規欄位者不推測法名", html)
+        self.assertIn("違法紀錄 / Violation records", html)
+        self.assertIn("groupedPenaltyArticleNodes", html)
+        self.assertIn("groupedPenaltyYearNodes", html)
+        self.assertIn("groupedPenaltyCountyNodes", html)
+        self.assertIn("groupedJudicialMonthNodes", html)
         self.assertIn("由左向右分層", html)
         self.assertIn("const hubYs=graphHubStack(hubs", html)
         self.assertIn("const standardPitch=Math.max(", html)
         self.assertIn("hubLabelWidth+82", html)
-        self.assertIn("subhubWidth+90", html)
+        self.assertIn("parent.x+Math.max(170,metric(parentNode).width)+90", html)
         self.assertNotIn("Math.PI*2*slot/count", html)
 
     def test_right_panel_has_requested_filters_and_grouping(self):
