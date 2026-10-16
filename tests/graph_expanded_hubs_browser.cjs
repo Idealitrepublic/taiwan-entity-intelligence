@@ -82,7 +82,7 @@ async function assertReadableBranch(page, childType, label) {
         : path === '/api/procurement/22099131' ? { status: 'ok', matched: awards.length, records: awards }
         : path === '/api/company-related/22099131' ? { status: 'ok', uniform_number: '22099131', items: [
           '測試投資股份有限公司／Long affiliated company name one', '另一間有公開紀錄連結的公司／Connected Company'
-        ].map((company_name,index)=>({uniform_number:`2209914${index}`,company_name,connection_type:'same_award_notice',connection_label:'共同標案',evidence:{source_url:'https://example.gov.tw/award',source_name:'測試來源'}})) } : {};
+        ].map((company_name,index)=>({uniform_number:`2209914${index}`,company_name,connection_type:'same_award_notice',connection_label:'共同標案',shared_record:{id:`award-${index}`,title:`共同決標公告 ${index}`},evidence:{source_url:'https://example.gov.tw/award',source_name:'測試來源',source_record_id:`award-${index}`,retrieved_at:'2026-10-16T00:00:00Z'}})) } : {};
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(result) });
     });
     await page.goto('https://tei.local/');
@@ -117,7 +117,7 @@ async function assertReadableBranch(page, childType, label) {
     await assertLayout(page, 'collapsed category layout');
     await page.locator('#svg .node[data-hub="related"]').click();
     const cases = [
-      ['related', 'related_company', 2], ['person', 'person', 4], ['penalty', 'penalty_law', 4], ['judicial', 'judicial_year', 2], ['procurement', 'procurement_city', 2]
+      ['related', 'related_connection', 2], ['person', 'person', 4], ['penalty', 'penalty_law', 4], ['judicial', 'judicial_year', 2], ['procurement', 'procurement_city', 2]
     ];
     for (const [hubType, childType, count] of cases) {
       if (hubType !== 'related') {
@@ -142,10 +142,17 @@ async function assertReadableBranch(page, childType, label) {
       assert.equal((layout.children[0].y + layout.children.at(-1).y) / 2, layout.hub.y,
         `${hubType} children align with their parent`);
       assert(layout.children.every(point => point.x === layout.children[0].x), `${hubType} shares an aligned lane`);
-      assert.equal(layout.branches.length, count);
+      assert.equal(layout.branches.length, hubType==='related'?count*2:count,
+        `${hubType} has one branch to each source and another to its company`);
       assert(layout.branches.every(branch => branch.y1 === branch.y2 && branch.x2 > branch.x1),
         `${hubType} branches are horizontal`);
       assert(layout.spine && layout.spine.includes(`${layout.hub.y}`), `${hubType} has a parent rail`);
+      if(hubType==='related'){
+        assert.equal(await page.locator('#svg .node[data-type="related_company"]').count(),2,
+          'The two verified companies remain visible beyond their source-record nodes');
+        assert.match(await page.locator('#svg .node[data-type="related_connection"]').first().getAttribute('aria-label'),
+          /共同決標公告 0/, 'The connecting node names the actual shared award notice');
+      }
       const column = await page.evaluate(() => {
         const position = element => {const circle=element.querySelector('circle:not(.hit)');return{x:Number(circle.getAttribute('cx')),y:Number(circle.getAttribute('cy'))}};
         return {root:position(document.querySelector('#svg .node[data-type="company"]')),

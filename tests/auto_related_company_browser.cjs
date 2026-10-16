@@ -68,20 +68,27 @@ const companyResponse = {status:'ok',uniform_number:'22099131',
     await page.locator('#search').click();
     await page.locator('#svg .node[data-type="related_company"]').first().waitFor();
     assert.equal(await page.locator('#svg .node[data-type="related_company"]').count(),3);
+    assert.equal(await page.locator('#svg .node[data-type="related_connection"]').count(),3);
     assert.equal(await page.locator('#svg .node[data-hub="related"]').count(),1);
     const layout=await page.evaluate(()=>{
       const hub=Number(document.querySelector('#svg .node[data-hub="related"] circle:not(.hit)').getAttribute('cy'));
       const children=[...document.querySelectorAll('#svg .node[data-type="related_company"] circle:not(.hit):not(.related-halo)')];
+      const connectors=[...document.querySelectorAll('#svg .node[data-type="related_connection"] circle:not(.hit)')];
       const branches=[...document.querySelectorAll('#svg .related-branch')];
       const person=Number(document.querySelector('#svg .node[data-hub="person"] circle:not(.hit)').getAttribute('cy'));
       return {hub,children:children.map(circle=>({x:Number(circle.getAttribute('cx')),y:Number(circle.getAttribute('cy'))})),
+        connectors:connectors.map(circle=>({x:Number(circle.getAttribute('cx')),y:Number(circle.getAttribute('cy'))})),
         branches:branches.map(line=>({y1:line.getAttribute('y1'),y2:line.getAttribute('y2')})),person};
     });
-    assert.equal(layout.children[1].y,layout.hub,'Expanded children center on their parent hub');
-    assert(layout.children.every(child=>child.x===layout.children[0].x),'Children share one aligned column');
-    assert(layout.children[2].y+60<layout.person,'Expanded company lane does not overlap the next hub');
+    assert.equal(layout.connectors[1].y,layout.hub,'Connection sources center on their parent hub');
+    assert(layout.connectors.every(child=>child.x===layout.connectors[0].x),'Connection sources share one aligned column');
+    assert(layout.children.every((company,index)=>company.x>layout.connectors[index].x&&company.y===layout.connectors[index].y),
+      'Each company appears beside the specific source record that connects it to A');
     assert.equal(layout.branches.length,3);
     assert(layout.branches.every(branch=>branch.y1===branch.y2),'Branches stay horizontal');
+    await page.locator('#svg .node[data-type="related_connection"]').first().click();
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/director-1/);
+    assert.equal(await page.locator('#nodeInfoBody a[href^="https://data.gcis.nat.gov.tw"]').count(),1);
     await page.locator('#svg .node[data-type="related_company"]').first().click();
     assert.match(await page.locator('#nodeInfoBody').textContent(),/director-1/);
     assert.equal(await page.locator('#nodeInfoBody a[href^="https://data.gcis.nat.gov.tw"]').count(),1);
