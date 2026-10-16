@@ -17,7 +17,9 @@ const companyResponse = {status:'ok',uniform_number:'96979933',company_name:'中
   graph:{nodes:graphNodes,edges:[{source:companyId,target:'website:cht',relationship:'website'}]},
   evidence:[],labor_penalties:[],judicial_result:{records:[],matched:0},evidence_status:{}};
 const procurementResponse = {status:'ok',matched:74,records:Array.from({length:74},(_,index)=>({
-  id:`award:${index}`,title:`公開標案 ${index+1}`,agency:'臺北市政府',date:'2025-01-01'
+  id:`award:${index}`,title:`公開標案 ${index+1}`,
+  agency:['臺北市政府','新北市政府','臺中市政府','高雄市政府'][index%4],
+  date:`${2026-index%4}-01-01`
 }))};
 
 function inspectGraph() {
@@ -144,6 +146,25 @@ function inspectGraph() {
         `${width}px: judgment year remains available after refocusing`);
       if(width===1440&&process.env.TEI_CHUNGHWA_GRAPH_SCREENSHOT)
         await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_GRAPH_SCREENSHOT});
+    }
+    await page.locator('#collapse').click();
+    await page.setViewportSize({width:1440,height:900});
+    await page.locator('#svg .node[data-hub="procurement"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="procurement_city"]').count(),4);
+    await page.locator('#svg .node[data-type="procurement_city"]').first().click();
+    assert(await page.locator('#svg .node[data-type="procurement_year"]').count()>0);
+    for(const width of [1440,1280,1024,768]){
+      await page.setViewportSize({width,height:900});
+      await page.locator('#fit').click();
+      const layout=await page.evaluate(inspectGraph);
+      assert.equal(layout.hubs.procurement.y-layout.hubs.judicial.y,
+        layout.hubs.judicial.y-layout.hubs.penalty.y,
+        `${width}px: awards and their year branch do not create extra hub-lane whitespace`);
+      assert.deepEqual(layout.overlap,[],`${width}px: award county/year labels do not overlap other nodes`);
+      assert(Number((await page.locator('#zoomValue').textContent()).replace('%',''))>=115,
+        `${width}px: expanded award records remain readable`);
+      if(width===1440&&process.env.TEI_CHUNGHWA_AWARDS_SCREENSHOT)
+        await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_AWARDS_SCREENSHOT});
     }
     assert.deepEqual(errors,[]);
     console.log('Chunghwa-shaped graph: judicial spacing, shared company rail, expansion and 1440/1280/1024/768px passed.');

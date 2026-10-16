@@ -172,6 +172,10 @@ async function assertReadableBranch(page, childType, label) {
         assert.equal(descendants.points.length, hubType === 'judicial' ? 8 : 2);
         assert.equal((descendants.points[0].y + descendants.points.at(-1).y) / 2, descendants.parent.y);
         assert(descendants.lines.every(([y1, y2]) => y1 === y2), 'Nested branches are horizontal');
+        const nestedPitches=await page.locator('#svg .node.hub circle:not(.hit)').evaluateAll(circles=>
+          circles.slice(1).map((circle,index)=>Number(circle.getAttribute('cy'))-Number(circles[index].getAttribute('cy'))));
+        assert(nestedPitches.every(pitch=>pitch===nestedPitches[0]),
+          `${hubType}: opening a year does not push other categories apart`);
         await assertLayout(page, `${hubType} nested`, { focused: true });
         await assertReadableBranch(page, hubType === 'judicial' ? 'judicial' : 'procurement_year', `${hubType} nested`);
         if (hubType === 'judicial') {
