@@ -76,6 +76,8 @@ function inspectGraph() {
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
       const layout=await page.evaluate(inspectGraph);
+      assert.equal(layout.hubs.penalty.y-layout.hubs.person.y,layout.hubs.judicial.y-layout.hubs.penalty.y,
+        `${width}px: ten expanded labor groups do not add empty space between category hubs`);
       const visible=await page.evaluate(()=>{
         const viewport=document.querySelector('#svg').getBoundingClientRect();
         return [...document.querySelectorAll('#svg .node[data-type="law_group"]')].map(node=>({
@@ -105,6 +107,12 @@ function inspectGraph() {
       await page.setViewportSize({width,height:900});
       await page.locator('#fit').click();
       await page.locator('#minus').click();
+      const layout=await page.evaluate(inspectGraph);
+      assert.equal(layout.hubs.penalty.y-layout.hubs.person.y,layout.hubs.judicial.y-layout.hubs.penalty.y,
+        `${width}px: thirteen people do not create a tall empty gap before labor violations`);
+      assert(layout.hubs.judicial.y-layout.hubs.penalty.y<=step,
+        `${width}px: expanded hubs do not exceed the judicial reference spacing`);
+      assert.deepEqual(layout.overlap,[],`${width}px: compact categories do not overlap expanded people`);
       const visible=await page.evaluate(()=>{
         const viewport=document.querySelector('#svg').getBoundingClientRect();
         return [...document.querySelectorAll('#svg .node[data-type="person"]')].map(node=>({
@@ -118,6 +126,8 @@ function inspectGraph() {
         `${width}px: refocused people text and circles remain readable`);
       assert(Number((await page.locator('#zoomValue').textContent()).replace('%',''))>=115,
         `${width}px: Fit and zoom-out cannot shrink expanded people into a tiny overview`);
+      if(width===1440&&process.env.TEI_CHUNGHWA_PEOPLE_SCREENSHOT)
+        await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_PEOPLE_SCREENSHOT});
     }
     await page.locator('#collapse').click();
     await page.setViewportSize({width:1440,height:900});
@@ -126,6 +136,8 @@ function inspectGraph() {
       await page.setViewportSize({width,height:900});
       const layout=await page.evaluate(inspectGraph);
       assert.equal(layout.root.y,layout.hubs.judicial.y,`${width}px: judicial anchor remains aligned`);
+      assert.equal(layout.hubs.judicial.y-layout.hubs.penalty.y,layout.hubs.penalty.y-layout.hubs.person.y,
+        `${width}px: judicial expansion keeps uniform category spacing`);
       assert.equal(layout.judicialChildren,1,`${width}px: judgment year stays expandable`);
       assert.deepEqual(layout.overlap,[],`${width}px: no node or label overlap`);
       assert(await page.locator('#svg .node[data-type="judicial_year"]').count()>0,

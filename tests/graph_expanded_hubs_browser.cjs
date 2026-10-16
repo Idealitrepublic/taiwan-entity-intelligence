@@ -149,6 +149,9 @@ async function assertReadableBranch(page, childType, label) {
       assert(column.hubs.every(point=>point.x===column.hubs[0].x),`${hubType}: category hubs stay in one column`);
       assert.equal(column.root.y,column.hubs.find(hub=>hub.kind==='judicial').y,
         `${hubType}: root stays anchored to the judicial row`);
+      const pitches=column.hubs.slice(1).map((hub,index)=>hub.y-column.hubs[index].y);
+      assert(pitches.every(pitch=>pitch===pitches[0]),
+        `${hubType}: expanded records never create extra vertical gaps between category hubs`);
       await assertLayout(page, `${hubType} expanded`, { focused: true });
       await assertReadableBranch(page, childType, `${hubType} expanded`);
       if (hubType === 'related' && process.env.TEI_GRAPH_RELATED_SCREENSHOT)

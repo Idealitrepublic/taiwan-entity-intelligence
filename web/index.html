@@ -257,16 +257,15 @@
   }
   function graphPositions(view){
     const positions=new Map([[view.center.id,{x:105,y:350}]]),metric=node=>legacyMetrics(node,view.center.id),hubs=view.nodes.filter(node=>node.isHub),hubX=350;
-    const children=view.nodes.filter(node=>node.parentHub===expandedHub),descendants=view.nodes.filter(node=>node.parentSubHub),localYs=graphStack(children,0,18,metric),localBounds=children.flatMap(node=>[localYs.get(node.id)-metric(node).top,localYs.get(node.id)+metric(node).bottom]);
-    if(descendants.length){const parentY=localYs.get(descendants[0].parentSubHub)||0,descendantYs=graphStack(descendants,parentY,16,metric);for(const node of descendants)localBounds.push(descendantYs.get(node.id)-metric(node).top,descendantYs.get(node.id)+metric(node).bottom)}
-    const band=node=>{const base=metric(node);return node.hubGroup===expandedHub&&localBounds.length?{...base,top:Math.max(base.top,-Math.min(...localBounds)),bottom:Math.max(base.bottom,Math.max(...localBounds))}:base};
+    const children=view.nodes.filter(node=>node.parentHub===expandedHub),descendants=view.nodes.filter(node=>node.parentSubHub);
     const judicialHub=hubs.find(node=>node.hubGroup==='judicial')||hubs[0],judicialBox=judicialHub?metric(judicialHub):null,hubPitch=Math.max(judicialBox?judicialBox.top+judicialBox.bottom+24:100,...hubs.slice(1).map((node,index)=>metric(hubs[index]).bottom+metric(node).top+24));
-    const hubYs=graphHubStack(hubs,350,24,band,metric,hubPitch);hubs.forEach(node=>positions.set(node.id,{x:hubX,y:hubYs.get(node.id)}));
+    // Child and grandchild branches occupy separate x lanes; their height must not push apart the hub lane.
+    const hubYs=graphHubStack(hubs,350,24,metric,hubPitch);hubs.forEach(node=>positions.set(node.id,{x:hubX,y:hubYs.get(node.id)}));
     const hubLabelWidth=Math.max(190,...hubs.map(node=>metric(node).width)),childX=hubX+hubLabelWidth+82,hubY=positions.get(`hub:${expandedHub}`)?.y||350,childYs=graphStack(children,hubY,18,metric);
     children.forEach(node=>positions.set(node.id,{x:childX,y:childYs.get(node.id)}));
     const subhubWidth=Math.max(170,...children.filter(node=>node.isSubHub).map(node=>metric(node).width)),grandchildX=childX+subhubWidth+90,parentY=positions.get(descendants[0]?.parentSubHub)?.y||350,grandchildYs=graphStack(descendants,parentY,16,metric);
     descendants.forEach(node=>positions.set(node.id,{x:grandchildX,y:grandchildYs.get(node.id)}));
-    const extras=view.nodes.filter(node=>['website','anti_fraud'].includes(node.type));let previous=hubs.at(-1),previousY=previous?positions.get(previous.id).y:350;for(const node of extras){const box=metric(node),step=previous?Math.max(hubPitch,band(previous).bottom+box.top+24):hubPitch,y=previousY+step;positions.set(node.id,{x:node.type==='anti_fraud'?childX:hubX,y});previous=node;previousY=y}
+    const extras=view.nodes.filter(node=>['website','anti_fraud'].includes(node.type));let previous=hubs.at(-1),previousY=previous?positions.get(previous.id).y:350;for(const node of extras){const box=metric(node),step=previous?Math.max(hubPitch,metric(previous).bottom+box.top+24):hubPitch,y=previousY+step;positions.set(node.id,{x:node.type==='anti_fraud'?childX:hubX,y});previous=node;previousY=y}
     return positions;
   }
   function applyGraphTransform(){if(graphRoot)graphRoot.setAttribute('transform',`translate(${500+panX} ${350+panY}) scale(${zoom}) translate(-500 -350)`)}
@@ -423,12 +422,12 @@
   function legacyRadius(node,centerId){return node.id===centerId?38:node.isHub?28:node.isSubHub?20:node.type==='related_company'?18:node.type==='person'||node.type==='law_group'||node.type==='judicial'||node.type==='procurement_year'?16:node.type==='website'?13:8}
   function legacyMetrics(node,centerId){const radius=legacyRadius(node,centerId),above=Boolean(node.isHub||node.isSubHub||node.id===centerId),name=node.isHub?node.label+(expandedHub===node.hubGroup?' −':' ＋'):node.label||node.id,fontSize=node.isHub?13:node.parentHub||node.parentSubHub?14:11,lineHeight=fontSize===14?18:15,lines=graphLabelLines(name,node.isHub?195:node.isSubHub?190:node.parentHub||node.parentSubHub?220:195,fontSize),width=Math.max(...lines.map(line=>graphTextWidth(line,fontSize)),0),meta=node.type==='related_company'?17:0,block=lines.length*lineHeight+meta;return{radius,lines,width,lineHeight,top:above?radius+block+9:Math.max(radius+4,block/2+4),bottom:above?radius+4:Math.max(radius+4,block/2+4),right:above?radius+4:radius+13+width}}
   function graphStack(items,centerY,gap,metrics){const heights=items.map(node=>{const box=metrics(node);return box.top+box.bottom}),total=heights.reduce((sum,height)=>sum+height,0)+Math.max(0,items.length-1)*gap,points=new Map();let cursor=centerY-total/2;items.forEach((node,index)=>{points.set(node.id,cursor+metrics(node).top);cursor+=heights[index]+gap});if(items.length){const shift=centerY-(points.get(items[0].id)+points.get(items.at(-1).id))/2;for(const node of items)points.set(node.id,points.get(node.id)+shift)}return points}
-  function graphHubStack(hubs,centerY,gap,band,metric,referencePitch){
+  function graphHubStack(hubs,centerY,gap,metric,referencePitch){
     const points=new Map();if(!hubs.length)return points;
     const standardPitch=Math.max(referencePitch,...hubs.slice(1).map((node,index)=>metric(hubs[index]).bottom+metric(node).top+gap),0),anchor=Math.max(0,hubs.findIndex(node=>node.hubGroup==='judicial'));
     points.set(hubs[anchor].id,centerY);
-    for(let index=anchor+1;index<hubs.length;index++)points.set(hubs[index].id,points.get(hubs[index-1].id)+Math.max(standardPitch,band(hubs[index-1]).bottom+band(hubs[index]).top+gap));
-    for(let index=anchor-1;index>=0;index--)points.set(hubs[index].id,points.get(hubs[index+1].id)-Math.max(standardPitch,band(hubs[index]).bottom+band(hubs[index+1]).top+gap));
+    for(let index=anchor+1;index<hubs.length;index++)points.set(hubs[index].id,points.get(hubs[index-1].id)+standardPitch);
+    for(let index=anchor-1;index>=0;index--)points.set(hubs[index].id,points.get(hubs[index+1].id)-standardPitch);
     return points;
   }
   function createKnowledgeGraph(profile,item={}){return{rootId:profile.id,rootProfile:profile,searchItem:item,nodes:new Map([[profile.id,{...profile,depth:0}]]),edges:new Map(),expanded:new Set(),loading:new Set(),cursors:new Map(),hasMore:new Map(),manualPositions:new Map(),draggingId:null}}
