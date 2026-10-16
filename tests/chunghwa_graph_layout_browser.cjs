@@ -29,6 +29,10 @@ function inspectGraph() {
   const root=point(svg.querySelector('.node[data-type="company"]'));
   const hubs=Object.fromEntries(hubNodes.map(node=>[node.dataset.hub,point(node)]));
   const website=point(svg.querySelector('.node[data-type="website"]'));
+  const websiteNode=svg.querySelector('.node[data-type="website"]');
+  const websiteRadius=Number(websiteNode.querySelector('circle:not(.hit)').getAttribute('r'));
+  const categoryRadius=Number(hubNodes[0].querySelector('circle:not(.hit)').getAttribute('r'));
+  const websiteLabelSize=Number.parseFloat(getComputedStyle(websiteNode.querySelector('text.child-label')).fontSize);
   const branches=[...svg.querySelectorAll('.root-branch')].map(line=>({
     x1:Number(line.getAttribute('x1')),y1:Number(line.getAttribute('y1')),
     x2:Number(line.getAttribute('x2')),y2:Number(line.getAttribute('y2'))
@@ -40,7 +44,7 @@ function inspectGraph() {
     if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)
       overlap.push([boxes[i].id,boxes[j].id]);
   }
-  return{root,hubs,website,branches,spine:svg.querySelector('.root-spine')?.getAttribute('d'),
+  return{root,hubs,website,websiteRadius,categoryRadius,websiteLabelSize,branches,spine:svg.querySelector('.root-spine')?.getAttribute('d'),
     clipped:boxes.filter(({box})=>box.left<viewport.left-2||box.right>viewport.right+2||box.top<viewport.top-2||box.bottom>viewport.bottom+2).map(({id})=>id),
     overlap,judicialChildren:svg.querySelectorAll('.node[data-type="judicial_year"]').length};
 }
@@ -68,6 +72,8 @@ function inspectGraph() {
     assert.equal(baseline.hubs.penalty.y-baseline.hubs.person.y,step,'People use the judicial spacing');
     assert.equal(baseline.hubs.procurement.y-baseline.hubs.judicial.y,step,'Awards use the judicial spacing');
     assert.equal(baseline.website.y-baseline.hubs.procurement.y,step,'Company website uses the same spacing');
+    assert.equal(baseline.websiteRadius,baseline.categoryRadius,'Website circle matches the other direct relationship nodes');
+    assert(baseline.websiteLabelSize>=13,'Website label is readable at the same size as category labels');
     assert.equal(baseline.branches.length,5,'Every direct company connection uses the shared rail');
     assert(baseline.branches.every(branch=>branch.x1===baseline.branches[0].x1&&branch.y1===branch.y2&&branch.x2>branch.x1));
     assert(baseline.spine?.includes(`V ${baseline.website.y}`),'The root rail reaches the last direct node');
