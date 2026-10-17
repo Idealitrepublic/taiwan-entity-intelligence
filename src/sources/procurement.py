@@ -5,6 +5,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from typing import Any
 
 API = "https://pcc-api.openfun.app/api/searchbycompanyid"
@@ -91,6 +92,7 @@ def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str
         awards.sort(key=lambda row: row['date'], reverse=True)
         return {
             "status": "ok", "matched": len(awards[:limit]),
+            "retrieved_at": datetime.now(timezone.utc).isoformat(),
             "available_notices": int(payload.get("total_records") or len(rows)),
             "records": awards[:limit],
             "returned_notices": len(rows),

@@ -68,6 +68,28 @@ class LaborPenaltyRegressionTests(unittest.TestCase):
         self.assertEqual(penalty_node["properties"]["law_text"], "勞動基準法第24條")
         self.assertEqual(penalty_node["properties"]["county"], "臺北市")
         self.assertEqual(penalty_node["properties"]["source_record_id"], "mol:abc")
+        self.assertEqual(penalty_node["evidence"]["source_record_id"], "府勞字第1號")
+        self.assertEqual(penalty_node["evidence"]["source_locator_type"], "dataset_only")
+        self.assertEqual(result["graph"]["edges"][0]["evidence"], penalty_node["evidence"])
+
+    def test_judicial_name_mention_keeps_evidence_without_claiming_case_role(self):
+        base = {"status": "ok", "uniform_number": "23060248", "company_name": "全家便利商店股份有限公司",
+                "website_url": None, "evidence": [], "evidence_status": {},
+                "graph": {"nodes": [], "edges": []}}
+        row = {"jid": "TEST,1,訴,1,20260101,1", "title": "測試裁判", "date": "2026-01-01",
+               "summary": "公司名稱出現在文件", "source_url": "https://judgment.judicial.gov.tw/example",
+               "retrieved_at": "2026-01-02T00:00:00Z", "provenance": "official_jdoc_api"}
+        judicial = {"records": [row], "status": "ok", "matched": 1,
+                    "coverage_note": "部分索引", "interpretation": "非法律結論", "match_rule": "company_name_mention"}
+        with patch("src.cloud_company._base_company", return_value=base), \
+             patch("src.cloud_company.indexed_records", return_value=[]), \
+             patch("src.cloud_company.records_for_company", return_value=judicial):
+            result = build_company("23060248")
+        node = next(item for item in result["graph"]["nodes"] if item["type"] == "judicial")
+        self.assertEqual(node["properties"]["identity_status"], "name_mention_unverified")
+        self.assertEqual(node["evidence"]["source_record_id"], row["jid"])
+        self.assertEqual(result["graph"]["edges"][0]["relationship"], "mentioned_in_judgment")
+        self.assertFalse(result["graph"]["edges"][0]["properties"]["legal_conclusion"])
 
 
 if __name__ == "__main__":

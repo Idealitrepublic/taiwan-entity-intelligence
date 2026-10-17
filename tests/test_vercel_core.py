@@ -46,6 +46,13 @@ class VercelCoreTests(unittest.TestCase):
         self.assertEqual(data["company_name"], "隔離測試公司")
         self.assertEqual(calls, {"company": 1, "director": 1})
         self.assertEqual(len(data["people"]), 1)
+        person = next(node for node in data["graph"]["nodes"] if node["type"] == "person")
+        self.assertEqual(person["properties"]["identity_status"], "source_scoped_observation")
+        self.assertEqual(person["evidence"]["source_locator_type"],
+                         "query_row_not_official_person_id")
+        self.assertEqual(data["graph"]["edges"][0]["evidence"], person["evidence"])
+        self.assertIn("Business_Accounting_NO+eq+87654321", person["evidence"]["source_url"])
+        self.assertNotIn("source_record_id", person["evidence"])
 
     def test_empty_moea_response_is_not_found_not_invalid_json(self):
         response = unittest.mock.Mock()

@@ -6,6 +6,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 
 from .runtime_config import public_supabase_config
 from .sources.judicial_index import records_for_company
@@ -87,7 +88,23 @@ def build_company(uniform: str):
     except Exception as exc:
         director_error = f"{type(exc).__name__}: {exc}"
 
-    people, nodes, edges = [], [{"id": f"company:{uniform}", "type": "company", "label": name, "properties": {"uniform_number": uniform, "source": "經濟部商工行政資料開放平台"}}], []
+    retrieved_at = datetime.now(timezone.utc).isoformat()
+    registry_url = COMPANY_API + "?" + urllib.parse.urlencode({
+        "$format": "json", "$filter": f"Business_Accounting_NO eq {uniform}",
+        "$skip": "0", "$top": "1",
+    })
+    director_url = DIRECTOR_API + "?" + urllib.parse.urlencode({
+        "$format": "json", "$filter": f"Business_Accounting_NO eq {uniform}",
+        "$skip": "0", "$top": "1000",
+    })
+    company_evidence = {"source_name": "經濟部公司登記", "source_url": registry_url,
+                        "source_record_id": uniform, "retrieved_at": retrieved_at,
+                        "match_rule": "exact_uniform_number"}
+    people, nodes, edges = [], [{"id": f"company:{uniform}", "type": "company", "label": name,
+                                 "properties": {"uniform_number": uniform,
+                                                "source": "經濟部商工行政資料開放平台",
+                                                "identity_status": "verified_identifier"},
+                                 "evidence": company_evidence}], []
     for idx, row in enumerate(director_rows[:50], 1):
         person = row.get("Person_Name") or row.get("person_name") or row.get("Name")
         if not person:
@@ -97,8 +114,21 @@ def build_company(uniform: str):
         representative = row.get("Representative") or row.get("representative")
         people.append({"uniform_number": uniform, "company_name": name, "person_name": person, "position": position, "shares": shares, "representative": representative})
         pid = f"person:{person}:{idx}"
-        nodes.append({"id": pid, "type": "person", "label": person, "properties": {"position": position, "shares": shares, "representative": representative, "source": "經濟部公司登記董監事資料"}})
-        edges.append({"source": f"company:{uniform}", "target": pid, "relationship": position, "properties": {"source": "MOEA_DIRECTOR_API", "live": True}})
+        director_evidence = {"source_name": "經濟部公司登記董監事資料",
+                             "source_url": director_url, "retrieved_at": retrieved_at,
+                             "source_locator": f"Business_Accounting_NO={uniform};row={idx}",
+                             "source_locator_type": "query_row_not_official_person_id",
+                             "match_rule": "exact_company_uniform;person_identity_source_scoped"}
+        nodes.append({"id": pid, "type": "person", "label": person,
+                      "properties": {"position": position, "shares": shares,
+                                     "representative": representative,
+                                     "source": "經濟部公司登記董監事資料",
+                                     "identity_status": "source_scoped_observation"},
+                      "evidence": director_evidence})
+        edges.append({"source": f"company:{uniform}", "target": pid,
+                      "relationship": position,
+                      "properties": {"source": "MOEA_DIRECTOR_API", "live": True},
+                      "evidence": director_evidence})
 
     evidence, db_ok = _supabase_evidence(uniform)
     local_company = _supabase_company(uniform) if SUPABASE_KEY else None
@@ -248,10 +278,13 @@ def build_company(uniform):
     data['judicial_result'] = judicial
     data['evidence_status']['司法院'] = {'status': judicial['status'], 'matched': judicial['matched'], 'message': judicial['coverage_note'] + ' ' + judicial['interpretation'], 'url': data['judicial_search_url']}
     for row in judicial['records']:
-        data['evidence'].append({'id':'judicial:'+row['jid'], 'title':row['title'], 'summary':row['summary'], 'source_type':'judicial', 'source_url':row['source_url'], 'source_record_id':row['jid'], 'retrieved_at':row.get('retrieved_at'), 'provenance':row.get('provenance'), 'event_date':row.get('date'), 'match_rule':judicial['match_rule'], 'raw':row})
+        data['evidence'].append({'id':'judicial:'+row['jid'], 'title':row['title'], 'summary':row['summary'], 'source_type':'judicial', 'source_name':'司法院裁判書開放資料', 'source_url':row['source_url'], 'source_record_id':row['jid'], 'source_locator_type':'judicial_jid', 'retrieved_at':row.get('retrieved_at'), 'provenance':row.get('provenance'), 'event_date':row.get('date'), 'match_rule':judicial['match_rule'], 'raw':row})
     company_node = f"company:{uniform}"
+    evidence_by_id = {str(item.get('id')): item for item in data['evidence']
+                      if isinstance(item, dict) and item.get('id')}
     for idx, row in enumerate(data['labor_penalties']):
         node_id = 'penalty:' + str(row.get('_id') or idx)
+        source_evidence = evidence_by_id.get(str(row.get('_id'))) or {}
         title = row.get('違法法規法條') or row.get('法規名稱') or row.get('_source_name') or '裁罰紀錄'
         data['graph']['nodes'].append({
             'id': node_id, 'type': 'penalty', 'label': str(title),
@@ -270,15 +303,27 @@ def build_company(uniform):
                 'identity_note': ('名稱候選，須核對原文' if row.get('_identity_status') == 'candidate'
                                   else 'exact_uniform_number'),
             },
+            'evidence': source_evidence,
         })
         data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'labor_penalty',
                                        'properties':{'source':row.get('_source_name'), 'evidence_id':row.get('_id'),
                                                      'match_rule':row.get('_match_rule'), 'source_url':row.get('_source_url'),
-                                                     'retrieved_at':row.get('_retrieved_at')}})
+                                                     'retrieved_at':row.get('_retrieved_at')},
+                                       'evidence': source_evidence})
     for row in judicial['records']:
         node_id = 'judicial:' + row['jid']
-        data['graph']['nodes'].append({'id':node_id, 'type':'judicial', 'label':str(row.get('title') or '裁判書'), 'properties':{'date':row.get('date'), 'jid':row['jid'], 'source_url':row['source_url']}})
-        data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'mentioned_in_judgment', 'properties':{'source':'司法院 JDoc API', 'legal_conclusion':False}})
+        source_evidence = evidence_by_id.get(node_id) or {}
+        data['graph']['nodes'].append({'id':node_id, 'type':'judicial',
+                                      'label':str(row.get('title') or '裁判書'),
+                                      'properties':{'date':row.get('date'), 'jid':row['jid'],
+                                                    'source_url':row['source_url'],
+                                                    'identity_status':'name_mention_unverified'},
+                                      'evidence':source_evidence})
+        data['graph']['edges'].append({'source':company_node, 'target':node_id,
+                                      'relationship':'mentioned_in_judgment',
+                                      'properties':{'source':'司法院 JDoc API',
+                                                    'legal_conclusion':False},
+                                      'evidence':source_evidence})
     data['evidence_count'] = len(data['evidence'])
     if data.get('website_host'):
         try:

@@ -21,7 +21,8 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     {id:'person:director:1',type:'person',label:'測試董事',properties:{position:'董事',source:'經濟部董監事資料'}},
     {id:'penalty:case-1',type:'penalty',label:'勞動基準法第24條',properties:{date:'2026-08-01',source_url:'https://example.gov.tw/penalty',source_record_id:'case-1'}},
     {id:'judicial:case-2',type:'judicial',label:'測試裁判',properties:{date:'2026-07-01',source_url:'https://example.gov.tw/judgment',jid:'case-2'}}],edges:[]},
-  evidence:[{id:'penalty:case-1',source_name:'勞動裁罰公開資料',source_url:'https://example.gov.tw/penalty',source_record_id:'case-1'},
+  evidence:[{id:'person:director:1',source_name:'經濟部董監事資料',source_url:'https://example.gov.tw/director',source_record_id:'query-row-1',source_locator_type:'query_row_not_official_person_id',match_rule:'exact_company_uniform;person_identity_source_scoped'},
+    {id:'penalty:case-1',source_name:'勞動裁罰公開資料',source_url:'https://example.gov.tw/penalty',source_record_id:'case-1'},
     {id:'judicial:case-2',source_name:'司法院',source_url:'https://example.gov.tw/judgment',source_record_id:'case-2',match_rule:'company_name_candidate_requires_verification'}]};
   if(uniform==='12345678')for(let index=2;index<=10;index++)result.graph.nodes.push({id:`person:director:${index}`,type:'person',label:`測試董事 ${index}`,properties:{position:'董事',source:'經濟部董監事資料'}});
   return result;
@@ -82,6 +83,8 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     await page.locator('#q').fill('22099131');
     await page.locator('#search').click();
     await page.locator('#svg .node[data-type="related_company"]').first().waitFor();
+    assert.match(await page.locator('#coverageScope').textContent(),/不是全臺覆蓋率/);
+    assert.match(await page.locator('#coverageScope').textContent(),/顯示 3 家，最多 6 家/);
     assert.equal(await page.locator('#svg .node[data-type="related_company"]').count(),3);
     assert.equal(await page.locator('#svg .node[data-type="related_connection"]').count(),3);
     assert.equal(await page.locator('#svg .node[data-hub="related"]').count(),1);
@@ -103,6 +106,7 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     assert(layout.branches.every(branch=>branch.y1===branch.y2),'Branches stay horizontal');
     await page.locator('#svg .node[data-type="related_connection"]').first().click();
     assert.match(await page.locator('#nodeInfoBody').textContent(),/director-1/);
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/來源觀察，非正式公司隸屬關係/);
     assert.equal(await page.locator('#nodeInfoBody a[href^="https://data.gcis.nat.gov.tw"]').count(),1);
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
@@ -138,6 +142,14 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('#svg .node[data-type="related_detail"]').count(),8,'Large source lists stay bounded');
     assert.match(await page.locator('#svg .node[data-node-id="related-category:12345678:person"]').textContent(),/顯示前 8 筆/);
+    const directorId='related-detail:12345678:person%3Adirector%3A1';
+    await page.locator(`#svg .node[data-node-id="${directorId}"]`).click();
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/人物跨公司身分未核對/);
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/query-row-1/);
+    await page.locator(`#svg .legacy-evidence-edge[data-target="${directorId}"]`).focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#nodeInfoBody a[href="https://example.gov.tw/director"]').count(),1,
+      'The keyboard-accessible line opens its exact source record');
     await page.locator('#svg .node[data-node-id="related-category:12345678:penalty"]').focus();
     await page.keyboard.press('Enter');
     await page.locator('#svg .node[data-node-id="related-detail:12345678:penalty%3Acase-1"]').waitFor();
@@ -146,7 +158,7 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     await page.locator('#svg .node[data-node-id="related-category:12345678:judicial"]').focus();
     await page.keyboard.press('Enter');
     await page.locator('#svg .node[data-node-id="related-detail:12345678:judicial%3Acase-2"]').click();
-    assert.match(await page.locator('#nodeInfoBody').textContent(),/名稱候選，須核對原文/);
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/案件角色未核對/);
     const firstCategoryPositions=await page.locator('#svg .node[data-type="related_category"] circle:not(.hit)').evaluateAll(circles=>circles.map(circle=>Number(circle.getAttribute('cy'))));
     assert(firstCategoryPositions.every((y,index)=>!index||y-firstCategoryPositions[index-1]>40),'Linked company categories retain readable vertical spacing');
     await page.locator('#svg .node[data-node-id="related-company:22345678"]').focus();
