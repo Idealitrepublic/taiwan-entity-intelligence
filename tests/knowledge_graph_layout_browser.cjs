@@ -112,7 +112,17 @@ async function geometry(page, label) {
     await page.locator(`#svg .node[data-node-id="${denseNodes.at(-1).id}"]`).waitFor();
     assert((await geometry(page,'45-node dense graph')).nodes>=46);
     for(const width of[1440,1280,1024,768]){await page.setViewportSize({width,height:900});await geometry(page,`dense ${width}px`)}
+    await page.setViewportSize({width:390,height:844});
+    const mobileList=page.locator('#mobileGraphList');
+    assert(await mobileList.isVisible(),'Mobile graph has an accessible node and edge list');
+    assert((await mobileList.locator('button').count())>=46,'All loaded nodes remain selectable on mobile');
+    assert((await mobileList.locator('button').first().evaluate(element=>parseFloat(getComputedStyle(element).fontSize)))>=14);
+    await mobileList.locator('button').filter({hasText:first[0].display_name}).first().click();
+    assert.match(await page.locator('#nodeInfoTitle').innerText(),/董事與公司代表/);
+    await page.locator('#closeNode').click();
+    await mobileList.locator('button').filter({hasText:root.display_name+' → '+first[0].display_name}).first().click();
+    assert.match(await page.locator('#nodeInfoBody').innerText(),/official-0/);
     assert.deepEqual(errors,[]);
-    console.log('Entity graph: 10, 17 and 46+ mixed nodes; two layers; labels, edges, Evidence and 1440/1280/1024/768px passed.');
+    console.log('Entity graph: 10, 17 and 46+ mixed nodes; two layers; labels, edges, Evidence, 1440/1280/1024/768px geometry and mobile list passed.');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

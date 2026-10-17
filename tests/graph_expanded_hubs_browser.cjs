@@ -260,6 +260,13 @@ async function assertReadableBranch(page, childType, label) {
     assert(narrowPanel.svgBottom<narrowPanel.infoTop,'Narrow-screen details sit below the graph, not over its nodes');
     if (process.env.TEI_GRAPH_NARROW_DETAILS_SCREENSHOT)
       await page.locator('.graph').screenshot({path:process.env.TEI_GRAPH_NARROW_DETAILS_SCREENSHOT});
+    await page.locator('#closeNode').click();
+    await page.setViewportSize({width:390,height:844});
+    const mobileList=page.locator('#mobileGraphList');
+    assert(await mobileList.isVisible(),'Legacy graph exposes its nodes in a mobile list');
+    assert((await mobileList.locator('button').count())>=await page.locator('#svg .node').count());
+    await mobileList.locator('button').first().click();
+    assert(await page.locator('#nodeInfo').isVisible(),'A mobile list item opens node details');
     assert.deepEqual(errors, []);
     console.log('All expanded graph categories, judgment years and award years align with horizontal branches.');
   } finally {
