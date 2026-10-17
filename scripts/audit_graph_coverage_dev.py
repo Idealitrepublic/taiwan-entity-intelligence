@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Read-only graph coverage baseline for the isolated tei-development project.
+
+Prints aggregate counts only. It never promotes name matches or writes to a DB.
+"""
+import json
+from pathlib import Path
+import subprocess
+import sys
+from datetime import datetime, timezone
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from scripts.audit_p0_data_chain import development_environment  # noqa: E402
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DEVELOPMENT_REF = "canqjiokrtcxkwblhmml"
+SQL = r"""
+BEGIN READ ONLY;
+select jsonb_build_object(
+  'entities', (select coalesce(jsonb_object_agg(entity_type,n),'{}'::jsonb) from
+    (select entity_type,count(*)::int n from public.entities
+     where publication_status='published' group by entity_type) t),
+  'relationships', (select coalesce(jsonb_object_agg(relationship_type,n),'{}'::jsonb) from
+    (select relationship_type,count(*)::int n from public.relationships
+     where status='published' group by relationship_type) t),
+  'published_evidence', (select count(*)::int from public.evidence_records
+    where publication_status='published' and status='active'),
+  'traceable_edges', (select count(*)::int from public.relationships r
+    join public.evidence_records ev on ev.id=r.primary_evidence_id
+    join public.entities s on s.id=r.source_entity_id
+    join public.entities t on t.id=r.target_entity_id
+    where r.status='published' and ev.publication_status='published'
+      and ev.status='active' and (ev.source_url is not null or ev.source_locator<>'{}'::jsonb)
+      and s.publication_status='published' and t.publication_status='published'),
+  'source_records', (select coalesce(jsonb_object_agg(dataset,n),'{}'::jsonb) from
+    (select dataset,count(*)::int n from public.source_records group by dataset) t),
+  'labor_identifier_candidates', (select count(*)::int from public.source_records
+    where dataset='penalties' and (uniform_number ~ '^[0-9]{8}$'
+      or raw ?| array['統一編號','統編','Business_Accounting_NO']
+      or raw->>'事業單位名稱或負責人' ~ '(統一編號|統編|\t)[ :：]*[0-9]{8}[[:space:]]*$'))
+);
+ROLLBACK;
+"""
+
+
+def read_development_counts():
+    env = development_environment()
+    # Direct DB host or transaction-pooler username must identify this project.
+    if not is_development_target(env):
+        raise RuntimeError("Database target is not the verified tei-development project")
+    result = subprocess.run(
+        ["psql", "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1"],
+        input=SQL, text=True, capture_output=True, env=env, timeout=90,
+    )
+    if result.returncode:
+        raise RuntimeError("Read-only Development coverage query failed; connection details suppressed")
+    return json.loads(result.stdout.strip())
+
+
+def is_development_target(env):
+    target = f"{env.get('PGHOST', '')} {env.get('PGUSER', '')}"
+    return DEVELOPMENT_REF in target
+
+
+def summarize(counts, judicial_index):
+    entities = counts["entities"]
+    relationships = counts["relationships"]
+    total_edges = sum(relationships.values())
+    traceable = counts["traceable_edges"]
+    if any(not isinstance(value, int) or value < 0 for value in
+           [*entities.values(), *relationships.values(), counts["published_evidence"],
+            *counts["source_records"].values(), traceable,
+            counts["labor_identifier_candidates"], judicial_index["records"]]):
+        raise ValueError("Coverage counters must be nonnegative integers")
+    if traceable > total_edges:
+        raise ValueError("Traceable edges exceed published edges")
+    if counts["labor_identifier_candidates"] > counts["source_records"].get("penalties", 0):
+        raise ValueError("Labor identifier candidates exceed indexed labor rows")
+    if not judicial_index.get("generated_at"):
+        raise ValueError("Judicial index timestamp is required")
+    return {
+        "environment": "tei-development",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "published": {
+            "companies": entities.get("Company", 0),
+            "people": entities.get("Person", 0),
+            "politicians": entities.get("Politician", 0),
+            "contracts": entities.get("Contract", 0),
+            "judgments": entities.get("Judgment", 0),
+            "penalties": entities.get("Penalty", 0),
+            "contract_edges": relationships.get("CONTRACT_WITH", 0),
+            "judgment_edges": relationships.get("RELATED_TO_JUDGMENT", 0),
+            "penalty_edges": relationships.get("RELATED_TO_PENALTY", 0),
+            "all_edges": total_edges,
+            "traceable_edges": traceable,
+            "active_evidence": counts["published_evidence"],
+        },
+        "source_only": {
+            "labor_index_rows": counts["source_records"].get("penalties", 0),
+            "labor_identifier_field_candidates": counts["labor_identifier_candidates"],
+            "judicial_company_name_index_rows": judicial_index["records"],
+            "judicial_index_generated_at": judicial_index["generated_at"],
+            "procurement": "live first-page lookup; no persisted source-record denominator",
+            "directors": "live per-company registry lookup; no persisted source-record denominator",
+        },
+        "interpretation": [
+            "Counts are Development snapshots, not national coverage or source recall.",
+            "A labor identifier-field candidate still requires exact ID and registry-name verification before publication.",
+            "Judicial company-name index rows are candidates, not verified case-role relationships.",
+            "Published edges are counted only when both endpoints and active primary Evidence are public.",
+        ],
+    }
+
+
+def main():
+    index = json.loads((ROOT / "data/judicial_company_index.json").read_text())
+    report = summarize(read_development_counts(), {
+        "records": len(index.get("records") or []),
+        "generated_at": index.get("generated_at"),
+    })
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
