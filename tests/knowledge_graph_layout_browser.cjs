@@ -117,6 +117,7 @@ async function geometry(page, label) {
     await page.locator('#graphFocus').click();
     assert.equal(await page.locator('#graphFocus').getAttribute('aria-pressed'),'true');
     assert((await page.locator('#svg').boundingBox()).width>compactWidth+300,'Graph focus gives the diagram more room');
+    assert((await page.locator('#svg').boundingBox()).height>700,'Graph focus makes labels physically larger');
     await geometry(page,'1280px focused graph');
     await page.locator('#graphFocus').click();
     assert.equal(await page.locator('#graphFocus').getAttribute('aria-pressed'),'false');
