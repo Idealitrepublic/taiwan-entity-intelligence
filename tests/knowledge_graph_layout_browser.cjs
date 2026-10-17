@@ -112,6 +112,14 @@ async function geometry(page, label) {
     await page.locator(`#svg .node[data-node-id="${denseNodes.at(-1).id}"]`).waitFor();
     assert((await geometry(page,'45-node dense graph')).nodes>=46);
     for(const width of[1440,1280,1024,768]){await page.setViewportSize({width,height:900});await geometry(page,`dense ${width}px`)}
+    await page.setViewportSize({width:1280,height:900});
+    const compactWidth=(await page.locator('#svg').boundingBox()).width;
+    await page.locator('#graphFocus').click();
+    assert.equal(await page.locator('#graphFocus').getAttribute('aria-pressed'),'true');
+    assert((await page.locator('#svg').boundingBox()).width>compactWidth+300,'Graph focus gives the diagram more room');
+    await geometry(page,'1280px focused graph');
+    await page.locator('#graphFocus').click();
+    assert.equal(await page.locator('#graphFocus').getAttribute('aria-pressed'),'false');
     await page.setViewportSize({width:390,height:844});
     const mobileList=page.locator('#mobileGraphList');
     assert(await mobileList.isVisible(),'Mobile graph has an accessible node and edge list');
@@ -123,6 +131,6 @@ async function geometry(page, label) {
     await mobileList.locator('button').filter({hasText:root.display_name+' → '+first[0].display_name}).first().click();
     assert.match(await page.locator('#nodeInfoBody').innerText(),/official-0/);
     assert.deepEqual(errors,[]);
-    console.log('Entity graph: 10, 17 and 46+ mixed nodes; two layers; labels, edges, Evidence, 1440/1280/1024/768px geometry and mobile list passed.');
+    console.log('Entity graph: 10, 17 and 46+ mixed nodes; two layers; labels, edges, Evidence, desktop focus, 1440/1280/1024/768px geometry and mobile list passed.');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});
