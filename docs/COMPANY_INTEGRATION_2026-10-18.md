@@ -57,3 +57,23 @@ role-specific source references for the labor/judicial name-only observations;
 audit procurement/director persisted denominators. Until then, the platform
 must label those facts as source-only/candidates rather than claim all companies
 or all relationships have been integrated.
+
+## Post-deployment validation — 2026-10-19
+
+- Git-integrated Development Preview for commit `a36c9d5` is READY:
+  `https://taiwan-entity-intelligence-1civd5z81-coldlight871029-9944.vercel.app/`.
+  Its `/api/status` reports a connected database and 462 canonical published
+  Companies; the legacy `companies = 0` counter refers to the unused legacy
+  tables, not the canonical Entity store.
+- Exact-ID search for `04633597` returned 長虹建設股份有限公司 as one published
+  Company. Its Entity API returned active MOEA/GCI registration Evidence with
+  the same identifier, official source URL, and retrieval time. Preview runtime
+  error/fatal logs for the inspected 30-minute interval were empty.
+- Read-only Development cross-check: 80,122 labor source rows contain 51,223
+  distinct company-name strings, but just one row has a valid eight-digit
+  `uniform_number`; that row already matches a published Company and has a
+  published penalty edge. Twenty-four labor rows have an exact text match to a
+  current published Company name, but **name equality is not verified identity**
+  and none was newly promoted on that basis. The remaining labor and judicial
+  name mentions need source-backed identifiers or manual, documented role
+  verification before they can become canonical relationships.
