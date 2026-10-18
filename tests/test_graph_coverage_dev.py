@@ -9,11 +9,17 @@ class GraphCoverageAuditTests(unittest.TestCase):
             "entities": {"Company": 2, "Politician": 121, "Penalty": 1},
             "relationships": {"COMMITTEE_MEMBER": 1026, "RELATED_TO_PENALTY": 1},
             "published_evidence": 911,
+            "published_evidence_freshness": {"Official Registry": "2026-10-18T00:00:00+00:00"},
             "traceable_edges": 1027,
             "source_records": {"penalties": 80122},
             "labor_identifier_candidates": 1,
+            "labor_distinct_source_names": 51223,
+            "labor_exact_id_rows": 1,
+            "labor_exact_id_published_company_rows": 1,
             "donor_candidate_ids": {"all": 487, "single_company_label": 454,
                                     "conflicting_labels": 3, "noncompany_form": 30},
+            "donor_ids_with_published_company": 457,
+            "draft_contribution_candidate_ids": 0,
         }
         self.judicial_index = {"records": 4231, "generated_at": "2026-09-24T18:23:51+00:00"}
 
@@ -24,12 +30,19 @@ class GraphCoverageAuditTests(unittest.TestCase):
         self.assertEqual(report["published"]["judgment_edges"], 0)
         self.assertEqual(report["published"]["penalty_edges"], 1)
         self.assertEqual(report["source_only"]["labor_index_rows"], 80122)
+        self.assertEqual(report["source_only"]["labor_exact_id_published_company_rows"], 1)
         self.assertEqual(report["source_only"]["judicial_company_name_index_rows"], 4231)
         self.assertEqual(report["source_only"]["political_donor_identifier_candidates"]["single_company_label"], 454)
+        self.assertEqual(report["source_only"]["donor_ids_with_published_company"], 457)
+        self.assertEqual(report["source_only"]["draft_contribution_candidate_ids"], 0)
         self.assertEqual(report["published"]["traceable_edges"], 1027)
+        self.assertEqual(report["published"]["evidence_latest_retrieved_at_by_source"]["Official Registry"],
+                         "2026-10-18T00:00:00+00:00")
 
     def test_rejects_inconsistent_counters(self):
-        for field, value in (("traceable_edges", 1028), ("labor_identifier_candidates", 80123)):
+        for field, value in (("traceable_edges", 1028), ("labor_identifier_candidates", 80123),
+                             ("labor_exact_id_rows", 2), ("labor_exact_id_published_company_rows", 2),
+                             ("donor_ids_with_published_company", 488)):
             with self.subTest(field=field):
                 counts = {**self.counts, field: value}
                 with self.assertRaises(ValueError):

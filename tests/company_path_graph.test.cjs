@@ -98,3 +98,14 @@ test('path range request invokes company-only finder and result is wired into gr
   assert(html.includes('共用節點已完整比對'));
   assert(html.includes('.graph svg[data-path-graph="true"] .edge'));
 });
+test('published company selected from live overview retains its exact ID for a mixed published/live path',()=>{
+  const loader=shipped('  async function loadLiveCompanyContributions(', '  function pathEntityActions(');
+  assert.match(loader,/public_identifier:match\.public_identifier/);
+  const context=vm.createContext({esc:value=>String(value)});
+  vm.runInContext(line('pathEntityActions'),context);
+  const actions=vm.runInContext('pathEntityActions(entity)',Object.assign(context,{entity:{
+    id:'a3bcec97-5ef2-5bb3-ba8f-bde444835ec5',display_name:'大魯閣實業股份有限公司',
+    entity_type:'Company',public_identifier:'04690983'}}));
+  assert.match(actions,/data-path-uniform="04690983"/);
+  assert.match(actions,/data-path-role="source"/);
+});

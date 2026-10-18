@@ -474,7 +474,7 @@
       const match=(searchPayload.data?.items||[]).find(item=>item.match_type==='identifier_exact'&&item.public_identifier===uniform&&!item.is_live_fallback);
       if(!match)return;
       // Live registry rows have no canonical ID. Only the existing published exact-ID match is eligible.
-      $('overviewPane').insertAdjacentHTML('beforeend',`<div class="card"><h4>已發布實體 / Published Entity</h4>${pathEntityActions({id:match.entity_id,display_name:match.display_name||current.company_name,entity_type:'Company'})}<p><a href="/graph/${esc(match.entity_id)}">開啟已發布關係圖與收藏 / Open published graph and bookmarks</a></p></div>`);
+      $('overviewPane').insertAdjacentHTML('beforeend',`<div class="card"><h4>已發布實體 / Published Entity</h4>${pathEntityActions({id:match.entity_id,display_name:match.display_name||current.company_name,entity_type:'Company',public_identifier:match.public_identifier})}<p><a href="/graph/${esc(match.entity_id)}">開啟已發布關係圖與收藏 / Open published graph and bookmarks</a></p></div>`);
       const contributions=await fetchPoliticalContributions(match.entity_id);
       if(serial!==companyRequestSerial||current?.uniform_number!==uniform||!contributions)return;
       $('overviewPane').insertAdjacentHTML('beforeend',politicalContributionCards(contributions));
