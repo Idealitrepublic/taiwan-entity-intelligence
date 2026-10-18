@@ -1,6 +1,7 @@
 import unittest
 
-from src.company_registry_materialization import build_registry_company_bundle
+from src.company_registry_materialization import (build_registry_company_bundle,
+                                                  build_official_registry_identity_bundle)
 from src.entities.models import stable_id
 
 
@@ -46,6 +47,22 @@ class CompanyRegistryMaterializationTests(unittest.TestCase):
             REGISTRY, uniform="22099131", expected_name=REGISTRY["Company_Name"],
             retrieved_at="2026-10-19T13:00:00+00:00")
         self.assertEqual(earlier["evidence"][0]["id"], later["evidence"][0]["id"])
+
+    def test_invalid_official_change_date_keeps_retrieval_time(self):
+        bundle = build_registry_company_bundle(
+            {**REGISTRY, "Change_Of_Approval_Data": "1151332"},
+            uniform="22099131", expected_name=REGISTRY["Company_Name"],
+            retrieved_at="2026-10-18T13:00:00+00:00")
+        self.assertEqual(bundle["evidence"][0]["observed_at"],
+                         "2026-10-18T13:00:00+00:00")
+
+    def test_historical_official_identity_is_not_reported_as_active(self):
+        bundle = build_official_registry_identity_bundle(
+            {**REGISTRY, "Company_Status_Desc": "解散"}, uniform="22099131",
+            retrieved_at="2026-10-18T13:00:00+00:00")
+        self.assertEqual(bundle["evidence"][0]["source_locator"]["company_status"], "解散")
+        self.assertIn("解散", bundle["evidence"][0]["summary"])
+        self.assertNotIn("relationships", bundle)
 
 
 if __name__ == "__main__":
