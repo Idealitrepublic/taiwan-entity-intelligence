@@ -99,6 +99,60 @@ class EntitySearchTests(unittest.TestCase):
             result = repository.search("測試公司", entity_type="Company", limit=5)
         self.assertEqual(result["items"], indexed)
 
+    def test_verified_company_alias_prefers_exact_official_id_over_substrings(self):
+        company = {"entity_id": "tsmc", "entity_type": "Company",
+                   "canonical_name": "台灣積體電路製造股份有限公司",
+                   "display_name": "台灣積體電路製造股份有限公司",
+                   "public_identifier": "22099131"}
+        calls = []
+
+        def get(_table, params):
+            calls.append(params["search_query"])
+            return [company] if params["search_query"] == "22099131" else []
+
+        repository = EntityRepository(transport=get)
+        similar = {"entity_id": "other", "entity_type": "Company",
+                   "canonical_name": "台積電機有限公司", "display_name": "台積電機有限公司",
+                   "public_identifier": "54900838"}
+        with patch.object(repository, "_moea_company_search", return_value=[similar]):
+            result = repository.search("台積電", entity_type="Company", limit=5)
+        self.assertEqual(calls, ["台積電", "22099131"])
+        self.assertEqual([row["public_identifier"] for row in result["items"]],
+                         ["22099131", "54900838"])
+        self.assertEqual(result["items"][0]["match_type"], "verified_alias")
+        self.assertEqual(result["items"][0]["alias_source_url"],
+                         "https://www.tsmc.com/chinese/node/226")
+
+    def test_alias_never_links_to_mismatched_official_company_name(self):
+        repository = EntityRepository(transport=lambda _table, _params: [])
+        similar = {"entity_id": "other", "entity_type": "Company",
+                   "canonical_name": "台積電機有限公司", "display_name": "台積電機有限公司",
+                   "public_identifier": "54900838"}
+
+        def live(term, _limit):
+            return [similar]
+
+        with patch.object(repository, "_moea_company_search", side_effect=live):
+            result = repository.search("台積電", entity_type="Company", limit=5)
+        self.assertEqual([row["public_identifier"] for row in result["items"]],
+                         ["54900838"])
+
+    def test_verified_alias_uses_live_exact_id_when_not_indexed(self):
+        repository = EntityRepository(transport=lambda _table, _params: [])
+        company = {"entity_id": "live-tsmc", "entity_type": "Company",
+                   "canonical_name": "台灣積體電路製造股份有限公司",
+                   "display_name": "台灣積體電路製造股份有限公司",
+                   "public_identifier": "22099131", "is_live_fallback": True}
+
+        def live(term, _limit):
+            return [company] if term == "22099131" else []
+
+        with patch.object(repository, "_moea_company_search", side_effect=live):
+            result = repository.search("台積電", limit=5)
+        self.assertEqual(result["items"][0]["public_identifier"], "22099131")
+        self.assertTrue(result["items"][0]["is_live_fallback"])
+        self.assertEqual(result["result_count"], 1)
+
     def test_homepage_exposes_global_search_and_legacy_company_path(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
         self.assertIn('id="entityTypeFilter"', html)
@@ -108,6 +162,7 @@ class EntitySearchTests(unittest.TestCase):
         self.assertIn("value.normalize('NFKC')", html)
         self.assertIn("item.is_live_fallback", html)
         self.assertIn("經濟部即時公司登記", html)
+        self.assertIn("官方核對別名 / Verified alias", html)
         self.assertIn('value="GovernmentAgency"', html)
         self.assertIn('value="LobbyingRecord"', html)
         self.assertNotIn('maxlength="8" inputmode="numeric"', html)

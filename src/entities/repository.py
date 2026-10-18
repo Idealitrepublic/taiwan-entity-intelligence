@@ -24,6 +24,16 @@ POLITICIAN_TERM_FIELDS = select_list(PUBLIC_POLITICIAN_TERM_FIELDS)
 ASSET_DECLARATION_FIELDS = select_list(PUBLIC_ASSET_DECLARATION_FIELDS)
 MOEA_COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 MOEA_COMPANY_SEARCH_API = "https://data.gcis.nat.gov.tw/od/data/api/6BBA2268-1367-4B42-9CCA-BC17499EBE8C"
+# Curated aliases must have both an official company-ID lookup and an
+# independently attributable alias source. Never infer an alias from a name
+# substring (for example, 台積電機 is not 台積電).
+VERIFIED_COMPANY_ALIASES = {
+    "台積電": {
+        "uniform": "22099131",
+        "canonical_name": "台灣積體電路製造股份有限公司",
+        "source_url": "https://www.tsmc.com/chinese/node/226",
+    },
+}
 
 
 class EntityStoreUnavailable(RuntimeError):
@@ -171,6 +181,30 @@ class EntityRepository:
         if entity_type:
             params["entity_type_filter"] = entity_type
         rows = self.transport("rpc/search_entities", params)
+        alias = VERIFIED_COMPANY_ALIASES.get(term) if entity_type in (None, "Company") else None
+        if alias:
+            def matches_alias_company(row):
+                return (row.get("entity_type") == "Company"
+                        and row.get("public_identifier") == alias["uniform"]
+                        and row.get("canonical_name", row.get("display_name")) == alias["canonical_name"])
+
+            verified = next((row for row in rows if matches_alias_company(row)), None)
+            if verified is None:
+                try:
+                    indexed = self.transport("rpc/search_entities", {
+                        "search_query": alias["uniform"], "result_limit": 1,
+                        "entity_type_filter": "Company"})
+                except EntityStoreUnavailable:
+                    indexed = []
+                verified = next((row for row in indexed if matches_alias_company(row)), None)
+            if verified is None:
+                live = self._moea_company_search(alias["uniform"], 1)
+                verified = next((row for row in live if matches_alias_company(row)), None)
+            if verified is not None:
+                rows = [{**verified, "match_type": "verified_alias",
+                         "context_label": "官方核對別名 / Verified company alias",
+                         "alias_source_url": alias["source_url"]},
+                        *(row for row in rows if not matches_alias_company(row))][:limit]
         if entity_type in (None, "Company") and len(rows) < limit:
             indexed_uniforms = {row.get("public_identifier") for row in rows
                                 if row.get("entity_type") == "Company"}
