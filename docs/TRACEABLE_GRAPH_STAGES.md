@@ -52,6 +52,12 @@ The mirror is not misrepresented as an official primary source. No Production
 data changed. A regression test also prevents `無法決標公告` from being mistaken for
 an award because its type contains the substring `決標`.
 
+The data-path unit tests, 173 local PostgreSQL integration checks, and build
+passed. An additional headless Graph interaction test did **not** pass: a
+detail-node click was intercepted by the graph toolbar. This test is outside
+the procurement data path but remains an open UI validation issue; this run
+does not re-certify all Graph interactions.
+
 ## Stage 2 decision gate
 
 Before widening published graph coverage, prove an official identifier or equivalent documented role-specific source reference for each proposed company/person endpoint; verify the referenced source record and Evidence; re-run the read-only baseline and targeted regression tests. Name-only labor records and judicial mentions remain source observations. The audit script rejects non-Development database targets and performs no writes.
