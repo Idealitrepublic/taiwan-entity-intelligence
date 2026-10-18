@@ -1,7 +1,7 @@
 import copy
 import unittest
 
-from src.procurement_materialization import build_contract_bundle
+from src.procurement_materialization import build_contract_bundle, build_official_award_bundle
 from scripts.build_procurement_award_bundle import latest_notice
 
 
@@ -38,7 +38,46 @@ def bundle(row=None, retrieved="2026-10-18T00:00:00+08:00"):
                                  retrieved_at=retrieved)
 
 
+def official_row():
+    return {"source_url": "https://web.pcc.gov.tw/tps/atm/AtmAwardWithoutSso/QueryAtmAwardDetailHist?fkPmsMainHist=OTcxMTg4NjM=",
+            "unit_id": "3.80.41", "job_number": "115034",
+            "notice_filename": "BDM-1-71265329", "notice_date": "2026-08-24",
+            "award_date": "2026-08-21", "bidder_uniform_number": UNIFORM,
+            "bidder_name": NAME + " (TRK Corporation)", "winner": True,
+            "amount": 450000, "title": "桃園市親子及樂齡運動科技館委託營運管理案",
+            "agency": "桃園市政府體育局"}
+
+
 class ProcurementMaterializationTests(unittest.TestCase):
+    def test_official_row_creates_distinct_primary_evidence_and_published_edge(self):
+        result = build_official_award_bundle(
+            notice(), official=official_row(), company_entity_id=COMPANY_ID,
+            company_uniform=UNIFORM, company_name=NAME,
+            retrieved_at="2026-10-18T00:00:00+08:00")
+        draft = bundle()
+        proof, edge = result["evidence"][0], result["relationships"][0]
+        self.assertEqual((proof["source_class"], proof["publication_status"]),
+                         ("Primary Source", "published"))
+        self.assertNotEqual(proof["id"], draft["evidence"][0]["id"])
+        self.assertNotEqual(edge["id"], draft["relationships"][0]["id"])
+        self.assertEqual(edge["primary_evidence_id"], proof["id"])
+        self.assertEqual(edge["status"], "published")
+        self.assertEqual(result["entities"][0]["publication_status"], "published")
+        self.assertEqual(proof["source_locator"]["mirror_url"], draft["evidence"][0]["source_url"])
+
+    def test_official_row_rejects_wrong_identity_role_amount_or_url(self):
+        for key, value in (("bidder_uniform_number", "99999999"),
+                           ("winner", False), ("amount", 400000),
+                           ("notice_filename", "wrong"), ("job_number", "another"),
+                           ("source_url", "https://example.com/QueryAtmAwardDetailHist?id=1")):
+            reviewed = official_row()
+            reviewed[key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                build_official_award_bundle(
+                    notice(), official=reviewed, company_entity_id=COMPANY_ID,
+                    company_uniform=UNIFORM, company_name=NAME,
+                    retrieved_at="2026-10-18T00:00:00+08:00")
+
     def test_exact_award_preserves_provenance_and_uses_actual_award_day(self):
         result = bundle()
         contract = result["entities"][0]

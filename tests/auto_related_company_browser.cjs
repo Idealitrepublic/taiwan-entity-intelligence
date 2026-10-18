@@ -110,6 +110,8 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     assert.equal(await page.locator('#nodeInfoBody a[href^="https://data.gcis.nat.gov.tw"]').count(),1);
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
+      await page.waitForFunction(()=>document.querySelector('#svg').getBoundingClientRect().top>=
+        document.querySelector('.graphbar').getBoundingClientRect().bottom+10);
       const graph=await page.locator('#svg').boundingBox();
       assert(graph && graph.width>200 && graph.height>200,`Company graph vanished at ${width}px`);
       assert.equal(await page.locator('#svg .node[data-type="related_company"]').count(),3);
@@ -132,6 +134,8 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     assert.equal(companyOutline,'rgb(246, 211, 124)');
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
+      await page.waitForFunction(()=>document.querySelector('#svg').getBoundingClientRect().top>=
+        document.querySelector('.graphbar').getBoundingClientRect().bottom+10);
       const graph=await page.locator('#svg').boundingBox();
       const categories=await Promise.all((await page.locator('#svg .node[data-type="related_category"]').all()).map(item=>item.boundingBox()));
       assert(categories.every(box=>box&&box.x>=graph.x&&box.x+box.width<=graph.x+graph.width),
@@ -140,6 +144,8 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     await page.setViewportSize({width:1280,height:900});
     await page.locator('#svg .node[data-node-id="related-category:12345678:person"]').focus();
     await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.querySelector('#svg').getBoundingClientRect().top>=
+      document.querySelector('.graphbar').getBoundingClientRect().bottom+10);
     assert.equal(await page.locator('#svg .node[data-type="related_detail"]').count(),8,'Large source lists stay bounded');
     assert.match(await page.locator('#svg .node[data-node-id="related-category:12345678:person"]').textContent(),/顯示前 8 筆/);
     const directorId='related-detail:12345678:person%3Adirector%3A1';

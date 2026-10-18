@@ -30,9 +30,10 @@
     .legacy-evidence-edge{cursor:pointer;outline:none}.legacy-evidence-edge .edge-hit{stroke:transparent;stroke-width:18;pointer-events:stroke;vector-effect:non-scaling-stroke}.legacy-evidence-edge:hover .graph-branch,.legacy-evidence-edge:focus-visible .graph-branch{stroke:#eaf4ff;opacity:1;stroke-width:3}
     svg .node.candidate-record circle:not(.hit):not(.related-halo):not(.connection-halo){stroke:#f2c56a;stroke-width:3;stroke-dasharray:5 3}
     .graphbar>div:first-child{min-width:0}@media(min-width:1121px){.graphbar>div:first-child{max-width:calc(100% - 282px)}}
+    .graph svg{top:var(--graph-canvas-top,100px);height:calc(100% - var(--graph-canvas-top,100px) - 42px)}
     @media(min-width:1121px){.graph .node-info:not([hidden]){position:fixed;left:auto;right:18px;bottom:18px;width:340px;max-height:min(420px,55vh)}}
-    @media(max-width:1120px){.graph:has(.node-info:not([hidden])){height:1000px}.graph:has(.node-info:not([hidden])) svg{bottom:278px;height:calc(100% - 448px)}}
-    @media(max-width:720px){.graph:has(.node-info:not([hidden])){height:940px}.graph:has(.node-info:not([hidden])) svg{bottom:248px;height:calc(100% - 428px)}}
+    @media(max-width:1120px){.graph:has(.node-info:not([hidden])){height:1000px}.graph:has(.node-info:not([hidden])) svg{bottom:278px;height:calc(100% - var(--graph-canvas-top,170px) - 278px)}}
+    @media(max-width:720px){.graph:has(.node-info:not([hidden])){height:940px}.graph:has(.node-info:not([hidden])) svg{bottom:248px;height:calc(100% - var(--graph-canvas-top,180px) - 248px)}}
     .mobile-graph-list{display:none}
     @media(min-width:1121px){.graph-focus{margin-top:7px}.app:has(.main.graph-focused){height:auto;grid-template-rows:64px 88px auto}.main.graph-focused{grid-template-columns:minmax(0,1fr)}.main.graph-focused .left,.main.graph-focused .right{display:none}.main.graph-focused .graph{height:max(1000px,calc(100vh - 152px));min-height:1000px}}
     @media(max-width:1120px){.graph-focus{display:none}}
@@ -64,6 +65,10 @@
   const relatedCompanyBranches=new Map();
   const graphPager=document.createElement('div');graphPager.id='graphPager';graphPager.className='graph-pager';graphPager.hidden=true;graphPager.innerHTML='<button id="graphPrev" type="button">上一組 / Previous</button><span id="graphPageLabel" aria-live="polite"></span><button id="graphNext" type="button">下一組 / Next</button>';document.querySelector('.graphbar .tools').appendChild(graphPager);
   const graphFocus=document.createElement('button');graphFocus.id='graphFocus';graphFocus.type='button';graphFocus.className='toolbtn graph-focus';graphFocus.textContent='展開圖譜 / Expand graph';graphFocus.setAttribute('aria-pressed','false');document.querySelector('.graphbar>div:first-child').appendChild(graphFocus);
+  const graphBar=document.querySelector('.graphbar'),graphSection=document.querySelector('.graph');
+  const syncGraphCanvasTop=()=>graphSection.style.setProperty('--graph-canvas-top',`${Math.ceil(graphBar.offsetTop+graphBar.offsetHeight+12)}px`);
+  if(typeof ResizeObserver!=='undefined')new ResizeObserver(syncGraphCanvasTop).observe(graphBar);
+  window.addEventListener('resize',syncGraphCanvasTop);syncGraphCanvasTop();
   graphFocus.addEventListener('click',()=>{const focused=document.querySelector('.main').classList.toggle('graph-focused');graphFocus.textContent=focused?'返回完整畫面 / Show panels':'展開圖譜 / Expand graph';graphFocus.setAttribute('aria-pressed',String(focused));requestAnimationFrame(()=>resetGraphView())});
   const mobileGraphList=document.createElement('section');mobileGraphList.id='mobileGraphList';mobileGraphList.className='mobile-graph-list';mobileGraphList.setAttribute('aria-label','圖譜節點與關係 / Graph nodes and relationships');mobileGraphList.hidden=true;$('svg').after(mobileGraphList);
   let workspaceConfig=null,workspaceSession=null,workspaceList=[],activeWorkspace=null,watchlistEntries=[],dashboardAlerts=[];

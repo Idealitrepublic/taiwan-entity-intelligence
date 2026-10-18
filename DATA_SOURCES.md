@@ -232,3 +232,16 @@ alone does not increase published procurement coverage. The Development donor
 candidate queue likewise distinguishes official-source donor IDs from verified
 company entities; conflicting labels and other organization forms are held for
 manual resolution.
+
+On 2026-10-18, the original [PCC award notice](https://web.pcc.gov.tw/tps/atm/AtmAwardWithoutSso/QueryAtmAwardDetailHist?fkPmsMainHist=OTcxMTg4NjM=)
+was independently opened for agency `3.80.41`, case `115034`, notice
+`BDM-1-71265329`. Its award date, exact bidder ID `04690983`, winner flag,
+company name, and TWD 450,000 amount agreed with the staged mirror. A distinct
+published **Primary Source** Evidence version now links that official row to
+the published Contract and `CONTRACT_WITH` relationship in Development. The
+earlier OpenFun Evidence and edge remain draft; the official locator retains
+the mirror URL to explain the ingestion path. This verifies one award, not
+national procurement coverage. The MOEA exact-ID registry API was reachable
+again and independently confirmed three donor-ID/name pairs, but no political
+contribution was published from those candidates: their original filing rows
+and politician crosswalks still require separate review.

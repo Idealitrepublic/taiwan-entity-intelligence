@@ -41,8 +41,11 @@ async function assertLayout(page, label, { focused = false } = {}) {
       node.box.top < viewport.top-2 || node.box.bottom > viewport.bottom+2).map(node => node.id);
     const ellipses = nodes.filter(node => node.text.some(value => value.includes('…'))).map(node => node.id);
     const info = document.querySelector('#nodeInfo'), infoBox = info.hidden ? null : info.getBoundingClientRect();
-    const covered = infoBox ? nodes.filter(node => Math.min(node.box.right,infoBox.right)-Math.max(node.box.left,infoBox.left)>1 &&
-      Math.min(node.box.bottom,infoBox.bottom)-Math.max(node.box.top,infoBox.top)>1).map(node => node.id) : [];
+    // SVG clips off-canvas nodes. Only a node's visible portion can be covered by the panel.
+    const covered = infoBox ? nodes.filter(node =>
+      Math.min(node.box.right,viewport.right,infoBox.right)-Math.max(node.box.left,viewport.left,infoBox.left)>1 &&
+      Math.min(node.box.bottom,viewport.bottom,infoBox.bottom)-Math.max(node.box.top,viewport.top,infoBox.top)>1
+    ).map(node => node.id) : [];
     return { count:nodes.length, overlaps, clipped, ellipses, covered };
   });
   assert.deepEqual(result.overlaps,[],`${label}: no node/label overlap`);
@@ -218,7 +221,10 @@ async function assertReadableBranch(page, childType, label) {
           await assertReadableBranch(page,'judicial','judgment month expanded');
           if (process.env.TEI_GRAPH_JUDICIAL_SCREENSHOT)
             await page.locator('.graph').screenshot({ path: process.env.TEI_GRAPH_JUDICIAL_SCREENSHOT });
-          await page.locator('#svg .node[data-type="judicial"] circle:not(.hit)').first().click();
+          // This month can extend beyond the focused SVG viewport; keyboard access
+          // must still open its evidence without pretending an off-canvas click works.
+          await page.locator('#svg .node[data-type="judicial"]').first().focus();
+          await page.keyboard.press('Enter');
           assert.equal(await page.locator('#nodeInfoBody a[href^="https://judicial.gov.tw/"]').count(), 1);
           assert.match(await page.locator('#nodeInfoBody').textContent(),/2026-01-28/,
             'Judgments within a month appear newest first');

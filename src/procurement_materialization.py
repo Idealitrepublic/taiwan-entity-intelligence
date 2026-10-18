@@ -7,7 +7,7 @@ notice has been checked. A company name or bid alone is never publishable.
 from datetime import datetime
 import re
 import unicodedata
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from src.entities.models import Entity, evidence_from_projection, stable_id, timestamp
 from src.sources.procurement import award_role, is_award_notice, matched_names, OFFICIAL_SEARCH
@@ -111,4 +111,64 @@ def build_contract_bundle(notice, *, company_entity_id, company_uniform,
         "relationship_evidence": [{"relationship_id": edge_id, "evidence_id": evidence["id"]}],
         "legacy_map": [{"legacy_namespace": "PCC/OpenFun:award", "legacy_id": source_id,
                         "entity_id": contract_id}],
+    }
+
+
+def build_official_award_bundle(notice, *, official, company_entity_id,
+                                company_uniform, company_name, retrieved_at):
+    """Publish only after independently matching the original PCC award row.
+
+    `official` is a reviewed transcription of the original notice, not a
+    mirror lookup. The caller must retain the row URL for human rechecking.
+    """
+    draft = build_contract_bundle(
+        notice, company_entity_id=company_entity_id,
+        company_uniform=company_uniform, company_name=company_name,
+        retrieved_at=retrieved_at)
+    contract, mirror = draft["entities"][0], draft["evidence"][0]
+    locator = mirror["source_locator"]
+    source_url = str(official.get("source_url") or "")
+    parsed = urlsplit(source_url)
+    if (parsed.scheme != "https" or parsed.hostname != "web.pcc.gov.tw"
+            or not parsed.path.endswith("/QueryAtmAwardDetailHist")
+            or not parsed.query):
+        raise ValueError("Original PCC award-row URL required")
+    expected = {
+        "unit_id": locator["unit_id"], "job_number": locator["job_number"],
+        "notice_filename": locator["notice_filename"],
+        "notice_date": locator["notice_date"],
+        "award_date": locator["award_date"],
+        "bidder_uniform_number": company_uniform,
+        "amount": draft["relationships"][0]["amount"],
+        "title": contract["display_name"],
+    }
+    if (any(official.get(key) != value for key, value in expected.items())
+            or _company_name(official.get("bidder_name")) != _company_name(company_name)
+            or official.get("winner") is not True
+            or not str(official.get("agency") or "").strip()):
+        raise ValueError("Official notice conflicts with the mirror or company ID")
+    source_id = mirror["source_record_id"]
+    proof = evidence_from_projection(
+        source_name="政府電子採購網", source_record_id=source_id,
+        source_class="Primary Source", source_url=source_url,
+        source_locator={**expected, "bidder_name": official["bidder_name"],
+                        "winner": True, "agency": official["agency"],
+                        "mirror_url": mirror["source_url"],
+                        "review_method": "official_row_compared_with_exact_bidder_id_and_award_role"},
+        title=contract["display_name"],
+        summary=f"{official['agency']}；得標廠商：{company_name}（{company_uniform}）",
+        observed_at=locator["award_date"] + "T00:00:00+08:00",
+        retrieved_at=retrieved_at, publication_status="published").to_dict()
+    edge = {**draft["relationships"][0],
+            "id": stable_id("relationship", "PCC official", f"{source_id}:{company_uniform}"),
+            "primary_evidence_id": proof["id"], "status": "published"}
+    return {
+        "entities": [{**contract, "publication_status": "published"}],
+        "evidence": [proof],
+        "entity_evidence": [
+            {"entity_id": company_entity_id, "evidence_id": proof["id"], "fact_type": "CONTRACT"},
+            {"entity_id": contract["id"], "evidence_id": proof["id"], "fact_type": "CONTRACT"},
+        ],
+        "relationships": [edge],
+        "relationship_evidence": [{"relationship_id": edge["id"], "evidence_id": proof["id"]}],
     }

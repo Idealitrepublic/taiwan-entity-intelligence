@@ -7,8 +7,8 @@ Scope: existing company, person, procurement, labor-penalty, and judicial source
 1. **Scope and provenance display — completed.** Show query scope, source locator, retrieval time, match rule, and candidate status on graph observations. Preserve interactive source links and Evidence.
 2. **Coverage baseline and existing-source entry into graph — in progress.** Reconcile indexed, live-only, candidate, and published counts. Identify safely materializable records; do not publish name-only matches. Re-run `scripts/audit_graph_coverage_dev.py` against the explicit Development connection before claiming coverage.
 3. **Company/person identity verification — accepted for the published Development scope.** Two published companies have exact eight-digit official IDs and active Official Registry Evidence; all 121 published politicians have Legislative Yuan IDs. Ordinary people have zero published canonical identities; director-name observations remain source-scoped and must not be merged by name. All 1,025 published politician-source edges match the official legislator number in their primary Evidence locator. No wider identity coverage is implied.
-4. **Evidence review per edge — accepted for the published Development scope.** All 1,027 published edges have permitted endpoint roles, published endpoints, active published primary Evidence with a source URL and locator, non-future observation/retrieval times, and a primary support link. There are zero unsupported, duplicate, or low-confidence published edges. A labor-penalty spot check is recorded below. These checks do not validate source-only mentions as canonical links.
-5. **Graph presentation and interaction acceptance — accepted for tested layouts.** Added a mobile node/evidenced-link list so SVG-only interactions are not required on narrow screens, and a full-width/tall desktop focus mode for dense graphs. Corrected the "other published companies" count and the people/politicians label. The 10-, 17-, and 46+-node browser fixtures pass label/connector geometry at 1440/1280/1024/768 px; the 390 px list opens nodes and Evidence. Real Preview confirmed the 1280 px graph expands from 600 px to 1280 px and preserves second-hop politician edges. Existing collapse, fit, zoom, drag, filters, and Evidence behavior remain covered by targeted tests.
+4. **Evidence review per edge — accepted for the published Development scope.** All 1,028 published edges have published endpoints and active published primary Evidence. The new official PCC award Evidence is distinct from its draft mirror observation. The integrity query must be rerun after each further publication; these checks do not validate source-only mentions as canonical links.
+5. **Graph presentation and interaction acceptance — accepted for tested layouts.** Added a mobile node/evidenced-link list so SVG-only interactions are not required on narrow screens, and a full-width/tall desktop focus mode for dense graphs. Corrected the "other published companies" count and the people/politicians label. The 10-, 17-, and 46+-node browser fixtures pass label/connector geometry at 1440/1280/1024/768 px; the 390 px list opens nodes and Evidence. A later headless regression exposed a detail-node click intercepted by the toolbar; the SVG top edge now follows the measured toolbar height. Pointer and keyboard interaction passed at 1440/1280/1024/768 px after the fix. Existing collapse, fit, zoom, drag, filters, and Evidence behavior remain covered by targeted tests.
 6. **Development/Preview integration acceptance — accepted for the current published scope.** Real Development Preview search opened both published companies, loaded their Entity Profiles and Evidence, expanded the political relationship from 都一處有限公司 to 王鴻薇 and her official committees/party, and displayed the exact-ID labor penalty for 大魯閣. The two-company Path Finder returned the correctly bounded no-evidenced-path state at depths 1, 2 and 3; it did not claim no relationship exists. Positive shared-node rendering and edge Evidence pass a browser-function regression fixture, but no positive company-to-company pair exists among the two published companies for a real-data demonstration. Live official-registry lookups for both company IDs later returned HTTP 200; an earlier transient official API 504 remains an upstream availability risk, not a reason to report missing records. The local dev command now parses `.env.local` without shell execution or echoing secrets; the user's current file has a bare database URL on its first line and must be corrected locally before `npm run dev` can be used safely.
 
 ## Reproducible baseline
@@ -57,6 +57,28 @@ passed. An additional headless Graph interaction test did **not** pass: a
 detail-node click was intercepted by the graph toolbar. This test is outside
 the procurement data path but remains an open UI validation issue; this run
 does not re-certify all Graph interactions.
+
+### 2026-10-18 official-source reconciliation and Graph repair
+
+The previously staged PCC case was opened on the [original award page](https://web.pcc.gov.tw/tps/atm/AtmAwardWithoutSso/QueryAtmAwardDetailHist?fkPmsMainHist=OTcxMTg4NjM=).
+Agency `3.80.41`, case `115034`, notice `BDM-1-71265329`, award date
+2026-08-21, bidder ID `04690983`, winner flag, legal name and TWD 450,000
+matched the structured mirror. A new immutable official Evidence version and
+new published `CONTRACT_WITH` edge point to the original PCC page. The draft
+mirror Evidence/edge remain draft, preserving the review trail. An anonymous
+RLS check returned 1 visible Contract, 1 edge and 1 official Evidence, while
+the mirror draft remained invisible. The Development snapshot is now 2
+published Companies, 1 Contract, 1 Penalty, 1,028 published traceable edges and
+912 active published Evidence records; it does not imply comprehensive coverage.
+
+The official MOEA exact-ID API again returned valid registry rows for
+`53765237`, `53294074`, and `16865970`, each agreeing with one staged donor
+label. These are **not** published donor relationships or new Company entities:
+the Control Yuan filing rows and politician crosswalk still need independent
+review. A successful registry lookup alone does not establish a political link.
+The Graph toolbar-overlap regression now passes its real-browser pointer,
+keyboard and four-viewport checks; previous failure is retained above as
+historical evidence rather than silently erased.
 
 ## Stage 2 decision gate
 
