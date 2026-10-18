@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 from src.company import get_company
 from src.entities.models import stable_id
+from src.live_related_companies import corporate_director_connection
 from src.sources.judicial_index import judgment_url, load_index
 from src.sources.procurement import lookup_awards
 
@@ -159,8 +160,32 @@ def _shared_judgment(source, target, index):
         "interpretation": "兩個完整公司名稱出現在同一裁判書；不代表兩家公司互為當事人、敗訴或具有企業關係。 / Both names occur in one judgment; roles and affiliation are not inferred."}
 
 
+def _direct_corporate_connection(source, target, lookup):
+    """An official corporate-director observation, with no ownership inference."""
+    for director, represented, reverse in ((source, target, False), (target, source, True)):
+        try:
+            match = lookup(director["public_identifier"], represented)
+        except Exception:
+            continue  # An unavailable official lookup cannot establish a negative finding.
+        if not match:
+            continue
+        raw = match["evidence"]
+        evidence = {"id": stable_id("evidence", "moea:corporate_director", raw["source_record_id"]),
+                    "source_name": raw["source_name"], "source_class": "Official Registry",
+                    "source_record_id": raw["source_record_id"], "title": "法人董監事所代表公司",
+                    "summary": f"{director['display_name']} 的法人董監事紀錄載有 {represented['display_name']}；職稱 {match['role'] or '未提供'}。",
+                    "source_url": raw["source_url"], "retrieved_at": raw["retrieved_at"],
+                    "provenance": raw["provenance"]}
+        return {"segments": [_segment(director, represented, "CORPORATE_DIRECTOR_LINK",
+                                      evidence, reverse=reverse)],
+                "shared_node_type": "Company",
+                "interpretation": "官方董監事紀錄中的法人代表公司經唯一統編核對；不推論持股、控制或母子公司關係。 / An official corporate-director name resolves uniquely to the target ID; ownership or control is not inferred."}
+    return None
+
+
 def live_company_path(source_uniform, target_uniform, *, max_depth=3,
-                      company_lookup=None, award_lookup=None, index_loader=None):
+                      company_lookup=None, award_lookup=None, index_loader=None,
+                      corporate_lookup=None):
     """Compare two exact MOEA IDs; return only evidenced shared-record paths."""
     if not all(re.fullmatch(r"[0-9]{8}", str(u or "")) for u in (source_uniform, target_uniform)):
         raise ValueError("Both company IDs must contain eight digits")
@@ -169,6 +194,7 @@ def live_company_path(source_uniform, target_uniform, *, max_depth=3,
     company_lookup = company_lookup or get_company
     award_lookup = award_lookup or lookup_awards
     index_loader = index_loader or load_index
+    corporate_lookup = corporate_lookup or corporate_director_connection
     retrieved_at = datetime.now(timezone.utc).isoformat()
     with ThreadPoolExecutor(max_workers=4) as pool:
         company_jobs = [pool.submit(company_lookup, uniform, timeout=12)
@@ -190,18 +216,19 @@ def live_company_path(source_uniform, target_uniform, *, max_depth=3,
     if None in companies:
         return None
     source, target = companies
+    direct = _direct_corporate_connection(source, target, corporate_lookup)
     index = index_loader() if max_depth >= 2 else {"records": [], "generated_at": None}
-    shared = None
-    if max_depth >= 2:
+    shared = direct
+    if max_depth >= 2 and shared is None:
         if all(result.get("status") == "ok" for result in awards):
             shared = _shared_award(source, target, *awards, retrieved_at)
         if shared is None:
             shared = _shared_judgment(source, target, index)
     limited = any(result.get("status") != "ok" or result.get("limited") for result in awards)
-    coverage = ("直接關係僅使用已發布索引；未入庫公司無可驗證的直接邊。 / Direct links require published relationships."
+    coverage = ("直接關係僅查可核對的官方法人董監事；未命中不代表沒有其他關係。 / Direct comparison checks verified corporate-director observations only."
                 if max_depth == 1 else
-                "採購僅查可取得的第一頁得標公告；司法為部分 JList/JDoc 索引。未找到不代表兩家公司沒有關係。 / Procurement uses available first-page awards; the court index is partial. No match is not proof of no relationship.")
-    return {"found": shared is not None, "depth": 2 if shared else None,
+                "法人董監事依官方來源核對；採購僅查可取得的第一頁得標公告；司法為部分 JList/JDoc 索引。未找到不代表兩家公司沒有關係。 / Official corporate directors, first-page procurement and partial court index only. No match is not proof of no relationship.")
+    return {"found": shared is not None, "depth": len(shared["segments"]) if shared else None,
             "source_entity": source, "target_entity": target,
             "max_depth": max_depth, "segments": shared["segments"] if shared else [],
             "shared_node_type": shared.get("shared_node_type") if shared else None,

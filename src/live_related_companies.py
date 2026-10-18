@@ -50,6 +50,46 @@ def _juristic_company(name, search_lookup):
     return {"uniform_number": uniforms.pop(), "company_name": exact[0]["Company_Name"]}
 
 
+def corporate_director_connection(source_uniform, target_company, *, director_lookup=None,
+                                  name_lookup=_exact_name_rows):
+    """Find one directed, source-scoped corporate-director link to an exact-ID target.
+
+    This is a live observation, not a canonical ownership or affiliation edge.
+    The target name must resolve uniquely to its already verified registry ID.
+    """
+    if not re.fullmatch(r"[0-9]{8}", str(source_uniform or "")):
+        raise ValueError("Invalid source company ID")
+    target_uniform = str(target_company.get("public_identifier") or "")
+    target_name = str(target_company.get("display_name") or "")
+    if not re.fullmatch(r"[0-9]{8}", target_uniform) or not target_name:
+        raise ValueError("Invalid target company identity")
+    director_lookup = director_lookup or (lambda uniform: _moea_rows(DIRECTOR_API, uniform, 100))
+    rows = director_lookup(source_uniform)
+    matches = [row for row in rows[:100] if isinstance(row, dict)
+               and _normalized(row.get("Juristic_Person_Name")) == _normalized(target_name)]
+    if not matches:
+        return None
+    resolved = _juristic_company(target_name, name_lookup)
+    if not resolved or resolved["uniform_number"] != target_uniform:
+        return None
+    row = matches[0]
+    observed_at = datetime.now(timezone.utc).isoformat()
+    return {"source_uniform": source_uniform, "target_uniform": target_uniform,
+            "role": str(row.get("Person_Position_Name") or "").strip(),
+            "evidence": {"source_name": "經濟部公司登記董監事資料",
+                         "source_record_id": (f"Business_Accounting_NO={source_uniform};"
+                                              f"Juristic_Person_Name={target_name};"
+                                              f"Person_Position_Name={row.get('Person_Position_Name') or ''}"),
+                         "source_url": DIRECTOR_API + "?" + urllib.parse.urlencode({
+                             "$format": "json", "$filter": f"Business_Accounting_NO eq {source_uniform}",
+                             "$skip": "0", "$top": "100"}),
+                         "retrieved_at": observed_at,
+                         "provenance": {"match_method": "exact_juristic_name_unique_official_uniform",
+                                        "source_company_uniform": source_uniform,
+                                        "target_company_uniform": target_uniform,
+                                        "role": row.get("Person_Position_Name") or None}}}
+
+
 def related_companies(uniform, *, company_lookup=get_company, director_lookup=None,
                       name_lookup=_exact_name_rows, coaward_lookup=lookup_co_awardees):
     """Return at most six exact-ID company nodes with source evidence."""

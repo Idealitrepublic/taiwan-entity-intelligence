@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 from src.entities.api import dispatch_entity_api
 from src.entities.models import stable_id
 from src.live_company_path import CompanyRegistryUnavailable, live_company_path
+from src.live_related_companies import corporate_director_connection
 
 
 A = "96979933"
@@ -28,6 +29,43 @@ def award(uniform, limit=100, timeout=8):
 
 
 class LiveCompanyPathTests(unittest.TestCase):
+    def setUp(self):
+        default_directors = patch("src.live_company_path.corporate_director_connection", return_value=None)
+        default_directors.start()
+        self.addCleanup(default_directors.stop)
+
+    def test_direct_corporate_director_uses_unique_official_target_id_and_evidence(self):
+        target = {"public_identifier": B, "display_name": "台灣大哥大股份有限公司"}
+        rows = [{"Juristic_Person_Name": target["display_name"], "Person_Position_Name": "董事"}]
+        registry = [{"Company_Name": target["display_name"], "Business_Accounting_NO": B}]
+        verified = corporate_director_connection(A, target, director_lookup=lambda _: rows,
+                                                 name_lookup=lambda _: registry)
+        self.assertEqual(verified["target_uniform"], B)
+        self.assertEqual(verified["role"], "董事")
+        self.assertIn(A, verified["evidence"]["source_record_id"])
+        self.assertEqual(verified["evidence"]["provenance"]["target_company_uniform"], B)
+        self.assertIsNone(corporate_director_connection(
+            A, target, director_lookup=lambda _: rows,
+            name_lookup=lambda _: registry + [{"Company_Name": target["display_name"],
+                                                "Business_Accounting_NO": "12345678"}]))
+        self.assertIsNone(corporate_director_connection(
+            A, target, director_lookup=lambda _: [{"Juristic_Person_Name": "同名公司"}],
+            name_lookup=lambda _: registry))
+
+        def direct(source_uniform, target_company):
+            return verified if source_uniform == A and target_company["public_identifier"] == B else None
+
+        path = live_company_path(A, B, max_depth=1, company_lookup=company,
+                                 award_lookup=award, index_loader=lambda: {"records": []},
+                                 corporate_lookup=direct)
+        self.assertTrue(path["found"])
+        self.assertEqual(path["depth"], 1)
+        self.assertEqual(path["segments"][0]["relationship"]["relationship_type"],
+                         "CORPORATE_DIRECTOR_LINK")
+        self.assertEqual(path["segments"][0]["to_entity"]["id"], B_ID)
+        self.assertTrue(path["segments"][0]["evidence"]["source_url"])
+        self.assertIn("不推論", path["interpretation"])
+
     def test_exact_ids_share_official_agency_with_distinct_source_evidence(self):
         result = live_company_path(A, B, company_lookup=company, award_lookup=award,
                                    index_loader=lambda: {"records": []})
