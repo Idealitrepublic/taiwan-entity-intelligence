@@ -13,7 +13,8 @@ Scope: existing company, person, procurement, labor-penalty, and judicial source
 
 ## Reproducible baseline
 
-Read-only Development audit on 2026-10-17 (`tei-development`, project ref `canqjiokrtcxkwblhmml`):
+Read-only Development baseline on 2026-10-17, with donor-candidate counts refreshed
+on 2026-10-18 (`tei-development`, project ref `canqjiokrtcxkwblhmml`):
 
 | Measure | Actual count | Interpretation |
 | --- | ---: | --- |
