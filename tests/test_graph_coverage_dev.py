@@ -12,6 +12,8 @@ class GraphCoverageAuditTests(unittest.TestCase):
             "traceable_edges": 1027,
             "source_records": {"penalties": 80122},
             "labor_identifier_candidates": 1,
+            "donor_candidate_ids": {"all": 487, "single_company_label": 454,
+                                    "conflicting_labels": 3, "noncompany_form": 30},
         }
         self.judicial_index = {"records": 4231, "generated_at": "2026-09-24T18:23:51+00:00"}
 
@@ -23,6 +25,7 @@ class GraphCoverageAuditTests(unittest.TestCase):
         self.assertEqual(report["published"]["penalty_edges"], 1)
         self.assertEqual(report["source_only"]["labor_index_rows"], 80122)
         self.assertEqual(report["source_only"]["judicial_company_name_index_rows"], 4231)
+        self.assertEqual(report["source_only"]["political_donor_identifier_candidates"]["single_company_label"], 454)
         self.assertEqual(report["published"]["traceable_edges"], 1027)
 
     def test_rejects_inconsistent_counters(self):
@@ -36,6 +39,10 @@ class GraphCoverageAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             summarize(self.counts, {"records": 4231, "generated_at": None})
         counts = {**self.counts, "source_records": {"penalties": -1}}
+        with self.assertRaises(ValueError):
+            summarize(counts, self.judicial_index)
+        counts = {**self.counts, "donor_candidate_ids": {**self.counts["donor_candidate_ids"],
+                                                       "single_company_label": 486}}
         with self.assertRaises(ValueError):
             summarize(counts, self.judicial_index)
 

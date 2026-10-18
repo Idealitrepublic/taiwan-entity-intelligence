@@ -38,7 +38,23 @@ select jsonb_build_object(
   'labor_identifier_candidates', (select count(*)::int from public.source_records
     where dataset='penalties' and (uniform_number ~ '^[0-9]{8}$'
       or raw ?| array['統一編號','統編','Business_Accounting_NO']
-      or raw->>'事業單位名稱或負責人' ~ '(統一編號|統編|\t)[ :：]*[0-9]{8}[[:space:]]*$'))
+      or raw->>'事業單位名稱或負責人' ~ '(統一編號|統編|\t)[ :：]*[0-9]{8}[[:space:]]*$')),
+  'donor_candidate_ids', (with donors as (
+    select ev.source_locator->>'donor_uniform_number' as uniform,
+      regexp_replace(ev.title,'^政治獻金來源紀錄：','') as donor_name
+    from public.evidence_records ev
+    where ev.source_name='監察院政治獻金公開查閱平臺'
+      and ev.source_locator->>'donor_uniform_number' ~ '^[0-9]{8}$'
+  ), grouped as (
+    select uniform,count(distinct donor_name) labels,
+      bool_and(donor_name ~ '(股份有限公司|有限公司)$') legal_suffix
+    from donors group by uniform
+  ) select jsonb_build_object(
+      'all',count(*)::int,
+      'single_company_label',count(*) filter(where labels=1 and legal_suffix)::int,
+      'conflicting_labels',count(*) filter(where labels>1)::int,
+      'noncompany_form',count(*) filter(where labels=1 and not legal_suffix)::int)
+    from grouped)
 );
 ROLLBACK;
 """
@@ -71,12 +87,17 @@ def summarize(counts, judicial_index):
     if any(not isinstance(value, int) or value < 0 for value in
            [*entities.values(), *relationships.values(), counts["published_evidence"],
             *counts["source_records"].values(), traceable,
-            counts["labor_identifier_candidates"], judicial_index["records"]]):
+            counts["labor_identifier_candidates"], judicial_index["records"],
+            *counts["donor_candidate_ids"].values()]):
         raise ValueError("Coverage counters must be nonnegative integers")
     if traceable > total_edges:
         raise ValueError("Traceable edges exceed published edges")
     if counts["labor_identifier_candidates"] > counts["source_records"].get("penalties", 0):
         raise ValueError("Labor identifier candidates exceed indexed labor rows")
+    donor = counts["donor_candidate_ids"]
+    if (donor["single_company_label"] + donor["conflicting_labels"]
+            + donor["noncompany_form"] != donor["all"]):
+        raise ValueError("Donor identifier categories do not reconcile")
     if not judicial_index.get("generated_at"):
         raise ValueError("Judicial index timestamp is required")
     return {
@@ -99,6 +120,7 @@ def summarize(counts, judicial_index):
         "source_only": {
             "labor_index_rows": counts["source_records"].get("penalties", 0),
             "labor_identifier_field_candidates": counts["labor_identifier_candidates"],
+            "political_donor_identifier_candidates": donor,
             "judicial_company_name_index_rows": judicial_index["records"],
             "judicial_index_generated_at": judicial_index["generated_at"],
             "procurement": "live first-page lookup; no persisted source-record denominator",
@@ -107,6 +129,7 @@ def summarize(counts, judicial_index):
         "interpretation": [
             "Counts are Development snapshots, not national coverage or source recall.",
             "A labor identifier-field candidate still requires exact ID and registry-name verification before publication.",
+            "Political donor IDs are draft source candidates; company-form labels are not registry verification.",
             "Judicial company-name index rows are candidates, not verified case-role relationships.",
             "Published edges are counted only when both endpoints and active primary Evidence are public.",
         ],

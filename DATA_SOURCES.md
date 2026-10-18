@@ -222,3 +222,13 @@ incomplete. Labor penalty legacy matching may use a company name without an
 official uniform number; a name-only hit is not an Entity identity decision.
 Both require row-level official-source comparison before making a coverage or
 identity claim.
+
+The 2026-10-18 bounded procurement materializer checks the exact eight-digit
+bidder code and winner role in both the mirrored summary and detailed notice,
+requires a stable agency/case/notice locator and an already registry-verified
+Company, and rejects unsuccessful-tender notices. Its output is always draft
+until the matching official PCC row is independently reviewed. A mirror record
+alone does not increase published procurement coverage. The Development donor
+candidate queue likewise distinguishes official-source donor IDs from verified
+company entities; conflicting labels and other organization forms are held for
+manual resolution.

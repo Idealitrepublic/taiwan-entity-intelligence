@@ -62,6 +62,11 @@ def award_role(row: dict[str, Any], uniform: str) -> str:
     return 'unresolved'
 
 
+def is_award_notice(row: dict[str, Any]) -> bool:
+    """An unsuccessful-tender notice also contains 決標, but is not an award."""
+    return str((row.get('brief') or {}).get('type') or '').strip() == '決標公告'
+
+
 def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str, Any]:
     if not uniform.isdigit() or len(uniform) != 8:
         raise ValueError("統編必須是 8 碼數字。")
@@ -69,8 +74,7 @@ def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str
     try:
         payload = _json_get(url, timeout=timeout)
         rows = payload.get("records") if isinstance(payload.get("records"), list) else []
-        notices = [row for row in rows if isinstance(row, dict)
-                   and '決標' in str((row.get('brief') or {}).get('type') or '')]
+        notices = [row for row in rows if isinstance(row, dict) and is_award_notice(row)]
         # Select the latest notice before classifying: a correction can withdraw
         # a formerly successful award. Keep unknown keys separate, not merged.
         latest = {}
@@ -130,7 +134,7 @@ def lookup_co_awardees(uniform: str, limit: int = 6, timeout: int = 8) -> dict[s
         ambiguous = set()
         for row in sorted(rows, key=lambda item: str(item.get("date") or "")
                           if isinstance(item, dict) else ""):
-            if not isinstance(row, dict) or "決標" not in str((row.get("brief") or {}).get("type") or ""):
+            if not isinstance(row, dict) or not is_award_notice(row):
                 continue
             key = (row.get("unit_id"), row.get("job_number"))
             if not all(key):

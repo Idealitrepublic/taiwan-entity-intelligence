@@ -23,10 +23,33 @@ Read-only Development audit on 2026-10-17 (`tei-development`, project ref `canqj
 | All published edges with active primary Evidence and published endpoints | 1,027 / 1,027 | Traceability of *published* edges, not coverage of indexed sources |
 | Active published Evidence records | 911 | Can support multiple edges; not a one-to-one coverage denominator |
 | Indexed labor source rows / identifier-field candidates | 80,122 / 1 | Candidate still needs exact ID and official company-name verification |
+| Control Yuan donor rows / distinct eight-digit donor IDs | 618 / 487 | Draft Evidence only except one reviewed published contribution; not 487 verified companies |
+| Donor IDs with one company-form label / conflicting labels / other legal forms | 454 / 3 / 30 | Queue for registry and source review, not automatic canonical identity |
 | Judicial company-name index rows | 4,231 | Name mentions are candidates, not verified case-role links; snapshot generated 2026-09-24 |
 | Procurement / directors | Unknown persisted denominator | Current graph uses bounded live lookups, not a complete indexed census |
 
 The judicial ingestion window's 15,362 downloaded JDocs and 2,720 upstream-unavailable documents are source-health measures, not published company/judgment relationship counts. No national coverage percentage or recall can be calculated from the above. The two published companies are 大魯閣實業股份有限公司 (`04690983`) and 都一處有限公司 (`29072066`). For other firms, live source observations may be shown with explicit candidate/source-only labeling; they must not be presented as canonical links.
+
+### 2026-10-18 bounded expansion attempt
+
+The read-only Development audit now separates 487 distinct exact-format donor IDs
+from published Company identities. Three IDs have conflicting donor labels and 30
+have non-company-form labels; even the 454 stable company-form labels still need
+official registry and original-source review. The MOEA primary and alternate
+company-name APIs both returned HTTP 504 during this run, so none were promoted.
+
+One existing-company procurement candidate was staged for 大魯閣 (`04690983`):
+agency `3.80.41`, case `115034`, notice `BDM-1-71265329`, mirror award date
+2026-08-21 and bidder amount TWD 450,000. Its exact bidder ID and winner role
+agree between the mirror's summary and detailed fields, and the company already
+has published registry Evidence. However, the official PCC portal did not yield
+a row-level confirmation during this check. The Contract, `CONTRACT_WITH`, and
+Evidence therefore remain **draft**, absent from the public Graph and published
+coverage. The source locator retains the mirror URL, agency/case/notice IDs,
+bidder field paths, retrieval time and an explicit official-verification warning.
+The mirror is not misrepresented as an official primary source. No Production
+data changed. A regression test also prevents `無法決標公告` from being mistaken for
+an award because its type contains the substring `決標`.
 
 ## Stage 2 decision gate
 

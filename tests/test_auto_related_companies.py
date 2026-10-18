@@ -84,6 +84,14 @@ class AutoRelatedCompanyTests(unittest.TestCase):
                 "records": [award_notice(), award_notice(same_day_conflict=True)]}):
             self.assertEqual(procurement.lookup_co_awardees("22099131")["items"], [])
 
+    def test_unsuccessful_notice_is_never_counted_as_an_award(self):
+        row = award_notice()
+        row["brief"]["type"] = "無法決標公告"
+        with patch.object(procurement, "_json_get", return_value={
+                "records": [row], "total_records": 1}):
+            self.assertEqual(procurement.lookup_awards("22099131")["records"], [])
+            self.assertEqual(procurement.lookup_co_awardees("22099131")["items"], [])
+
     def test_route_is_bounded_and_read_only(self):
         self.assertEqual(dispatch("/api/company-related/not-an-id", {})[0], 400)
         self.assertEqual(dispatch("/api/company-related/22099131", {}, method="POST")[0], 405)
