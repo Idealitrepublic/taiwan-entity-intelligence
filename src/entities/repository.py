@@ -202,7 +202,7 @@ class EntityRepository:
                 verified = next((row for row in live if matches_alias_company(row)), None)
             if verified is not None:
                 rows = [{**verified, "match_type": "verified_alias",
-                         "context_label": "官方核對別名 / Verified company alias",
+                         "context_label": "台積電官方商標 / TSMC trademark",
                          "alias_source_url": alias["source_url"]},
                         *(row for row in rows if not matches_alias_company(row))][:limit]
         if entity_type in (None, "Company") and len(rows) < limit:
