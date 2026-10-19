@@ -24,33 +24,16 @@ def _register_font():
             pdfmetrics.registerFont(TTFont(FONT, str(FONT_PATH)))
 
 
-def _fields(value, prefix=""):
-    """Flatten hierarchy into full-width rows, never nested narrow tables."""
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if key == "content_hash":
-                continue
-            name = str(key).replace("_", " ")
-            path = f"{prefix} / {name}" if prefix else name
-            yield from _fields(child, path)
-    elif isinstance(value, list):
-        if not value:
-            yield prefix, "No published records / 目前無已發布紀錄"
-        for index, child in enumerate(value, 1):
-            yield from _fields(child, f"{prefix} [{index}]")
-    else:
-        yield prefix, "—" if value is None or value == "" else str(value)
-
-
 def render_report_pdf(report):
-    # Imported here to keep the HTML/JSON path independent of the PDF dependency.
-    from src.reports import SECTION_TITLES
+    # JSON retains the full projection; PDF emphasizes readable findings and sources.
+    from src.report_presentation import present_report
 
     _register_font()
     output = BytesIO()
     page_width, page_height = landscape(A4)
     margin = 12 * mm
     width = page_width - margin * 2
+    view = present_report(report)
     normal = ParagraphStyle(
         "Body", fontName=FONT, fontSize=9, leading=14, wordWrap="CJK",
         splitLongWords=True, textColor=colors.HexColor("#17202a"))
@@ -62,26 +45,26 @@ def render_report_pdf(report):
 
     def paragraph(value, style=normal, key=""):
         text = escape(str(value)).replace("\n", "<br/>")
-        parsed = urlsplit(str(value)) if key.endswith("source url") else None
+        parsed = urlsplit(str(value)) if "URL" in key else None
         # All content is escaped. No images, files or external resources are loaded.
         if parsed and parsed.scheme in ("http", "https") and parsed.netloc:
             text = f'<link href="{escape(str(value), quote=True)}" color="#1769aa">{text}</link>'
         return Paragraph(text, style)
 
-    story = [paragraph(report["title"], title),
-             paragraph(report["methodology"]), Spacer(1, 6),
-             paragraph(f"Report type / 類型: {report['report_type']}"),
-             paragraph(f"Generated at / 產生時間: {report['generated_at']}"),
-             paragraph("Coverage / 範圍", heading)]
+    story = [paragraph(report["title"], title), paragraph(report["methodology"]),
+             paragraph(f"產生時間 / Generated at: {report['generated_at']}", muted),
+             Spacer(1, 7), paragraph("調查摘要 / Investigation summary", heading)]
+    summary = "    ·    ".join(f"{label}: {count}" for label, count in view["summary"].items())
+    story.extend([paragraph(summary), Spacer(1, 5)])
+    for warning in view["warnings"]:
+        story.append(paragraph(warning, muted))
 
-    def table(value):
+    def table(facts):
         rows = [[paragraph("Field / 欄位"), paragraph("Value / 內容")]]
-        rows.extend([paragraph(key, muted), paragraph(child, key=key)]
-                    for key, child in _fields(value))
+        rows.extend([paragraph(key, muted), paragraph(value, key=key)] for key, value in facts)
         if len(rows) == 1:
-            story.append(paragraph("No published records / 目前無已發布紀錄", muted))
             return
-        result = LongTable(rows, colWidths=[width * .29, width * .71],
+        result = LongTable(rows, colWidths=[width * .28, width * .72],
                            repeatRows=1, splitByRow=1, splitInRow=1,
                            hAlign="LEFT")
         result.setStyle([
@@ -97,23 +80,14 @@ def render_report_pdf(report):
         ])
         story.extend([result, Spacer(1, 8)])
 
-    table(report["coverage"])
-    sections = list(SECTION_TITLES)
-    if report["report_type"] == "WORKSPACE":
-        sections = [("workspace_items", "Saved Workspace Items / 已收藏項目"),
-                    ("saved_evidence", "Saved Evidence / 已收藏證據"), *sections]
-    for key, label in sections:
-        story.append(paragraph(label, heading))
-        values = report.get(key)
-        if not values:
-            story.append(paragraph("No published records / 目前無已發布紀錄", muted))
-            continue
-        if isinstance(values, list):
-            for index, row in enumerate(values, 1):
-                story.append(paragraph(f"{index}.", muted))
-                table(row)
-        else:
-            table(values)
+    for section in view["sections"]:
+        story.append(paragraph(f"{section['title']} · {len(section['items'])} 筆", heading))
+        for index, item in enumerate(section["items"], 1):
+            story.append(paragraph(f"{index}. {item['title']}", muted))
+            table(item["facts"])
+    if view["empty"]:
+        story.append(paragraph("尚無已發布紀錄 / No published records", heading))
+        story.append(paragraph("、".join(view["empty"]), muted))
 
     def footer(canvas, document):
         canvas.saveState()

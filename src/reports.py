@@ -356,51 +356,40 @@ def _safe_url(value):
     return value if parsed.scheme in ("http", "https") and parsed.netloc else None
 
 
-def _render_value(value, key=""):
-    if value is None or value == "":
-        return "<span class=empty>—</span>"
-    if isinstance(value, bool):
-        return "Yes" if value else "No"
-    if isinstance(value, list):
-        if not value:
-            return "<p class=empty>No published records / 目前無已發布紀錄</p>"
-        return "".join(f"<article>{_render_value(item)}</article>" for item in value)
-    if isinstance(value, dict):
-        rows = []
-        for child_key, child in value.items():
-            if child_key in ("content_hash",):
-                continue
-            rows.append(
-                f'<div class="report-field"><dt>{escape(str(child_key).replace("_", " "))}</dt>'
-                f"<dd>{_render_value(child, child_key)}</dd></div>")
-        return f"<dl>{''.join(rows)}</dl>"
-    url = _safe_url(value) if key == "source_url" else None
-    text = escape(str(value))
-    return f'<a href="{escape(url, quote=True)}" rel="noreferrer">{text}</a>' if url else text
-
-
 def render_report_html(report):
-    workspace_sections = ""
-    if report.get("report_type") == "WORKSPACE":
-        workspace_sections = (
-            f'<section><h2>Saved Workspace Items / 已收藏項目</h2>{_render_value(report.get("workspace_items", []))}</section>'
-            f'<section><h2>Saved Evidence / 已收藏證據</h2>{_render_value(report.get("saved_evidence", []))}</section>')
+    from src.report_presentation import present_report
+
+    view = present_report(report)
+
+    def fact_html(label, value):
+        url = _safe_url(value) if "URL" in label else None
+        shown = (f'<a href="{escape(url, quote=True)}" rel="noreferrer">{escape(value)}</a>'
+                 if url else escape(value))
+        return f'<div class="report-field"><dt>{escape(label)}</dt><dd>{shown}</dd></div>'
+
     sections = "".join(
-        f"<section><h2>{escape(title)}</h2>{_render_value(report.get(key))}</section>"
-        for key, title in SECTION_TITLES)
+        f'<section id="{escape(section["key"])}"><div class="section-head"><h2>{escape(section["title"])}</h2>'
+        f'<span>{len(section["items"])} 筆 / records</span></div>'
+        + "".join(f'<article><h3>{escape(item["title"])}</h3><dl>'
+                  + "".join(fact_html(label, value) for label, value in item["facts"])
+                  + '</dl></article>' for item in section["items"]) + '</section>'
+        for section in view["sections"])
+    summary = "".join(f'<div><b>{value}</b><span>{escape(label)}</span></div>'
+                      for label, value in view["summary"].items())
+    warnings = "".join(f'<p class="warning">{escape(message)}</p>' for message in view["warnings"])
+    empty = (f'<section class="coverage"><h2>尚無已發布紀錄 / No published records</h2>'
+             f'<p>{escape("、".join(view["empty"]))}</p></section>') if view["empty"] else ""
     return f"""<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>{escape(report['title'])}</title><style>
 *{{box-sizing:border-box}}html{{min-width:0}}body{{font:15px/1.55 system-ui,"Noto Sans TC",sans-serif;color:#17202a;max-width:1120px;margin:auto;padding:28px;background:#f5f7f9;overflow-wrap:break-word}}
-header,section,article{{min-width:0;max-width:100%;background:white;border:1px solid #dce3e8;border-radius:10px;padding:16px;margin:12px 0}}
-article{{background:#fafbfc}}h1{{font-size:26px}}h2{{font-size:19px;border-bottom:1px solid #e4e9ed;padding-bottom:8px}}
-dl{{display:block;min-width:0;margin:4px 0}}.report-field{{display:grid;grid-template-columns:minmax(145px,23%) minmax(0,1fr);gap:12px;min-width:0;padding:4px 0;border-bottom:1px solid #eef1f3}}.report-field:last-child{{border-bottom:0}}dt{{color:#5c6975;overflow-wrap:break-word}}dd{{min-width:0;margin:0;overflow-wrap:break-word;word-break:normal;white-space:pre-wrap}}dd dl{{white-space:normal}}
-a{{color:#1769aa;overflow-wrap:anywhere;word-break:break-word}}.empty{{color:#71808e}}@media(max-width:640px){{body{{padding:12px}}.report-field{{grid-template-columns:minmax(0,1fr);gap:2px}}}}
-@page{{size:A4 landscape;margin:12mm}}@media print{{html,body{{width:auto;max-width:none;margin:0;padding:0;background:white;font-size:10pt}}header,section,article{{border-color:#dce3e8;box-shadow:none;margin:0 0 7mm;padding:4mm;break-inside:auto;page-break-inside:auto}}h1,h2,dt{{break-after:avoid-page}}.report-field{{break-inside:avoid-page;page-break-inside:avoid}}a{{color:#1769aa;text-decoration:underline}}}}
+header,section{{min-width:0;max-width:100%;background:white;border:1px solid #dce3e8;border-radius:10px;padding:18px;margin:12px 0}}header{{border-top:6px solid #285b81}}article{{min-width:0;padding:12px 0;border-top:1px solid #e4e9ed;break-inside:auto}}article:first-of-type{{border-top:0}}h1{{font-size:26px;margin:0 0 8px}}h2{{font-size:19px;margin:0}}h3{{font-size:15px;margin:0 0 8px}}.section-head{{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:1px solid #dce3e8;padding-bottom:8px}}.section-head span{{color:#5c6975;white-space:nowrap}}
+.summary{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}}.summary div{{padding:10px;border-radius:7px;background:#edf3f7}}.summary b,.summary span{{display:block}}.summary b{{font-size:22px}}.summary span{{color:#5c6975}}.warning{{border-left:3px solid #b97029;padding-left:9px;color:#744516}}.meta{{color:#5c6975}}
+dl{{display:block;min-width:0;margin:4px 0}}.report-field{{display:grid;grid-template-columns:minmax(145px,23%) minmax(0,1fr);gap:12px;min-width:0;padding:4px 0}}dt{{color:#5c6975;overflow-wrap:break-word}}dd{{min-width:0;margin:0;overflow-wrap:anywhere;word-break:normal;white-space:pre-wrap}}a{{color:#1769aa;overflow-wrap:anywhere}}@media(max-width:640px){{body{{padding:12px}}.summary{{grid-template-columns:1fr 1fr}}.report-field{{grid-template-columns:minmax(0,1fr);gap:2px}}}}
+@page{{size:A4 landscape;margin:12mm}}@media print{{html,body{{width:auto;max-width:none;margin:0;padding:0;background:white;font-size:10pt}}header,section{{border-color:#dce3e8;margin:0 0 7mm;padding:4mm;break-inside:auto}}article{{break-inside:auto}}h1,h2,h3,dt{{break-after:avoid-page}}.report-field{{break-inside:avoid-page;page-break-inside:avoid}}a{{color:#1769aa;text-decoration:underline}}}}
 </style></head><body><header><h1>{escape(report['title'])}</h1>
-<p>{escape(report['methodology'])}</p><dl><dt>Report type</dt><dd>{escape(report['report_type'])}</dd>
-<dt>Generated at</dt><dd>{escape(report['generated_at'])}</dd><dt>Coverage</dt><dd>{_render_value(report['coverage'])}</dd></dl></header>
-{workspace_sections}{sections}</body></html>"""
+<p>{escape(report['methodology'])}</p><p class="meta">產生時間 / Generated at: {escape(report['generated_at'])} · 類型 / Type: {escape(report['report_type'])}</p>
+<div class="summary">{summary}</div>{warnings}</header>{sections}{empty}</body></html>"""
 
 
 def dispatch_report_api(path, query, authorization=None, service=None):
