@@ -6,8 +6,9 @@ model, and Production are unchanged.
 
 The layout takes the *pattern* of a compact investigation summary, grouped
 findings, provenance register, and explicit coverage caveats from international
-public-record investigation tools (such as OpenCorporates and OCCRP Aleph), not
-their branding or data. HTML and PDF now share one display-only projection:
+public-record investigation tools (such as [OpenCorporates](https://api.opencorporates.com/documentation/API-Reference)
+and [OCCRP Aleph](https://docs.aleph.occrp.org/users/getting-started/homepage/)),
+not their branding or data. HTML and PDF now share one display-only projection:
 
 1. Investigation title, methodology, generated time, three summary counts.
 2. Saved items (Workspace only), Entity profiles, relationships, contracts,
