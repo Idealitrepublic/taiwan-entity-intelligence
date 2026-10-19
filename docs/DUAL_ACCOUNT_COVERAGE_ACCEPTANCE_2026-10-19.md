@@ -37,3 +37,37 @@ The 15,362 JDoc items in the local judicial sync benchmark are **not** evidence 
 - Preview: https://taiwan-entity-intelligence-bz1yrfp0h-coldlight871029-9944.vercel.app/ (`eb1c8de`, READY).
 
 Do not claim nationwide coverage, completed private PDF visual QA, or complete judicial identity resolution from these checks. No Production changes were made.
+
+## Follow-up: private report and coverage gate
+
+The two existing test accounts authenticated independently against
+`tei-development` for a read-only report check. Account 2 could not read
+Account 1's Workspace and its PDF report endpoint returned 404. Account 1's
+same endpoint returned an actual `application/pdf` response; the WSGI download
+response included a `.pdf` attachment filename. Its four saved items produced
+two Entity Profiles, two Key Relationships, one Penalty, three Sources, and a
+seven-page landscape PDF. Every page was rendered and visually inspected:
+Chinese/English text, tables, source URLs, section continuation, and page
+footers were readable without visible clipping or overflow. The locally
+executed Development API/report code and cross-account report denial are
+**PASS**. Chrome's automated native Save dialog cancelled without saving, so
+the actual Preview browser file-save/print operation remains **PARTIAL**; do
+not represent local PDF generation as a confirmed browser download.
+
+The repeatable read-only check is `scripts/verify_private_report_live.py`.
+It accepts the Development public URL/key and two test accounts on stdin only;
+do not pass passwords on a command line or save its input. No credentials or
+private report content are stored in the repository.
+
+The refreshed Development coverage/integrity audit reports 462 published
+Companies with exact IDs and Registry Evidence, 121 Politicians, zero ordinary
+People, 1,373 active published Evidence records, and 1,028/1,028 traceable
+published edges with zero invalid or duplicate edges. Only one labor penalty
+and one procurement award are published as Company edges; Company–Judgment
+edges remain zero. The 80,122 indexed labor source rows contain only one
+explicit company ID, and the 4,231-row judicial company-name index is a
+candidate index, not verified case-party identity. The duplicate draft
+procurement notice is not published. These are **coverage gaps**, not evidence
+of data loss. Further publication requires a verifiable official identifier
+or human-reviewed original case/award evidence, with source and dates retained;
+same-name matching remains prohibited. Production was not modified.
