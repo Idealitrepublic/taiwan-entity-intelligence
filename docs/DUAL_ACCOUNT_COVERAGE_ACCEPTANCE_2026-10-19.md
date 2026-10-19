@@ -95,3 +95,16 @@ resolve any company by name alone and did not change Production.
 This is one verifiable coverage increment, not a national procurement
 backfill. Broad labor and judiciary identity gaps, the first-page mirror
 limit, and actual native-browser PDF save verification remain open.
+
+## Follow-up: report download recovery path
+
+The Workspace Download control still offers the native PDF save dialog. Its
+automated Chrome attempt returned a cancelled dialog, so a file on the user's
+disk is **not** verified. A separate **Browser download PDF** control now
+bypasses the native picker and prepares the authenticated PDF as a browser
+download with a visible, user-clickable **Save PDF** link if the automatic
+download is blocked. Neither route reports “saved” without confirmation of
+a completed writable stream. The cancellation and fallback paths have
+regression tests; real-browser disk delivery remains **PARTIAL** until a
+person saves and opens the resulting file. The underlying two-account API,
+RLS, PDF bytes and seven-page visual checks remain PASS.

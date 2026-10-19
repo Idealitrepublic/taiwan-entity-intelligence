@@ -161,7 +161,15 @@ test('native Save picker runs before fetch; success requires write and close',as
 test('picker cancellation does not fetch or claim saved; request can retry',async()=>{
   const h=reportHarness({picker:async()=>{throw Object.assign(new Error('cancel'),{name:'AbortError'})}});
   await vm.runInContext("exportReport('workspace','id',true)",h.context);
-  assert.equal(h.requests.length,0);assert(h.events.includes('已取消儲存 / Save cancelled'));assert.equal(h.context.reportRequests.size,0);
+  assert.equal(h.requests.length,0);assert(h.events.some(event=>event.includes('可改用「瀏覽器下載 PDF」')));assert.equal(h.context.reportRequests.size,0);
+});
+test('explicit browser download bypasses native picker and leaves a manual Save PDF link',async()=>{
+  const h=reportHarness({picker:async()=>{throw Error('picker must not open')}});
+  await vm.runInContext("exportReport('workspace','id',true,true)",h.context);
+  assert.equal(h.requests.length,1);assert(h.events.includes('object-url'));
+  assert(h.events.includes('append-active'));assert(h.events.includes('click'));
+  assert(!h.events.includes('PDF 已儲存 / PDF saved'));
+  assert(html.includes("browserReportButton.addEventListener('click'"));
 });
 test('file write failure aborts temporary write and never claims saved',async()=>{
   const events=[],h=reportHarness({picker:async()=>({createWritable:async()=>({write:async()=>{throw Error('disk failed')},abort:async()=>events.push('abort'),close:async()=>events.push('close')})})});
