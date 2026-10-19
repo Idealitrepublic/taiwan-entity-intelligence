@@ -71,3 +71,27 @@ procurement notice is not published. These are **coverage gaps**, not evidence
 of data loss. Further publication requires a verifiable official identifier
 or human-reviewed original case/award evidence, with source and dates retained;
 same-name matching remains prohibited. Production was not modified.
+
+## Follow-up: one additional official procurement award
+
+The procurement materializer rejected official agency code `A.47.1.7`
+because it previously allowed numeric-dot codes only. The validator now
+accepts bounded alphanumeric-dot agency codes while rejecting spaces, path
+separators, query characters and empty segments; targeted tests cover both.
+
+An independently opened [PCC original award notice](https://web.pcc.gov.tw/tps/atm/AtmAwardWithoutSso/QueryAtmAwardDetailHist?fkPmsMainHist=OTcyMzkxODA%3D&userType=)
+confirms case `B115909`, agency 海洋委員會海巡署艦隊分署, notice date
+2026-09-21, award date 2026-09-17, winner 中華電信股份有限公司 with exact
+uniform number `96979933`, and TWD 250,000,000. The structured notice
+locator `A.47.1.7:B115909:BDM-1-71286948` matched those fields. Development
+already held the published Company with that exact identifier, and no
+Contract for this case existed before ingestion. The official-source bundle
+was published **only to Development**. A read-back confirmed one published
+Contract, one published `CONTRACT_WITH` edge, primary PCC Evidence, and all
+three Company/Contract/edge Evidence links. Development totals rose from one
+to **two** published Contracts and Contract edges. The operation did not
+resolve any company by name alone and did not change Production.
+
+This is one verifiable coverage increment, not a national procurement
+backfill. Broad labor and judiciary identity gaps, the first-page mirror
+limit, and actual native-browser PDF save verification remain open.

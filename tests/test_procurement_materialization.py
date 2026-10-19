@@ -49,6 +49,21 @@ def official_row():
 
 
 class ProcurementMaterializationTests(unittest.TestCase):
+    def test_official_alphanumeric_agency_code_is_supported(self):
+        row = notice()
+        row["unit_id"] = "A.47.1.7"
+        row["detail"]["機關資料:機關代碼"] = "A.47.1.7"
+        result = bundle(row)
+        self.assertEqual(result["evidence"][0]["source_locator"]["unit_id"], "A.47.1.7")
+
+    def test_agency_code_rejects_unsafe_characters(self):
+        for code in ("A..47", "A/47", "A?47", "A.47 "):
+            row = notice()
+            row["unit_id"] = code
+            row["detail"]["機關資料:機關代碼"] = code
+            with self.subTest(code=code), self.assertRaises(ValueError):
+                bundle(row)
+
     def test_official_row_creates_distinct_primary_evidence_and_published_edge(self):
         result = build_official_award_bundle(
             notice(), official=official_row(), company_entity_id=COMPANY_ID,

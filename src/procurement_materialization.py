@@ -38,7 +38,7 @@ def build_contract_bundle(notice, *, company_entity_id, company_uniform,
     unit_id = str(notice.get("unit_id") or "")
     job_number = str(notice.get("job_number") or "")
     filename = str(notice.get("filename") or "")
-    if (not re.fullmatch(r"[0-9.]+", unit_id)
+    if (not re.fullmatch(r"[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*", unit_id)
             or not re.fullmatch(r"[\w-]+", job_number)
             or not re.fullmatch(r"[\w-]+", filename)
             or not is_award_notice(notice)
