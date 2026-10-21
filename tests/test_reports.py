@@ -35,6 +35,19 @@ def graph(relationship_type="CONTRACT_WITH"):
 
 
 class ReportTests(unittest.TestCase):
+    def test_report_fetches_remaining_graph_pages_before_rendering(self):
+        repository = Mock()
+        repository.entity.return_value = entity()
+        first = graph()
+        first.update(has_more=True, next_cursor=REL)
+        second = graph("RELATED_TO_PENALTY")
+        second["edges"][0] = {**second["edges"][0], "id": "66666666-6666-4666-8666-666666666666"}
+        repository.graph_neighbors.side_effect = [first, second]
+        result = ReportService(repository).entity_report(ENTITY)
+        self.assertEqual(len(result["relationship_graph"]["edges"]), 2)
+        self.assertFalse(result["relationship_graph"]["truncated"])
+        repository.graph_neighbors.assert_any_call(ENTITY, limit=25, after=REL)
+
     def test_entity_report_has_all_sections_and_source_provenance(self):
         repository = Mock()
         repository.entity.return_value = entity()
@@ -173,8 +186,8 @@ class ReportTests(unittest.TestCase):
                       "government_contracts", "judgments", "penalties", "asset_records",
                       "sources")}, "relationship_graph": {}}
         html = render_report_html(report)
-        self.assertIn("Entity Profile / 實體概況", html)
-        self.assertIn("Relationship Graph / 關係圖", html)
+        self.assertIn("實體概況 / Entity Profile", html)
+        self.assertIn("關係圖 / Relationship Graph", html)
         self.assertIn("&lt;unsafe&gt;", html)
         self.assertNotIn("<unsafe>", html)
 

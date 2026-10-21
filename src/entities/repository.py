@@ -4,6 +4,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 from .contracts import (
     ENTITY_FIELDS as PUBLIC_ENTITY_FIELDS,
@@ -24,6 +25,17 @@ POLITICIAN_TERM_FIELDS = select_list(PUBLIC_POLITICIAN_TERM_FIELDS)
 ASSET_DECLARATION_FIELDS = select_list(PUBLIC_ASSET_DECLARATION_FIELDS)
 MOEA_COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 MOEA_COMPANY_SEARCH_API = "https://data.gcis.nat.gov.tw/od/data/api/6BBA2268-1367-4B42-9CCA-BC17499EBE8C"
+
+
+def _moea_company_rows(uniform):
+    params = {"$format": "json", "$filter": f"Business_Accounting_NO eq {uniform}",
+              "$skip": "0", "$top": "1"}
+    request = urllib.request.Request(
+        MOEA_COMPANY_API + "?" + urlencode(params),
+        headers={"Accept": "application/json", "User-Agent": "T.E.I./report-registry"})
+    with urllib.request.urlopen(request, timeout=8) as response:
+        payload = json.load(response)
+    return payload if isinstance(payload, list) else []
 # Curated aliases must have both an official company-ID lookup and an
 # independently attributable alias source. Never infer an alias from a name
 # substring (for example, 台積電機 is not 台積電).
@@ -135,6 +147,45 @@ class EntityRepository:
             "entity_id": f"eq.{uuid_string(entity_id)}", "order": "evidence_id.asc,fact_type.asc", "limit": 51})
         return {**rows[0], "evidence": [link for link in links[:50] if link.get("evidence")],
                 "evidence_has_more": len(links) > 50}
+
+    def company_registry_for_entity(self, entity_id):
+        """Join a published company to its registry row by exact official ID only."""
+        identifiers = self.transport("entity_public_identifiers", {
+            "select": "value", "entity_id": f"eq.{uuid_string(entity_id)}",
+            "namespace": "eq.tw:uniform_number", "limit": 1})
+        uniform = str(identifiers[0].get("value") or "") if identifiers else ""
+        if not re.fullmatch(r"[0-9]{8}", uniform):
+            return None
+        rows = self.transport("companies", {
+            "select": "uniform_number,name,status,representative_name,address,capital_amount,established_date,source,source_url,fetched_at",
+            "uniform_number": f"eq.{uniform}", "limit": 1})
+        if rows and rows[0].get("uniform_number") == uniform:
+            return rows[0]
+        # A published Entity may not have a materialized companies row yet.
+        # The official registry lookup is exact by uniform number; it never
+        # infers a match from company name and is marked as live, not published.
+        try:
+            live = _moea_company_rows(uniform)
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError,
+                ValueError, json.JSONDecodeError):
+            return None
+        if not live:
+            return None
+        record = live[0]
+        if str(record.get("Business_Accounting_NO") or "") != uniform:
+            return None
+        return {"uniform_number": uniform, "name": record.get("Company_Name"),
+                "status": record.get("Company_Status_Desc"),
+                "representative_name": record.get("Responsible_Name"),
+                "address": record.get("Company_Location"),
+                "capital_amount": record.get("Capital_Stock_Amount"),
+                "established_date": record.get("Company_Setup_Date"),
+                "source": "經濟部即時公司登記 / MOEA live registry",
+                "source_url": MOEA_COMPANY_API + "?" + urlencode({
+                    "$format": "json", "$filter": f"Business_Accounting_NO eq {uniform}",
+                    "$skip": "0", "$top": "1"}),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "data_status": "live_official_exact_id"}
 
     def evidence(self, evidence_id):
         rows = self.transport("evidence_records", {"select": EVIDENCE_FIELDS,

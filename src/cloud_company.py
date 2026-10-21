@@ -333,7 +333,8 @@ def build_company(uniform):
             website_check['website_verification'] = data.get('website_verification')
             data['website_crosscheck'] = website_check
             hits = website_check['anti_fraud']['matched']
-            data['evidence_status']['165'] = {'status':'alert' if hits else 'ok', 'matched':hits, 'message':'以完整網域精確比對 165 與數位發展部公開資料。'}
+            data['evidence_status']['165'] = {'status':('alert' if hits else 'ok') if website_check['status'] == 'ok' else 'partial',
+                                             'matched':hits, 'message':'以完整網域精確比對已索引的 165 公開資料；未命中不等於網站安全。' if website_check['status'] == 'ok' else '165 公開資料尚未建立可用索引，不能判定未命中。'}
         except Exception:
             data['website_crosscheck'] = {'status':'partial', 'domain':data.get('website_host'), 'website_url':data.get('website_url'), 'anti_fraud':{'matched':0,'records':[]}, 'message':'反詐網域索引暫時無法讀取。'}
     return data
@@ -344,8 +345,24 @@ def check_domain(value):
     if not host or '.' not in host or len(host) > 253:
         raise ValueError('請輸入有效網站網域。')
     host = host.lower().removeprefix('www.').rstrip('.')
-    params = urllib.parse.urlencode({'select':'id,title,domain,raw,source_url','domain':'eq.'+host,'dataset':'eq.anti_fraud','limit':'100'})
+    if not SUPABASE_KEY:
+        return {'status':'unavailable','domain':host,'anti_fraud':{'status':'unavailable','matched':0,'records':[]}}
+    index_params = urllib.parse.urlencode({'select':'id,indexed_at,metadata,source_url','dataset':'eq.anti_fraud',
+                                          'status':'eq.indexed','order':'indexed_at.desc','limit':'1'})
+    index_req = urllib.request.Request(f'{SUPABASE}/rest/v1/source_files?{index_params}',
+                                       headers={'apikey':SUPABASE_KEY,'Authorization':f'Bearer {SUPABASE_KEY}'})
+    with urllib.request.urlopen(index_req,timeout=8) as response:
+        snapshots=json.load(response)
+    if not snapshots:
+        return {'status':'unavailable','domain':host,'anti_fraud':{'status':'unavailable','matched':0,'records':[]},
+                'message':'165 公開資料尚未建立可用索引 / Official 165 index unavailable'}
+    snapshot=snapshots[0]
+    params = urllib.parse.urlencode({'select':'id,title,domain,raw,source_url','domain':'eq.'+host,
+                                     'dataset':'eq.anti_fraud','source_file_id':'eq.'+snapshot['id'],'limit':'100'})
     req = urllib.request.Request(f'{SUPABASE}/rest/v1/source_records?{params}',headers={'apikey':SUPABASE_KEY,'Authorization':f'Bearer {SUPABASE_KEY}'})
     with urllib.request.urlopen(req,timeout=8) as response:
         rows=json.load(response)
-    return {'status':'ok','domain':host,'anti_fraud':{'status':'ok','matched':len(rows),'records':[dict(r['raw'],source_name=r['title']) for r in rows],'rule':'exact_domain','limited':len(rows)==100}}
+    return {'status':'ok','domain':host,'source_url':snapshot.get('source_url'),
+            'indexed_at':snapshot.get('indexed_at'),'indexed_records':snapshot.get('metadata',{}).get('row_count'),
+            'anti_fraud':{'status':'ok','matched':len(rows),'records':[dict(r['raw'],source_name=r['title'],source_url=r.get('source_url')) for r in rows],
+                          'rule':'exact_domain','limited':len(rows)==100}}

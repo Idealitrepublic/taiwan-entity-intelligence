@@ -15,6 +15,7 @@ from src.workspaces import (
 
 REPORT_VERSION = "1"
 MAX_GRAPH_RELATIONSHIPS = 25
+MAX_REPORT_GRAPH_EDGES = 100
 MAX_WORKSPACE_ROOTS = 5
 POLITICAL_RELATIONSHIPS = {
     "POLITICAL_CONTRIBUTION_TO", "MEMBER_OF", "LEGISLATOR_OF",
@@ -22,15 +23,16 @@ POLITICAL_RELATIONSHIPS = {
     "GOVERNMENT_POSITION",
 }
 SECTION_TITLES = (
-    ("entity_profiles", "Entity Profile / 實體概況"),
-    ("key_relationships", "Key Relationships / 關鍵關係"),
-    ("political_relationships", "Political Relationships / 政治關係"),
-    ("government_contracts", "Government Contracts / 政府標案"),
-    ("judgments", "Judgments / 判決"),
-    ("penalties", "Penalties / 裁罰"),
-    ("asset_records", "Asset Records / 財產申報"),
-    ("relationship_graph", "Relationship Graph / 關係圖"),
-    ("sources", "Sources / 來源"),
+    ("entity_profiles", "實體概況 / Entity Profile"),
+    ("company_registry", "公司登記 / Company Registry"),
+    ("key_relationships", "關鍵關係 / Key Relationships"),
+    ("political_relationships", "政治關係 / Political Relationships"),
+    ("government_contracts", "政府標案 / Government Contracts"),
+    ("judgments", "司法裁判 / Judgments"),
+    ("penalties", "裁罰 / Penalties"),
+    ("asset_records", "財產申報 / Asset Records"),
+    ("relationship_graph", "關係圖 / Relationship Graph"),
+    ("sources", "來源 / Sources"),
 )
 
 
@@ -151,6 +153,27 @@ class ReportService:
         self.workspace_factory = workspace_factory or WorkspaceRepository
         self.clock = clock or _now
 
+    def _report_graph(self, entity_id):
+        """Read evidenced neighbor pages, with a firm report size boundary."""
+        graph = self.entities.graph_neighbors(entity_id, limit=MAX_GRAPH_RELATIONSHIPS)
+        if not graph:
+            return None
+        nodes = {node["id"]: node for node in graph.get("nodes", []) if node.get("id")}
+        edges = {edge["id"]: edge for edge in graph.get("edges", []) if edge.get("id")}
+        cursor = graph.get("next_cursor")
+        seen_cursors = set()
+        while graph.get("has_more") and cursor and cursor not in seen_cursors and len(edges) < MAX_REPORT_GRAPH_EDGES:
+            seen_cursors.add(cursor)
+            page = self.entities.graph_neighbors(entity_id, limit=MAX_GRAPH_RELATIONSHIPS, after=cursor)
+            if not page:
+                break
+            nodes.update({node["id"]: node for node in page.get("nodes", []) if node.get("id")})
+            edges.update({edge["id"]: edge for edge in page.get("edges", []) if edge.get("id")})
+            graph = page
+            cursor = page.get("next_cursor")
+        return {"nodes": list(nodes.values()), "edges": list(edges.values()),
+                "has_more": bool(graph.get("has_more")), "focus_entity_id": entity_id}
+
     def _entity_report(self, entity_id, report_type="ENTITY"):
         entity_id = uuid_string(entity_id)
         entity = self.entities.entity(entity_id)
@@ -159,7 +182,7 @@ class ReportService:
         if report_type == "POLITICIAN" and entity.get("entity_type") != "Politician":
             raise ReportNotFound("Published Politician not found")
 
-        graph = self.entities.graph_neighbors(entity_id, limit=MAX_GRAPH_RELATIONSHIPS)
+        graph = self._report_graph(entity_id)
         graph = graph or {"nodes": [entity], "edges": [], "has_more": False}
         nodes = {node["id"]: node for node in graph.get("nodes", []) if node.get("id")}
         nodes.setdefault(entity_id, entity)
@@ -180,6 +203,8 @@ class ReportService:
                 entity_evidence.append({"fact_type": link.get("fact_type"),
                                         "evidence": normalized})
         profile = {**entity, "evidence": entity_evidence}
+        registry = (self.entities.company_registry_for_entity(entity_id)
+                    if entity.get("entity_type") == "Company" else None)
         if politician:
             profile["politician_profile"] = _normalize_evidence_tree(politician)
 
@@ -187,16 +212,17 @@ class ReportService:
             "report_version": REPORT_VERSION,
             "report_type": report_type,
             "generated_at": self.clock(),
-            "title": f"T.E.I. Investigation Report — {entity.get('display_name') or entity.get('canonical_name') or entity_id}",
+            "title": f"T.E.I. 調查報告 / Investigation Report — {entity.get('display_name') or entity.get('canonical_name') or entity_id}",
             "methodology": (
-                "Objective compilation of published, evidence-backed records. "
-                "No finding of illegality, conflict of interest, or improper benefit is made."),
+                "關係與證據僅整理已發布公開資料；公司登記若以統編向經濟部即時查得，將明確標示。未顯示不代表不存在，亦不推論違法或犯罪。 "
+                "Published evidenced links plus clearly marked exact-ID live company registry; absence is not proof of no record or wrongdoing."),
             "coverage": {
-                "relationship_limit": MAX_GRAPH_RELATIONSHIPS,
+                "relationship_limit": MAX_REPORT_GRAPH_EDGES,
                 "relationship_truncated": bool(graph.get("has_more")),
                 "asset_limit": MAX_GRAPH_RELATIONSHIPS,
             },
             "entity_profiles": [profile],
+            "company_registry": [registry] if isinstance(registry, dict) else [],
             "key_relationships": relationships,
             "political_relationships": [row for row in relationships if
                                         row["relationship"].get("relationship_type")
@@ -217,6 +243,11 @@ class ReportService:
             "sources": [],
         }
         report["sources"] = list(_source_map(report).values())
+        if isinstance(registry, dict) and registry.get("source_url"):
+            report["sources"].append({"source_name": registry.get("source") or "經濟部公司登記",
+                                      "source_url": registry["source_url"],
+                                      "retrieved_at": registry.get("fetched_at"),
+                                      "title": "公司登記來源 / Company registry source"})
         return report
 
     def entity_report(self, entity_id):
@@ -257,10 +288,10 @@ class ReportService:
             "report_version": REPORT_VERSION,
             "report_type": "WORKSPACE",
             "generated_at": self.clock(),
-            "title": f"T.E.I. Investigation Workspace — {workspace.get('name') or workspace_id}",
+            "title": f"T.E.I. 調查工作區報告 / Workspace Report — {workspace.get('name') or workspace_id}",
             "methodology": (
-                "Owner-scoped compilation of saved items and published evidence-backed records. "
-                "No automated judgment or conclusion is included."),
+                "僅整理此帳號收藏與已發布的證據資料；不作自動判斷或結論。 "
+                "Owner-scoped saved items and published evidence only; no automated conclusion."),
             "coverage": {
                 "workspace_item_limit": 200,
                 "workspace_items_truncated": bool(workspace.get("items_has_more")),
@@ -271,15 +302,16 @@ class ReportService:
             "workspace": {key: value for key, value in workspace.items() if key != "items"},
             "workspace_items": items,
             "saved_evidence": [],
-            "entity_profiles": [], "key_relationships": [],
+            "entity_profiles": [], "company_registry": [], "key_relationships": [],
             "political_relationships": [], "government_contracts": [],
             "judgments": [], "penalties": [], "asset_records": [],
             "relationship_graph": {"nodes": [], "edges": [], "truncated": False},
             "sources": [],
         }
         node_map, edge_map = {}, {}
+        saved_sources = []
         for child in child_reports:
-            for key in ("entity_profiles", "key_relationships", "political_relationships",
+            for key in ("entity_profiles", "company_registry", "key_relationships", "political_relationships",
                         "government_contracts", "judgments", "penalties", "asset_records"):
                 report[key].extend(child[key])
             graph = child["relationship_graph"]
@@ -290,9 +322,10 @@ class ReportService:
                 if edge_id:
                     edge_map[edge_id] = edge
             report["relationship_graph"]["truncated"] |= bool(graph.get("truncated"))
+            saved_sources.extend({"id": source.get("id") or f"registry:{source.get('source_url')}", **source}
+                                 for source in child.get("sources", []) if source.get("source_url"))
         report["relationship_graph"].update(
             nodes=list(node_map.values()), edges=list(edge_map.values()))
-        saved_sources = []
         for item in items:
             if item.get("item_type") == "EVIDENCE" and item.get("evidence_id"):
                 evidence = _evidence(self.entities.evidence(item["evidence_id"]))
@@ -337,11 +370,11 @@ class ReportService:
         sources = _source_map(report)
         sources.update({source["id"]: source for source in saved_sources})
         report["sources"] = list(sources.values())
-        for key in ("entity_profiles", "key_relationships", "political_relationships",
+        for key in ("entity_profiles", "company_registry", "key_relationships", "political_relationships",
                     "government_contracts", "judgments", "penalties", "asset_records"):
             unique = {}
             for row in report[key]:
-                row_id = row.get("relationship", {}).get("id") or row.get("id")
+                row_id = row.get("relationship", {}).get("id") or row.get("id") or row.get("uniform_number")
                 if row_id:
                     unique[row_id] = row
             report[key] = list(unique.values())

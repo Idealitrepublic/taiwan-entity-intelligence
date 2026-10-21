@@ -33,7 +33,7 @@ class ReportPDFTests(unittest.TestCase):
         reader = PdfReader(BytesIO(data))
         text = "".join(page.extract_text() for page in reader.pages)
         for value in ("大魯閣實業股份有限公司", "府勞動字第1130101133號", "50000",
-                      "2026-10-06T08:01:44Z", "Sources / 來源"):
+                      "2026-10-06T08:01:44Z", "來源 / Sources"):
             self.assertIn(value, text)
         self.assertTrue(all(float(p.mediabox.width) > float(p.mediabox.height) for p in reader.pages))
         fonts = [f.get_object() for p in reader.pages for f in p['/Resources']['/Font'].get_object().values()]
@@ -42,6 +42,28 @@ class ReportPDFTests(unittest.TestCase):
         urls = [a.get_object().get('/A', {}).get('/URI') for p in reader.pages
                 for a in p.get('/Annots', [])]
         self.assertIn('https://data.gov.tw/dataset/109896', urls)
+
+    def test_pdf_draws_every_loaded_relationship_with_bilingual_type(self):
+        value = report()
+        value['relationship_graph'] = {
+            'nodes': [{'id': 'a', 'display_name': '中華電信', 'entity_type': 'Company'},
+                      {'id': 'b', 'display_name': '採購機關', 'entity_type': 'GovernmentAgency'},
+                      {'id': 'c', 'display_name': '關係人', 'entity_type': 'Person'}],
+            'edges': [
+                {'relationship': {'source_entity_id': 'a', 'target_entity_id': 'b',
+                                  'relationship_type': 'CONTRACT_WITH'},
+                 'source_entity': {'display_name': '中華電信'},
+                 'target_entity': {'display_name': '採購機關'}},
+                {'relationship': {'source_entity_id': 'a', 'target_entity_id': 'c',
+                                  'relationship_type': 'CORPORATE_DIRECTOR_LINK'},
+                 'source_entity': {'display_name': '中華電信'},
+                 'target_entity': {'display_name': '關係人'}}]}
+        pdf = PdfReader(BytesIO(render_report_pdf(value)))
+        text = ''.join(page.extract_text() for page in pdf.pages)
+        self.assertIn('採購機關', text)
+        self.assertIn('關係人', text)
+        self.assertIn('政府標案 / Government contract', text)
+        self.assertIn('法人董監事代表 / Corporate director link', text)
 
     def test_long_rows_split_across_pages_without_truncation(self):
         value = report()
@@ -96,9 +118,10 @@ class ReportPDFTests(unittest.TestCase):
                 self.assertIn('.pdf', headers['Content-Disposition'])
                 self.assertEqual(headers['Cache-Control'], 'no-store')
 
-    def test_ui_download_is_pdf_but_preview_remains_html(self):
+    def test_ui_preview_and_download_are_actual_pdf(self):
         html = (Path(__file__).resolve().parents[1] / 'web/index.html').read_text()
-        self.assertIn("format=download?'pdf':'html'", html)
+        self.assertIn('?format=pdf', html)
+        self.assertNotIn("format=download?'pdf':'html'", html)
         self.assertIn("blob.slice(0,5).text())!=='%PDF-'", html)
         self.assertIn('tei-${scope}-${id}.pdf', html)
         self.assertNotIn('tei-${scope}-${id}.html', html)

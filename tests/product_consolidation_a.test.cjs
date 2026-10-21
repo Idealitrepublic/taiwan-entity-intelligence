@@ -149,7 +149,7 @@ test('expired Workspace auth is cleared; no private download',async()=>{
 test('report preview navigation affects new window only',async()=>{
   const popup={closed:false,location:'about:blank',close(){this.closed=true}},h=reportHarness({popup});
   await vm.runInContext("exportReport('entity','id',false)",h.context);
-  assert(h.requests[0].url.endsWith('?format=html'));
+  assert(h.requests[0].url.endsWith('?format=pdf'));
   assert.equal(popup.location,'blob:test');assert.equal(popup.opener,null);assert.equal(popup.closed,false);
 });
 test('native Save picker runs before fetch; success requires write and close',async()=>{

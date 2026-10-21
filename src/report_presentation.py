@@ -18,6 +18,11 @@ LABELS = {
     "CORPORATE_DIRECTOR_LINK": "法人董監事代表 / Corporate director link",
     "identifier": "識別資訊 / Identifier", "note": "備註 / Note",
     "disposition": "處分文號 / Disposition", "amount": "金額 / Amount",
+    "source_role": "起點角色 / From role", "target_role": "終點角色 / To role",
+    "end_date": "結束日期 / End date", "currency": "幣別 / Currency",
+    "contribution_type": "獻金類型 / Contribution type",
+    "quantity": "數量 / Quantity", "company_name": "公司名稱 / Company name",
+    "declaration_year": "申報年度 / Declaration year",
 }
 
 PROFILE_FIELDS = {"id", "display_name", "canonical_name", "entity_type", "public_identifier",
@@ -27,10 +32,10 @@ RELATION_FIELDS = {"id", "relationship_type", "source_entity_id", "target_entity
 
 
 def _additional_facts(row, excluded):
-    """Preserve source facts absent from the concise summary without dumping nested internals."""
-    return [_fact(LABELS.get(key, key.replace("_", " ").capitalize()), value)
+    """Show only human-labelled facts, never opaque IDs or database internals."""
+    return [_fact(LABELS[key], value)
             for key, value in row.items()
-            if key not in excluded and key != "content_hash"
+            if key not in excluded and key in LABELS
             and isinstance(value, (str, int, float, bool))]
 
 
@@ -66,9 +71,16 @@ def _records(key, values):
         edges = graph.get("edges") or []
         return [_item("圖譜範圍 / Graph scope",
                       _fact("節點 / Nodes", len(nodes)), _fact("連線 / Edges", len(edges)),
-                      _fact("截斷 / Truncated", bool(graph.get("truncated"))),
-                      _fact("節點名稱 / Node names", "、".join(
-                          str(node.get("display_name") or node.get("id") or "—") for node in nodes[:25])))]
+                      _fact("截斷 / Truncated", bool(graph.get("truncated"))))]
+    if key in ("key_relationships", "political_relationships", "government_contracts",
+               "judgments", "penalties"):
+        values = sorted((row for row in values or [] if isinstance(row, dict)),
+                        key=lambda row: str((row.get("relationship") or row).get("start_date")
+                                                     or (row.get("relationship") or row).get("observed_at") or ""),
+                        reverse=True)
+    elif key == "asset_records":
+        values = sorted((row for row in values or [] if isinstance(row, dict)),
+                        key=lambda row: str(row.get("declaration_year") or ""), reverse=True)
     result = []
     for row in values or []:
         if not isinstance(row, dict):
@@ -81,6 +93,20 @@ def _records(key, values):
                                 _fact("識別狀態 / Identity", row.get("identity_status")),
                                 _fact("身分證據數 / Identity evidence", len(evidence)),
                                 *_additional_facts(row, PROFILE_FIELDS)))
+        elif key == "company_registry":
+            result.append(_item(row.get("name") or row.get("uniform_number"),
+                                _fact("資料狀態 / Data status", "即時官方查詢 / Live official lookup"
+                                      if row.get("data_status") == "live_official_exact_id"
+                                      else "已儲存登記資料 / Stored registry record"),
+                                _fact("統一編號 / Company ID", row.get("uniform_number")),
+                                _fact("登記狀態 / Registry status", row.get("status")),
+                                _fact("代表人 / Representative", row.get("representative_name")),
+                                _fact("地址 / Address", row.get("address")),
+                                _fact("資本額 / Capital", row.get("capital_amount")),
+                                _fact("設立日期 / Established", row.get("established_date")),
+                                _fact("來源 / Source", row.get("source")),
+                                _fact("原始連結 / Source URL", row.get("source_url")),
+                                _fact("取得時間 / Retrieved at", row.get("fetched_at"))))
         elif key in ("key_relationships", "political_relationships", "government_contracts",
                      "judgments", "penalties"):
             relation = row.get("relationship") or row
@@ -122,8 +148,8 @@ def present_report(report):
     """Return display-only sections; never change the source report or its JSON API."""
     order = list(SECTION_TITLES)
     if report.get("report_type") == "WORKSPACE":
-        order = [("workspace_items", "已收藏項目 / Saved items"),
-                 ("saved_evidence", "已收藏證據 / Saved evidence"), *order]
+        order += [("saved_evidence", "已收藏證據 / Saved evidence"),
+                  ("workspace_items", "調查筆記與收藏 / Notes & saved items")]
     sections, empty = [], []
     for key, title in order:
         items = _records(key, report.get(key))
@@ -139,6 +165,8 @@ def present_report(report):
     unavailable = coverage.get("unavailable_saved_references") or []
     if unavailable:
         warnings.append(f"{len(unavailable)} 個收藏參照目前無法公開取得。 / Saved references unavailable.")
+    if report.get("report_type") == "WORKSPACE" and not report.get("entity_profiles"):
+        warnings.append("此工作區未收藏可公開的公司或人物實體；單獨收藏來源不會自動生成公司資料或關係圖。 / Save a published Entity or Graph to include its profile and evidenced links; a source bookmark alone does not identify a company.")
     return {"sections": sections, "empty": empty, "warnings": warnings,
             "summary": {"實體 / Entities": len(report.get("entity_profiles") or []),
                         "關係 / Relationships": len(report.get("key_relationships") or []),

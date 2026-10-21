@@ -39,10 +39,11 @@ class ReportPresentationTests(unittest.TestCase):
                   [{"entity_id": "missing"}]}, "workspace_items": [{"title": "研究筆記",
                   "item_type": "NOTE", "note_text": "待查證"}]}
         view = present_report(report)
-        self.assertEqual(len(view["warnings"]), 1)
+        self.assertEqual(len(view["warnings"]), 2)
+        self.assertTrue(any("單獨收藏來源" in warning for warning in view["warnings"]))
         self.assertEqual(len(view["sections"]), 1)
         self.assertEqual(view["sections"][0]["items"][0]["title"], "研究筆記")
-        self.assertIn("Entity Profile / 實體概況", view["empty"])
+        self.assertIn("實體概況 / Entity Profile", view["empty"])
 
 
 if __name__ == "__main__":
