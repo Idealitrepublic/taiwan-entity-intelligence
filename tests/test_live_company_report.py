@@ -1,0 +1,79 @@
+"""Live company PDF contains the same sourced graph categories as the UI."""
+from io import BytesIO
+from pathlib import Path
+import unittest
+
+from pypdf import PdfReader
+
+from src.report_pdf import render_report_pdf
+from src.reports import ReportService, ReportValidationError, dispatch_report_api
+
+
+def company(_uniform):
+    source = {"source_name": "經濟部", "source_url": "https://data.gcis.nat.gov.tw/company",
+              "source_record_id": "96979933", "retrieved_at": "2026-10-21T00:00:00Z"}
+    penalty = {"source_name": "勞動部", "source_url": "https://data.gov.tw/dataset/109896",
+               "source_record_id": "labor-1", "retrieved_at": "2026-10-21T00:00:00Z"}
+    return {"status": "ok", "uniform_number": "96979933",
+            "company_name": "中華電信股份有限公司",
+            "company": {"Business_Accounting_NO": "96979933", "Company_Name": "中華電信股份有限公司",
+                        "Company_Location": "臺北市"},
+            "graph": {"nodes": [
+                {"id": "company:96979933", "type": "company", "label": "中華電信股份有限公司",
+                 "evidence": source},
+                {"id": "penalty:1", "type": "penalty", "label": "勞動基準法第24條",
+                 "properties": {"date": "2025-01-02"}, "evidence": penalty}],
+                "edges": [{"source": "company:96979933", "target": "penalty:1",
+                           "relationship": "labor_penalty", "evidence": penalty}]},
+            "judicial_result": {"status": "ok", "limited": False}}
+
+
+class LiveCompanyReportTests(unittest.TestCase):
+    def test_full_available_live_graph_and_sources_in_pdf(self):
+        awards = {"status": "ok", "source": "政府電子採購網", "retrieved_at": "2026-10-21T00:00:00Z",
+                  "records": [{"id": "award-1", "title": "通信採購", "date": "2025-02-01",
+                               "source_url": "https://example.gov.tw/award"}]}
+        related = {"status": "ok", "items": [{"uniform_number": "12345678", "company_name": "關聯公司",
+                    "connection_type": "same_award_notice", "connection_label": "共同得標 / Co-winner",
+                    "evidence": {"source_name": "政府電子採購網", "source_record_id": "award-1",
+                                 "source_url": "https://example.gov.tw/award",
+                                 "retrieved_at": "2026-10-21T00:00:00Z"}}]}
+        service = ReportService(clock=lambda: "2026-10-21T00:00:00Z")
+        report = service.company_report("96979933", company_loader=company,
+                                        award_loader=lambda _: awards,
+                                        related_loader=lambda _: related)
+        self.assertEqual(len(report["relationship_graph"]["nodes"]), 5)
+        self.assertEqual(len(report["relationship_graph"]["edges"]), 4)
+        self.assertEqual(len(report["government_contracts"]), 1)
+        self.assertEqual(len(report["penalties"]), 1)
+        self.assertFalse(report["relationship_graph"]["truncated"])
+        pdf = render_report_pdf(report)
+        self.assertTrue(pdf.startswith(b"%PDF-"))
+        text = "".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+        for expected in ("中華電信股份有限公司", "勞動基準法第24條", "通信採購", "關聯公司",
+                         "臺北市", "來源 / Sources"):
+            self.assertIn(expected, text)
+
+    def test_scope_is_exact_uniform_and_ui_routes_to_pdf(self):
+        service = ReportService()
+        with self.assertRaises(ReportValidationError):
+            service.company_report("中華電信", company_loader=company)
+        class Stub:
+            def company_report(self, uniform):
+                return {"report_type": "LIVE_COMPANY",
+                "uniform_number": uniform, "title": "測試", "methodology": "來源",
+                "generated_at": "2026-10-21T00:00:00Z", "coverage": {},
+                "entity_profiles": [], "company_registry": [], "key_relationships": [],
+                "political_relationships": [], "government_contracts": [], "judgments": [],
+                "penalties": [], "asset_records": [], "relationship_graph": {}, "sources": []}
+        code, binary, mime = dispatch_report_api('/api/v1/reports/company/96979933',
+                {'format': ['pdf']}, service=Stub())
+        self.assertEqual((code, mime), (200, 'application/pdf'))
+        self.assertTrue(binary.startswith(b'%PDF-'))
+        html = (Path(__file__).resolve().parents[1] / 'web/index.html').read_text()
+        self.assertIn('data-report-scope="company"', html)
+        self.assertIn('預覽雙語 PDF / Preview PDF', html)
+
+
+if __name__ == "__main__":
+    unittest.main()

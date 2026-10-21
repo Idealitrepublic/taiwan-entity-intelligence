@@ -1,6 +1,8 @@
 """Deterministic, read-only investigation report projection and rendering."""
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from html import escape
+import re
 from urllib.parse import urlsplit
 
 from src.entities.contracts import response
@@ -21,6 +23,11 @@ POLITICAL_RELATIONSHIPS = {
     "POLITICAL_CONTRIBUTION_TO", "MEMBER_OF", "LEGISLATOR_OF",
     "COMMITTEE_MEMBER", "PROPOSED_BILL", "CO_SPONSORED_BILL",
     "GOVERNMENT_POSITION",
+}
+LIVE_RELATIONSHIP_TYPES = {
+    "procurement_award": "CONTRACT_WITH", "labor_penalty": "RELATED_TO_PENALTY",
+    "mentioned_in_judgment": "RELATED_TO_JUDGMENT",
+    "source_connected_company": "SOURCE_CONNECTED_COMPANY",
 }
 SECTION_TITLES = (
     ("entity_profiles", "實體概況 / Entity Profile"),
@@ -256,6 +263,175 @@ class ReportService:
     def politician_report(self, entity_id):
         return self._entity_report(entity_id, "POLITICIAN")
 
+    def company_report(self, uniform, *, company_loader=None, award_loader=None, related_loader=None):
+        """Snapshot the same bounded live sources used by the company screen."""
+        if not isinstance(uniform, str) or not re.fullmatch(r"[0-9]{8}", uniform):
+            raise ReportValidationError("Invalid company identifier")
+        if company_loader is None:
+            from src.cloud_company import build_company
+            company_loader = build_company
+        if award_loader is None:
+            from src.sources.procurement import lookup_awards
+            def award_loader(value):
+                return lookup_awards(value, timeout=12)
+        if related_loader is None:
+            from src.live_related_companies import related_companies
+            related_loader = related_companies
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            company_job = pool.submit(company_loader, uniform)
+            award_job = pool.submit(award_loader, uniform)
+            related_job = pool.submit(related_loader, uniform)
+            try:
+                data = company_job.result()
+            except Exception as exc:
+                raise EntityStoreUnavailable("Official company registry unavailable") from exc
+            try:
+                awards = award_job.result()
+            except Exception:
+                awards = {"status": "partial", "records": [], "limited": True}
+            try:
+                related = related_job.result()
+            except Exception:
+                related = {"status": "partial", "items": [], "limited": True}
+        if data.get("status") != "ok" or data.get("uniform_number") != uniform:
+            raise ReportNotFound("Official company not found")
+        company = data.get("company") or {}
+        if str(company.get("Business_Accounting_NO") or "") != uniform:
+            raise ReportNotFound("Official company ID mismatch")
+        graph = data.get("graph") or {}
+        nodes = {row["id"]: dict(row) for row in graph.get("nodes", []) if row.get("id")}
+        edges = list(graph.get("edges") or [])
+        root_id = f"company:{uniform}"
+        check = data.get("website_crosscheck") or {}
+        if check.get("domain"):
+            website_id = "website:" + check["domain"]
+            site_evidence = {"title": "公司網站 / Company website",
+                             "source_name": data.get("website_source"),
+                             "source_url": data.get("website_url"),
+                             "source_record_id": uniform}
+            nodes[website_id] = {"id": website_id, "type": "website",
+                                 "label": check["domain"], "evidence": site_evidence}
+            edges.append({"source": root_id, "target": website_id,
+                          "relationship": "website", "evidence": site_evidence})
+            for index, hit in enumerate((check.get("anti_fraud") or {}).get("records") or []):
+                hit_id = f"anti_fraud:{check['domain']}:{index}"
+                hit_evidence = {"title": hit.get("網站性質") or "165 官方網域紀錄",
+                                "source_name": "165 警政署網域索引",
+                                "source_url": hit.get("source_url") or check.get("source_url"),
+                                "source_record_id": check["domain"],
+                                "retrieved_at": check.get("indexed_at")}
+                nodes[hit_id] = {"id": hit_id, "type": "anti_fraud",
+                                 "label": hit.get("網站性質") or check["domain"],
+                                 "evidence": hit_evidence}
+                edges.append({"source": website_id, "target": hit_id,
+                              "relationship": "listed_in_anti_fraud", "evidence": hit_evidence,
+                              "observation_only": True})
+        root_evidence = (nodes.get(root_id) or {}).get("evidence") or {}
+        registry = {"uniform_number": uniform, "name": data.get("company_name"),
+                    "status": company.get("Company_Status_Desc"),
+                    "representative_name": company.get("Responsible_Name"),
+                    "address": company.get("Company_Location"),
+                    "capital_amount": company.get("Capital_Stock_Amount"),
+                    "established_date": company.get("Company_Setup_Date"),
+                    "source": root_evidence.get("source_name") or "經濟部公司登記",
+                    "source_url": root_evidence.get("source_url"),
+                    "fetched_at": root_evidence.get("retrieved_at"),
+                    "data_status": "live_official_exact_id"}
+        for row in awards.get("records") or []:
+            record_id = "procurement:" + str(row.get("id"))
+            evidence = {"title": row.get("title"), "source_name": awards.get("source"),
+                        "source_url": row.get("source_url"),
+                        "source_record_id": row.get("id"),
+                        "retrieved_at": awards.get("retrieved_at")}
+            nodes[record_id] = {"id": record_id, "type": "procurement",
+                                "label": row.get("title") or "政府決標公告",
+                                "properties": {"date": row.get("date"), "agency": row.get("agency")},
+                                "evidence": evidence}
+            edges.append({"source": root_id, "target": record_id,
+                          "relationship": "procurement_award", "evidence": evidence})
+        for item in (related or {}).get("items") or []:
+            target_uniform = str(item.get("uniform_number") or "")
+            evidence = item.get("evidence") or {}
+            if not (re.fullmatch(r"[0-9]{8}", target_uniform) and
+                    target_uniform != uniform and item.get("company_name") and
+                    evidence.get("source_url") and evidence.get("source_record_id") and
+                    item.get("connection_type") in ("corporate_director", "same_award_notice")):
+                continue
+            connector_id = f"related-connection:{uniform}:{target_uniform}"
+            target_id = f"related-company:{target_uniform}"
+            nodes[connector_id] = {"id": connector_id, "type": "related_connection",
+                                   "label": item.get("connection_label"), "evidence": evidence}
+            nodes[target_id] = {"id": target_id, "type": "related_company",
+                                "label": item["company_name"], "evidence": evidence}
+            edges.extend([{"source": root_id, "target": connector_id,
+                           "relationship": item.get("connection_label"), "evidence": evidence,
+                           "observation_only": True},
+                          {"source": connector_id, "target": target_id,
+                           "relationship": "source_connected_company", "evidence": evidence,
+                           "observation_only": True}])
+        categories = {"government_contracts": [], "judgments": [], "penalties": []}
+        relationships, sources = [], {}
+        for node in nodes.values():
+            evidence = node.get("evidence") or {}
+            if evidence.get("source_url"):
+                key = (evidence.get("source_url"), evidence.get("source_record_id"))
+                sources[key] = {"title": evidence.get("title") or node.get("label"),
+                                "source_name": evidence.get("source_name"),
+                                "source_url": evidence["source_url"],
+                                "retrieved_at": evidence.get("retrieved_at"),
+                                "source_record_id": evidence.get("source_record_id")}
+        for edge in edges:
+            source = nodes.get(edge.get("source")) or {}
+            target = nodes.get(edge.get("target")) or {}
+            evidence = edge.get("evidence") or target.get("evidence") or {}
+            if not evidence.get("source_url"):
+                continue
+            raw_type = edge.get("relationship") or "source_observation"
+            relationship = {"relationship_type": LIVE_RELATIONSHIP_TYPES.get(raw_type, raw_type),
+                            "start_date": (target.get("properties") or {}).get("date"),
+                            "source_role": "來源觀察；身分待核 / Source observation; verify identity"
+                            if edge.get("observation_only") or target.get("type") == "judicial"
+                            else "官方統編或來源內紀錄 / Exact ID or source-scoped record"}
+            record = {"relationship": relationship,
+                      "source_entity": {"display_name": source.get("label") or source.get("id")},
+                      "target_entity": {"display_name": target.get("label") or target.get("id")},
+                      "evidence": evidence}
+            category = {"procurement_award": "government_contracts",
+                        "mentioned_in_judgment": "judgments",
+                        "labor_penalty": "penalties"}.get(raw_type)
+            if category:
+                categories[category].append(record)
+            else:
+                relationships.append(record)
+        if registry.get("source_url"):
+            sources[(registry["source_url"], uniform)] = {
+                "title": "公司登記 / Company registry", "source_name": registry["source"],
+                "source_url": registry["source_url"], "retrieved_at": registry.get("fetched_at"),
+                "source_record_id": uniform}
+        truncated = bool(awards.get("limited") or (related or {}).get("limited")
+                         or (data.get("judicial_result") or {}).get("limited"))
+        return {"report_version": REPORT_VERSION, "report_type": "LIVE_COMPANY",
+                "generated_at": self.clock(),
+                "title": f"{data.get('company_name')}｜公司調查報告 / Company Investigation Report",
+                "methodology": "本報告重查即時來源；來源觀察、名稱候選與正式關係分開標示，不推論犯罪或違法。 Live source snapshot; observations and name candidates are not formal findings.",
+                "coverage": {"live_source_truncated": truncated,
+                             "source_partial": any(value.get("status") == "partial" for value in
+                                                   (awards, related or {}, data.get("judicial_result") or {}))},
+                "entity_profiles": [{"display_name": data.get("company_name"),
+                                     "entity_type": "Company", "public_identifier": uniform,
+                                     "identity_status": "EXACT", "evidence": [root_evidence] if root_evidence else []}],
+                "company_registry": [registry], "key_relationships": relationships,
+                "anti_fraud_checks": [{"domain": check.get("domain"),
+                                       "status": check.get("status") or "unavailable",
+                                       "matched": (check.get("anti_fraud") or {}).get("matched", 0),
+                                       "source_url": check.get("source_url"),
+                                       "retrieved_at": check.get("indexed_at")}]
+                if check.get("domain") else [],
+                "political_relationships": [], "asset_records": [], **categories,
+                "relationship_graph": {"nodes": list(nodes.values()), "edges": edges,
+                                       "truncated": truncated},
+                "sources": list(sources.values())}
+
     def workspace_report(self, workspace_id, access_token):
         workspace_id = uuid_string(workspace_id)
         workspace = self.workspace_factory(access_token).get(workspace_id)
@@ -431,9 +607,9 @@ def dispatch_report_api(path, query, authorization=None, service=None):
         return 404, {"error": "Not found / 找不到端點"}, None
     scope = parts[3]
     try:
-        record_id = uuid_string(parts[4])
+        record_id = parts[4] if scope == "company" else uuid_string(parts[4])
         output_format = query.get("format", ["json"])[0]
-        if scope not in ("entity", "politician", "workspace") or output_format not in ("json", "html", "pdf"):
+        if scope not in ("entity", "politician", "workspace", "company") or output_format not in ("json", "html", "pdf"):
             raise ReportValidationError("Invalid report request")
         service = service or ReportService()
         if scope == "workspace":

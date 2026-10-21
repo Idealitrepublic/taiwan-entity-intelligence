@@ -16,6 +16,13 @@ LABELS = {
     "RELATED_TO_PENALTY": "相關裁罰 / Penalty", "RELATED_TO_JUDGMENT": "相關裁判 / Judgment",
     "POLITICAL_CONTRIBUTION_TO": "政治獻金 / Political contribution",
     "CORPORATE_DIRECTOR_LINK": "法人董監事代表 / Corporate director link",
+    "procurement_award": "政府決標 / Government award",
+    "labor_penalty": "勞動裁罰 / Labor penalty",
+    "mentioned_in_judgment": "裁判書名稱命中 / Name mentioned in judgment",
+    "source_connected_company": "有來源連結的公司 / Source-connected company",
+    "website": "公司網站 / Company website",
+    "listed_in_anti_fraud": "165 網域命中 / 165 domain listing",
+    "source_observation": "來源觀察 / Source observation",
     "identifier": "識別資訊 / Identifier", "note": "備註 / Note",
     "disposition": "處分文號 / Disposition", "amount": "金額 / Amount",
     "source_role": "起點角色 / From role", "target_role": "終點角色 / To role",
@@ -72,6 +79,14 @@ def _records(key, values):
         return [_item("圖譜範圍 / Graph scope",
                       _fact("節點 / Nodes", len(nodes)), _fact("連線 / Edges", len(edges)),
                       _fact("截斷 / Truncated", bool(graph.get("truncated"))))]
+    if key == "anti_fraud_checks":
+        return [_item(row.get("domain"),
+                      _fact("狀態 / Status", "已索引比對 / Indexed check" if row.get("status") == "ok"
+                            else "索引不可用 / Index unavailable"),
+                      _fact("網域命中 / Domain matches", row.get("matched")),
+                      _fact("原始連結 / Source URL", row.get("source_url")),
+                      _fact("索引時間 / Indexed at", row.get("retrieved_at")))
+                for row in values or [] if isinstance(row, dict)]
     if key in ("key_relationships", "political_relationships", "government_contracts",
                "judgments", "penalties"):
         values = sorted((row for row in values or [] if isinstance(row, dict)),
@@ -147,6 +162,8 @@ def _records(key, values):
 def present_report(report):
     """Return display-only sections; never change the source report or its JSON API."""
     order = list(SECTION_TITLES)
+    if report.get("report_type") == "LIVE_COMPANY":
+        order.insert(2, ("anti_fraud_checks", "165 網域比對 / Official Domain Check"))
     if report.get("report_type") == "WORKSPACE":
         order += [("saved_evidence", "已收藏證據 / Saved evidence"),
                   ("workspace_items", "調查筆記與收藏 / Notes & saved items")]
@@ -165,9 +182,15 @@ def present_report(report):
     unavailable = coverage.get("unavailable_saved_references") or []
     if unavailable:
         warnings.append(f"{len(unavailable)} 個收藏參照目前無法公開取得。 / Saved references unavailable.")
+    if coverage.get("source_partial"):
+        warnings.append("部分即時來源暫時無法取得，以下不是完整查詢結果。 / Some live sources were unavailable; this is not a complete query.")
     if report.get("report_type") == "WORKSPACE" and not report.get("entity_profiles"):
         warnings.append("此工作區未收藏可公開的公司或人物實體；單獨收藏來源不會自動生成公司資料或關係圖。 / Save a published Entity or Graph to include its profile and evidenced links; a source bookmark alone does not identify a company.")
+    relationship_count = len(report.get("key_relationships") or [])
+    if report.get("report_type") == "LIVE_COMPANY":
+        relationship_count += sum(len(report.get(key) or []) for key in
+                                  ("government_contracts", "judgments", "penalties"))
     return {"sections": sections, "empty": empty, "warnings": warnings,
             "summary": {"實體 / Entities": len(report.get("entity_profiles") or []),
-                        "關係 / Relationships": len(report.get("key_relationships") or []),
+                        "關係 / Relationships": relationship_count,
                         "證據來源 / Sources": len(report.get("sources") or [])}}

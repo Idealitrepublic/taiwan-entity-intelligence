@@ -45,9 +45,13 @@ class RelationshipDiagram(Flowable):
     def draw(self):
         canvas = self.canv
         y = self.height - 5
-        palette = {"Company": "#5d8fd9", "Person": "#4ab989", "Politician": "#4ab989",
+        palette = {"Company": "#5d8fd9", "company": "#5d8fd9",
+                   "Person": "#4ab989", "person": "#4ab989", "Politician": "#4ab989",
                    "Penalty": "#dc687e", "Judgment": "#ac78e2", "Contract": "#dcae50",
-                   "GovernmentAgency": "#dcae50"}
+                   "GovernmentAgency": "#dcae50", "penalty": "#dc687e",
+                   "judicial": "#ac78e2", "procurement": "#dcae50",
+                   "related_company": "#e4af50", "related_connection": "#e4af50",
+                   "website": "#39acb0", "anti_fraud": "#dc687e"}
         for texts, heights, row_height, source_type, target_type in self._layout:
             y -= row_height
             canvas.setFillColor(colors.HexColor("#f5f8fb"))
@@ -73,21 +77,26 @@ def graph_diagrams(graph, width):
     nodes = {node.get("id"): node for node in (graph or {}).get("nodes", []) if node.get("id")}
     rows, connected = [], set()
     for item in (graph or {}).get("edges", []):
-        edge = item.get("relationship") or item
+        raw = item.get("relationship")
+        edge = raw if isinstance(raw, dict) else {"relationship_type": raw}
         source_id = edge.get("source_entity_id") or edge.get("source")
         target_id = edge.get("target_entity_id") or edge.get("target")
+        source_id = source_id or item.get("source")
+        target_id = target_id or item.get("target")
         source = nodes.get(source_id) or item.get("source_entity") or {}
         target = nodes.get(target_id) or item.get("target_entity") or {}
         connected.update((source_id, target_id))
-        rows.append((source.get("display_name") or source.get("canonical_name") or source_id or "—",
+        rows.append((source.get("display_name") or source.get("canonical_name") or source.get("label") or source_id or "—",
                      LABELS.get(edge.get("relationship_type"),
                                 "公開關係 / " + str(edge.get("relationship_type") or "Public link").replace("_", " ").title()),
-                     target.get("display_name") or target.get("canonical_name") or target_id or "—",
-                     source.get("entity_type"), target.get("entity_type")))
+                     target.get("display_name") or target.get("canonical_name") or target.get("label") or target_id or "—",
+                     source.get("entity_type") or source.get("type"),
+                     target.get("entity_type") or target.get("type")))
     for node_id, node in nodes.items():
         if node_id not in connected:
-            rows.append((node.get("display_name") or node.get("canonical_name") or node_id,
-                         "尚無載入關係 / No loaded link", "—", node.get("entity_type"), None))
+            rows.append((node.get("display_name") or node.get("canonical_name") or node.get("label") or node_id,
+                         "尚無載入關係 / No loaded link", "—",
+                         node.get("entity_type") or node.get("type"), None))
     return [RelationshipDiagram(rows[index:index + 5], width, FONT)
             for index in range(0, len(rows), 5)]
 
