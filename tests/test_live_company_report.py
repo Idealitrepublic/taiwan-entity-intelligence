@@ -51,8 +51,27 @@ class LiveCompanyReportTests(unittest.TestCase):
         self.assertTrue(pdf.startswith(b"%PDF-"))
         text = "".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
         for expected in ("中華電信股份有限公司", "勞動基準法第24條", "通信採購", "關聯公司",
-                         "臺北市", "來源 / Sources"):
+                         "臺北市", "來源 / Sources", "編號 / Ref", "S001"):
             self.assertIn(expected, text)
+
+    def test_director_source_rows_keep_separate_locators(self):
+        def with_directors(uniform):
+            data = company(uniform)
+            for index in (1, 2):
+                evidence = {"source_name": "經濟部董監事", "source_url": "https://data.gcis.nat.gov.tw/directors",
+                            "source_locator": f"Business_Accounting_NO={uniform};row={index}"}
+                node_id = f"person:{index}"
+                data["graph"]["nodes"].append({"id": node_id, "type": "person",
+                                                 "label": f"測試人物{index}", "evidence": evidence})
+                data["graph"]["edges"].append({"source": f"company:{uniform}", "target": node_id,
+                                                 "relationship": "董事", "evidence": evidence})
+            return data
+        report = ReportService().company_report("96979933", company_loader=with_directors,
+                                                award_loader=lambda _: {"status": "ok", "records": []},
+                                                related_loader=lambda _: {"status": "ok", "items": []})
+        locators = {row.get("source_locator") for row in report["sources"]}
+        self.assertIn("Business_Accounting_NO=96979933;row=1", locators)
+        self.assertIn("Business_Accounting_NO=96979933;row=2", locators)
 
     def test_scope_is_exact_uniform_and_ui_routes_to_pdf(self):
         service = ReportService()

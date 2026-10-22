@@ -374,12 +374,14 @@ class ReportService:
         for node in nodes.values():
             evidence = node.get("evidence") or {}
             if evidence.get("source_url"):
-                key = (evidence.get("source_url"), evidence.get("source_record_id"))
+                locator = evidence.get("source_record_id") or evidence.get("source_locator")
+                key = (evidence.get("source_url"), locator)
                 sources[key] = {"title": evidence.get("title") or node.get("label"),
                                 "source_name": evidence.get("source_name"),
                                 "source_url": evidence["source_url"],
                                 "retrieved_at": evidence.get("retrieved_at"),
-                                "source_record_id": evidence.get("source_record_id")}
+                                "source_record_id": evidence.get("source_record_id"),
+                                "source_locator": evidence.get("source_locator")}
         for edge in edges:
             source = nodes.get(edge.get("source")) or {}
             target = nodes.get(edge.get("target")) or {}

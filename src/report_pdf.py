@@ -37,7 +37,7 @@ class RelationshipDiagram(Flowable):
             texts = [Paragraph(escape(str(value)), style) for value in (source, relation, target)]
             heights = [item.wrap(218 if index != 1 else 185, 500)[1]
                        for index, item in enumerate(texts)]
-            row_height = max(54, max(heights) + 28)
+            row_height = max(42, max(heights) + 20)
             self._layout.append((texts, heights, row_height, source_type, target_type))
         self.height = sum(item[2] for item in self._layout) + 10
         return self.width, self.height
@@ -117,6 +117,11 @@ def render_report_pdf(report):
     margin = 12 * mm
     width = page_width - margin * 2
     view = present_report(report)
+    live_company = report.get("report_type") == "LIVE_COMPANY"
+    source_refs = {}
+    for index, source in enumerate(report.get("sources") or [], 1):
+        locator = source.get("source_record_id") or source.get("source_locator")
+        source_refs[(source.get("source_url"), locator)] = f"S{index:03d}"
     normal = ParagraphStyle(
         "Body", fontName=FONT, fontSize=9, leading=14, wordWrap="CJK",
         splitLongWords=True, textColor=colors.HexColor("#17202a"))
@@ -163,7 +168,63 @@ def render_report_pdf(report):
         ])
         story.extend([result, Spacer(1, 8)])
 
+    def compact_table(rows, proportions):
+        result = LongTable(rows, colWidths=[width * part for part in proportions],
+                           repeatRows=1, splitByRow=1, splitInRow=1, hAlign="LEFT")
+        result.setStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e9eef4")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+             [colors.white, colors.HexColor("#f7f9fb")]),
+            ("LINEBELOW", (0, 0), (-1, -1), .25, colors.HexColor("#dce3e8")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ])
+        story.extend([result, Spacer(1, 8)])
+
+    def source_ref(evidence):
+        evidence = evidence or {}
+        url = evidence.get("source_url")
+        locator = evidence.get("source_record_id") or evidence.get("source_locator")
+        return source_refs.get((url, locator)) or next(
+            (ref for (source_url, _), ref in source_refs.items() if url and source_url == url), "—")
+
     for section in view["sections"]:
+        key = section["key"]
+        if live_company and key in ("key_relationships", "government_contracts", "judgments", "penalties"):
+            records = report.get(key) or []
+            story.append(paragraph(f"{section['title']} · {len(records)} 筆", heading))
+            if records:
+                rows = [[paragraph(value, muted) for value in
+                         ("日期 / Date", "關係 / Relationship", "對象 / Connected record", "證據 / Evidence")]]
+                for record in records:
+                    relation = record.get("relationship") or {}
+                    target = record.get("target_entity") or {}
+                    source = record.get("source_entity") or {}
+                    kind = relation.get("relationship_type") or "來源觀察 / Source observation"
+                    from src.report_presentation import LABELS
+                    rows.append([paragraph(relation.get("start_date") or "—"),
+                                 paragraph(LABELS.get(kind, kind)),
+                                 paragraph(f"{source.get('display_name') or '—'} → {target.get('display_name') or '—'}"),
+                                 paragraph(source_ref(record.get("evidence")))])
+                compact_table(rows, (.14, .23, .53, .10))
+            continue
+        if live_company and key == "sources":
+            sources = report.get("sources") or []
+            story.append(paragraph(f"{section['title']} · {len(sources)} 筆", heading))
+            if sources:
+                rows = [[paragraph(value, muted) for value in
+                         ("編號 / Ref", "來源與定位 / Source & locator", "原始連結 / Source URL", "取得 / Retrieved")]]
+                for source in sources:
+                    locator = source.get("source_record_id") or source.get("source_locator") or ""
+                    rows.append([paragraph(source_ref(source)),
+                                 paragraph(f"{source.get('source_name') or source.get('title') or '—'} · {locator}"),
+                                 paragraph(source.get("source_url") or "—", key="Source URL"),
+                                 paragraph(str(source.get("retrieved_at") or "—")[:10])])
+                compact_table(rows, (.09, .28, .50, .13))
+            continue
         if section["key"] == "relationship_graph":
             diagrams = graph_diagrams(report.get("relationship_graph"), width)
             intro = [paragraph(f"{section['title']} · {len(section['items'])} 筆", heading),
