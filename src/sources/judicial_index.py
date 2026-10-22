@@ -138,7 +138,12 @@ def records_for_company(company_name: str, limit: int = 50) -> dict[str, Any]:
         # legal name occurs inside a longer, distinct company name. This is
         # still only a name mention, never verified party identity.
         if needle and len(needle) >= 4 and any(needle == _normalized(name) for name in candidates):
-            exact.append(row)
+            # The index contains a name occurrence, not a party table or a
+            # government identifier. Keep the JID and official page, but never
+            # upgrade this to a canonical case-party relationship.
+            exact.append({**row, "identity_status": "name_mention_unverified",
+                          "party_role_status": "unverified",
+                          "association_type": "document_name_occurrence"})
     exact.sort(key=lambda row: str(row.get("date") or ""), reverse=True)
     return {
         "status": ("partial" if index.get("source") else "not_available") if not exact else "ok",

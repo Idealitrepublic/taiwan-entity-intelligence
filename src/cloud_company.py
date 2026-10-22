@@ -228,6 +228,14 @@ def penalty_source_info(row):
         'record_url': None,
         'dataset_url': url or portal,
         'link_status': 'dataset_only',
+        'locator': {
+            'source_record_id': row.get('id'),
+            'disposition_number': (row.get('raw') or {}).get('處分字號'),
+            'disposition_date': (row.get('raw') or {}).get('處分日期'),
+            'issuing_authority': (row.get('raw') or {}).get('主管機關'),
+            'reported_name': (row.get('raw') or {}).get('事業單位名稱或負責人'),
+            'source_file_id': row.get('source_file_id'),
+        },
         'message': '政府來源未提供永久的單筆網址，因此無法直接定位此筆裁罰；下方連結僅為資料集／查詢入口。',
     }
 
@@ -253,9 +261,13 @@ def build_company(uniform):
     elif reviewed:
         data['website_url'] = reviewed['website_url']
         data['website_host'] = reviewed['domain']
-        data['website_source'] = '公司官網／官方身分頁面 / Company site and official identity source'
+        data['website_source'] = ('證交所／櫃買中心公司申報網址（非網域所有權證明） / Issuer-disclosed website, not domain ownership proof'
+                                  if reviewed.get('source_class') == 'official_issuer_disclosure'
+                                  else '公司官網／官方身分頁面 / Company site and official identity source')
         data['website_source_url'] = reviewed['identity_source_url']
         data['website_site_source_url'] = reviewed['website_source_url']
+        data['website_source_record_id'] = reviewed.get('source_record_id')
+        data['website_source_class'] = reviewed.get('source_class', 'curated_official_proof')
         data['website_verified_on'] = reviewed['verified_on']
         data['website_verification'] = reviewed['match_basis']
     elif data.get('website_url'):
@@ -284,6 +296,7 @@ def build_company(uniform):
                 _record_url=source['record_url'],
                 _dataset_url=source['dataset_url'],
                 _source_link_status=source['link_status'],
+                _source_locator=source['locator'],
                 _source_message=source['message'],
             ))
         partial_index = bool(getattr(rows, 'partial', False))
@@ -297,11 +310,13 @@ def build_company(uniform):
                                      'source_type':row['dataset'], 'source_name':'勞動部' if row['dataset'] == 'penalties' else row['dataset'],
                                      'source_url':source.get('record_url') or row.get('source_url'),
                                      'source_locator_type':source.get('link_status', 'record'),
+                                     'source_locator':source.get('locator'),
                                      'source_record_id':row['raw'].get('處分字號') or row['id'],
                                      'retrieved_at':row.get('indexed_at'),
                                      'provenance':{'source_file_id':row.get('source_file_id'), 'dataset':row['dataset']},
                                      'event_date':row['raw'].get('處分日期') or row['raw'].get('date'),
                                      'match_rule':'exact_uniform_number' if row.get('uniform_number') == uniform else 'company_name_candidate_requires_verification',
+                                     'identity_status':'verified_identifier' if row.get('uniform_number') == uniform else 'candidate',
                                      'raw':row['raw']})
         data['evidence_count'] = len(data['evidence'])
     except Exception:
@@ -312,7 +327,7 @@ def build_company(uniform):
     data['judicial_result'] = judicial
     data['evidence_status']['司法院'] = {'status': judicial['status'], 'matched': judicial['matched'], 'message': judicial['coverage_note'] + ' ' + judicial['interpretation'], 'url': data['judicial_search_url']}
     for row in judicial['records']:
-        data['evidence'].append({'id':'judicial:'+row['jid'], 'title':row['title'], 'summary':row['summary'], 'source_type':'judicial', 'source_name':'司法院裁判書開放資料', 'source_url':row['source_url'], 'source_record_id':row['jid'], 'source_locator_type':'judicial_jid', 'retrieved_at':row.get('retrieved_at'), 'provenance':row.get('provenance'), 'event_date':row.get('date'), 'match_rule':judicial['match_rule'], 'raw':row})
+        data['evidence'].append({'id':'judicial:'+row['jid'], 'title':row['title'], 'summary':row['summary'], 'source_type':'judicial', 'source_name':'司法院裁判書開放資料', 'source_url':row['source_url'], 'source_record_id':row['jid'], 'source_locator_type':'judicial_jid', 'retrieved_at':row.get('retrieved_at'), 'provenance':row.get('provenance'), 'event_date':row.get('date'), 'match_rule':judicial['match_rule'], 'identity_status':'name_mention_unverified', 'party_role_status':'unverified', 'raw':row})
     company_node = f"company:{uniform}"
     evidence_by_id = {str(item.get('id')): item for item in data['evidence']
                       if isinstance(item, dict) and item.get('id')}
@@ -334,6 +349,7 @@ def build_company(uniform):
                 'source_record_id': row.get('_id'),
                 'retrieved_at': row.get('_retrieved_at'),
                 'identity_status': row.get('_identity_status'),
+                'source_locator': row.get('_source_locator'),
                 'identity_note': ('名稱候選，須核對原文' if row.get('_identity_status') == 'candidate'
                                   else 'exact_uniform_number'),
             },
@@ -342,6 +358,7 @@ def build_company(uniform):
         data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'labor_penalty',
                                        'properties':{'source':row.get('_source_name'), 'evidence_id':row.get('_id'),
                                                      'match_rule':row.get('_match_rule'), 'source_url':row.get('_source_url'),
+                                                     'identity_status':row.get('_identity_status'),
                                                      'retrieved_at':row.get('_retrieved_at')},
                                        'evidence': source_evidence})
     for row in judicial['records']:
@@ -351,11 +368,14 @@ def build_company(uniform):
                                       'label':str(row.get('title') or '裁判書'),
                                       'properties':{'date':row.get('date'), 'jid':row['jid'],
                                                     'source_url':row['source_url'],
-                                                    'identity_status':'name_mention_unverified'},
+                                                    'identity_status':'name_mention_unverified',
+                                                    'party_role_status':'unverified'},
                                       'evidence':source_evidence})
         data['graph']['edges'].append({'source':company_node, 'target':node_id,
                                       'relationship':'mentioned_in_judgment',
                                       'properties':{'source':'司法院 JDoc API',
+                                                    'party_role_status':'unverified',
+                                                    'match_rule':'exact_full_name_mention_only',
                                                     'legal_conclusion':False},
                                       'evidence':source_evidence})
     data['evidence_count'] = len(data['evidence'])
@@ -366,6 +386,8 @@ def build_company(uniform):
             website_check['website_source'] = data.get('website_source')
             website_check['website_source_url'] = data.get('website_source_url')
             website_check['website_site_source_url'] = data.get('website_site_source_url')
+            website_check['website_source_record_id'] = data.get('website_source_record_id')
+            website_check['website_source_class'] = data.get('website_source_class')
             website_check['website_verified_on'] = data.get('website_verified_on')
             website_check['website_verification'] = data.get('website_verification')
             data['website_crosscheck'] = website_check

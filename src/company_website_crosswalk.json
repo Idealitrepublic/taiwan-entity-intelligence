@@ -43,5 +43,32 @@
     "website_source_url": "https://ir.7-11.com.tw/tw/companyprofile.php",
     "match_basis": "same_official_domain_page_names_company_and_uniform",
     "verified_on": "2026-10-22"
+  },
+  {
+    "uniform_number": "22958907",
+    "company_name": "全國加油站股份有限公司",
+    "website_url": "https://www.npcgas.com.tw/",
+    "identity_source_url": "https://inv.npcgas.com.tw/html/investors/index.aspx",
+    "website_source_url": "https://inv.npcgas.com.tw/html/investors/index.aspx",
+    "match_basis": "same_official_domain_page_names_company_and_uniform",
+    "verified_on": "2026-10-22"
+  },
+  {
+    "uniform_number": "75989858",
+    "company_name": "南六企業股份有限公司",
+    "website_url": "https://www.nanliugroup.com/",
+    "identity_source_url": "https://www.nanliugroup.com/upload-files/finance/Financial_Statements/Consolidated_Financial_Statements-2023_Chinese_.pdf",
+    "website_source_url": "https://www.nanliugroup.com/",
+    "match_basis": "same_official_domain_document_names_company_and_uniform",
+    "verified_on": "2026-10-22"
+  },
+  {
+    "uniform_number": "04690983",
+    "company_name": "大魯閣實業股份有限公司",
+    "website_url": "https://www.taroko.com.tw/",
+    "identity_source_url": "https://www.taroko.com.tw/wp-content/uploads/2023/07/2022Q4%E8%B2%A1%E5%A0%B1.pdf",
+    "website_source_url": "https://www.taroko.com.tw/wp-content/uploads/2023/07/2022Q4%E8%B2%A1%E5%A0%B1.pdf",
+    "match_basis": "same_official_domain_document_names_company_and_uniform",
+    "verified_on": "2026-10-22"
   }
 ]

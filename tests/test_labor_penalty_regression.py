@@ -70,6 +70,10 @@ class LaborPenaltyRegressionTests(unittest.TestCase):
         self.assertEqual(penalty_node["properties"]["source_record_id"], "mol:abc")
         self.assertEqual(penalty_node["evidence"]["source_record_id"], "府勞字第1號")
         self.assertEqual(penalty_node["evidence"]["source_locator_type"], "dataset_only")
+        self.assertEqual(penalty_node["evidence"]["identity_status"], "candidate")
+        self.assertEqual(penalty_node["evidence"]["source_locator"]["disposition_number"], "府勞字第1號")
+        self.assertEqual(penalty_node["evidence"]["source_locator"]["source_file_id"], "official-snapshot")
+        self.assertEqual(result["graph"]["edges"][0]["properties"]["identity_status"], "candidate")
         self.assertEqual(result["graph"]["edges"][0]["evidence"], penalty_node["evidence"])
 
     def test_partial_index_retains_evidence_without_claiming_complete_count(self):
@@ -109,8 +113,11 @@ class LaborPenaltyRegressionTests(unittest.TestCase):
             result = build_company("23060248")
         node = next(item for item in result["graph"]["nodes"] if item["type"] == "judicial")
         self.assertEqual(node["properties"]["identity_status"], "name_mention_unverified")
+        self.assertEqual(node["properties"]["party_role_status"], "unverified")
         self.assertEqual(node["evidence"]["source_record_id"], row["jid"])
+        self.assertEqual(node["evidence"]["party_role_status"], "unverified")
         self.assertEqual(result["graph"]["edges"][0]["relationship"], "mentioned_in_judgment")
+        self.assertEqual(result["graph"]["edges"][0]["properties"]["match_rule"], "exact_full_name_mention_only")
         self.assertFalse(result["graph"]["edges"][0]["properties"]["legal_conclusion"])
 
 

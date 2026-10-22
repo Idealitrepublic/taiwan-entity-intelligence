@@ -9,7 +9,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FILES = [
     "app.py", "pyproject.toml", "requirements.txt", "src/__init__.py",
-    "src/cloud_company.py", "src/public_config.py", "src/sources/judicial_index.py",
+    "src/cloud_company.py", "src/public_config.py", "src/company_website_crosswalk.py",
+    "src/company_website_crosswalk.json", "src/official_company_website_snapshot.json",
+    "src/sources/judicial_index.py",
     "src/sources/procurement.py", "data/judicial_company_index.json",
     "data/judicial_verified_cases.json",
     "web/index.html", "web/app.js", "web/tei-enhancements.js",

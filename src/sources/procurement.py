@@ -23,6 +23,7 @@ def _normalize(row: dict[str, Any], uniform: str) -> dict[str, Any]:
     brief = row.get("brief") if isinstance(row.get("brief"), dict) else {}
     companies = brief.get("companies") if isinstance(brief.get("companies"), dict) else {}
     names = companies.get("names") if isinstance(companies.get("names"), list) else []
+    role = award_role(row, uniform)
     return {
         "id": f"{row.get('date')}:{row.get('filename')}",
         "date": str(row.get("date") or ""),
@@ -32,12 +33,14 @@ def _normalize(row: dict[str, Any], uniform: str) -> dict[str, Any]:
         "job_number": row.get("job_number"),
         "unit_id": row.get("unit_id"),
         "company_names": names,
-        "awardee_names": matched_names(row, uniform),
+        "awardee_names": matched_names(row, uniform) if role == "winner" else [],
         "uniform_number": uniform,
         "source_url": (API.rsplit('/', 1)[0] + '/tender?' + urllib.parse.urlencode(
             {'unit_id': row.get('unit_id'), 'job_number': row.get('job_number')}))
         if row.get('unit_id') and row.get('job_number') else None,
-        "award_role": award_role(row, uniform),
+        "award_role": role,
+        "identity_status": "mirror_exact_bidder_id_unconfirmed_official" if role == "winner" else "unresolved",
+        "publication_status": "source_candidate",
         "verification_scope": "mirror_exact_bidder_id_and_winner_role;official_notice_not_independently_checked",
         "official_search_url": OFFICIAL_SEARCH,
     }
