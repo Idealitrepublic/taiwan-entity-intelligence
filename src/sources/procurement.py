@@ -38,6 +38,7 @@ def _normalize(row: dict[str, Any], uniform: str) -> dict[str, Any]:
             {'unit_id': row.get('unit_id'), 'job_number': row.get('job_number')}))
         if row.get('unit_id') and row.get('job_number') else None,
         "award_role": award_role(row, uniform),
+        "verification_scope": "mirror_exact_bidder_id_and_winner_role;official_notice_not_independently_checked",
         "official_search_url": OFFICIAL_SEARCH,
     }
 
@@ -53,11 +54,34 @@ def matched_names(row: dict[str, Any], uniform: str) -> list[str]:
 
 def award_role(row: dict[str, Any], uniform: str) -> str:
     companies = (row.get('brief') or {}).get('companies') or {}
-    roles = [key for name in matched_names(row, uniform)
-             for key in (companies.get('name_key') or {}).get(name, [])]
-    if any(re.search(r':得標廠商\d+:', key) for key in roles):
+    names = list(dict.fromkeys(matched_names(row, uniform)))
+    # The mirror groups role paths by name. If one name denotes multiple
+    # bidders or contradictory roles, it cannot identify this bidder's award.
+    if len(names) != 1:
+        return 'unresolved'
+    ids_for_name = [bidder_id for bidder_id in (companies.get('id_key') or {})
+                    if names[0] in matched_names(row, bidder_id)]
+    if ids_for_name != [uniform]:
+        return 'unresolved'
+    roles = (companies.get('name_key') or {}).get(names[0], [])
+    winner = any(re.search(r':得標廠商\d+:', key) for key in roles)
+    nonwinner = any(':未得標廠商' in key for key in roles)
+    if winner and nonwinner:
+        return 'unresolved'
+    detail = row.get('detail') or {}
+    bidder_paths = [key.rsplit(':', 1)[0] for key in (companies.get('id_key') or {}).get(uniform, [])
+                    if key.startswith('投標廠商:')]
+    declared_roles = {str(detail.get(path + ':是否得標')).strip()
+                      for path in bidder_paths if detail.get(path + ':是否得標') is not None}
+    if len(declared_roles) > 1 or ('是' in declared_roles and nonwinner) or ('否' in declared_roles and winner):
+        return 'unresolved'
+    if declared_roles == {'是'}:
         return 'winner'
-    if any(':未得標廠商' in key for key in roles):
+    if declared_roles == {'否'}:
+        return 'nonwinner'
+    if winner:
+        return 'winner'
+    if nonwinner:
         return 'nonwinner'
     return 'unresolved'
 
@@ -107,6 +131,7 @@ def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str
             "source": "政府電子採購網公告（OpenFun 民間結構化介接）",
             "source_api": API, "official_search_url": OFFICIAL_SEARCH,
             "match_rule": "exact bidder identifier field path and explicit winner role; latest notice per job; first page only",
+            "verification_scope": "structured_mirror_only;official_row_requires_separate_review",
         }
     except Exception as exc:
         return {

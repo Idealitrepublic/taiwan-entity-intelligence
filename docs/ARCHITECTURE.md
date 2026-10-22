@@ -372,3 +372,14 @@ No database migration, RLS change, or Production data write occurs here.
 Rollback removes the verified-case projection and reverts the connector/index
 changes; immutable source Evidence in an accepted ingestion is retained for
 audit rather than overwritten.
+
+## Development company source-link verification
+
+The live company route now consults a small, versioned official-ID-to-domain
+crosswalk only after the MOEA ID and full company name match. Every row has
+identity and website proof URLs; disagreement with a registry website blocks
+automatic 165 lookup. Labor rows with a conflicting explicit ID are excluded
+from candidate results, JDoc company names require normalized full-name
+equality, and ambiguous procurement winner/nonwinner roles are unresolved.
+None of these read-side observations is promoted to a canonical Relationship
+without source-specific primary Evidence. See `docs/COMPANY_SOURCE_LINKS.md`.

@@ -245,6 +245,9 @@ Exit gate: targeted tests, existing PostgreSQL checks, full build, GitHub push, 
 - Repair the canonical judicial known-case path and add deterministic fixtures.
 - Separate source availability, zero matches, partial data, and hard failure in API/UI states.
 - Record source licensing, refresh cadence, retrieval state, and replacement/removal behavior.
+- Expand the reviewed company ID/domain crosswalk only with official identity
+  and website proof; prioritize official row-level IDs for labor and court
+  records and independent PCC notice review before publishing new links.
 
 Exit gate: each source has read-only Preview acceptance tests and observable failure states.
 

@@ -134,7 +134,10 @@ def records_for_company(company_name: str, limit: int = 50) -> dict[str, Any]:
     needle = _normalized(company_name)
     for row in index.get("records") or []:
         candidates = row.get("companies") or []
-        if needle and len(needle) >= 4 and any(needle in _normalized(name) for name in candidates):
+        # Substring matches can attach another company's judgment when a short
+        # legal name occurs inside a longer, distinct company name. This is
+        # still only a name mention, never verified party identity.
+        if needle and len(needle) >= 4 and any(needle == _normalized(name) for name in candidates):
             exact.append(row)
     exact.sort(key=lambda row: str(row.get("date") or ""), reverse=True)
     return {
@@ -144,7 +147,7 @@ def records_for_company(company_name: str, limit: int = 50) -> dict[str, Any]:
         "limited": len(exact) > limit,
         "source": index.get("source"),
         "generated_at": index.get("generated_at"),
-        "match_rule": "NFKC exact full company-name occurrence in indexed official judgment",
+        "match_rule": "NFKC exact extracted full company-name occurrence; party identity unverified",
         "coverage_note": "此為部分 JList/JDoc 索引與官方核對案例，並非完整裁判書查詢；零筆不代表沒有裁判紀錄。",
         "date_note": "日期來自官方 JID，須核對裁判正文；來源發布日另行保留，不以同步批次日期代替裁判日期。",
         "interpretation": "名稱出現在裁判書不代表該公司為被告或敗訴；請閱讀當事人欄與主文。",

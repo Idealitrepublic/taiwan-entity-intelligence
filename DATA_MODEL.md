@@ -205,3 +205,8 @@ Before scaling, verify with real query plans:
 - Core foreign keys use restrictive deletion semantics. Routine hard deletion is unsupported; retention and exceptional cleanup policy still require an operations decision.
 - Define entity merge/split audit records and reversible resolution decisions.
 - Decide whether penalties, contracts, and judgments remain entities, evidence, or both under explicit modeling rules.
+- The reviewed company website crosswalk is a read-side ID/domain projection,
+  not an Entity merge or company-to-domain Relationship. Missing or conflicting
+  domain evidence keeps 165 status unverified. Labor name candidates, JDoc name
+  mentions, and structured procurement mirrors remain distinct from published,
+  primary-Evidence-backed canonical Relationships.

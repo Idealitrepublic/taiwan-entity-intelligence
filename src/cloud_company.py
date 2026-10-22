@@ -10,19 +10,13 @@ from datetime import datetime, timezone
 
 from .runtime_config import public_supabase_config
 from .sources.judicial_index import records_for_company
+from .company_website_crosswalk import verified_website
+from .labor_materialization import explicit_company_identifier
 
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
 SUPABASE, SUPABASE_KEY = public_supabase_config()
 JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/FJUD/qryresult.aspx?kw={}&judtype=JUDBOOK"
-
-WEBSITE_OVERRIDES = {
-    "96979933": {"url": "https://www.cht.com.tw/", "source": "中華電信官方網站 / Chunghwa Telecom official website"},
-    "23060248": {"url": "https://www.family.com.tw/", "source": "全家便利商店官方網站 / FamilyMart official website"},
-    "22099131": {"url": "https://www.tsmc.com/", "source": "台積公司官方網站 / TSMC official website"},
-    "22555003": {"url": "https://www.7-11.com.tw/", "source": "統一超商官方網站 / 7-ELEVEN Taiwan official website"},
-}
-
 
 def _json_get(url: str, timeout: int = 25):
     req = urllib.request.Request(url, headers={"User-Agent": "T.E.I./7.0", "Accept": "application/json, text/plain, */*"})
@@ -218,7 +212,8 @@ def indexed_records(uniform, company_name):
     records.extend(row for row in candidates
                    if not row.get('uniform_number') and suffix.fullmatch(row.get('company_name') or ''))
     return IndexedRows({row['id']: row for row in records
-                        if not row.get('uniform_number') or row['uniform_number'] == uniform}.values(),
+                        if (not row.get('uniform_number') or row['uniform_number'] == uniform)
+                        and explicit_company_identifier(row) in (None, uniform)}.values(),
                        partial=bool(failed))
 
 
@@ -246,19 +241,32 @@ def build_company(uniform):
     data['graph'].setdefault('nodes', [])
     data['graph'].setdefault('edges', [])
     data.setdefault('judicial_search_url', JUDICIAL_SEARCH.format(urllib.parse.quote_plus(data.get('company_name') or uniform)))
-    override = WEBSITE_OVERRIDES.get(uniform)
-    if not data.get('website_url') and override:
-        data['website_url'] = override['url']
-        data['website_host'] = urllib.parse.urlparse(override['url']).hostname.removeprefix('www.')
-        data['website_source'] = override['source']
-        data['website_verification'] = 'curated_official_url'
+    reviewed = verified_website(uniform, data.get('company_name'))
+    registry_host = (data.get('website_host') or '').lower().removeprefix('www.')
+    if reviewed and registry_host and registry_host != reviewed['domain']:
+        # An official registry field and a reviewed company page disagree.
+        # Do not choose a domain for anti-fraud checks without re-review.
+        data['website_url'] = None
+        data['website_host'] = None
+        data['website_source'] = None
+        data['website_verification'] = 'conflict_requires_review'
+    elif reviewed:
+        data['website_url'] = reviewed['website_url']
+        data['website_host'] = reviewed['domain']
+        data['website_source'] = '公司官網／官方身分頁面 / Company site and official identity source'
+        data['website_source_url'] = reviewed['identity_source_url']
+        data['website_site_source_url'] = reviewed['website_source_url']
+        data['website_verified_on'] = reviewed['verified_on']
+        data['website_verification'] = reviewed['match_basis']
     elif data.get('website_url'):
         data['website_source'] = '公司登記開放資料欄位 / company registry open-data field'
         data['website_verification'] = 'government_registry_field'
     else:
         data['website_source'] = None
         data['website_verification'] = 'not_available'
-    data['evidence_status']['165'] = {'status':'not_checked','matched':0,'message':'反詐索引已就緒；有公司網址時自動比對，也可輸入待查網域。'}
+    data['evidence_status']['165'] = {'status':'not_checked','matched':0,
+        'message': ('官方網址資料衝突，須人工核對後才能比對 165。' if data['website_verification'] == 'conflict_requires_review'
+                    else '尚無可核對的公司官網；有網址時才自動比對 165，也可輸入待查網域。')}
     try:
         rows = indexed_records(uniform, data['company_name'])
         penalty = [r for r in rows if r['dataset'] == 'penalties']
@@ -356,6 +364,9 @@ def build_company(uniform):
             website_check = check_domain(data['website_host'])
             website_check['website_url'] = data.get('website_url')
             website_check['website_source'] = data.get('website_source')
+            website_check['website_source_url'] = data.get('website_source_url')
+            website_check['website_site_source_url'] = data.get('website_site_source_url')
+            website_check['website_verified_on'] = data.get('website_verified_on')
             website_check['website_verification'] = data.get('website_verification')
             data['website_crosscheck'] = website_check
             hits = website_check['anti_fraud']['matched']

@@ -1,0 +1,47 @@
+[
+  {
+    "uniform_number": "04231910",
+    "company_name": "國泰世華商業銀行股份有限公司",
+    "website_url": "https://www.cathaybk.com.tw/",
+    "identity_source_url": "https://www.cathaybk.com.tw/cathaybk/personal/about/brand/intro/",
+    "website_source_url": "https://www.cathaybk.com.tw/cathaybk/personal/about/brand/intro/",
+    "match_basis": "same_official_page_names_company_and_uniform",
+    "verified_on": "2026-10-22"
+  },
+  {
+    "uniform_number": "96979933",
+    "company_name": "中華電信股份有限公司",
+    "website_url": "https://www.cht.com.tw/",
+    "identity_source_url": "https://www.cht.com.tw/home/campaign/prepaidcard/intro",
+    "website_source_url": "https://www.cht.com.tw/home/campaign/prepaidcard/intro",
+    "match_basis": "same_official_page_names_company_and_uniform",
+    "verified_on": "2026-10-22"
+  },
+  {
+    "uniform_number": "23060248",
+    "company_name": "全家便利商店股份有限公司",
+    "website_url": "https://www.family.com.tw/",
+    "identity_source_url": "https://www.family.com.tw/Web_EnterPrise/PDFWebShow.ashx?ID=202351&Lagu=0",
+    "website_source_url": "https://www.family.com.tw/Web_EnterPrise/PDFWebShow.ashx?ID=202351&Lagu=0",
+    "match_basis": "same_official_domain_document_names_company_and_uniform",
+    "verified_on": "2026-10-22"
+  },
+  {
+    "uniform_number": "22099131",
+    "company_name": "台灣積體電路製造股份有限公司",
+    "website_url": "https://www.tsmc.com/",
+    "identity_source_url": "https://job.taiwanjobs.gov.tw/internet/jobwanted/company_desc2.aspx?BRANCH_ID=&EMPLOYER_ID=569",
+    "website_source_url": "https://www.tsmc.com/chinese/aboutTSMC/company_profile",
+    "match_basis": "government_company_id_plus_company_official_site_name",
+    "verified_on": "2026-10-22"
+  },
+  {
+    "uniform_number": "22555003",
+    "company_name": "統一超商股份有限公司",
+    "website_url": "https://www.7-11.com.tw/",
+    "identity_source_url": "https://ir.7-11.com.tw/tw/companyprofile.php",
+    "website_source_url": "https://ir.7-11.com.tw/tw/companyprofile.php",
+    "match_basis": "same_official_domain_page_names_company_and_uniform",
+    "verified_on": "2026-10-22"
+  }
+]
