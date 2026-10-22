@@ -174,6 +174,13 @@ def build_company(uniform: str):
 
 
 def indexed_records(uniform, company_name):
+    class IndexedRows(list):
+        """Keep available rows while signaling a transient partial index read."""
+
+        def __init__(self, values, partial=False):
+            super().__init__(values)
+            self.partial = partial
+
     def fetch(field, value, operator='eq'):
         params = urllib.parse.urlencode({'select': '*', field: operator + '.' + value, 'limit': '100', 'order': 'id'})
         req = urllib.request.Request(f'{SUPABASE}/rest/v1/source_records?{params}', headers={'apikey': SUPABASE_KEY, 'Authorization': f'Bearer {SUPABASE_KEY}'})
@@ -188,16 +195,31 @@ def indexed_records(uniform, company_name):
                                and exc.code != 429 and exc.code < 500):
                     raise
                 time.sleep(0.25)
-    records = fetch('uniform_number', uniform) + fetch('company_name', company_name)
+    records, failed = [], []
+    queries = [('uniform_number', uniform, 'eq'), ('company_name', company_name, 'eq')]
     # Surface representative-suffix records only as explicit candidates. This
     # does not merge identities, publish Relationships or alter stored facts.
     pattern = company_name.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_').replace('*', '\\*')
-    candidates = fetch('company_name', pattern + '*', 'like')
+    queries.append(('company_name', pattern + '*', 'like'))
+    results = []
+    for field, value, operator in queries:
+        try:
+            results.append(fetch(field, value, operator))
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if isinstance(exc, urllib.error.HTTPError) and exc.code != 429 and exc.code < 500:
+                raise
+            failed.append(exc)
+            results.append([])
+    if len(failed) == len(queries):
+        raise failed[0]
+    records = results[0] + results[1]
+    candidates = results[2]
     suffix = re.compile(re.escape(company_name) + r'[（(](?:負責人[：:]?)?[^()（）]{1,30}[)）]$')
     records.extend(row for row in candidates
                    if not row.get('uniform_number') and suffix.fullmatch(row.get('company_name') or ''))
-    return list({row['id']: row for row in records
-                 if not row.get('uniform_number') or row['uniform_number'] == uniform}.values())
+    return IndexedRows({row['id']: row for row in records
+                        if not row.get('uniform_number') or row['uniform_number'] == uniform}.values(),
+                       partial=bool(failed))
 
 
 _base_company = build_company
@@ -256,7 +278,11 @@ def build_company(uniform):
                 _source_link_status=source['link_status'],
                 _source_message=source['message'],
             ))
-        data['evidence_status']['裁罰'] = {'status': 'ok', 'matched': len(penalty), 'message': '已索引勞動部公開裁罰；無統編者為公司名稱／負責人括號變體候選，須核對原文。每項查詢最多讀取 100 筆，不代表完整歷史 coverage。'}
+        partial_index = bool(getattr(rows, 'partial', False))
+        data['evidence_status']['裁罰'] = {'status': 'partial' if partial_index else 'ok',
+            'matched': len(penalty), 'message': ('部分索引查詢失敗；已顯示成功取得的紀錄，筆數不是完整結果。'
+                                               if partial_index else
+                                               '已索引勞動部公開裁罰；無統編者為公司名稱／負責人括號變體候選，須核對原文。每項查詢最多讀取 100 筆，不代表完整歷史 coverage。')}
         for row in rows:
             source = penalty_source_info(row) if row['dataset'] == 'penalties' else {'record_url': row.get('source_url')}
             data['evidence'].append({'id':row['id'], 'title':row['title'], 'summary':row['summary'],

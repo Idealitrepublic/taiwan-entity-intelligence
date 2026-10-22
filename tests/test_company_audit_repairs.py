@@ -30,7 +30,17 @@ class CompanyAuditRepairs(unittest.TestCase):
             with patch('urllib.request.urlopen', side_effect=error) as request, patch('time.sleep'):
                 with self.assertRaises(type(error)):
                     cloud_company.indexed_records('96979933', '中華電信股份有限公司')
-                self.assertEqual(request.call_count, 1 if isinstance(error, urllib.error.HTTPError) else 2)
+                self.assertEqual(request.call_count, 1 if isinstance(error, urllib.error.HTTPError) else 6)
+
+    def test_transient_failure_keeps_successful_labor_rows_and_marks_partial(self):
+        record = {'id': 'labor-1', 'company_name': '中華電信股份有限公司',
+                  'uniform_number': None, 'dataset': 'penalties'}
+        responses = [io.StringIO('[]'), io.StringIO(json.dumps([record])),
+                     TimeoutError(), TimeoutError()]
+        with patch('urllib.request.urlopen', side_effect=responses), patch('time.sleep'):
+            result = cloud_company.indexed_records('96979933', '中華電信股份有限公司')
+        self.assertEqual([row['id'] for row in result], ['labor-1'])
+        self.assertTrue(result.partial)
 
     def test_identifier_path_not_other_bidder_or_position(self):
         self.assertEqual(procurement.award_role(notice('未得標廠商'), '96979933'), 'nonwinner')

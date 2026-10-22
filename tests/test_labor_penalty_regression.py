@@ -72,6 +72,28 @@ class LaborPenaltyRegressionTests(unittest.TestCase):
         self.assertEqual(penalty_node["evidence"]["source_locator_type"], "dataset_only")
         self.assertEqual(result["graph"]["edges"][0]["evidence"], penalty_node["evidence"])
 
+    def test_partial_index_retains_evidence_without_claiming_complete_count(self):
+        class PartialRows(list):
+            partial = True
+
+        base = {"status": "ok", "uniform_number": "23060248", "company_name": "全家便利商店股份有限公司",
+                "website_url": None, "evidence": [], "evidence_status": {},
+                "graph": {"nodes": [], "edges": []}}
+        record = {"id": "mol:1", "dataset": "penalties", "company_name": base["company_name"],
+                  "uniform_number": None, "title": "勞動基準法", "summary": "官方紀錄",
+                  "source_url": "https://data.gov.tw/dataset/109896", "source_file_id": "snapshot",
+                  "indexed_at": "2026-01-02T00:00:00Z", "raw": {"處分字號": "府勞字第1號"}}
+        judicial = {"records": [], "status": "ok", "matched": 0,
+                    "coverage_note": "索引", "interpretation": "非法律結論", "match_rule": "exact"}
+        with patch("src.cloud_company._base_company", return_value=base), \
+             patch("src.cloud_company.indexed_records", return_value=PartialRows([record])), \
+             patch("src.cloud_company.records_for_company", return_value=judicial):
+            result = build_company("23060248")
+        self.assertEqual(result["evidence_status"]["裁罰"]["status"], "partial")
+        self.assertEqual(result["evidence_status"]["裁罰"]["matched"], 1)
+        self.assertEqual(len(result["labor_penalties"]), 1)
+        self.assertIn("不是完整結果", result["evidence_status"]["裁罰"]["message"])
+
     def test_judicial_name_mention_keeps_evidence_without_claiming_case_role(self):
         base = {"status": "ok", "uniform_number": "23060248", "company_name": "全家便利商店股份有限公司",
                 "website_url": None, "evidence": [], "evidence_status": {},
