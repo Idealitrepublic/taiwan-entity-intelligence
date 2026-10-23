@@ -100,6 +100,33 @@ def _published_registry_snapshot(uniform: str):
     return None
 
 
+def _published_officer_snapshot(uniform: str):
+    """Read only the newest fully indexed official bulk snapshot for one exact ID."""
+    if not SUPABASE_KEY:
+        return [], None
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Accept": "application/json"}
+    files_query = urllib.parse.urlencode({"select": "id,source_url,downloaded_at", "dataset": "eq.moea_officers",
+                                         "status": "eq.indexed", "order": "downloaded_at.desc", "limit": "1"})
+    files_request = urllib.request.Request(f"{SUPABASE}/rest/v1/source_files?{files_query}", headers=headers)
+    try:
+        with urllib.request.urlopen(files_request, timeout=8) as response:
+            files = json.load(response)
+        if not isinstance(files, list) or not files:
+            return [], None
+        file = files[0]
+        rows_query = urllib.parse.urlencode({"select": "raw", "dataset": "eq.moea_officers",
+                                            "source_file_id": f"eq.{file['id']}",
+                                            "uniform_number": f"eq.{uniform}", "limit": "1000"})
+        rows_request = urllib.request.Request(f"{SUPABASE}/rest/v1/source_records?{rows_query}", headers=headers)
+        with urllib.request.urlopen(rows_request, timeout=8) as response:
+            rows = json.load(response)
+        if not isinstance(rows, list) or not rows:
+            return [], None
+        return [row["raw"] for row in rows if isinstance(row, dict) and isinstance(row.get("raw"), dict)], file
+    except (urllib.error.URLError, TimeoutError, ValueError, KeyError, json.JSONDecodeError):
+        return [], None
+
+
 def build_company(uniform: str):
     registry_error = None
     try:
@@ -128,6 +155,15 @@ def build_company(uniform: str):
         except Exception:
             director_error = "官方董監事即時來源暫時不可用"
 
+    officer_snapshot = None
+    if director_error or not director_rows:
+        snapshot_rows, officer_snapshot = _published_officer_snapshot(uniform)
+        if officer_snapshot:
+            director_rows = snapshot_rows
+            director_error = None
+        elif not director_rows and not director_error:
+            director_error = "官方董監事即時回應為空；尚無可核對快照"
+
     retrieved_at = (snapshot["evidence"].get("retrieved_at") if snapshot
                     else datetime.now(timezone.utc).isoformat())
     registry_url = COMPANY_API + "?" + urllib.parse.urlencode({
@@ -150,19 +186,21 @@ def build_company(uniform: str):
                                                 "identity_status": "verified_identifier"},
                                  "evidence": company_evidence}], []
     for idx, row in enumerate(director_rows[:50], 1):
-        person = row.get("Person_Name") or row.get("person_name") or row.get("Name")
+        person = row.get("Person_Name") or row.get("person_name") or row.get("Name") or row.get("姓名")
         if not person:
             continue
-        position = row.get("Person_Position_Name") or row.get("position") or row.get("Position") or "董監事"
-        shares = row.get("Person_Shareholding") or row.get("shares")
-        representative = row.get("Representative") or row.get("representative")
+        position = row.get("Person_Position_Name") or row.get("position") or row.get("Position") or row.get("職稱") or "董監事"
+        shares = row.get("Person_Shareholding") or row.get("shares") or row.get("持有股份數")
+        representative = row.get("Representative") or row.get("representative") or row.get("所代表法人")
         people.append({"uniform_number": uniform, "company_name": name, "person_name": person, "position": position, "shares": shares, "representative": representative})
         pid = f"person:{person}:{idx}"
         director_evidence = {"source_name": "經濟部公司登記董監事資料",
-                             "source_url": director_url, "retrieved_at": retrieved_at,
-                             "source_locator": f"Business_Accounting_NO={uniform};row={idx}",
+                             "source_url": (officer_snapshot or {}).get("source_url") or director_url,
+                             "retrieved_at": (officer_snapshot or {}).get("downloaded_at") or retrieved_at,
+                             "source_locator": f"Business_Accounting_NO={uniform};row={row.get('_source_row', idx)}",
                              "source_locator_type": "query_row_not_official_person_id",
-                             "match_rule": "exact_company_uniform;person_identity_source_scoped"}
+                             "match_rule": "exact_company_uniform;person_identity_source_scoped",
+                             "data_status": "official_bulk_snapshot_not_live" if officer_snapshot else "live_official"}
         nodes.append({"id": pid, "type": "person", "label": person,
                       "properties": {"position": position, "shares": shares,
                                      "representative": representative,
@@ -171,7 +209,7 @@ def build_company(uniform: str):
                       "evidence": director_evidence})
         edges.append({"source": f"company:{uniform}", "target": pid,
                       "relationship": position,
-                      "properties": {"source": "MOEA_DIRECTOR_API", "live": True},
+                      "properties": {"source": "MOEA_OFFICER_CSV" if officer_snapshot else "MOEA_DIRECTOR_API", "live": not bool(officer_snapshot)},
                       "evidence": director_evidence})
 
     evidence, db_ok = _supabase_evidence(uniform)
@@ -208,7 +246,9 @@ def build_company(uniform: str):
     statuses = {
         "公司登記": {"status": "partial" if snapshot else "ok", "matched": 1,
                      "message": "經濟部即時來源暫時不可用；顯示已發布的官方登記快照，並非即時狀態。" if snapshot else ""},
-        "董監事": {"status": "ok" if director_rows else ("partial" if director_error else "ok"), "matched": len(people), **({"message": f"董監事來源暫時不可用：{director_error}"} if director_error else {})},
+        "董監事": {"status": "partial" if officer_snapshot or director_error else "ok", "matched": len(people),
+                     **({"message": "顯示已保存的官方董監事快照，並非即時資料。"} if officer_snapshot else
+                        {"message": f"董監事來源暫時不可用：{director_error}"} if director_error else {})},
         "我的資料": {"status": "ok" if db_ok else ("not_configured" if not SUPABASE_KEY else "partial"), "matched": len(evidence)},
         "裁罰": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時裁罰來源由 Supabase evidence layer 分流。"},
         "165": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時反詐來源由 Supabase evidence layer 分流。"},
@@ -225,6 +265,8 @@ def build_company(uniform: str):
         "website_crosscheck": {"status": "not_available_in_public_runtime", "matched": 0, "website_url": website_url, "website_host": website_host, "records": [], "message": "網址×165 交叉比對不在 Vercel 核心路由執行。"},
         "judicial_search_url": JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name)),
         "data_mode": "published_registry_snapshot_plus_supabase" if snapshot else "live_moea_core_plus_supabase",
+        "registry_snapshot_retrieved_at": retrieved_at if snapshot else None,
+        "officer_snapshot_retrieved_at": (officer_snapshot or {}).get("downloaded_at"),
         "evidence_note": "來源讀取成功與是否命中是兩個不同指標；公開紀錄不直接等於法律結論。",
     }
 

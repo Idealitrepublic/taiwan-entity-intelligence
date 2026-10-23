@@ -25,6 +25,7 @@ class CloudAppTests(unittest.TestCase):
             status,body=self.request('/api/status')
         self.assertTrue(status.startswith('503'))
         self.assertFalse(json.loads(body)['supabase']['connected'])
+        self.assertIn('source_notices', json.loads(body))
     def test_status_separates_empty_legacy_tables_from_public_canonical_counts(self):
         def count(table, **filters):
             if table == 'entities':

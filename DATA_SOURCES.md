@@ -1,5 +1,15 @@
 # T.E.I. v2 data sources
 
+## 經濟部維護與離線快照 / MOEA maintenance and offline snapshots
+
+經濟部商工行政資料開放平臺[公告](https://data.gcis.nat.gov.tw/ns/news/detail?oid=8D1E61CE-E802-404D-B0C8-317549F580C2)於臺灣時間 2026-10-23 19:00 至 2026-10-26 24:00 維護。`/api/status` 僅在官方公告時段回傳此訊息；網頁頂端顯示來源、時段及官方連結。即時請求失敗時，已發布且統編精確對應的 `MOEA/GCI` Identity Evidence 可作公司身分備援，頁面與圖譜顯示該筆 Evidence 的 `retrieved_at`。這不代表公司其他欄位或董監事也是同一時間的完整快照；未保存者顯示「暫不可用」，不得當成零筆。
+
+[董監事資料集](https://data.gov.tw/dataset/96731)提供每月更新的官方 CSV，包含統編、公司名稱、職稱、姓名、所代表法人與持股數。`scripts/sync_moea_officers_dev.py` 可於來源恢復後下載、驗證欄位與八碼統編，先在 repo 外的 `0600` 暫存目錄處理，再以內容 SHA-256 作為不可覆寫物件名稱存入 **tei-development** 的私有 Supabase Storage `tei-raw/moea_officers/`；`source_files` 保留 SHA、來源 URL、下載及索引時間，`source_records` 保留逐列原文、統編和原始列號。上傳或索引失敗時不發布 `indexed` 快照。網站只以最新已完整索引快照、精確統編讀取來源範圍內的董監事觀測，不因同名建立跨公司人物 Entity 或正式 Relationship。舊快照保留以供追溯與回復。
+
+正式執行前須確認 Development Storage 可用空間、Postgres 容量與官方檔案大小；Free 額度不足時停止，不自行升級。`TEI_DEV_DATABASE_URL` 與只在本機執行程序使用的 `TEI_DEV_STORAGE_TOKEN` 不可寫入 repo、Preview 或 Production；腳本會檢查 database URL 僅指向 `tei-development`。先不帶 `--apply` 驗證檔案，再於來源可用且容量核准後執行 `--apply --confirm-capacity`。不得在維護期間改用非官方鏡像或宣稱目前董監事已有快照。若需定期排程，須先由運維人員核定來源更新頻率、容量與失敗告警；目前尚未啟用自動排程。
+
+Storage 物件需另行備份；[Supabase 資料庫備份不包含 Storage 物件](https://supabase.com/docs/guides/platform/backups)。Production 的資料與設定不因 Development 快照流程而變動。
+
 ## Existing labor-penalty source restoration (Product Consolidation P0)
 
 The existing MOL datasets [109896](https://data.gov.tw/dataset/109896),

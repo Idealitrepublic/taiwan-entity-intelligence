@@ -20,6 +20,7 @@ from src.reports import dispatch_report_api
 from src.workspaces import dispatch_workspace_api
 from src.watchlists import dispatch_watchlist_api
 from src.rate_limit import client_identity, request_allowed
+from src.source_incidents import active_source_notices
 
 WEB = Path(__file__).parent / 'web'
 
@@ -89,7 +90,7 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
                 db['connected'] = True
             except Exception:
                 db['error'] = '資料庫連線失敗，請檢查伺服器金鑰與資料表權限。'
-        return (200 if db['connected'] else 503), {'status': 'ok' if db['connected'] else 'degraded', 'version': '9.3-directional-filters', 'supabase': db}, None
+        return (200 if db['connected'] else 503), {'status': 'ok' if db['connected'] else 'degraded', 'version': '9.3-directional-filters', 'supabase': db, 'source_notices': active_source_notices()}, None
     if path == '/api/domain-check':
         try:
             return 200, core.check_domain(query.get('domain',[''])[0]), None
