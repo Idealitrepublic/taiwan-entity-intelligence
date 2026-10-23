@@ -48,9 +48,28 @@ vm.runInContext(html.slice(routeStart,routeEnd),searchContext);
   assert(!snapshot.includes('目前無董監事資料'));
   assert(html.includes("$('people').textContent=data.data_mode==='published_registry_snapshot_plus_supabase'?'—':people.length"));
   assert(html.includes("count===null?'來源暫不可用 / Unavailable'"));
+  assert(html.includes("const procurementUpdate=procurementPromise.then(procurement=>"));
+  assert(html.includes("const relatedUpdate=relatedPromise.then(related=>"));
+  assert(html.includes("await Promise.allSettled([procurementUpdate,relatedUpdate])"));
+  assert(!html.includes('const [procurement,related]=await Promise.all([procurementPromise,relatedPromise])'));
+  assert(html.includes("definition.group==='procurement'&&current?.procurement_result?.status==='partial'"));
   overviewContext.companySearchItem={entity_id:'fallback-company',is_live_fallback:true};
   const liveFallback=vm.runInContext("companyOverview({uniform_number:'96979933'}, {}, [], {}, false)",overviewContext);
   assert(!liveFallback.includes('open-published-graph'));
+  let finishRelated;
+  const relatedPending=new Promise(resolve=>{finishRelated=resolve});
+  const controls={search:{disabled:false,textContent:''},domain:{value:''},graphSub:{textContent:''}};
+  const renderCounts=[];
+  const asyncContext=vm.createContext({companyRequestSerial:0,companySearchItem:null,relatedCompanyBranches:new Map(),
+    $:id=>controls[id],Date,Promise,fetch:async url=>({ok:true,json:async()=>url.includes('/api/company-related/')?await relatedPending:url.includes('/api/procurement/')?{status:'ok',matched:71,records:[{id:'award'}]}:{uniform_number:'96979933',graph:{nodes:[],edges:[]}}}),
+    mergeWebsiteCheck:()=>{},render:data=>renderCounts.push(data.procurement_result?.matched||0),mergeProcurement:(data,result)=>{data.procurement_result=result},mergeRelatedCompanies:()=>{},loadLiveCompanyContributions:async()=>{}});
+  const searchStart=html.indexOf('  async function searchCompany('),searchEnd=html.indexOf('  async function search(){',searchStart);
+  vm.runInContext(html.slice(searchStart,searchEnd),asyncContext);
+  const searchTask=vm.runInContext("searchCompany('96979933')",asyncContext);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert(renderCounts.includes(71),'awards must render without waiting for the related-company API');
+  finishRelated({status:'partial',uniform_number:'96979933',items:[]});
+  await searchTask;
   console.log('Company search and snapshot UI regression checks passed');
 })().catch(error=>{console.error(error);process.exitCode=1});
 console.log('7 source-projection UI regression checks passed');
