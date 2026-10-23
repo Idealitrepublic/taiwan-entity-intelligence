@@ -23,4 +23,29 @@ ctx.result={records:[{company_names:['WINNER','LOSER'],awardee_names:['WINNER'],
 rendered=vm.runInContext('procurementCard(result)',ctx);
 assert(rendered.includes('WINNER'));
 assert(!rendered.includes('LOSER'));
+const searchCalls=[];
+const searchContext=vm.createContext({hideSearchResults:()=>{},
+  searchCompany:async(uniform,item)=>searchCalls.push(['company',uniform,item?.entity_id]),
+  openEntityGraph:async(id)=>searchCalls.push(['entity',id])});
+const routeStart=html.indexOf('  async function openSearchResult(');
+const routeEnd=html.indexOf('  async function searchCompany(',routeStart);
+assert(routeStart>=0&&routeEnd>routeStart);
+vm.runInContext(html.slice(routeStart,routeEnd),searchContext);
+(async()=>{
+  await vm.runInContext("openSearchResult({entity_type:'Company',public_identifier:'96979933',entity_id:'published-company'})",searchContext);
+  await vm.runInContext("openSearchResult({entity_type:'Politician',entity_id:'politician'})",searchContext);
+  assert.deepEqual(searchCalls,[['company','96979933','published-company'],['entity','politician']]);
+  const overview=html.split('\n').find(line=>line.trimStart().startsWith('function companyOverview('));
+  assert(overview);
+  const overviewContext=vm.createContext({esc:String,companySearchItem:{entity_id:'published-company'},
+    companyRegistryFields:()=>'',websiteCard:()=>''});
+  vm.runInContext(overview,overviewContext);
+  const snapshot=vm.runInContext("companyOverview({uniform_number:'96979933',data_mode:'published_registry_snapshot_plus_supabase'}, {}, [], {}, false)",overviewContext);
+  assert(snapshot.includes('open-published-graph'));
+  assert(snapshot.includes('官方登記快照'));
+  overviewContext.companySearchItem={entity_id:'fallback-company',is_live_fallback:true};
+  const liveFallback=vm.runInContext("companyOverview({uniform_number:'96979933'}, {}, [], {}, false)",overviewContext);
+  assert(!liveFallback.includes('open-published-graph'));
+  console.log('Company search and snapshot UI regression checks passed');
+})().catch(error=>{console.error(error);process.exitCode=1});
 console.log('7 source-projection UI regression checks passed');

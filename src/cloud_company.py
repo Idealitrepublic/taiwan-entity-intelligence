@@ -12,6 +12,8 @@ from .runtime_config import public_supabase_config
 from .sources.judicial_index import records_for_company
 from .company_website_crosswalk import verified_website
 from .labor_materialization import explicit_company_identifier
+from .entities.models import stable_id
+from .entities.repository import EntityRepository, EntityStoreUnavailable
 
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
@@ -67,9 +69,50 @@ def _supabase_company(uniform: str):
         return None
 
 
+def _published_registry_snapshot(uniform: str):
+    """Use only a published, exact-ID official identity when MOEA is unavailable.
+
+    This is a dated identity snapshot, not a replacement for a live registry
+    response or permission to publish other source-only relationships.
+    """
+    try:
+        profile = EntityRepository().entity(stable_id("entity", "tw:uniform_number", uniform))
+    except (EntityStoreUnavailable, ValueError):
+        return None
+    if not profile or profile.get("entity_type") != "Company" or profile.get("identity_status") != "EXACT":
+        return None
+    for link in profile.get("evidence") or []:
+        evidence = link.get("evidence") or {}
+        locator = evidence.get("source_locator") or {}
+        if (link.get("fact_type") == "IDENTITY" and evidence.get("source_name") == "MOEA/GCI"
+                and str(evidence.get("source_record_id")) == uniform
+                and locator.get("uniform_number") == uniform
+                and locator.get("company_name") == profile.get("display_name")):
+            return {
+                "company": {
+                    "Business_Accounting_NO": uniform,
+                    "Company_Name": profile["display_name"],
+                    "Company_Status_Desc": locator.get("company_status"),
+                    "Change_Of_Approval_Data": locator.get("registry_change_date"),
+                },
+                "evidence": evidence,
+            }
+    return None
+
+
 def build_company(uniform: str):
-    company_rows = _moea_rows(COMPANY_API, uniform, 1)
+    registry_error = None
+    try:
+        company_rows = _moea_rows(COMPANY_API, uniform, 1)
+    except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        registry_error = exc
+        company_rows = []
+    snapshot = _published_registry_snapshot(uniform) if not company_rows else None
+    if snapshot:
+        company_rows = [snapshot["company"]]
     if not company_rows:
+        if registry_error:
+            raise registry_error
         return {"status": "not_found", "uniform_number": uniform, "company_name": uniform, "company": {}, "people": [], "graph": {"nodes": [], "edges": []}, "evidence": [], "evidence_count": 0, "evidence_status": {"公司登記": {"status": "not_found", "matched": 0}}, "data_mode": "live_moea_core"}
 
     company = company_rows[0]
@@ -77,12 +120,16 @@ def build_company(uniform: str):
 
     director_rows = []
     director_error = None
-    try:
-        director_rows = _moea_rows(DIRECTOR_API, uniform, 1000)
-    except Exception as exc:
-        director_error = f"{type(exc).__name__}: {exc}"
+    if snapshot:
+        director_error = "官方董監事即時資料未核對"
+    else:
+        try:
+            director_rows = _moea_rows(DIRECTOR_API, uniform, 1000)
+        except Exception:
+            director_error = "官方董監事即時來源暫時不可用"
 
-    retrieved_at = datetime.now(timezone.utc).isoformat()
+    retrieved_at = (snapshot["evidence"].get("retrieved_at") if snapshot
+                    else datetime.now(timezone.utc).isoformat())
     registry_url = COMPANY_API + "?" + urllib.parse.urlencode({
         "$format": "json", "$filter": f"Business_Accounting_NO eq {uniform}",
         "$skip": "0", "$top": "1",
@@ -93,7 +140,10 @@ def build_company(uniform: str):
     })
     company_evidence = {"source_name": "經濟部公司登記", "source_url": registry_url,
                         "source_record_id": uniform, "retrieved_at": retrieved_at,
-                        "match_rule": "exact_uniform_number"}
+                        "match_rule": "published_exact_id_snapshot" if snapshot else "exact_uniform_number",
+                        "data_status": "published_snapshot_not_live" if snapshot else "live_official"}
+    if snapshot:
+        company_evidence["source_url"] = snapshot["evidence"].get("source_url") or registry_url
     people, nodes, edges = [], [{"id": f"company:{uniform}", "type": "company", "label": name,
                                  "properties": {"uniform_number": uniform,
                                                 "source": "經濟部商工行政資料開放平台",
@@ -125,6 +175,17 @@ def build_company(uniform: str):
                       "evidence": director_evidence})
 
     evidence, db_ok = _supabase_evidence(uniform)
+    if snapshot:
+        source = snapshot["evidence"]
+        evidence.append({"id": source.get("id"), "title": source.get("title"),
+                         "summary": source.get("summary"), "source_type": "company_registry",
+                         "source_name": source.get("source_name"),
+                         "source_url": source.get("source_url"),
+                         "source_record_id": source.get("source_record_id"),
+                         "source_locator": source.get("source_locator"),
+                         "retrieved_at": source.get("retrieved_at"),
+                         "match_rule": "published_exact_id_snapshot",
+                         "identity_status": "verified_identifier"})
     local_company = _supabase_company(uniform) if SUPABASE_KEY else None
 
     website_url = None
@@ -145,7 +206,8 @@ def build_company(uniform: str):
             pass
 
     statuses = {
-        "公司登記": {"status": "ok", "matched": 1},
+        "公司登記": {"status": "partial" if snapshot else "ok", "matched": 1,
+                     "message": "經濟部即時來源暫時不可用；顯示已發布的官方登記快照，並非即時狀態。" if snapshot else ""},
         "董監事": {"status": "ok" if director_rows else ("partial" if director_error else "ok"), "matched": len(people), **({"message": f"董監事來源暫時不可用：{director_error}"} if director_error else {})},
         "我的資料": {"status": "ok" if db_ok else ("not_configured" if not SUPABASE_KEY else "partial"), "matched": len(evidence)},
         "裁罰": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時裁罰來源由 Supabase evidence layer 分流。"},
@@ -162,7 +224,7 @@ def build_company(uniform: str):
         "evidence_status": statuses,
         "website_crosscheck": {"status": "not_available_in_public_runtime", "matched": 0, "website_url": website_url, "website_host": website_host, "records": [], "message": "網址×165 交叉比對不在 Vercel 核心路由執行。"},
         "judicial_search_url": JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name)),
-        "data_mode": "live_moea_core_plus_supabase",
+        "data_mode": "published_registry_snapshot_plus_supabase" if snapshot else "live_moea_core_plus_supabase",
         "evidence_note": "來源讀取成功與是否命中是兩個不同指標；公開紀錄不直接等於法律結論。",
     }
 
