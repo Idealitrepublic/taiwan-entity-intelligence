@@ -1,6 +1,7 @@
 """Other official civil-group rosters; observations are source scoped, not joins."""
 import csv
 from hashlib import sha256
+import json
 from pathlib import Path
 
 from src.entities.models import Entity, evidence_from_projection, stable_id, timestamp
@@ -89,6 +90,36 @@ SOURCES = {
         "sequence_column": None, "name_column": "org_name",
         "description": "Kaohsiung social-service and charity category only, not all local groups",
     },
+    "keelung_ods": {
+        "name": "Official roster 165174: 基隆市立案人民團體名冊",
+        "dataset": "165174", "url": "https://data.gov.tw/dataset/165174",
+        "download": "https://www.klcg.gov.tw/wSite/public/Attachment/01304/f1690513718231.ods",
+        "columns": {"團體名稱", "ods_sheet", "ods_row", "ods_sha256"},
+        "sequence_column": None, "name_column": "團體名稱",
+        "description": "Keelung ODS official roster; converted with original ODS hash and sheet/row provenance",
+        "locator_fields": ["ods_sheet", "ods_row", "ods_sha256", "成立日期", "團體分類"],
+        "expected_rows": 823,
+    },
+    "yilan_20260930": {
+        "name": "Yilan County people's organizations roster 2026-09-30",
+        "dataset": "Yilan Social Affairs 2026-09-30",
+        "url": "https://sntroot.e-land.gov.tw/cp.aspx?n=10437",
+        "download": "https://www-ws.e-land.gov.tw/Download.ashx?n=4peP5a6c6Jit57ij5Lq65rCR5ZyY6auU5ZCN5YaKMTE1MDkzMOeri%2BahiOabtOaWsC5jc3Y%3D&u=LzAwMS9VcGxvYWQvNDQ1L3JlbGZpbGUvMTI3OTIvMTgwMC80NzM5OWM3Mi1jZDRlLTRmYzUtYjlmYy0xYTU4NDE0YjRjZDcuY3N2",
+        "columns": {"序號", "人民團體名冊", "團體類別"},
+        "sequence_column": "序號", "name_column": "人民團體名冊",
+        "description": "Yilan local roster; official page dated 2026-09-30",
+        "locator_fields": ["團體類別"], "expected_rows": 1619,
+    },
+    "tainan_social_foundations_json": {
+        "name": "Official roster 102929: 臺南市財團法人名冊(社福基金會類)",
+        "dataset": "102929", "url": "https://data.gov.tw/dataset/102929",
+        "download": "https://soa.tainan.gov.tw/Api/Service/Get/656dcf3d-93da-4915-82b5-a791c7b87e33",
+        "columns": {"基金會名稱", "設立許可日期", "設立許可文號", "狀態/備註", "json_row", "json_sha256"},
+        "sequence_column": None, "name_column": "基金會名稱",
+        "description": "Tainan social-welfare foundation JSON; original hash and item location retained",
+        "locator_fields": ["設立許可日期", "設立許可文號", "狀態/備註", "json_row", "json_sha256"],
+        "expected_rows": 93,
+    },
     "mol_direct": ("mMY", "MOL directly supervised unions"),
     "mol_national": ("ZX7", "MOL national union federations"),
     "mol_province": ("Khk", "MOL provincial union federations"),
@@ -104,6 +135,14 @@ for _key, _value in list(SOURCES.items()):
             "columns": {"序號", "工會名稱", "地址", "電話", "傳真"},
             "name_column": "工會名稱", "description": "MOL union roster",
         }
+
+# Curated official catalog snapshots remain independent source observations.
+# The manifest is intentionally explicit: a catalog search hit alone cannot
+# silently become a published organization or a cross-source identity match.
+_manifest = json.loads((Path(__file__).with_name("civil_roster_manifest.json")).read_text(encoding="utf-8"))
+if set(_manifest) & set(SOURCES):
+    raise ValueError("Duplicate official roster key")
+SOURCES.update(_manifest)
 
 
 def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
@@ -121,7 +160,7 @@ def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
     with path.open(encoding=source.get("encoding", "utf-8-sig"), newline="") as handle:
         reader = csv.DictReader(handle)
         reader.fieldnames = [field.lstrip("\ufeff").strip() for field in reader.fieldnames or []]
-        if not source["columns"].issubset(reader.fieldnames or []):
+        if not set(source["columns"]).issubset(reader.fieldnames or []):
             raise ValueError("Unexpected official roster columns")
         for row_number, row in enumerate(reader, 2):
             # Some official CSVs end with empty comma-delimited records. Do not
@@ -164,6 +203,10 @@ def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
                 locator["foundation_status_raw"] = (row.get("基金會狀態") or "").strip()
             elif source_key == "taichung_academic":
                 locator["source_last_updated_raw"] = (row.get("最後更新日期") or "").strip()
+            for field in source.get("locator_fields", []):
+                value = (row.get(field) or "").strip()
+                if value:
+                    locator[field] = value
             evidence = evidence_from_projection(
                 source_name=source["name"], source_record_id=source_id,
                 source_class="Government Open Data", source_url=source["url"],

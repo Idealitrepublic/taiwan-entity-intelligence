@@ -1,72 +1,67 @@
-# Civil-organization source coverage — Development, 2026-10-24
+# Civil-organization source coverage — Development, 2026-10-25
 
-Scope: **source observations**, not unique legal organizations. No Production
-database or environment change. Data remains source-scoped; no same-name merge.
+**Scope:** official roster *observations*, not a deduplicated count of legally
+registered or currently active organizations. No Production database, secrets,
+or deployment were changed. A same-name row from another roster remains a
+separate source-scoped Entity; no person or company relationship is inferred.
 
-| Official source | CSV rows | Development rows | Publication |
-|---|---:|---:|---|
-| [MOI national people's associations](https://data.gov.tw/dataset/13603) | 23,209 | 23,209 Entity + Evidence | Historical roster observation |
-| [MOI national civil foundations](https://data.gov.tw/dataset/152434) | 17 | 17 Entity + Evidence | Source-scoped roster observation |
-| [MOL directly supervised unions](https://data.gov.tw/dataset/6278) | 8 | 8 Entity + Evidence | Source-scoped roster observation |
-| [MOL national union federations](https://data.gov.tw/dataset/6278) | 11 | 11 Entity + Evidence | Source-scoped roster observation |
-| [MOL provincial union federations](https://data.gov.tw/dataset/6278) | 41 | 41 Entity + Evidence | Source-scoped roster observation |
-| [MOL county/city union federations](https://data.gov.tw/dataset/6278) | 104 | 104 Entity + Evidence | Source-scoped roster observation |
-| [MOL national industry union federations](https://data.gov.tw/dataset/6278) | 79 | 79 Entity + Evidence | Source-scoped roster observation |
-| [MOF nonprofit tax-unit records](https://data.gov.tw/dataset/34147) | 99,788 | 99,788 tax source observations | **Not Entity/NGO-verified** |
-| [Taipei City people's organizations](https://data.gov.tw/dataset/121714) | 4,176 | 4,176 Entity + Evidence | Local source-scoped observation |
-| [Tainan City people's organizations](https://data.gov.tw/dataset/53472) | 3,505 | 3,505 Entity + Evidence | Local source-scoped observation; dissolution field retained |
-| [MOI national civic foundations](https://data.gov.tw/dataset/173726) | 8 | 8 Entity + Evidence | Source-scoped permit roster observation |
-| [Pingtung County people's organizations](https://data.gov.tw/dataset/142753) | 3,440 | 3,440 Entity + Evidence | Local source-scoped observation |
-| [MOL labor foundations](https://data.gov.tw/dataset/11214) | 15 | 15 Entity + Evidence | Sectoral source-scoped observation |
-| [MOE education foundations](https://data.gov.tw/dataset/117679) | 765 | 765 Entity + Evidence | Sectoral source-scoped observation; source status retained raw |
-| [New Taipei community associations](https://data.gov.tw/dataset/124618) | 473 including 3 empty trailing rows | 470 Entity + Evidence | Community-association subset only |
-| [Taichung academic-cultural groups](https://data.gov.tw/dataset/159897) | 594 | 594 Entity + Evidence | Category subset only |
-| [Kaohsiung charity groups](https://data.gov.tw/dataset/128181) | 1,747 | 1,747 Entity + Evidence | Category subset only |
+## Reconciled Development state
 
-Total: 38,189 published civil-organization roster observations with 38,189
-Evidence links; 99,788 additional tax-source rows staged separately. The
-observations may contain duplicates across rosters. There are zero inferred
-cross-source organization relationships. The tax file has 99,787 syntactically
-valid eight-digit IDs and one invalid ID retained with a flag; it contains
-zero blank names and zero duplicate valid IDs in this snapshot. Tax identity
-does not establish legal form. Development database size after ingestion was
-339 MB, below the Supabase Free plan 500 MB database read-only threshold.
-Tainan's dissolution field is `/` in 2,058 rows (a placeholder, **not** a
-dissolution finding), blank in 825, a date-like string in 614, and another
-nonblank value in 8. For non-placeholder values the profile shows the raw
-field with a source-check warning; it does not infer a current legal status.
+| Source group | Published Entity + Evidence rows | Notes |
+|---|---:|---|
+| Previously verified 16 official roster sources | 38,189 | Includes 23,209 historical MOI nationwide people's-association rows, three complete local-government rosters, unions and sectoral foundations |
+| 68 newly profiled official CSV datasets | 13,583 | Exact dataset, download URL, headers, encoding, expected row count and scope are recorded in [`src/civil_roster_manifest.json`](../src/civil_roster_manifest.json) |
+| [Keelung official ODS](https://data.gov.tw/dataset/165174) | 823 | Original ODS hash, sheet and row retained; personal/contact fields discarded |
+| [Yilan official 2026-09-30 CSV](https://sntroot.e-land.gov.tw/cp.aspx?n=10437) | 1,619 | Local people's-organizations roster; source category retained |
+| [Tainan social-welfare foundation JSON](https://data.gov.tw/dataset/102929) | 93 | Original JSON hash, item number, permit date/number and raw status retained |
+| **Total** | **54,307** | **87 official roster sources; 54,307 Evidence links** |
 
-## Reproduction and safety
+The separate [Finance Ministry nonprofit tax file](https://data.gov.tw/dataset/34147)
+contains **99,788 tax-source observations**. Tax registration alone does not
+establish legal form; these are **not** counted as CivilOrganization Entities.
 
-The downloaded CSV bytes are stored outside the Git repository in a private
-local snapshot directory, mode `0700`; each file is `0600`. Their hashes and
-row locators are retained in Evidence or the tax source table. Re-run the
-ingestion commands only against `TEI_DEV_DATABASE_URL`, and verify that it
-targets `tei-development`. Changed snapshots are blocked pending explicit
-version/withdrawal review. Tax source observations are publicly readable only
-when `publication_status='published'`; ingestion is not exposed to anon users.
+New CSV sources comprise two general county rosters (984 rows), 11 community
+association subset/historical rosters (3,015), 14 additional Taichung people-group
+categories (4,172), 12 additional Kaohsiung categories (3,232), and 29 central,
+local, religious, sectoral or government-funded foundation sources (2,180).
+Cooperatives, award recipients, subsidies, aggregate statistics and committee
+branch offices were not silently classified as civil organizations.
 
-Run `tests/test_civil_organizations.py`, `tests/entity_schema.test.mjs`, and
-read-only SQL counts for source rows, Evidence links, duplicate identifiers,
-missing provenance and RLS. A row absent from the source cannot be counted as
-covered. A live search hit is not proof of current registration.
+The read-only Development audit (`python3 scripts/audit_civil_rosters_dev.py`)
+reconciled all 71 new source row counts: **0 mismatches, 0 missing/duplicate
+Evidence links, 0 missing source URL / retrieved timestamp / snapshot hash**.
+RLS is enabled on `entities`, `evidence_records` and `entity_evidence`. An
+anonymous-role search of a Yilan roster name returned one published result;
+anonymous-role counts returned all 54,307 roster entries and Evidence links.
+Development database size was **400.4 MB**, below the Supabase Free 500 MB
+database limit, leaving limited headroom for additional imports and indexes.
 
-## Known gaps; not labeled complete
+## Reproduction and source integrity
 
-- Local-government associations are managed by county/city governments. Taipei,
-  Tainan and Pingtung general rosters are in Development; New Taipei, Taichung
-  and Kaohsiung contain **category subsets only**. Other jurisdictions and
-  remaining categories still require official source validation. See the
-  [nationwide gap register](CIVIL_ORGANIZATION_NATIONWIDE_GAP_REGISTER.md).
-  The Hsinchu City
-  [official CSV](https://data.gov.tw/dataset/129137) was not imported because
-  its HTTPS certificate chain failed validation; TLS checks were not bypassed.
-- Foundations under other sectoral competent authorities, religious groups,
-  charities and other nonprofit forms require separate official registries.
-- The MOF tax file is only a candidate crosswalk. Even a matching name or tax
-  ID must be checked against a registration record before an Entity merge or
-  relationship is published.
-- Current operational status, dissolutions, changed names and cross-snapshot
-  continuity are unverified. The MOI historical roster is not a current-status
-  service; source metadata refresh schedules are not evidence of individual
-  row freshness.
+The government [catalog export](https://data.gov.tw/datasets/export/csv?type=dataset&order=pubdate&qs=&uid=)
+was downloaded on 2026-10-24, then each selected official file was downloaded
+and profiled on 2026-10-25. The catalog export omitted at least Yilan's current
+roster, which was obtained from the county's own official page. All source bytes
+were kept outside Git with private permissions. Evidence stores the official
+dataset/page URL, download URL, source scope, snapshot SHA-256, row locator and
+retrieval time. ODS/JSON conversions additionally retain their **original**
+file SHA-256 and source item location. Contact addresses, phone numbers and
+officers' names from roster rows are not copied into these Entity or Evidence
+projections.
+
+The parser rejects changed headers, invalid names/rows and source row-count
+drift before a Development import. `scripts/ingest_official_civil_rosters_dev.py`
+requires `TEI_DEV_DATABASE_URL` to identify `tei-development` and refuses an
+unreviewed second snapshot for an existing source. It does not use or alter
+Production credentials. For source refreshes, review additions, removals,
+renames and status changes before publishing a new version.
+
+## Limits
+
+The [nationwide gap register](CIVIL_ORGANIZATION_NATIONWIDE_GAP_REGISTER.md)
+tracks jurisdictions and authorities with live-only, withdrawn, TLS-failing,
+403, stale or otherwise unavailable sources. **This is not a claim that all
+Taiwanese organizations or every competent authority are covered.** Source
+scope varies, many files are historical or only one category, and same-name
+cross-source entities are not linked without a verifiable identifier. Search
+hits are source observations, not a current registration certificate.

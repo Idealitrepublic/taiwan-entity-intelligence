@@ -1,0 +1,1582 @@
+{
+  "catalog_109320": {
+    "name": "Official roster 109320: 新竹縣人民團體名冊",
+    "dataset": "109320",
+    "url": "https://data.gov.tw/dataset/109320",
+    "download": "https://ws.hsinchu.gov.tw/001/Upload/1/opendata/8774/278/c2f43f8b-a602-4b49-9797-0d726b8ca612.csv",
+    "columns": [
+      "編號",
+      "團體名稱",
+      "負責人姓名-理事長",
+      "郵遞區號",
+      "會址",
+      "電話",
+      "成立年月日"
+    ],
+    "name_column": "團體名稱",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "local-general",
+    "expected_rows": 70,
+    "locator_fields": [
+      "成立年月日"
+    ]
+  },
+  "catalog_133902": {
+    "name": "Official roster 133902: 人民團體",
+    "dataset": "133902",
+    "url": "https://data.gov.tw/dataset/133902",
+    "download": "https://ws-tm.cyhg.gov.tw/Download.ashx?u=LzAwMS9VcGxvYWQvMTMzMC9yZWxmaWxlLzEzNjIwLzE2ODAzMy8xYzM4YWVkYi04ZGIyLTQ1ZjctYWEzOS1iNWI2MTc0ZDMwYjUuY3N2&n=5ZiJ576p57ij5Lq65rCR5ZyY6auU5ZCN5YaKLmNzdg%3d%3d",
+    "columns": [
+      "團體名稱",
+      "職稱",
+      "姓名",
+      "通訊地址"
+    ],
+    "name_column": "團體名稱",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "local-general",
+    "expected_rows": 914,
+    "locator_fields": []
+  },
+  "catalog_32265": {
+    "name": "Official roster 32265: 桃園市社區發展協會名冊",
+    "dataset": "32265",
+    "url": "https://data.gov.tw/dataset/32265",
+    "download": "https://opendata.tycg.gov.tw/api/dataset/ec66fc76-828a-4243-8f69-d82943e1754d/resource/d492cfc4-427c-4e6f-b937-ec554001872a/download",
+    "columns": [
+      "行政區",
+      "社區發展協會名稱",
+      "理事長姓名",
+      "會址",
+      "成立日期"
+    ],
+    "name_column": "社區發展協會名稱",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "community-subset",
+    "expected_rows": 359,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_91949": {
+    "name": "Official roster 91949: 臺中市社區發展協會",
+    "dataset": "91949",
+    "url": "https://data.gov.tw/dataset/91949",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=d69fa650-b765-4c65-9aaa-69c6c433cf4c",
+    "columns": [
+      "資源彙整機關",
+      "鄉鎮市區",
+      "辦理單位",
+      "成立日期",
+      "負責人",
+      "連絡電話",
+      "手機號碼",
+      "傳真",
+      "地址",
+      "行政區",
+      "X坐標",
+      "Y坐標",
+      "最後更新日期"
+    ],
+    "name_column": "辦理單位",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "community-subset",
+    "expected_rows": 609,
+    "locator_fields": [
+      "成立日期",
+      "最後更新日期"
+    ]
+  },
+  "catalog_159507": {
+    "name": "Official roster 159507: 社區發展協會",
+    "dataset": "159507",
+    "url": "https://data.gov.tw/dataset/159507",
+    "download": "https://ws.hl.gov.tw/001/Upload/518/relfile/23071/104507/aed32266-4516-424d-8292-dd87ee19f7cc.csv",
+    "columns": [
+      "資源彙整機關",
+      "鄉鎮市區",
+      "辦理單位",
+      "成立日期",
+      "負責人",
+      "連絡電話",
+      "傳真",
+      "地址",
+      "相關網址",
+      "X坐標",
+      "Y坐標",
+      "備註",
+      "最後更新時間"
+    ],
+    "name_column": "辦理單位",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "community-subset",
+    "expected_rows": 176,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_174251": {
+    "name": "Official roster 174251: 苗栗縣社區發展協會名冊",
+    "dataset": "174251",
+    "url": "https://data.gov.tw/dataset/174251",
+    "download": "https://webws.miaoli.gov.tw/Download.ashx?u=LzAwMS9VcGxvYWQvb3BlbmRhdGEvMTk1OS81ZjU4MmRjOC1iMWJhLTQ1YjktODM2OC04NDI1ZGQ5NWFlYmUuY3N2&n=6IuX5qCX57ij56S%2b5Y2A55m85bGV5Y2U5pyD5ZCN5YaKLmNzdg%3d%3d&icon=.csv",
+    "columns": [
+      "序號",
+      "鄉鎮市別",
+      "團體名稱",
+      "會址",
+      "理事長姓名"
+    ],
+    "name_column": "團體名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "community-subset",
+    "expected_rows": 280,
+    "locator_fields": []
+  },
+  "catalog_113361": {
+    "name": "Official roster 113361: 澎湖縣社區發展協會名冊",
+    "dataset": "113361",
+    "url": "https://data.gov.tw/dataset/113361",
+    "download": "https://opendata.penghu.gov.tw/dataset/80da0c28-77fb-437a-bc77-d514983bb689/resource/d6fcfb50-210e-4bf2-bfbc-0098c836a905/download/u670000-01-2017-05-31-1496204244.csv",
+    "columns": [
+      "編號",
+      "鄉市別",
+      "社區發展協會名稱",
+      "理事長姓名",
+      "會址",
+      "電話"
+    ],
+    "name_column": "社區發展協會名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "community-subset",
+    "expected_rows": 93,
+    "locator_fields": []
+  },
+  "catalog_174365": {
+    "name": "Official roster 174365: 金門縣社區發展協會",
+    "dataset": "174365",
+    "url": "https://data.gov.tw/dataset/174365",
+    "download": "https://ws.kinmen.gov.tw/001/Upload/0/relfile/0/0/7241f7de-47ad-4c31-b69a-c6da107a0fa5.csv",
+    "columns": [
+      "資源彙整機關",
+      "鄉鎮市區",
+      "辦理單位",
+      "成立日期",
+      "負責人",
+      "電話",
+      "傳真",
+      "會址",
+      "通訊地址",
+      "備註",
+      "最後更新時間"
+    ],
+    "name_column": "辦理單位",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "community-subset",
+    "expected_rows": 119,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_165816": {
+    "name": "Official roster 165816: 109年度臺東縣社區發展協會",
+    "dataset": "165816",
+    "url": "https://data.gov.tw/dataset/165816",
+    "download": "https://ttone.taitung.gov.tw/download?id=qdyqA6sgHHgKbTy9g68f6Q%3D%3D",
+    "columns": [
+      "資源彙整機關",
+      "鄉鎮市區",
+      "辦理單位",
+      "成立日期",
+      "負責人",
+      "連絡電話",
+      "傳真",
+      "地址",
+      "相關網址",
+      "X坐標",
+      "Y坐標",
+      "備註",
+      "最後更新時間"
+    ],
+    "name_column": "辦理單位",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "historical-community-subset",
+    "expected_rows": 158,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_52394": {
+    "name": "Official roster 52394: 嘉義市社區發展協會名冊",
+    "dataset": "52394",
+    "url": "https://data.gov.tw/dataset/52394",
+    "download": "https://data.chiayi.gov.tw/opendata/api/getResource?oid=42d27e79-aa44-4ce9-86eb-8a1af030903e&rid=5aee6e88-78e5-466c-add5-8cd4747709e3",
+    "columns": [
+      "主管機關",
+      "成立日期",
+      "立案文號",
+      "理事長",
+      "總幹事",
+      "協會名稱",
+      "聯絡電話",
+      "協會地址",
+      "緯度",
+      "經度"
+    ],
+    "name_column": "協會名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "community-subset",
+    "expected_rows": 83,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_107897": {
+    "name": "Official roster 107897: 社區發展協會",
+    "dataset": "107897",
+    "url": "https://data.gov.tw/dataset/107897",
+    "download": "https://email.chcg.gov.tw/df/pmfaqprrlqmw1kdbx7t6e26n8onit1",
+    "columns": [
+      "項目",
+      "名稱",
+      "電話",
+      "聯絡人",
+      "地址縣市",
+      "地址鄉鎮市區",
+      "地址",
+      "年度"
+    ],
+    "name_column": "名稱",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "community-subset",
+    "expected_rows": 583,
+    "locator_fields": []
+  },
+  "catalog_109324": {
+    "name": "Official roster 109324: 新竹縣社區發展協會名冊",
+    "dataset": "109324",
+    "url": "https://data.gov.tw/dataset/109324",
+    "download": "https://ws.hsinchu.gov.tw/001/Upload/1/opendata/8774/282/66eae3c0-f2e7-45c2-9aac-f57b84cf206d.csv",
+    "columns": [
+      "編號",
+      "鄉鎮市",
+      "名稱",
+      "成立日期",
+      "理事長",
+      "電話",
+      "地址",
+      "最後更新時間"
+    ],
+    "name_column": "名稱",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "community-subset",
+    "expected_rows": 188,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_133900": {
+    "name": "Official roster 133900: 嘉義縣社區發展協會",
+    "dataset": "133900",
+    "url": "https://data.gov.tw/dataset/133900",
+    "download": "https://ws-tm.cyhg.gov.tw/Download.ashx?u=LzAwMS9VcGxvYWQvMTMzMC9yZWxmaWxlLzEzNjIwLzE2ODAzMS80MTllMTA2My05MzU1LTRjMzctYjIzZS02YzM4MzI3OGU4YjQuY3N2&n=5ZiJ576p57ij56S%2b5Y2A55m85bGV5Y2U5pyD5ZCN5YaKLmNzdg%3d%3d",
+    "columns": [
+      "編號",
+      "社區名稱",
+      "理事長姓名",
+      "協會會址",
+      "理事長電話"
+    ],
+    "name_column": "社區名稱",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "community-subset",
+    "expected_rows": 367,
+    "locator_fields": []
+  },
+  "catalog_159892": {
+    "name": "Official roster 159892: 臺中市人民團體-其他團體",
+    "dataset": "159892",
+    "url": "https://data.gov.tw/dataset/159892",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=211dd250-e241-48e9-9ecb-249d2660b00f",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 318,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159899": {
+    "name": "Official roster 159899: 臺中市人民團體-社會服務及慈善團體",
+    "dataset": "159899",
+    "url": "https://data.gov.tw/dataset/159899",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=358a3063-ec13-412a-bb16-93a4da13fef8",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 1230,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159902": {
+    "name": "Official roster 159902: 臺中市人民團體-自由職業團體",
+    "dataset": "159902",
+    "url": "https://data.gov.tw/dataset/159902",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=88e53d22-50b3-4d9d-a91a-8f0c9e9d951a",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 89,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159901": {
+    "name": "Official roster 159901: 臺中市人民團體-醫療衛生團體",
+    "dataset": "159901",
+    "url": "https://data.gov.tw/dataset/159901",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=1eaf7f10-a5f7-4f1f-8268-0b7fcc18fdee",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 85,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159893": {
+    "name": "Official roster 159893: 臺中市人民團體-宗親會",
+    "dataset": "159893",
+    "url": "https://data.gov.tw/dataset/159893",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=2f11b5ca-0f11-4359-b1f5-6ba6b7b1baee",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 74,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159889": {
+    "name": "Official roster 159889: 臺中市人民團體-同鄉會",
+    "dataset": "159889",
+    "url": "https://data.gov.tw/dataset/159889",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=953ff82b-98aa-4418-bfc4-828e886bbabf",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 42,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159895": {
+    "name": "Official roster 159895: 臺中市人民團體-同學校友會",
+    "dataset": "159895",
+    "url": "https://data.gov.tw/dataset/159895",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=0cc7384c-de29-4783-ab50-b5036e526c58",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 187,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159831": {
+    "name": "Official roster 159831: 臺中市人民團體-工商團體",
+    "dataset": "159831",
+    "url": "https://data.gov.tw/dataset/159831",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=3aec4d6b-aeac-401a-8783-bb4a6fe06370",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 209,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159836": {
+    "name": "Official roster 159836: 臺中市人民團體-教師會",
+    "dataset": "159836",
+    "url": "https://data.gov.tw/dataset/159836",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=09e793f8-6f8f-48b9-aa7f-610c637b1af8",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 188,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159903": {
+    "name": "Official roster 159903: 臺中市人民團體-體育運動團體",
+    "dataset": "159903",
+    "url": "https://data.gov.tw/dataset/159903",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=4e601e6f-ff80-4adb-8493-ec4abd32c394",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 422,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159828": {
+    "name": "Official roster 159828: 臺中市人民團體-環保團體",
+    "dataset": "159828",
+    "url": "https://data.gov.tw/dataset/159828",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=43e3f22d-2ef8-44ea-a82e-28368b7b101d",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 39,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159896": {
+    "name": "Official roster 159896: 臺中市人民團體-國際團體",
+    "dataset": "159896",
+    "url": "https://data.gov.tw/dataset/159896",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=13b9cfba-2db6-4e3e-9e56-953140a30392",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 461,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159898": {
+    "name": "Official roster 159898: 臺中市人民團體-宗教團體",
+    "dataset": "159898",
+    "url": "https://data.gov.tw/dataset/159898",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=02095ba5-c23f-4453-8b20-90b31d1f54bc",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 547,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_159900": {
+    "name": "Official roster 159900: 臺中市人民團體-經濟業務團體",
+    "dataset": "159900",
+    "url": "https://data.gov.tw/dataset/159900",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=b11f99bd-d54b-4478-b051-ad70d3d6d92c",
+    "columns": [
+      "單位名稱",
+      "單位類型",
+      "連絡電話",
+      "住址",
+      "行政區",
+      "備註",
+      "最後更新日期",
+      "縣市別代碼"
+    ],
+    "name_column": "單位名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "taichung-category",
+    "expected_rows": 281,
+    "locator_fields": [
+      "最後更新日期"
+    ]
+  },
+  "catalog_128174": {
+    "name": "Official roster 128174: 人民團體-環保團體",
+    "dataset": "128174",
+    "url": "https://data.gov.tw/dataset/128174",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/01c9f163-015a-4a9d-96e0-d56bbbf70bfc",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 100,
+    "locator_fields": []
+  },
+  "catalog_128176": {
+    "name": "Official roster 128176: 人民團體-經濟業務團體",
+    "dataset": "128176",
+    "url": "https://data.gov.tw/dataset/128176",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/8b3b292c-6917-493a-bfb3-71ede05d4765",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 453,
+    "locator_fields": []
+  },
+  "catalog_128183": {
+    "name": "Official roster 128183: 人民團體-宗教團體",
+    "dataset": "128183",
+    "url": "https://data.gov.tw/dataset/128183",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/963920c6-d76d-4366-8baa-42e0ab7fc859",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 344,
+    "locator_fields": []
+  },
+  "catalog_128059": {
+    "name": "Official roster 128059: 高雄市人民團體-同鄉會",
+    "dataset": "128059",
+    "url": "https://data.gov.tw/dataset/128059",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/ae9b5191-fa0d-4a05-b2fa-04895682cc7c",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 66,
+    "locator_fields": []
+  },
+  "catalog_128172": {
+    "name": "Official roster 128172: 人民團體-體育團體",
+    "dataset": "128172",
+    "url": "https://data.gov.tw/dataset/128172",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/a3c723ca-53a4-472a-ade3-55f723b27d91",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 464,
+    "locator_fields": []
+  },
+  "catalog_128173": {
+    "name": "Official roster 128173: 人民團體-醫療衛生團體",
+    "dataset": "128173",
+    "url": "https://data.gov.tw/dataset/128173",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/d5c36c22-6d60-4e20-99b3-9b49a4d38bf8",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 77,
+    "locator_fields": []
+  },
+  "catalog_128179": {
+    "name": "Official roster 128179: 人民團體-商業團體",
+    "dataset": "128179",
+    "url": "https://data.gov.tw/dataset/128179",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/e273c33f-3508-4c5f-942b-dfaa672becaa",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 228,
+    "locator_fields": []
+  },
+  "catalog_128180": {
+    "name": "Official roster 128180: 人民團體-校友會",
+    "dataset": "128180",
+    "url": "https://data.gov.tw/dataset/128180",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/527b7bf9-3755-4b73-b8e2-a6d33798ef38",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 122,
+    "locator_fields": []
+  },
+  "catalog_128175": {
+    "name": "Official roster 128175: 人民團體-學術文化團體",
+    "dataset": "128175",
+    "url": "https://data.gov.tw/dataset/128175",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/d2d358de-048c-4e52-889b-6681b9dac348",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 608,
+    "locator_fields": []
+  },
+  "catalog_128178": {
+    "name": "Official roster 128178: 人民團體-國際團體",
+    "dataset": "128178",
+    "url": "https://data.gov.tw/dataset/128178",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/5119ee8d-8d34-44ab-86b3-403d8836af45",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 313,
+    "locator_fields": []
+  },
+  "catalog_128182": {
+    "name": "Official roster 128182: 人民團體-宗親會",
+    "dataset": "128182",
+    "url": "https://data.gov.tw/dataset/128182",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/fd6b3eca-d7d4-49cc-b3c7-e935e9024164",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 92,
+    "locator_fields": []
+  },
+  "catalog_128070": {
+    "name": "Official roster 128070: 高雄市人民團體-自由職業團體",
+    "dataset": "128070",
+    "url": "https://data.gov.tw/dataset/128070",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/bb0a1bce-2556-417e-bd15-7080adad05a0",
+    "columns": [
+      "id",
+      "org_name",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg"
+    ],
+    "name_column": "org_name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "kaohsiung-category",
+    "expected_rows": 365,
+    "locator_fields": []
+  },
+  "catalog_102156": {
+    "name": "Official roster 102156: 農業財團法人名冊",
+    "dataset": "102156",
+    "url": "https://data.gov.tw/dataset/102156",
+    "download": "https://data.moa.gov.tw/Service/OpenData/DataFileService.aspx?UnitId=F88&FOTT=CSV&IsTransData=1",
+    "columns": [
+      "項次",
+      "財團法人名稱",
+      "財團法人電話",
+      "財團法人地址",
+      "備註"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "sectoral-foundation",
+    "expected_rows": 73,
+    "locator_fields": []
+  },
+  "catalog_41892": {
+    "name": "Official roster 41892: 全國性財團法人體育基金會資訊",
+    "dataset": "41892",
+    "url": "https://data.gov.tw/dataset/41892",
+    "download": "https://ws.sports.gov.tw/FS01/FilePath/1/relfile/164/10298/863a1e5b-cd4c-428d-8a51-cbe89fb4307e.csv",
+    "columns": [
+      "編號",
+      "名稱",
+      "主事務所",
+      "董事長姓名",
+      "設立登記日期",
+      "登記財產總額元",
+      "政府捐助成立",
+      "主要業務類別",
+      "網站"
+    ],
+    "name_column": "名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "sectoral-foundation",
+    "expected_rows": 28,
+    "locator_fields": []
+  },
+  "catalog_70706": {
+    "name": "Official roster 70706: 政府捐助成立之財團法人基本資料",
+    "dataset": "70706",
+    "url": "https://data.gov.tw/dataset/70706",
+    "download": "https://ws.ndc.gov.tw/Download.ashx?u=LzAwMS9hZG1pbmlzdHJhdG9yLzEwL3JlbGZpbGUvMC8xMDk4Ni81YTQzMmJhOS05YTBjLTQxNDEtYWRiZC04YTMzMjczYWRlYzQuY3N2&n=MTA15bm05bqm5ZCE5Li7566h5qmf6Zec5omA55uj552j5omA5bGs5pS%2f5bqc5o2Q5Yqp5oiQ56uL5LmL6LKh5ZyY5rOV5Lq65Z%2b65pys6LOH5paZLmNzdg%3d%3d&icon=..csv",
+    "columns": [
+      "項次",
+      "機關別",
+      "財團法人名稱",
+      "創立日期",
+      "業務類別或成立宗旨",
+      "基金規模－創立基金總額(千元)",
+      "基金規模－期末基金總額(千元)",
+      "政府捐助基金金額－原始捐助占比(%)",
+      "政府捐助基金金額－累計捐助占比(%)",
+      "政府捐助基金以外金額－年度捐助金額(千元)",
+      "政府捐助基金以外金額－年度委辦金額(千元)"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "government-funded-foundation-subset",
+    "expected_rows": 121,
+    "locator_fields": []
+  },
+  "catalog_9075": {
+    "name": "Official roster 9075: 大陸委員會主管大陸事務財團法人名冊",
+    "dataset": "9075",
+    "url": "https://data.gov.tw/dataset/9075",
+    "download": "https://www.mac.gov.tw/big5/data/9075_大陸委員會主管大陸事務財團法人名冊.csv",
+    "columns": [
+      "編號",
+      "名稱",
+      "負責人",
+      "會址及電話",
+      "設立基金數額",
+      "成立日期",
+      "主管處"
+    ],
+    "name_column": "名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "sectoral-foundation",
+    "expected_rows": 18,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_42649": {
+    "name": "Official roster 42649: 大陸委員會主管港澳事務財團法人名冊",
+    "dataset": "42649",
+    "url": "https://data.gov.tw/dataset/42649",
+    "download": "https://www.mac.gov.tw/big5/data/137_大陸委員會主管港澳事務財團法人名冊.csv",
+    "columns": [
+      "編號",
+      "名稱",
+      "負責人",
+      "會址及電話",
+      "設立基金數額",
+      "成立日期",
+      "主管處",
+      "備註"
+    ],
+    "name_column": "名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "sectoral-foundation",
+    "expected_rows": 1,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_124291": {
+    "name": "Official roster 124291: 新北市私立社會福利慈善事業基金會名冊",
+    "dataset": "124291",
+    "url": "https://data.gov.tw/dataset/124291",
+    "download": "https://data.ntpc.gov.tw/api/datasets/3a9b8d18-ef68-4593-a85b-c7835014ac21/csv/file",
+    "columns": [
+      "no",
+      "title",
+      "year",
+      "month",
+      "dath",
+      "county",
+      "countycode",
+      "town",
+      "areacode",
+      "address",
+      "localcallservice",
+      "extension",
+      "mobiletelephone"
+    ],
+    "name_column": "title",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 110,
+    "locator_fields": []
+  },
+  "catalog_125276": {
+    "name": "Official roster 125276: 新北市教育基金會資訊",
+    "dataset": "125276",
+    "url": "https://data.gov.tw/dataset/125276",
+    "download": "https://data.ntpc.gov.tw/api/datasets/85ccbce1-b5cd-477c-b20b-d53512f9815f/csv/file",
+    "columns": [
+      "no",
+      "name",
+      "address",
+      "phone",
+      "manager"
+    ],
+    "name_column": "name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 302,
+    "locator_fields": []
+  },
+  "catalog_121528": {
+    "name": "Official roster 121528: 臺北市財團法人教育基金會清冊",
+    "dataset": "121528",
+    "url": "https://data.gov.tw/dataset/121528",
+    "download": "https://data.taipei/api/dataset/749064cb-a449-4579-8367-5caa701cf8d6/resource/bfbf16e2-a0a4-45c1-b942-911bd6695d53/download",
+    "columns": [
+      "序號",
+      "基金會名稱",
+      "所在縣市",
+      "縣市別代碼",
+      "備註"
+    ],
+    "name_column": "基金會名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 285,
+    "locator_fields": []
+  },
+  "catalog_130824": {
+    "name": "Official roster 130824: 臺北市文化局文化藝術財團法人一覽表",
+    "dataset": "130824",
+    "url": "https://data.gov.tw/dataset/130824",
+    "download": "https://data.taipei/api/dataset/067fec43-cbc6-4fe4-b0b1-699596ef3d48/resource/406c1528-19b4-43c3-a2a9-38f7397c939c/download",
+    "columns": [
+      "編號",
+      "基金會名稱",
+      "縣市別代碼",
+      "縣市",
+      "登記會址"
+    ],
+    "name_column": "基金會名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 154,
+    "locator_fields": []
+  },
+  "catalog_156981": {
+    "name": "Official roster 156981: 臺北市社會福利基金會名冊",
+    "dataset": "156981",
+    "url": "https://data.gov.tw/dataset/156981",
+    "download": "https://data.taipei/api/dataset/f1ab8d11-1bab-45c0-8865-d753ee0f0a3d/resource/5fc1a4df-b0e1-4d9e-b539-8b3495f31ff9/download",
+    "columns": [
+      "序號",
+      "名稱",
+      "電話",
+      "地址",
+      "代碼編號",
+      "行政區",
+      "立案字號",
+      "成立日期",
+      "類別"
+    ],
+    "name_column": "名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 221,
+    "locator_fields": [
+      "成立日期",
+      "立案字號"
+    ]
+  },
+  "catalog_83867": {
+    "name": "Official roster 83867: 臺中市文化藝術財團法人(基金會)",
+    "dataset": "83867",
+    "url": "https://data.gov.tw/dataset/83867",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=46bade0c-88f9-40f3-85fc-0d0fc6acfae1",
+    "columns": [
+      "機關代碼",
+      "縣市別代碼",
+      "郵遞區號",
+      "基金會類型",
+      "基金會名稱"
+    ],
+    "name_column": "基金會名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 22,
+    "locator_fields": []
+  },
+  "catalog_128138": {
+    "name": "Official roster 128138: 社會福利慈善事業基金會-基金會",
+    "dataset": "128138",
+    "url": "https://data.gov.tw/dataset/128138",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/635c8571-3e73-46eb-9919-b0e73f1068f5",
+    "columns": [
+      "id",
+      "lat",
+      "lng",
+      "informaddress",
+      "hlink",
+      "informtel",
+      "servItem",
+      "servTime",
+      "dataOrg",
+      "doOrg",
+      "text"
+    ],
+    "name_column": "text",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 83,
+    "locator_fields": []
+  },
+  "catalog_101814": {
+    "name": "Official roster 101814: 經管財團法人名冊",
+    "dataset": "101814",
+    "url": "https://data.gov.tw/dataset/101814",
+    "download": "https://data.tainan.gov.tw/File/ResourceCsvDownload/1b52207d-f298-40f4-829e-3b63e196447e",
+    "columns": [
+      "Seq",
+      "基金會統一編號",
+      "基金會名稱",
+      "設立許可日期",
+      "許可機構",
+      "狀態"
+    ],
+    "name_column": "基金會名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 2,
+    "locator_fields": [
+      "基金會統一編號",
+      "狀態",
+      "設立許可日期"
+    ]
+  },
+  "catalog_106263": {
+    "name": "Official roster 106263: 臺南市財團法人名冊",
+    "dataset": "106263",
+    "url": "https://data.gov.tw/dataset/106263",
+    "download": "https://data.tainan.gov.tw/File/ResourceCsvDownload/f5c2150a-2135-4aee-8bb8-1fc865bab54d",
+    "columns": [
+      "財團法人名稱",
+      "設立時間",
+      "核准文號",
+      "統一編號",
+      "地址",
+      "基金會聯絡電話",
+      "fax",
+      "設立基金"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 62,
+    "locator_fields": [
+      "統一編號"
+    ]
+  },
+  "catalog_90604": {
+    "name": "Official roster 90604: 屏東縣教育基金會名冊",
+    "dataset": "90604",
+    "url": "https://data.gov.tw/dataset/90604",
+    "download": "https://www-ws.pthg.gov.tw/Upload/2015pthg/0/relfile/0/0/f31ac3ed-57e3-4c8f-a6ed-cc54cc4ff5d2.csv",
+    "columns": [
+      "organization name",
+      "address",
+      "director"
+    ],
+    "name_column": "organization name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 34,
+    "locator_fields": []
+  },
+  "catalog_99290": {
+    "name": "Official roster 99290: 新竹縣文化藝術財團法人基本資訊",
+    "dataset": "99290",
+    "url": "https://data.gov.tw/dataset/99290",
+    "download": "https://ws.hsinchu.gov.tw/001/Upload/1/opendata/8774/270/cacf39dc-da6d-416f-8bf8-b3a8a247211f.csv",
+    "columns": [
+      "基金會名稱",
+      "設立許可文號",
+      "設立許可日期",
+      "所在地",
+      "董事長",
+      "電話",
+      "分機",
+      "聯絡地址",
+      "原始設立基金金額",
+      "最新法人登記證書之財產總額"
+    ],
+    "name_column": "基金會名稱",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 7,
+    "locator_fields": [
+      "設立許可文號",
+      "設立許可日期"
+    ]
+  },
+  "catalog_159789": {
+    "name": "Official roster 159789: 臺中市經管財團法人名冊",
+    "dataset": "159789",
+    "url": "https://data.gov.tw/dataset/159789",
+    "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=a38553af-6bb3-441f-a210-1969c8b98d78",
+    "columns": [
+      "基金會統一編號",
+      "基金會名稱",
+      "設立許可文號",
+      "設立許可日期",
+      "許可機關",
+      "所在地",
+      "狀態",
+      "聯絡電話",
+      "聯絡地址",
+      "經度",
+      "緯度",
+      "官方網站"
+    ],
+    "name_column": "基金會名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 3,
+    "locator_fields": [
+      "基金會統一編號",
+      "狀態",
+      "設立許可文號",
+      "設立許可日期"
+    ]
+  },
+  "catalog_145146": {
+    "name": "Official roster 145146: 嘉義市社會福利慈善事業基金會名冊",
+    "dataset": "145146",
+    "url": "https://data.gov.tw/dataset/145146",
+    "download": "https://data.chiayi.gov.tw/opendata/api/getResource?oid=ec6af6c9-530f-4afa-b741-a9818c56155e&rid=5d854f1d-04ec-44de-b744-6804ec5873fc",
+    "columns": [
+      "編號",
+      "名稱",
+      "地址",
+      "電話"
+    ],
+    "name_column": "名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 13,
+    "locator_fields": []
+  },
+  "catalog_26480": {
+    "name": "Official roster 26480: 桃園市財團法人教會堂及基金會名冊",
+    "dataset": "26480",
+    "url": "https://data.gov.tw/dataset/26480",
+    "download": "https://opendata.tycg.gov.tw/api/dataset/0ae8f890-c8de-4447-8c68-601c17c01d44/resource/f08ab022-31e5-426a-82fd-02979563144a/download",
+    "columns": [
+      "編號",
+      "財團法人名稱",
+      "區別",
+      "行政區域",
+      "住址",
+      "電話"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-religious-foundation",
+    "expected_rows": 64,
+    "locator_fields": []
+  },
+  "catalog_161037": {
+    "name": "Official roster 161037: 財團法人雲林縣社會福利基金會名冊",
+    "dataset": "161037",
+    "url": "https://data.gov.tw/dataset/161037",
+    "download": "https://ws.yunlin.gov.tw/001/Upload/539/opendata/15369/1540/1b51d152-0925-4b6d-8e8d-1511c9621e41.csv",
+    "columns": [
+      "編號",
+      "基金會名稱",
+      "負責人",
+      "地址",
+      "成立日期"
+    ],
+    "name_column": "基金會名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 15,
+    "locator_fields": [
+      "成立日期"
+    ]
+  },
+  "catalog_104441": {
+    "name": "Official roster 104441: 高雄市文化基金會一覽表",
+    "dataset": "104441",
+    "url": "https://data.gov.tw/dataset/104441",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/b81f60ea-5e3d-40ec-b499-efbbcd80cf12",
+    "columns": [
+      "Seq",
+      "名稱",
+      "地址"
+    ],
+    "name_column": "名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 21,
+    "locator_fields": []
+  },
+  "catalog_125155": {
+    "name": "Official roster 125155: 新北市文化基金會一覽表",
+    "dataset": "125155",
+    "url": "https://data.gov.tw/dataset/125155",
+    "download": "https://data.ntpc.gov.tw/api/datasets/0351d41c-ef33-44da-bc3c-a64af58ddb91/csv/file",
+    "columns": [
+      "name",
+      "address"
+    ],
+    "name_column": "name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-sectoral-foundation",
+    "expected_rows": 67,
+    "locator_fields": []
+  },
+  "catalog_109238": {
+    "name": "Official roster 109238: 新竹縣已登記財團法人教會名冊一覽表",
+    "dataset": "109238",
+    "url": "https://data.gov.tw/dataset/109238",
+    "download": "https://ws.hsinchu.gov.tw/001/Upload/1/opendata/8774/183/78f26b15-5efe-4101-bc0e-196e7a018b12.csv",
+    "columns": [
+      "編號",
+      "鄉鎮市別",
+      "教會名稱",
+      "郵遞區號",
+      "主事務所地址",
+      "電話",
+      "負責人",
+      "設立日期"
+    ],
+    "name_column": "教會名稱",
+    "sequence_column": null,
+    "encoding": "cp950",
+    "description": "local-religious-foundation",
+    "expected_rows": 13,
+    "locator_fields": []
+  },
+  "catalog_134985": {
+    "name": "Official roster 134985: 社會福利財團法人名冊",
+    "dataset": "134985",
+    "url": "https://data.gov.tw/dataset/134985",
+    "download": "https://www-ws.pthg.gov.tw/Upload/2015pthg/0/relfile/0/0/14506d4d-0a30-4de5-9b54-ed8087a04d50.csv",
+    "columns": [
+      "name",
+      "address",
+      "phone"
+    ],
+    "name_column": "name",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "sectoral-foundation",
+    "expected_rows": 15,
+    "locator_fields": []
+  },
+  "catalog_177844": {
+    "name": "Official roster 177844: 高雄市財團法人教會堂基本資料",
+    "dataset": "177844",
+    "url": "https://data.gov.tw/dataset/177844",
+    "download": "https://data.kcg.gov.tw/File/DirectDownload/60fb6708-10e1-4c85-9201-56f614256f2c",
+    "columns": [
+      "編號",
+      "財團法人名稱",
+      "場所縣市",
+      "場所區域",
+      "場所地址",
+      "聯絡電話",
+      "負責人",
+      "宗教別",
+      "法院設立日期"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "local-religious-foundation",
+    "expected_rows": 87,
+    "locator_fields": [
+      "法院設立日期"
+    ]
+  },
+  "catalog_99061": {
+    "name": "Official roster 99061: 國家通訊傳播委員會監督之財團法人基本資料(已移撥數位部，不再更新)",
+    "dataset": "99061",
+    "url": "https://data.gov.tw/dataset/99061",
+    "download": "https://api.ncc.gov.tw/uploaddowndoc?file=datagov/1407628355192229888.csv&filedisplay=foundation.csv&flag=doc",
+    "columns": [
+      "財團法人統一編號",
+      "財團法人名稱",
+      "財團法人代碼",
+      "設立許可文號",
+      "設立許可日期",
+      "許可機構",
+      "所在地",
+      "董事長",
+      "執行長",
+      "狀態",
+      "聯絡電話",
+      "聯絡地址",
+      "官方網址",
+      "原始設立金額(萬元)",
+      "最新法人登記證書之財產總額(萬元)"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "historical-sectoral-foundation",
+    "expected_rows": 2,
+    "locator_fields": [
+      "狀態",
+      "設立許可文號",
+      "設立許可日期",
+      "財團法人統一編號"
+    ]
+  },
+  "catalog_149069": {
+    "name": "Official roster 149069: 政府原始捐助（贈）之財團法人一覽表",
+    "dataset": "149069",
+    "url": "https://data.gov.tw/dataset/149069",
+    "download": "https://www.mocs.gov.tw/FileUpload/1043-9449/Documents//1140110%E8%B2%A1%E5%9C%98%E6%B3%95%E4%BA%BA%E4%B8%8A%E7%B6%B2%E5%85%AC(%E8%A1%A8%E4%B8%80).csv",
+    "columns": [
+      "主管機關",
+      "財團法人名稱",
+      "設立時間(年/月/日)",
+      "停發月退休金及停辦優惠存款生效日",
+      "備註"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "government-funded-foundation-subset",
+    "expected_rows": 313,
+    "locator_fields": []
+  },
+  "catalog_165826": {
+    "name": "Official roster 165826: 政府捐助（贈）經費累計達法院登記財產總額百分之二十以上之財團法人一覽表",
+    "dataset": "165826",
+    "url": "https://data.gov.tw/dataset/165826",
+    "download": "https://www.mocs.gov.tw/FileUpload/1043-9449/Documents//1140110%E8%B2%A1%E5%9C%98%E6%B3%95%E4%BA%BA%E4%B8%8A%E7%B6%B2%E5%85%AC(%E8%A1%A8%E4%BA%8C).csv",
+    "columns": [
+      "主管機關",
+      "財團法人名稱",
+      "設立時間(年/月/日)",
+      "停發月退休金及停辦優惠存款生效日",
+      "備註"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "government-funded-foundation-subset",
+    "expected_rows": 26,
+    "locator_fields": []
+  },
+  "catalog_165829": {
+    "name": "Official roster 165829: 政府直接（間接）控制其人事、財務或業務之財團法人一覽表",
+    "dataset": "165829",
+    "url": "https://data.gov.tw/dataset/165829",
+    "download": "https://www.mocs.gov.tw/FileUpload/1043-9449/Documents//1140110%E8%B2%A1%E5%9C%98%E6%B3%95%E4%BA%BA%E4%B8%8A%E7%B6%B2%E5%85%AC(%E8%A1%A8%E4%B8%89).csv",
+    "columns": [
+      "主管機關",
+      "財團法人名稱",
+      "設立時間(年/月/日)",
+      "停發月退休金及停辦優惠存款生效日",
+      "備註"
+    ],
+    "name_column": "財團法人名稱",
+    "sequence_column": null,
+    "encoding": "utf-8-sig",
+    "description": "government-funded-foundation-subset",
+    "expected_rows": 18,
+    "locator_fields": []
+  }
+}

@@ -1,70 +1,73 @@
-# Civil-organization nationwide gap register (2026-10-24)
+# Nationwide civil-organization source and exception register — 2026-10-25
 
-This is a **source inventory, not a completeness claim**. The unit of the
-existing Development import is an official roster observation, not a unique,
-currently registered organization. The government open-data catalog snapshot
-used for discovery is the official [dataset export](https://data.gov.tw/datasets/export/csv?type=dataset&order=pubdate&qs=&uid=)
-retrieved 2026-10-24. Its source rows are retained outside Git. Catalog
-metadata and row counts do not prove that a downloadable file is current or
-complete; every candidate below still needs file/header, scope, license,
-freshness, row-count, and Evidence checks before publication.
+This is a **bounded discovery inventory**, not a claim that every currently
+registered Taiwanese association, NGO or foundation is in T.E.I. The unit of
+the Development import is one official roster observation. The 2026-10-24
+[government catalog export](https://data.gov.tw/datasets/export/csv?type=dataset&order=pubdate&qs=&uid=)
+was supplemented with county government pages because the export omitted at
+least Yilan's current roster. Full source URLs, schemas, counts and scopes are
+in [`src/civil_roster_manifest.json`](../src/civil_roster_manifest.json) and
+[`CIVIL_ORGANIZATION_COVERAGE.md`](CIVIL_ORGANIZATION_COVERAGE.md).
 
-## Local-government people's organizations
+## 22 local jurisdictions
 
-| Jurisdiction | Official discovery lead | Development status |
+| Jurisdiction | Published official source observations in Development | Remaining exception / scope limit |
 |---|---|---|
-| 臺北市 | [121714](https://data.gov.tw/dataset/121714) | 4,176 source-scoped observations published |
-| 新北市 | [124618](https://data.gov.tw/dataset/124618) covers community associations only | 470 subset observations published; no general local roster |
-| 桃園市 | [147530](https://data.gov.tw/dataset/147530) is withdrawn; [32265](https://data.gov.tw/dataset/32265) covers community associations only | No general local roster published |
-| 臺中市 | [159897](https://data.gov.tw/dataset/159897) and other category-specific city rosters | 594 academic-cultural observations published; other categories missing |
-| 臺南市 | [53472](https://data.gov.tw/dataset/53472) | 3,505 source-scoped observations published |
-| 高雄市 | [128181](https://data.gov.tw/dataset/128181) and other category-specific city rosters | 1,747 charity observations published; other categories missing |
-| 基隆市 | [165174](https://data.gov.tw/dataset/165174) (ODS) | Not published |
-| 新竹市 | [129137](https://data.gov.tw/dataset/129137) | Not published; official CSV TLS chain failed validation; do not bypass |
-| 嘉義市 | [165216](https://data.gov.tw/dataset/165216) | Not published |
-| 新竹縣 | [109320](https://data.gov.tw/dataset/109320) | Not published |
-| 苗栗縣 | [174251](https://data.gov.tw/dataset/174251) covers community associations only | No general local roster published |
-| 彰化縣 | [107985](https://data.gov.tw/dataset/107985) | Not published; source scope/row count to verify |
-| 南投縣 | [129917](https://data.gov.tw/dataset/129917) | Not published |
-| 雲林縣 | [114352](https://data.gov.tw/dataset/114352) covers community associations only | No general local roster published |
-| 嘉義縣 | [133902](https://data.gov.tw/dataset/133902) | Not published |
-| 屏東縣 | [142753](https://data.gov.tw/dataset/142753) | 3,440 source-scoped observations published |
-| 宜蘭縣 | No general roster identified in the catalog snapshot | Source discovery required |
-| 花蓮縣 | [159507](https://data.gov.tw/dataset/159507) covers community associations only | No general local roster published |
-| 臺東縣 | [165816](https://data.gov.tw/dataset/165816) is a year-specific community-association roster | No general local roster published |
-| 澎湖縣 | [113361](https://data.gov.tw/dataset/113361) covers community associations only | No general local roster published |
-| 金門縣 | [174365](https://data.gov.tw/dataset/174365) covers community associations only | No general local roster published |
-| 連江縣 | [146417](https://data.gov.tw/dataset/146417) (ODS) | Not published |
+| 臺北市 | [General people-group roster 121714](https://data.gov.tw/dataset/121714); education, culture and social-welfare foundation rosters | Different competent authorities remain separate; current status unverified |
+| 新北市 | [Community associations 124618](https://data.gov.tw/dataset/124618); charity, education and culture foundations | No downloadable general people-group roster verified; [official social bureau portal](https://social.ntpc.gov.tw/) is a live service |
+| 桃園市 | [Community associations 32265](https://data.gov.tw/dataset/32265); religious foundations 26480 | General roster 147530 withdrawn; [official group lookup](https://sab.tycg.gov.tw/News_Content.aspx?n=7341&s=684701) is live only |
+| 臺中市 | 15 separate [people-group category files](https://data.gov.tw/dataset/159897), community associations 91949 and sectoral foundations | Category sources overlap; cooperatives/credit unions deliberately excluded as different forms; not one exhaustive roster |
+| 臺南市 | [General people-group roster 53472](https://data.gov.tw/dataset/53472); culture, economic and social-welfare foundation files | Local foundation sources overlap; dissolution/status retained as raw source fields, not current legal finding |
+| 高雄市 | 13 separate [people-group category files](https://data.gov.tw/dataset/128181); charity, culture and religious foundation files | Category source overlap and completeness unverified |
+| 基隆市 | [General ODS people-group roster 165174](https://data.gov.tw/dataset/165174), 823 source rows | Original ODS retained by hash; snapshot freshness/current legal status not certified |
+| 新竹市 | None | [Official people-group CSV 129137](https://data.gov.tw/dataset/129137) and district community CSVs failed TLS certificate verification; no bypass or unverified copy |
+| 嘉義市 | Community associations 52394; charity foundations 145146 | [General social-group roster 165216](https://data.gov.tw/dataset/165216) redirects to a third-party document, not accepted as a verified immutable download |
+| 新竹縣 | [General people-group roster 109320](https://data.gov.tw/dataset/109320); community associations 109324; culture/religious foundation files | General CSV has only 70 rows; source scope and currency must not be extrapolated |
+| 苗栗縣 | Community associations 174251 | [Official society lookup](https://sas.miaoli.gov.tw/roster_society) is live HTML; no bulk snapshot validated |
+| 彰化縣 | Community associations 107897 | Catalog file 107985 contains only three rows with fields unlike a general roster; excluded |
+| 南投縣 | None | [General roster 129917](https://data.gov.tw/dataset/129917) and [community associations 94910](https://data.gov.tw/dataset/94910) returned HTTP 403, including direct county file; no authorization bypass |
+| 雲林縣 | Social-welfare foundation roster 161037 only | [Community association file 114352](https://data.gov.tw/dataset/114352) failed download; county's [public sheet](https://social.yunlin.gov.tw/News_Content.aspx?n=737&s=455347) uses abbreviated names and is not a verified full-name snapshot |
+| 嘉義縣 | [General people-group roster 133902](https://data.gov.tw/dataset/133902); community associations 133900 | Current status unverified |
+| 屏東縣 | [General people-group roster 142753](https://data.gov.tw/dataset/142753); education/social-welfare foundations | Current status unverified |
+| 宜蘭縣 | [Official 2026-09-30 county roster](https://sntroot.e-land.gov.tw/cp.aspx?n=10437), 1,619 rows | Older open-data catalog listing 46186 was absent from the exported catalog; the county file is a dated snapshot, not a live certificate |
+| 花蓮縣 | Community associations 159507 | [County's general group list](https://sa.hl.gov.tw/Detail_sp/1805d7aa256b425a8ea1d106ca9d2b74) links to a live third-party query service, not a verified bulk snapshot |
+| 臺東縣 | Community associations 165816 | Dataset explicitly covers 109年度; no current general roster validated |
+| 澎湖縣 | Community associations 113361 | No general local roster validated |
+| 金門縣 | Community associations 174365 | No general local roster validated |
+| 連江縣 | None | [Official people-group ODS 146417](https://data.gov.tw/dataset/146417) download yielded a tiny HTML response, not an ODS file |
 
-The Interior Ministry says its [live "find a group" service](https://www.moi.gov.tw/News_Content.aspx?n=15255&s=263489)
-is the source for current nationwide status. It also directs checks of local
-organizations to county/city governments; see its
-[public guidance](https://www.moi.gov.tw/News_toggle3.aspx?n=8361&sms=9015&_CSN=1633&page=2&PageSize=30).
-The 23,209 nationwide records already imported are a historical open-data
-snapshot, not a substitute for that live status service.
+Every jurisdiction was researched; this does **not** mean its full legal-entity
+population is covered. In particular, four jurisdictions have no usable
+people-group snapshot (新竹市、南投縣、雲林縣、連江縣), although 雲林縣 has one
+foundation roster. The [Interior Ministry's live group lookup](https://www.moi.gov.tw/group.htm)
+and each local competent authority remain the definitive places to check
+current standing. The 23,209 national MOI records already in Development are
+a historical open-data snapshot.
 
-## Sectoral foundations and other organizations
+## Central and sectoral authorities
 
-Development contains 25 Interior Ministry foundation-roster observations,
-15 Labor Ministry foundation-roster observations, 765 Education Ministry
-foundation-roster observations, and 243 Labor Ministry union-roster observations.
-The 99,788 Finance Ministry
-nonprofit tax-unit rows are **tax-source observations only**. They are not
-verified legal-form records and must not be automatically promoted to
-CivilOrganization entities or merged by name. Official catalog leads for
-additional competent authorities include [Agriculture Ministry 102156](https://data.gov.tw/dataset/102156),
-[Sports Ministry 41892](https://data.gov.tw/dataset/41892), and
-[Science and Technology Council 7612](https://data.gov.tw/dataset/7612).
-This list is **not** an exhaustive enumeration of competent authorities;
-additional central and local sectoral registries require discovery and
-reconciliation. The term "all agencies" has no defensible denominator yet.
+Development now includes roster observations from the Interior, Labor,
+Education, Agriculture, Sports and Mainland Affairs ministries; local
+education, culture, social-welfare, religion and economic authorities;
+government-funded foundation subsets; and five Labor Ministry union lists.
+The manifest records exactly which official dataset covers each source.
+The [Culture Ministry's dataset 94846](https://data.gov.tw/dataset/94846)
+currently returns one *attachment index row*, not the foundation roster
+itself; that index is not mispublished as an organization. The [Science and
+Technology Council listing 7612](https://data.gov.tw/dataset/7612) contains
+webpage titles/links rather than a checked legal roster. Sectoral authority
+coverage has no defensible exhaustive denominator; legal form and current
+status cannot be inferred from tax listings or matching names.
 
-## Release gate for a nationwide-complete claim
+## Release gate and next refresh
 
-Do not declare complete until the jurisdiction/authority denominator is
-documented; each official source has a verified accessible snapshot or a
-clearly recorded unavailable/withdrawn exception; downloaded row counts and
-Development rows/Evidence reconcile; source dates and current-vs-historical
-status are visible; duplicates, changes, and legal identifiers have been
-reviewed; and public search/profile access is tested. Missing official data
-must remain a coverage gap, never fabricated or inferred by name.
+The accepted completion criterion for this source-acquisition pass is:
+accessible, verified official roster snapshots in Development with one Evidence
+link per row, and **explicit exceptions** for unavailable/unpublished/live-only
+sources. That criterion is met for the sources enumerated here; it is not the
+stronger claim of 100% of organizations or authorities. Further source
+discovery, live-register export permission, renewal, source versioning,
+deduplication by a verified identifier and status reconciliation remain open.
+Never fabricate missing records or merge by name. Before any Production use,
+recheck source currency, license and database headroom, and obtain release
+approval through the normal Preview gate.

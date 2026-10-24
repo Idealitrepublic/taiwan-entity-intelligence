@@ -401,3 +401,11 @@ tax file is instead held in `nonprofit_tax_observations`: a compact, RLS-gated
 source table with snapshot/line provenance. Its tax IDs are not promoted to
 canonical civil organizations or edges. This keeps tax-registration scope
 distinct from legal-entity registration and avoids name-only joins.
+
+The 2026-10-25 extension reads 68 explicitly curated official CSV manifests,
+one ODS conversion and one official JSON conversion, plus Yilan's county CSV,
+through the same source-scoped ingestion path. Every published row retains a
+snapshot hash, official URL, source locator and one Evidence link; original
+ODS/JSON hashes and item locations survive conversion. No schema, entity
+resolution rule or graph relationship changed. The complete source/exception
+inventory is in `docs/CIVIL_ORGANIZATION_NATIONWIDE_GAP_REGISTER.md`.

@@ -64,6 +64,8 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
 
     def test_additional_official_rosters_keep_source_identity_and_redact_contact(self):
         for key, source in SOURCES.items():
+            if key.startswith("catalog_") or key in ("keelung_ods", "yilan_20260930", "tainan_social_foundations_json"):
+                continue
             with self.subTest(key=key), tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / "official.csv"
                 if key == "moi_foundations":
@@ -107,6 +109,81 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
                 self.assertEqual(len(bundle["entity_evidence"]), 1)
                 if key == "moe_foundations":
                     self.assertEqual(bundle["evidence"][0]["source_locator"]["foundation_status_raw"], "來源狀態")
+
+    def test_catalog_manifest_is_curated_and_source_scoped(self):
+        catalog = {key: source for key, source in SOURCES.items() if key.startswith("catalog_")}
+        self.assertGreaterEqual(len(catalog), 60)
+        with tempfile.TemporaryDirectory() as directory:
+            for key, source in catalog.items():
+                with self.subTest(key=key):
+                    import csv
+                    path = Path(directory) / f"{key}.csv"
+                    name = source["name_column"]
+                    columns = list(source["columns"]) + ["私人聯絡人"]
+                    with path.open("w", encoding=source["encoding"], newline="") as handle:
+                        writer = csv.DictWriter(handle, fieldnames=columns)
+                        writer.writeheader()
+                        writer.writerow({name: "同名團體", "私人聯絡人": "甲某"})
+                        writer.writerow({name: "同名團體", "私人聯絡人": "乙某"})
+                    bundles = list(official_roster_bundles(path, key, retrieved_at=NOW,
+                                                           publication_status="published"))
+                    entities = [item for bundle in bundles for item in bundle["entities"]]
+                    evidence = [item for bundle in bundles for item in bundle["evidence"]]
+                    self.assertEqual(len(entities), 2)
+                    self.assertNotEqual(entities[0]["id"], entities[1]["id"])
+                    self.assertEqual(evidence[0]["source_locator"]["dataset_id"], source["dataset"])
+                    self.assertNotIn("甲某", str(bundles))
+
+    def test_ods_conversion_retains_original_hash_and_sheet_location(self):
+        from scripts.convert_official_civil_ods import convert, TABLE, TEXT
+        import hashlib
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.ods"
+            output = Path(directory) / "converted.csv"
+            xml = (f'<document xmlns:table="{TABLE}" xmlns:text="{TEXT}">'
+                   '<table:table table:name="團體">'
+                   '<table:table-row><table:table-cell><text:p>團體名稱</text:p></table:table-cell></table:table-row>'
+                   '<table:table-row><table:table-cell><text:p>甲協會</text:p></table:table-cell></table:table-row>'
+                   '</table:table></document>')
+            with zipfile.ZipFile(source, "w") as package:
+                package.writestr("content.xml", xml)
+            self.assertEqual(convert(source, output), 1)
+            bundle = next(official_roster_bundles(output, "keelung_ods", retrieved_at=NOW))
+            locator = bundle["evidence"][0]["source_locator"]
+            self.assertEqual(locator["ods_sheet"], "團體")
+            self.assertEqual(locator["ods_row"], "2")
+            self.assertEqual(locator["ods_sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
+
+    def test_yilan_official_roster_keeps_category_and_not_contact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "yilan.csv"
+            path.write_text("序號,人民團體名冊,團體類別,聯絡人\n"
+                            "1,宜蘭縣測試協會,社會團體,私人姓名\n", encoding="utf-8")
+            bundle = next(official_roster_bundles(path, "yilan_20260930", retrieved_at=NOW))
+            locator = bundle["evidence"][0]["source_locator"]
+            self.assertEqual(locator["團體類別"], "社會團體")
+            self.assertNotIn("私人姓名", str(bundle))
+
+    def test_tainan_json_conversion_retains_original_hash_and_rejects_failed_response(self):
+        from scripts.convert_tainan_foundation_json import convert
+        import hashlib
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.json"
+            output = Path(directory) / "converted.csv"
+            source.write_text(json.dumps({"success": True, "data": [{"基金會名稱": "測試基金會",
+                                                    "董事長": "私人姓名"}]}, ensure_ascii=False))
+            self.assertEqual(convert(source, output), 1)
+            bundle = next(official_roster_bundles(output, "tainan_social_foundations_json",
+                                                  retrieved_at=NOW))
+            locator = bundle["evidence"][0]["source_locator"]
+            self.assertEqual(locator["json_row"], "1")
+            self.assertEqual(locator["json_sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
+            self.assertNotIn("私人姓名", str(bundle))
+            source.write_text('{"success": false, "data": []}')
+            with self.assertRaisesRegex(ValueError, "Unexpected official JSON"):
+                convert(source, output)
 
     def test_tax_source_profiles_all_rows_without_entity_merges(self):
         with tempfile.TemporaryDirectory() as directory:

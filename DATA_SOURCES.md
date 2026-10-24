@@ -286,6 +286,18 @@ published observations and Evidence links in Development, not a unique NGO
 count. Hsinchu City's official CSV failed TLS certificate validation; no
 insecure download was used.
 
+The later 2026-10-25 official-source expansion supersedes that interim total:
+**54,307 published CivilOrganization roster observations from 87 official
+sources**, each with an Evidence link, now exist in `tei-development`. This
+includes 68 further profiled government CSV datasets, Keelung's official ODS,
+Yilan's county CSV and Tainan's social-welfare foundation JSON. Source scope,
+row counts and inaccessible/live-only exceptions are documented in
+[`docs/CIVIL_ORGANIZATION_COVERAGE.md`](docs/CIVIL_ORGANIZATION_COVERAGE.md) and
+[`docs/CIVIL_ORGANIZATION_NATIONWIDE_GAP_REGISTER.md`](docs/CIVIL_ORGANIZATION_NATIONWIDE_GAP_REGISTER.md).
+No cross-source name merge, contact/office-holder import or current-legal-status
+claim follows from this expansion. The current Development database size leaves
+limited Free-tier capacity for additional source rows.
+
 The official [MOF nonprofit tax dataset](https://data.gov.tw/dataset/34147)
 was also downloaded 2026-10-24. Its **99,788 rows** are published in the
 Development `nonprofit_tax_observations` source table, not promoted to Entity

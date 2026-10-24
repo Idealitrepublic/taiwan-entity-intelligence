@@ -277,3 +277,11 @@ specific downloaded snapshots only. Local-government and sectoral registries,
 legal-form validation, current-status checks and cross-source resolution remain
 open before claiming full Taiwan civil-organization coverage; see
 `docs/CIVIL_ORGANIZATION_COVERAGE.md`.
+
+As of 2026-10-25 the bounded official-source pass has 54,307 published
+source-scoped roster observations from 87 official sources in Development.
+All 22 jurisdictions have a recorded source or explicit exception; this is
+not complete current registration coverage. Open work remains for unavailable
+and live-only local registries, all competent-authority reconciliation,
+versioned refreshes, verified identifiers and evidence-backed relationships.
+Production has not received this expansion.

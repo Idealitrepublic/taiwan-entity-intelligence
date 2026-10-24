@@ -27,6 +27,9 @@ def main():
     count = sum(len(bundle["entities"]) for bundle in bundles)
     if not count:
         parser.error("Official CSV is empty")
+    expected = SOURCES[args.source_key].get("expected_rows")
+    if expected is not None and count != expected:
+        parser.error("Official snapshot row count changed; review before publishing")
     if args.apply_dev:
         apply_bundles(bundles, source_name=SOURCES[args.source_key]["name"])
     print(json.dumps({"source": args.source_key, "rows": count,
