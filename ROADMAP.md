@@ -263,3 +263,9 @@ Exit gate: an accepted Preview artifact is the only path to Production.
 ## Deferred product work
 
 No unrelated UI/product features begin without an explicit phase. AI assistance remains deferred.
+
+Civil-organization coverage now starts with historical MOI association roster
+observations in Development only. Pending work: stable official ID/legal-form
+crosswalk, current-registration verification, source refresh/version policy,
+and independently evidenced company/person/contract relationships. The 23,209
+historical rows are not a claim of current nationwide NGO coverage.

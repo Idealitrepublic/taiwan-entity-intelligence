@@ -383,3 +383,13 @@ from candidate results, JDoc company names require normalized full-name
 equality, and ambiguous procurement winner/nonwinner roles are unresolved.
 None of these read-side observations is promoted to a canonical Relationship
 without source-specific primary Evidence. See `docs/COMPANY_SOURCE_LINKS.md`.
+
+## Civil-organization source boundary
+
+`CivilOrganization` uses the existing Entity/Evidence tables, search RPC, RLS,
+and graph rendering; it is not a `Company` subtype. The initial MOI source is
+a historical association roster with no durable legal identifier. Ingestion
+uses a snapshot-hash/row-scoped ID and one immutable Evidence per row, and
+publishes no cross-source relationships. A future official tax-ID-to-register
+crosswalk must pass explicit legal-form and identity review before graph edges
+or canonical merges are created.

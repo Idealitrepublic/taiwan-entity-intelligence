@@ -25,7 +25,7 @@ column; saved canonical facts still require public publication and active Eviden
 
 ### Entity
 
-`entities` is the stable internal identity. It stores type, canonical/display names, source-scoped identity, publication state, and timestamps. `entity_types` constrains the allowed taxonomy.
+`entities` is the stable internal identity. It stores type, canonical/display names, source-scoped identity, publication state, and timestamps. `entity_types` constrains the allowed taxonomy. `CivilOrganization` is distinct from `Company`, `Person`, and `GovernmentAgency`; an MOI historical roster row is a source-scoped observation, not a proven current legal entity or a name-based merge. Its Evidence locator includes the official dataset, snapshot hash and source row. No organization-to-company/person relationship is created without independent identity and link evidence.
 
 - `EXACT`: confirmed deterministic identity.
 - `SOURCE_SCOPED`: identity is valid only within its source context.

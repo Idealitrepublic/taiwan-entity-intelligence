@@ -10,7 +10,7 @@ from uuid import UUID, uuid5
 ENTITY_TYPES = (
     "Company", "Person", "Politician", "GovernmentOfficial", "GovernmentAgency",
     "PoliticalParty", "Contract", "Judgment", "Penalty", "PoliticalContribution",
-    "AssetDeclaration", "LegislativeBill", "LobbyingRecord",
+    "AssetDeclaration", "LegislativeBill", "LobbyingRecord", "CivilOrganization",
 )
 CONFIDENCES = ("EXACT", "HIGH", "MEDIUM", "LOW", "UNRESOLVED")
 SOURCE_CLASSES = (

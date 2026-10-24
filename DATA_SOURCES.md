@@ -255,3 +255,24 @@ national procurement coverage. The MOEA exact-ID registry API was reachable
 again and independently confirmed three donor-ID/name pairs, but no political
 contribution was published from those candidates: their original filing rows
 and politician crosswalks still require separate review.
+
+## Civil organizations (Development historical roster)
+
+The official [MOI nationwide people's associations roster](https://data.gov.tw/dataset/13603)
+was downloaded from its government CSV endpoint on 2026-10-24. It has 23,209
+data rows after the bilingual header. The CSV supplies a row sequence and
+name, but no durable registration number or unified tax ID. Development
+therefore publishes each row as a separate `CivilOrganization` observation
+with `SOURCE_SCOPED` identity, snapshot SHA-256, source row/sequence, retrieval
+time, official source URL and immutable Evidence. This does **not** establish
+current registration, legal status, activity, or identity across snapshots.
+The source contains chairperson/address columns; neither is ingested.
+
+The official [MOF nonprofit tax dataset](https://data.gov.tw/dataset/34147)
+has eight-digit tax IDs, but its scope includes forms beyond associations and
+is not itself proof that a row is an NGO. It remains an unjoined candidate
+source until the tax ID and legal form are independently verified against an
+official registration record. No name-only association/company/person joins or
+organization relationships are published. Retain the historical CSV snapshot
+securely outside the repository to reproduce the exact imported bytes; a hash
+alone cannot recreate a later-changed upstream download.

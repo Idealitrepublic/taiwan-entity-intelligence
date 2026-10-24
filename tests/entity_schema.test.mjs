@@ -697,6 +697,29 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     'direct path outranks a shared intermediary');
   checks++;
   await db.exec('reset role;');
+  assert.equal((await db.query("select count(*)::int n from public.entity_types where code='CivilOrganization'")).rows[0].n, 1);
+  await db.exec('set role service_role;');
+  await db.query(`insert into public.entities
+    (id,entity_type,canonical_name,display_name,source,source_id,identity_status,publication_status)
+    values ('e0000000-0000-4000-8000-000000000001','CivilOrganization','測試民間協會','測試民間協會',
+      'MOI historical roster','snapshot:1','SOURCE_SCOPED','published')`);
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,publication_status)
+    values ('e0000000-0000-4000-8000-000000000002','MOI historical roster','snapshot:1',
+      'Government Open Data','https://data.gov.tw/dataset/13603',
+      '{"snapshot_sha256":"fixture","scope":"historical_roster_not_current_registration"}',
+      '歷史名冊','非現況證明','2026-10-24T00:00:00Z','2026-10-24T00:00:00Z',
+      repeat('a',64),'published')`);
+  await db.query(`insert into public.entity_evidence(entity_id,evidence_id,fact_type)
+    values ('e0000000-0000-4000-8000-000000000001',
+            'e0000000-0000-4000-8000-000000000002','historical_roster_entry')`);
+  await db.exec('reset role; set role anon;');
+  assert.equal((await db.query("select count(*)::int n from public.search_entities('測試民間協會','CivilOrganization',20)")).rows[0].n, 1);
+  assert.equal((await db.query("select count(*)::int n from public.entity_evidence where entity_id='e0000000-0000-4000-8000-000000000001'")).rows[0].n, 1);
+  await rejects("update public.entities set display_name='tampered' where id='e0000000-0000-4000-8000-000000000001'", 'civil organization remains read-only');
+  await db.exec('reset role;');
+  checks += 3;
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;
