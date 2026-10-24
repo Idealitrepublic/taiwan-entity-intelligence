@@ -210,3 +210,11 @@ Before scaling, verify with real query plans:
   domain evidence keeps 165 status unverified. Labor name candidates, JDoc name
   mentions, and structured procurement mirrors remain distinct from published,
   primary-Evidence-backed canonical Relationships.
+
+`nonprofit_tax_observations` is a source-observation table, not an Entity.
+Its `(snapshot_sha256, csv_row)` primary key reproduces the official CSV line;
+the raw tax ID, validation flag, unit name, agency county, last-change fields,
+source URL and retrieval time are retained. Public RLS returns only published
+rows; public writes are denied. Roster-based `CivilOrganization` observations
+from MOI/MOL each have one Evidence link and `SOURCE_SCOPED` identity. No tax
+row or same-name roster row is automatically merged or linked.

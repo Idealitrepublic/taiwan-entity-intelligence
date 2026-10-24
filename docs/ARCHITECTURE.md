@@ -393,3 +393,10 @@ uses a snapshot-hash/row-scoped ID and one immutable Evidence per row, and
 publishes no cross-source relationships. A future official tax-ID-to-register
 crosswalk must pass explicit legal-form and identity review before graph edges
 or canonical merges are created.
+
+The MOI foundations and five MOL union sub-rosters follow that same
+source-scoped Entity/Evidence ingestion path. The much broader MOF nonprofit
+tax file is instead held in `nonprofit_tax_observations`: a compact, RLS-gated
+source table with snapshot/line provenance. Its tax IDs are not promoted to
+canonical civil organizations or edges. This keeps tax-registration scope
+distinct from legal-entity registration and avoids name-only joins.

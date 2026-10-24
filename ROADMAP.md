@@ -269,3 +269,10 @@ observations in Development only. Pending work: stable official ID/legal-form
 crosswalk, current-registration verification, source refresh/version policy,
 and independently evidenced company/person/contract relationships. The 23,209
 historical rows are not a claim of current nationwide NGO coverage.
+
+Additional Development coverage includes 260 MOI foundation/MOL union roster
+observations and 99,788 MOF tax source rows. This closes ingestion for those
+specific downloaded snapshots only. Local-government and sectoral registries,
+legal-form validation, current-status checks and cross-source resolution remain
+open before claiming full Taiwan civil-organization coverage; see
+`docs/CIVIL_ORGANIZATION_COVERAGE.md`.

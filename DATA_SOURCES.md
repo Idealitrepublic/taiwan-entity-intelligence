@@ -268,11 +268,33 @@ time, official source URL and immutable Evidence. This does **not** establish
 current registration, legal status, activity, or identity across snapshots.
 The source contains chairperson/address columns; neither is ingested.
 
+Additional official snapshots were downloaded 2026-10-24: the [MOI national
+civil foundations roster](https://data.gov.tw/dataset/152434), 17 rows, and
+all five subresources of the [MOL union federation roster](https://data.gov.tw/dataset/6278),
+243 rows. All 260 rows are published in Development as separate source-scoped
+`CivilOrganization` observations, each with its original CSV snapshot hash,
+source row, retrieval time, URL and Evidence. No chairperson, contact details,
+name-only merge, or cross-source relationship is imported. These are roster
+observations, not a deduplicated count of currently operating organizations.
+
 The official [MOF nonprofit tax dataset](https://data.gov.tw/dataset/34147)
-has eight-digit tax IDs, but its scope includes forms beyond associations and
-is not itself proof that a row is an NGO. It remains an unjoined candidate
-source until the tax ID and legal form are independently verified against an
-official registration record. No name-only association/company/person joins or
-organization relationships are published. Retain the historical CSV snapshot
-securely outside the repository to reproduce the exact imported bytes; a hash
-alone cannot recreate a later-changed upstream download.
+was also downloaded 2026-10-24. Its **99,788 rows** are published in the
+Development `nonprofit_tax_observations` source table, not promoted to Entity
+or Relationship. 99,787 rows have a syntactically valid eight-digit tax ID;
+one invalid identifier is retained and flagged rather than discarded. The
+dataset includes forms beyond associations and its tax record is not proof of
+NGO legal form or current registration. Every row keeps its source snapshot
+SHA-256, CSV line, retrieval time, public source URL and original tax fields.
+Matching to a civil organization, company or person is prohibited until an
+official registration record independently confirms identity. The UI warns
+that all civil-organization search hits are source-scoped observations.
+
+This is **not** a complete census of Taiwanese NGOs. National MOI/MOL source
+coverage does not include all local-government associations, foundations under
+other ministries, charities, religious groups, or every historical version.
+The [MOI group finder](https://www.moi.gov.tw/group.htm) is a separate live
+query surface, not a bulk snapshot with a verified nationwide denominator.
+See [civil-organization coverage](docs/CIVIL_ORGANIZATION_COVERAGE.md) for the
+source-by-source denominator, known gaps and repeatable checks. Retain all CSV
+snapshots securely outside the repository; a hash alone cannot recreate
+later-changed upstream bytes.

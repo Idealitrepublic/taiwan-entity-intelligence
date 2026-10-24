@@ -720,6 +720,18 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   await rejects("update public.entities set display_name='tampered' where id='e0000000-0000-4000-8000-000000000001'", 'civil organization remains read-only');
   await db.exec('reset role;');
   checks += 3;
+  // PGlite's fixture service_role lacks Supabase's BYPASSRLS attribute.
+  await db.query(`insert into public.nonprofit_tax_observations
+    (snapshot_sha256,csv_row,uniform_number_raw,identifier_valid,unit_name,retrieved_at,publication_status)
+    values (repeat('a',64),2,'12345678',true,'測試來源紀錄','2026-10-24T00:00:00Z','draft')`);
+  await db.exec('reset role; set role anon;');
+  assert.equal((await db.query('select count(*)::int n from public.nonprofit_tax_observations')).rows[0].n, 0);
+  checks++;
+  await rejects("insert into public.nonprofit_tax_observations (snapshot_sha256,csv_row,uniform_number_raw,identifier_valid,unit_name,retrieved_at) values (repeat('b',64),2,'87654321',true,'tampered',now())", 'public tax-roster writes denied');
+  await db.exec("reset role; update public.nonprofit_tax_observations set publication_status='published'; set role anon;");
+  assert.equal((await db.query('select count(*)::int n from public.nonprofit_tax_observations')).rows[0].n, 1);
+  checks++;
+  await db.exec('reset role;');
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;

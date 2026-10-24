@@ -33,10 +33,10 @@ def development_environment():
 
 def ensure_same_snapshot(current_hash, known_hashes):
     if any(value != current_hash for value in known_hashes):
-        raise ValueError("A different MOI snapshot already exists; review withdrawal/versioning before import")
+        raise ValueError("A different official snapshot already exists; review withdrawal/versioning before import")
 
 
-def apply_bundles(bundles):
+def apply_bundles(bundles, *, source_name="MOI nationwide people's associations roster"):
     env = development_environment()
     probe = subprocess.run(
         ["psql", "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c",
@@ -45,10 +45,15 @@ def apply_bundles(bundles):
     if probe.returncode or probe.stdout.strip() != "1":
         raise RuntimeError("Development migration is missing or database is unreachable")
     snapshot_hash = bundles[0]["evidence"][0]["source_locator"]["snapshot_sha256"]
+    if not all(evidence["source_name"] == source_name and
+               evidence["source_locator"]["snapshot_sha256"] == snapshot_hash
+               for bundle in bundles for evidence in bundle["evidence"]):
+        raise ValueError("Mixed source or snapshot in ingestion bundles")
+    source_literal = source_name.replace("'", "''")
     check = subprocess.run(
         ["psql", "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c",
          "select distinct source_locator->>'snapshot_sha256' from public.evidence_records "
-         "where source_name='MOI nationwide people''s associations roster'"],
+         f"where source_name='{source_literal}'"],
         env=env, text=True, capture_output=True, timeout=30)
     if check.returncode:
         raise RuntimeError("Development snapshot check failed")
