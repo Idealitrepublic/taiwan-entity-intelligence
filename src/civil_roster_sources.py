@@ -15,6 +15,32 @@ SOURCES = {
         "columns": {"序號", "類型", "團體名稱", "成立日期", "負責人", "地址"},
         "name_column": "團體名稱", "description": "MOI foundation roster",
     },
+    "moi_civic_foundations": {
+        "name": "MOI national civic foundations roster", "dataset": "173726",
+        "url": "https://data.gov.tw/dataset/173726",
+        "download": "https://opdadm.moi.gov.tw/api/v1/no-auth/resource/api/dataset/B8F8C953-9D8C-4973-BD95-51A4E5C76536/resource/9EE8AAE9-0948-4BA5-BF96-FF4C398EA1F6/download",
+        "columns": {"編號", "全國性民政財團法人名稱", "許可設立日期", "許可設立文號",
+                    "法人代表", "法人代表性別", "主事務所地址", "聯絡電話"},
+        "sequence_column": "編號", "name_column": "全國性民政財團法人名稱",
+        "description": "MOI civic foundation permit roster",
+    },
+    "taipei": {
+        "name": "Taipei City people's organizations roster", "dataset": "121714",
+        "url": "https://data.gov.tw/dataset/121714",
+        "download": "https://data.taipei/api/dataset/72417af0-7dec-4fad-b762-5f2baafcf084/resource/e194f151-adfa-4ab2-b0e0-8f64f470ef40/download",
+        "columns": {"機關代碼", "名稱", "地址", "電話", "成立日期"},
+        "sequence_column": None, "name_column": "名稱",
+        "description": "Taipei local organizations roster",
+    },
+    "tainan": {
+        "name": "Tainan City people's organizations roster", "dataset": "53472",
+        "url": "https://data.gov.tw/dataset/53472",
+        "download": "https://data.tainan.gov.tw/File/ResourceCsvDownload/37b5bf89-7f27-4b20-bd2a-9eabf90cb8bb",
+        "columns": {"連結網址", "團體類別", "團體名稱", "縣市別代碼", "地址-行政區域代碼",
+                    "會所住址", "電話", "理事長", "成立年月", "公告解散年月", "立案字號"},
+        "sequence_column": None, "name_column": "團體名稱",
+        "description": "Tainan local organizations roster",
+    },
     "mol_direct": ("mMY", "MOL directly supervised unions"),
     "mol_national": ("ZX7", "MOL national union federations"),
     "mol_province": ("Khk", "MOL provincial union federations"),
@@ -49,7 +75,8 @@ def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
         if not source["columns"].issubset(reader.fieldnames or []):
             raise ValueError("Unexpected official roster columns")
         for row_number, row in enumerate(reader, 2):
-            seq = (row.get("序號") or "").strip()
+            sequence_column = source.get("sequence_column", "序號")
+            seq = (row.get(sequence_column) or "").strip() if sequence_column else str(row_number - 1)
             name = (row.get(source["name_column"]) or "").strip()
             if not seq.isascii() or not seq.isdecimal() or not name or len(name) > 500:
                 raise ValueError(f"Invalid official roster row {row_number}")
@@ -67,6 +94,15 @@ def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
             if source_key == "moi_foundations":
                 locator["foundation_type"] = (row.get("類型") or "").strip()
                 locator["establishment_date_raw"] = (row.get("成立日期") or "").strip()
+            elif source_key == "moi_civic_foundations":
+                locator["permit_number_raw"] = (row.get("許可設立文號") or "").strip()
+                locator["permit_date_raw"] = (row.get("許可設立日期") or "").strip()
+            elif source_key == "taipei":
+                locator["establishment_date_raw"] = (row.get("成立日期") or "").strip()
+            elif source_key == "tainan":
+                locator["filing_number_raw"] = (row.get("立案字號") or "").strip()
+                locator["dissolution_date_raw"] = (row.get("公告解散年月") or "").strip()
+                locator["establishment_date_raw"] = (row.get("成立年月") or "").strip()
             evidence = evidence_from_projection(
                 source_name=source["name"], source_record_id=source_id,
                 source_class="Government Open Data", source_url=source["url"],

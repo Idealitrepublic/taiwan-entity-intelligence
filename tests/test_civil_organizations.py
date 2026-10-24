@@ -60,6 +60,7 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
         self.assertIn("CivilOrganization:'民間團體 / Civil organization'", html)
         self.assertIn('Official roster observation; current registration and cross-source identity are unverified.', html)
         self.assertIn('Current status and cross-source identity are unverified.', html)
+        self.assertIn('dissolution_date_raw', html)
 
     def test_additional_official_rosters_keep_source_identity_and_redact_contact(self):
         for key, source in SOURCES.items():
@@ -68,6 +69,15 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
                 if key == "moi_foundations":
                     path.write_text("序號,類型,團體名稱,成立日期,負責人,地址\n"
                                     "1,財團法人,測試基金會,1130101,私人姓名,私人地址\n", encoding="utf-8")
+                elif key == "moi_civic_foundations":
+                    path.write_text("編號,全國性民政財團法人名稱,許可設立日期,許可設立文號,法人代表,法人代表性別,主事務所地址,聯絡電話\n"
+                                    "1,測試基金會,1130101,官方文號,私人姓名,女,私人地址,私人電話\n", encoding="utf-8")
+                elif key == "taipei":
+                    path.write_text("機關代碼,名稱,地址,電話,成立日期\n"
+                                    "A,測試協會,私人地址,私人電話,1130101\n", encoding="utf-8")
+                elif key == "tainan":
+                    path.write_text("連結網址,團體類別,團體名稱,縣市別代碼,地址-行政區域代碼,會所住址,電話,理事長,成立年月,公告解散年月,立案字號\n"
+                                    "https://example.gov.tw,社會團體,測試協會,67,6701,私人地址,私人電話,私人姓名,11301,,官方文號\n", encoding="utf-8")
                 else:
                     path.write_text("序號,工會名稱,地址,電話,傳真\n"
                                     "1,測試工會,私人地址,私人電話,私人傳真\n", encoding="utf-8")
@@ -91,6 +101,19 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
                             "12345678,甲單位,,,,\n12345678,乙單位,,,,\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "Duplicate tax identifier"):
                 tax_profile(path)
+
+    def test_local_same_name_rows_stay_distinct(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "taipei.csv"
+            path.write_text("機關代碼,名稱,地址,電話,成立日期\n"
+                            "A,同名協會,私人地址,私人電話,1130101\n"
+                            "A,同名協會,另一地址,另一電話,1140101\n", encoding="utf-8")
+            bundle = next(official_roster_bundles(path, "taipei", retrieved_at=NOW,
+                                                   publication_status="published"))
+            left, right = bundle["entities"]
+            self.assertNotEqual(left["id"], right["id"])
+            self.assertEqual([e["source_locator"]["csv_row"] for e in bundle["evidence"]], [2, 3])
+            self.assertNotIn("私人", str(bundle))
 
     def test_changed_snapshot_requires_explicit_review(self):
         ensure_same_snapshot("hash-a", [])

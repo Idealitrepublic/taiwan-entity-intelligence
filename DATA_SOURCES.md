@@ -276,6 +276,15 @@ all five subresources of the [MOL union federation roster](https://data.gov.tw/d
 source row, retrieval time, URL and Evidence. No chairperson, contact details,
 name-only merge, or cross-source relationship is imported. These are roster
 observations, not a deduplicated count of currently operating organizations.
+The [Taipei City](https://data.gov.tw/dataset/121714) and
+[Tainan City](https://data.gov.tw/dataset/53472) association rosters add
+4,176 and 3,505 source-scoped observations respectively; the latter retains
+the original dissolution month when supplied, and does not imply an active
+organization. The [MOI civic-foundation permit roster](https://data.gov.tw/dataset/173726)
+adds 8 more. Across these nine roster resources the total is 31,158
+published observations and Evidence links in Development, not a unique NGO
+count. Hsinchu City's official CSV failed TLS certificate validation; no
+insecure download was used.
 
 The official [MOF nonprofit tax dataset](https://data.gov.tw/dataset/34147)
 was also downloaded 2026-10-24. Its **99,788 rows** are published in the
