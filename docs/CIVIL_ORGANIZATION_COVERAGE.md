@@ -16,15 +16,21 @@ database or environment change. Data remains source-scoped; no same-name merge.
 | [Taipei City people's organizations](https://data.gov.tw/dataset/121714) | 4,176 | 4,176 Entity + Evidence | Local source-scoped observation |
 | [Tainan City people's organizations](https://data.gov.tw/dataset/53472) | 3,505 | 3,505 Entity + Evidence | Local source-scoped observation; dissolution field retained |
 | [MOI national civic foundations](https://data.gov.tw/dataset/173726) | 8 | 8 Entity + Evidence | Source-scoped permit roster observation |
+| [Pingtung County people's organizations](https://data.gov.tw/dataset/142753) | 3,440 | 3,440 Entity + Evidence | Local source-scoped observation |
+| [MOL labor foundations](https://data.gov.tw/dataset/11214) | 15 | 15 Entity + Evidence | Sectoral source-scoped observation |
+| [MOE education foundations](https://data.gov.tw/dataset/117679) | 765 | 765 Entity + Evidence | Sectoral source-scoped observation; source status retained raw |
+| [New Taipei community associations](https://data.gov.tw/dataset/124618) | 473 including 3 empty trailing rows | 470 Entity + Evidence | Community-association subset only |
+| [Taichung academic-cultural groups](https://data.gov.tw/dataset/159897) | 594 | 594 Entity + Evidence | Category subset only |
+| [Kaohsiung charity groups](https://data.gov.tw/dataset/128181) | 1,747 | 1,747 Entity + Evidence | Category subset only |
 
-Total: 31,158 published civil-organization roster observations with 31,158
+Total: 38,189 published civil-organization roster observations with 38,189
 Evidence links; 99,788 additional tax-source rows staged separately. The
 observations may contain duplicates across rosters. There are zero inferred
 cross-source organization relationships. The tax file has 99,787 syntactically
 valid eight-digit IDs and one invalid ID retained with a flag; it contains
 zero blank names and zero duplicate valid IDs in this snapshot. Tax identity
 does not establish legal form. Development database size after ingestion was
-313 MB, below the Supabase Free plan 500 MB database read-only threshold.
+339 MB, below the Supabase Free plan 500 MB database read-only threshold.
 Tainan's dissolution field is `/` in 2,058 rows (a placeholder, **not** a
 dissolution finding), blank in 825, a date-like string in 614, and another
 nonblank value in 8. For non-placeholder values the profile shows the raw
@@ -47,9 +53,12 @@ covered. A live search hit is not proof of current registration.
 
 ## Known gaps; not labeled complete
 
-- Local-government associations are managed by county/city governments. Taipei
-  and Tainan snapshots are now in Development; other local jurisdictions still
-  require a source inventory and bulk-file validation. The Hsinchu City
+- Local-government associations are managed by county/city governments. Taipei,
+  Tainan and Pingtung general rosters are in Development; New Taipei, Taichung
+  and Kaohsiung contain **category subsets only**. Other jurisdictions and
+  remaining categories still require official source validation. See the
+  [nationwide gap register](CIVIL_ORGANIZATION_NATIONWIDE_GAP_REGISTER.md).
+  The Hsinchu City
   [official CSV](https://data.gov.tw/dataset/129137) was not imported because
   its HTTPS certificate chain failed validation; TLS checks were not bypassed.
 - Foundations under other sectoral competent authorities, religious groups,

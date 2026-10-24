@@ -41,6 +41,54 @@ SOURCES = {
         "sequence_column": None, "name_column": "團體名稱",
         "description": "Tainan local organizations roster",
     },
+    "pingtung": {
+        "name": "Pingtung County people's organizations roster", "dataset": "142753",
+        "url": "https://data.gov.tw/dataset/142753",
+        "download": "https://www-ws.pthg.gov.tw/Upload/2015pthg/0/relfile/0/0/4a1a8427-34bc-4ac7-8f1f-69b895f5eb75.csv",
+        "columns": {"name", "address", "phone"},
+        "sequence_column": None, "name_column": "name",
+        "description": "Pingtung local people's organizations roster",
+    },
+    "mol_foundations": {
+        "name": "MOL labor foundations roster", "dataset": "11214",
+        "url": "https://data.gov.tw/dataset/11214",
+        "download": "https://apiservice.mol.gov.tw/OdService/download/A17000000J-020083-YtL",
+        "columns": {"財團法人名稱", "許可設立日期及文號", "督導單位"},
+        "sequence_column": None, "name_column": "財團法人名稱",
+        "description": "MOL-supervised labor foundations roster",
+    },
+    "moe_foundations": {
+        "name": "MOE education foundations roster", "dataset": "117679",
+        "url": "https://data.gov.tw/dataset/117679",
+        "download": "https://ws.moe.edu.tw/Download.ashx?u=LzAwMS9VcGxvYWQvNi9yZWxmaWxlLzc4NTYvOTQ5NDYvNjIxYTk4ZjYtYzFlMC00MjQ4LTg1ZTAtODFkZmU2N2Y1NTVhLmNzdg%3D%3D&n=5YWo5ZyL5oCn5pWZ6IKy5rOV5Lq65Z%2B65pys6LOH5paZLmNzdg%3D%3D&icon=..csv",
+        "columns": {"基金會名稱", "設立許可文號", "基金會狀態"},
+        "sequence_column": None, "name_column": "基金會名稱",
+        "encoding": "cp950", "description": "MOE-supervised education foundations roster",
+    },
+    "newtaipei_community": {
+        "name": "New Taipei City community associations roster", "dataset": "124618",
+        "url": "https://data.gov.tw/dataset/124618",
+        "download": "https://data.ntpc.gov.tw/api/datasets/d424ae39-edea-4aa6-92c3-e8e69938704d/csv/file",
+        "columns": {"seqno", "title", "county"},
+        "sequence_column": None, "name_column": "title",
+        "description": "New Taipei community-association subset, not all local groups",
+    },
+    "taichung_academic": {
+        "name": "Taichung City academic-cultural groups roster", "dataset": "159897",
+        "url": "https://data.gov.tw/dataset/159897",
+        "download": "https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=0db97e68-2f55-4d00-b0a9-f7acc127dec6",
+        "columns": {"單位名稱", "單位類型", "最後更新日期"},
+        "sequence_column": None, "name_column": "單位名稱",
+        "description": "Taichung academic-cultural category only, not all local groups",
+    },
+    "kaohsiung_charity": {
+        "name": "Kaohsiung City charity groups roster", "dataset": "128181",
+        "url": "https://data.gov.tw/dataset/128181",
+        "download": "https://data.kcg.gov.tw/File/DirectDownload/93a27634-3da7-4b05-bc47-614d264cb595",
+        "columns": {"id", "org_name", "dataOrg"},
+        "sequence_column": None, "name_column": "org_name",
+        "description": "Kaohsiung social-service and charity category only, not all local groups",
+    },
     "mol_direct": ("mMY", "MOL directly supervised unions"),
     "mol_national": ("ZX7", "MOL national union federations"),
     "mol_province": ("Khk", "MOL provincial union federations"),
@@ -70,11 +118,16 @@ def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
     snapshot_hash = sha256(path.read_bytes()).hexdigest()
     seen = set()
     bundle = {"entities": [], "evidence": [], "entity_evidence": []}
-    with path.open(encoding="utf-8-sig", newline="") as handle:
+    with path.open(encoding=source.get("encoding", "utf-8-sig"), newline="") as handle:
         reader = csv.DictReader(handle)
+        reader.fieldnames = [field.lstrip("\ufeff").strip() for field in reader.fieldnames or []]
         if not source["columns"].issubset(reader.fieldnames or []):
             raise ValueError("Unexpected official roster columns")
         for row_number, row in enumerate(reader, 2):
+            # Some official CSVs end with empty comma-delimited records. Do not
+            # publish them as organizations; keep the original CSV row locator.
+            if not any((value or "").strip() for value in row.values()):
+                continue
             sequence_column = source.get("sequence_column", "序號")
             seq = (row.get(sequence_column) or "").strip() if sequence_column else str(row_number - 1)
             name = (row.get(source["name_column"]) or "").strip()
@@ -103,6 +156,14 @@ def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
                 locator["filing_number_raw"] = (row.get("立案字號") or "").strip()
                 locator["dissolution_date_raw"] = (row.get("公告解散年月") or "").strip()
                 locator["establishment_date_raw"] = (row.get("成立年月") or "").strip()
+            elif source_key == "mol_foundations":
+                locator["permit_date_and_number_raw"] = (row.get("許可設立日期及文號") or "").strip()
+                locator["supervising_unit_raw"] = (row.get("督導單位") or "").strip()
+            elif source_key == "moe_foundations":
+                locator["permit_number_raw"] = (row.get("設立許可文號") or "").strip()
+                locator["foundation_status_raw"] = (row.get("基金會狀態") or "").strip()
+            elif source_key == "taichung_academic":
+                locator["source_last_updated_raw"] = (row.get("最後更新日期") or "").strip()
             evidence = evidence_from_projection(
                 source_name=source["name"], source_record_id=source_id,
                 source_class="Government Open Data", source_url=source["url"],

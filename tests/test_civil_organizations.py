@@ -78,6 +78,23 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
                 elif key == "tainan":
                     path.write_text("連結網址,團體類別,團體名稱,縣市別代碼,地址-行政區域代碼,會所住址,電話,理事長,成立年月,公告解散年月,立案字號\n"
                                     "https://example.gov.tw,社會團體,測試協會,67,6701,私人地址,私人電話,私人姓名,11301,,官方文號\n", encoding="utf-8")
+                elif key == "pingtung":
+                    path.write_text("name,address,phone\n測試協會,私人地址,私人電話\n", encoding="utf-8")
+                elif key == "mol_foundations":
+                    path.write_text("財團法人名稱,許可設立日期及文號,督導單位,負責人姓名\n"
+                                    "測試基金會,官方文號,勞動部,私人姓名\n", encoding="utf-8")
+                elif key == "moe_foundations":
+                    path.write_text("基金會名稱,設立許可文號,基金會狀態,董事長姓名\n"
+                                    "測試基金會,官方文號,來源狀態,私人姓名\n", encoding="cp950")
+                elif key == "newtaipei_community":
+                    path.write_text("seqno,title,county,person_in_charge\n"
+                                    "1,測試協會,新北市,私人姓名\n", encoding="utf-8")
+                elif key == "taichung_academic":
+                    path.write_text("\ufeff\ufeff單位名稱,單位類型,最後更新日期,連絡電話\n"
+                                    "測試協會,學術文化,2026-01-01,私人電話\n", encoding="utf-8")
+                elif key == "kaohsiung_charity":
+                    path.write_text("id,org_name,dataOrg,informtel\n"
+                                    "1,測試協會,高雄市政府,私人電話\n", encoding="utf-8")
                 else:
                     path.write_text("序號,工會名稱,地址,電話,傳真\n"
                                     "1,測試工會,私人地址,私人電話,私人傳真\n", encoding="utf-8")
@@ -88,6 +105,8 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
                 self.assertEqual(bundle["evidence"][0]["source_locator"]["dataset_id"], source["dataset"])
                 self.assertNotIn("私人", str(bundle))
                 self.assertEqual(len(bundle["entity_evidence"]), 1)
+                if key == "moe_foundations":
+                    self.assertEqual(bundle["evidence"][0]["source_locator"]["foundation_status_raw"], "來源狀態")
 
     def test_tax_source_profiles_all_rows_without_entity_merges(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -114,6 +133,16 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
             self.assertNotEqual(left["id"], right["id"])
             self.assertEqual([e["source_locator"]["csv_row"] for e in bundle["evidence"]], [2, 3])
             self.assertNotIn("私人", str(bundle))
+
+    def test_empty_trailing_records_are_not_published(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "newtaipei.csv"
+            path.write_text("seqno,title,county,person_in_charge\n"
+                            "1,測試協會,新北市,私人姓名\n,, ,\n", encoding="utf-8")
+            bundles = list(official_roster_bundles(path, "newtaipei_community",
+                                                   retrieved_at=NOW, publication_status="published"))
+            self.assertEqual(sum(len(bundle["entities"]) for bundle in bundles), 1)
+            self.assertEqual(bundles[0]["evidence"][0]["source_locator"]["csv_row"], 2)
 
     def test_changed_snapshot_requires_explicit_review(self):
         ensure_same_snapshot("hash-a", [])
