@@ -64,7 +64,7 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
 
     def test_additional_official_rosters_keep_source_identity_and_redact_contact(self):
         for key, source in SOURCES.items():
-            if key.startswith("catalog_") or key in ("keelung_ods", "yilan_20260930", "tainan_social_foundations_json"):
+            if key.startswith("catalog_") or key in ("keelung_ods", "yilan_20260930", "yunlin_20260713", "hsinchu_city_20261025", "tainan_social_foundations_json"):
                 continue
             with self.subTest(key=key), tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / "official.csv"
@@ -164,6 +164,65 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
             locator = bundle["evidence"][0]["source_locator"]
             self.assertEqual(locator["團體類別"], "社會團體")
             self.assertNotIn("私人姓名", str(bundle))
+
+    def test_yunlin_xlsx_projection_keeps_source_location_and_excludes_contacts(self):
+        from scripts.convert_yunlin_civil_xlsx import convert, NS
+        import hashlib
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.xlsx"
+            output = Path(directory) / "projected.csv"
+            workbook = (f'<workbook xmlns="{NS[1:-1]}"><sheets>'
+                        '<sheet name="人民團體" sheetId="1"/></sheets></workbook>')
+            rows = [
+                (1, ("編號", "團體類別", "團體名稱", "會所地址", "理事長", "協會電話")),
+                (2, ("1", "社會服務團體", "測試協會", "私人地址", "私人姓名", "私人電話")),
+                (3, ("1", "體育團體", "另一協會", "私人地址", "私人姓名", "私人電話")),
+            ]
+            sheet_rows = []
+            for number, values in rows:
+                cells = "".join(f'<c r="{chr(65 + i)}{number}" t="inlineStr"><is><t>{value}</t></is></c>'
+                                for i, value in enumerate(values))
+                sheet_rows.append(f'<row r="{number}">{cells}</row>')
+            sheet = f'<worksheet xmlns="{NS[1:-1]}"><sheetData>{"".join(sheet_rows)}</sheetData></worksheet>'
+            with zipfile.ZipFile(source, "w") as package:
+                package.writestr("xl/workbook.xml", workbook)
+                package.writestr("xl/worksheets/sheet1.xml", sheet)
+            self.assertEqual(convert(source, output), 2)
+            bundles = list(official_roster_bundles(output, "yunlin_20260713", retrieved_at=NOW))
+            entities = [entity for bundle in bundles for entity in bundle["entities"]]
+            evidence = [item for bundle in bundles for item in bundle["evidence"]]
+            self.assertEqual(len(entities), 2)
+            self.assertNotEqual(entities[0]["id"], entities[1]["id"])
+            self.assertEqual(evidence[0]["source_locator"]["xlsx_row"], "2")
+            self.assertEqual(evidence[0]["source_locator"]["xlsx_sha256"],
+                             hashlib.sha256(source.read_bytes()).hexdigest())
+            self.assertNotIn("私人", str(bundles))
+
+    def test_hsinchu_html_categories_require_complete_sequential_pages(self):
+        from scripts.convert_hsinchu_civil_json import convert, OFFICIAL_PAGE
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.json"
+            output = Path(directory) / "projected.csv"
+            categories = [{"category": f"分類{i}", "url": OFFICIAL_PAGE +
+                           f"&mcustomize=formdata_list1.jsp&mclassno={i:012d}",
+                           "date": "115-10-16", "expected": 1,
+                           "rows": [{"seq": 1, "name": f"測試協會{i}"}]}
+                          for i in range(12)]
+            source.write_text(json.dumps({"source_page": OFFICIAL_PAGE,
+                                          "categories": categories}, ensure_ascii=False))
+            self.assertEqual(convert(source, output), 12)
+            bundles = list(official_roster_bundles(output, "hsinchu_city_20261025",
+                                                   retrieved_at=NOW))
+            evidence = [item for bundle in bundles for item in bundle["evidence"]]
+            self.assertEqual(evidence[0]["source_locator"]["官方序號"], "1")
+            self.assertIn("json_sha256", evidence[0]["source_locator"])
+            categories[0]["expected"] = 2
+            source.write_text(json.dumps({"source_page": OFFICIAL_PAGE,
+                                          "categories": categories}, ensure_ascii=False))
+            with self.assertRaisesRegex(ValueError, "Incomplete official category"):
+                convert(source, output)
 
     def test_tainan_json_conversion_retains_original_hash_and_rejects_failed_response(self):
         from scripts.convert_tainan_foundation_json import convert

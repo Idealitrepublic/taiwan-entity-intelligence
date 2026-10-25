@@ -14,7 +14,9 @@ separate source-scoped Entity; no person or company relationship is inferred.
 | [Keelung official ODS](https://data.gov.tw/dataset/165174) | 823 | Original ODS hash, sheet and row retained; personal/contact fields discarded |
 | [Yilan official 2026-09-30 CSV](https://sntroot.e-land.gov.tw/cp.aspx?n=10437) | 1,619 | Local people's-organizations roster; source category retained |
 | [Tainan social-welfare foundation JSON](https://data.gov.tw/dataset/102929) | 93 | Original JSON hash, item number, permit date/number and raw status retained |
-| **Total** | **54,307** | **87 official roster sources; 54,307 Evidence links** |
+| [Yunlin official 2026-07-13 XLSX](https://social.yunlin.gov.tw/News_Content.aspx?n=746&s=578203) | 1,881 | Official row number, original XLSX hash and sheet/row retained; five names carry a source `休會` prefix, so no current-active claim |
+| [Hsinchu City official category pages](https://society.hccg.gov.tw/ch/home.jsp?id=161&parentpath=0,3,34) | 1,023 | All 12 listed categories; each category's page URL, update date, sequence and checked row count retained |
+| **Total** | **57,211** | **89 official roster sources; 57,211 Evidence links** |
 
 The separate [Finance Ministry nonprofit tax file](https://data.gov.tw/dataset/34147)
 contains **99,788 tax-source observations**. Tax registration alone does not
@@ -28,12 +30,12 @@ Cooperatives, award recipients, subsidies, aggregate statistics and committee
 branch offices were not silently classified as civil organizations.
 
 The read-only Development audit (`python3 scripts/audit_civil_rosters_dev.py`)
-reconciled all 71 new source row counts: **0 mismatches, 0 missing/duplicate
+reconciled all 73 new source row counts: **0 mismatches, 0 missing/duplicate
 Evidence links, 0 missing source URL / retrieved timestamp / snapshot hash**.
 RLS is enabled on `entities`, `evidence_records` and `entity_evidence`. An
 anonymous-role search of a Yilan roster name returned one published result;
-anonymous-role counts returned all 54,307 roster entries and Evidence links.
-Development database size was **400.4 MB**, below the Supabase Free 500 MB
+anonymous-role counts returned all 54,307 earlier roster entries and Evidence links.
+The current read-only database count is **57,211**, with **411.9 MB** used, below the Supabase Free 500 MB
 database limit, leaving limited headroom for additional imports and indexes.
 
 ## Reproduction and source integrity
@@ -45,7 +47,9 @@ roster, which was obtained from the county's own official page. All source bytes
 were kept outside Git with private permissions. Evidence stores the official
 dataset/page URL, download URL, source scope, snapshot SHA-256, row locator and
 retrieval time. ODS/JSON conversions additionally retain their **original**
-file SHA-256 and source item location. Contact addresses, phone numbers and
+file SHA-256 and source item location. The Hsinchu category snapshot contains
+only names and source locations; the county's original HTML contact fields are
+discarded. Contact addresses, phone numbers and
 officers' names from roster rows are not copied into these Entity or Evidence
 projections.
 
