@@ -1,4 +1,15 @@
-# Civil-organization source coverage — Development, 2026-10-25
+# 民間團體官方名冊收錄與驗證 — Development，2026-10-25
+
+## 本次新增與核對
+
+| 官方來源 | 已發布來源紀錄 | 核對結果 |
+|---|---:|---|
+| [澎湖縣十二類人民團體名冊](https://data.gov.tw/dataset/166901) | 595 | 十二個分類逐一匯入；原檔607列中12列無團體名稱，未當成團體；十二類匿名搜尋均可找到代表紀錄 |
+| [新竹縣人民團體名冊（115年10月5日）](https://social.hsinchu.gov.tw/News.aspx?n=218&sms=8679) | 2,181 | 十四個分類逐一核對；十四類匿名搜尋均可找到代表紀錄；與既有70筆舊版來源可能重疊，不視為2,181個不重複團體 |
+
+Development 目前共 **65,248 筆官方名冊來源紀錄、65,248 筆對應 Evidence**，來自 **105 個官方來源**。唯讀資料庫核對顯示：89個本輪新增來源的筆數均符合預期、缺漏或重複 Evidence 為0、缺少來源網址／擷取時間／原檔雜湊為0；相關公開資料表均啟用 RLS。資料庫約使用 **444.2 MB／500 MB**。這些數字是來源紀錄，不是去重後的團體總數，更不代表所有團體目前仍有效。
+
+澎湖原檔的分類日期與資料目錄更新日期未必一致；其中環保類僅有一筆有效名稱。新竹縣新舊名冊可能有重疊。原始檔存於 Git 之外的私有目錄；公開投影只保留團體名稱、官方編號、分類、登記日期及來源定位，不匯入聯絡人、地址或電話。本次僅更新 Development，Production 未修改。
 
 **Scope:** official roster *observations*, not a deduplicated count of legally
 registered or currently active organizations. No Production database, secrets,
@@ -19,7 +30,9 @@ separate source-scoped Entity; no person or company relationship is inferred.
 | [Miaoli official society ODS](https://sas.miaoli.gov.tw/roster_society) | 2,388 | Original ODS hash, sheet, row, category and filing date retained; officer/contact data excluded |
 | [Changhua official society ODS](https://www.chcg.gov.tw/DTO/social/07other/other01_con.aspx?cate_id=5105&data_id=20273&topsn=716) | 2,375 | Official identifier, original ODS hash and row retained; historical dissolution annotations do not imply current active status |
 | [Kinmen official society XLSX](https://social.kinmen.gov.tw/Content_List.aspx?n=5953401623861323) | 498 | Official identifier, establishment/update dates, original XLSX hash and row retained; contact data excluded |
-| **Total** | **62,472** | **92 official roster sources; 62,472 Evidence links** |
+| [澎湖縣十二類人民團體名冊](https://data.gov.tw/dataset/166901) | 595 | 十二類官方檔案；排除12列無名稱的聯絡資訊延續列 |
+| [新竹縣115年10月5日名冊](https://social.hsinchu.gov.tw/News.aspx?n=218&sms=8679) | 2,181 | 十四類；保留官方編號與原檔位置 |
+| **合計** | **65,248** | **105個官方來源；65,248筆 Evidence** |
 
 The separate [Finance Ministry nonprofit tax file](https://data.gov.tw/dataset/34147)
 contains **99,788 tax-source observations**. Tax registration alone does not
@@ -33,12 +46,12 @@ Cooperatives, award recipients, subsidies, aggregate statistics and committee
 branch offices were not silently classified as civil organizations.
 
 The read-only Development audit (`python3 scripts/audit_civil_rosters_dev.py`)
-reconciled all 76 new source row counts: **0 mismatches, 0 missing/duplicate
+reconciled all 89 new source row counts: **0 mismatches, 0 missing/duplicate
 Evidence links, 0 missing source URL / retrieved timestamp / snapshot hash**.
 RLS is enabled on `entities`, `evidence_records` and `entity_evidence`. An
 anonymous-role search of one Miaoli, Changhua and Kinmen roster name each
-returned one published result. The read-only database audit found **62,472**
-published observations and Evidence links and **433.5 MB** used, below the Supabase Free 500 MB
+returned one published result; Penghu 12/12 and Hsinchu County 14/14 category representatives also returned published results. The read-only database audit found **65,248**
+published observations and Evidence links and **444.2 MB** used, below the Supabase Free 500 MB
 database limit, leaving limited headroom for additional imports and indexes.
 
 ## Reproduction and source integrity

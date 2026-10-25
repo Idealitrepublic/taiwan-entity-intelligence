@@ -1,0 +1,290 @@
+{
+  "penghu_166901_20261025": {
+    "name": "Penghu County 工商職業 groups official CSV 166901",
+    "dataset": "166901",
+    "url": "https://data.gov.tw/dataset/166901",
+    "download": "https://opendata.penghu.gov.tw/dataset/55a585b5-1870-4298-80cf-5e895bb4b5c9/resource/61df3df6-fe55-44f4-86f2-24afa86ab72b/download/u670000-01-2023-12-28-1703733978.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "工商職業",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 57
+  },
+  "penghu_166902_20261025": {
+    "name": "Penghu County 同鄉會 groups official CSV 166902",
+    "dataset": "166902",
+    "url": "https://data.gov.tw/dataset/166902",
+    "download": "https://opendata.penghu.gov.tw/dataset/fd1614e8-0a40-4e78-b81e-f8da68e7cced/resource/48bac5d4-fa6f-4942-b321-892a3b70083c/download/u670000-01-2023-12-28-1703734162.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "同鄉會",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 13
+  },
+  "penghu_166903_20261025": {
+    "name": "Penghu County 自由職業 groups official CSV 166903",
+    "dataset": "166903",
+    "url": "https://data.gov.tw/dataset/166903",
+    "download": "https://opendata.penghu.gov.tw/dataset/54bf8e4e-876c-49aa-9332-7b3b662bcdcc/resource/b66df75c-0551-4810-8ac2-b154748c87de/download/u670000-01-2023-12-28-1703734404.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "自由職業",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 26
+  },
+  "penghu_166904_20261025": {
+    "name": "Penghu County 宗教 groups official CSV 166904",
+    "dataset": "166904",
+    "url": "https://data.gov.tw/dataset/166904",
+    "download": "https://opendata.penghu.gov.tw/dataset/74746a10-e3e0-4744-a50e-4ea8bf21c9cf/resource/8432a01f-8b4d-455a-a18f-4ccc13706697/download/u670000-01-2023-12-28-1703734795.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "宗教",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 2
+  },
+  "penghu_166905_20261025": {
+    "name": "Penghu County 宗親會 groups official CSV 166905",
+    "dataset": "166905",
+    "url": "https://data.gov.tw/dataset/166905",
+    "download": "https://opendata.penghu.gov.tw/dataset/12e1b910-458b-4c5b-955f-948f495684f2/resource/794694c6-0d21-4c4f-ab27-2304a7ed82de/download/u670000-01-2023-12-28-1703735808.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "宗親會",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 27
+  },
+  "penghu_166906_20261025": {
+    "name": "Penghu County 社會服務 groups official CSV 166906",
+    "dataset": "166906",
+    "url": "https://data.gov.tw/dataset/166906",
+    "download": "https://opendata.penghu.gov.tw/dataset/ac06b7dd-bf3e-4672-94f8-f3e2b736cdec/resource/0b9ed2a6-ca47-4cef-94a3-9dbf00a79356/download/u670000-01-2023-12-28-1703754062.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "社會服務",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 203
+  },
+  "penghu_166907_20261025": {
+    "name": "Penghu County 校友會 groups official CSV 166907",
+    "dataset": "166907",
+    "url": "https://data.gov.tw/dataset/166907",
+    "download": "https://opendata.penghu.gov.tw/dataset/b56cfb29-6f25-4c8a-9a50-27998c91a23c/resource/6f74b4dc-4377-404c-a79e-88bb55b2ca4a/download/u670000-01-2023-12-28-1703754294.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "校友會",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 12
+  },
+  "penghu_166908_20261025": {
+    "name": "Penghu County 國際會 groups official CSV 166908",
+    "dataset": "166908",
+    "url": "https://data.gov.tw/dataset/166908",
+    "download": "https://opendata.penghu.gov.tw/dataset/dddc541f-691f-4c89-b803-a4d732a6baa4/resource/b8d4d40e-0d38-4ea0-8aa8-34ee3776c513/download/u670000-01-2023-12-28-1703754668.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "國際會",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 12
+  },
+  "penghu_166909_20261025": {
+    "name": "Penghu County 經濟 groups official CSV 166909",
+    "dataset": "166909",
+    "url": "https://data.gov.tw/dataset/166909",
+    "download": "https://opendata.penghu.gov.tw/dataset/0fde5adf-fa38-4d46-ab09-ee7cd74ff28f/resource/56058f87-14fa-4cf0-8331-4649fa1b1e9b/download/u670000-01-2023-12-28-1703754883.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "經濟",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 58
+  },
+  "penghu_166910_20261025": {
+    "name": "Penghu County 學術文化 groups official CSV 166910",
+    "dataset": "166910",
+    "url": "https://data.gov.tw/dataset/166910",
+    "download": "https://opendata.penghu.gov.tw/dataset/511a4989-4593-4c22-ad3e-a058b4c3e6d5/resource/a59cdb41-4900-4679-91c6-467cf900600a/download/u670000-01-2023-12-28-1703755202.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "學術文化",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 93
+  },
+  "penghu_166911_20261025": {
+    "name": "Penghu County 環保 groups official CSV 166911",
+    "dataset": "166911",
+    "url": "https://data.gov.tw/dataset/166911",
+    "download": "https://opendata.penghu.gov.tw/dataset/3ec18482-8a22-4e9e-b445-76d453d06a7e/resource/5234d72a-0380-4d93-accd-b62a1267c47e/download/u670000-01-2023-12-28-1703755309.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "環保",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 1
+  },
+  "penghu_166912_20261025": {
+    "name": "Penghu County 體育 groups official CSV 166912",
+    "dataset": "166912",
+    "url": "https://data.gov.tw/dataset/166912",
+    "download": "https://opendata.penghu.gov.tw/dataset/57be2f81-22ea-4540-878e-34120b2c3e68/resource/75ecdcdb-0559-4daa-9d61-7e4c9349c95e/download/u670000-01-2023-12-28-1703755575.csv",
+    "columns": [
+      "團體名稱",
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "sequence_column": null,
+    "name_column": "團體名稱",
+    "category": "體育",
+    "description": "Official category roster snapshot; status and cross-source identity unverified",
+    "locator_fields": [
+      "團體類別",
+      "官方編號",
+      "csv_row",
+      "csv_sha256"
+    ],
+    "expected_rows": 91
+  }
+}

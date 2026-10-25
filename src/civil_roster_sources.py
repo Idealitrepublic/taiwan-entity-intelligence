@@ -167,6 +167,26 @@ SOURCES = {
         "locator_fields": ["官方編號", "成立日期", "最後更新時間", "xlsx_sheet", "xlsx_row", "xlsx_sha256"],
         "expected_rows": 498,
     },
+    "hsinchu_county_20261005": {
+        "name": "Hsinchu County people's organizations official XLSX 2026-10-05",
+        "dataset": "Hsinchu County Social Affairs 2026-10-05",
+        "url": "https://social.hsinchu.gov.tw/News.aspx?n=218&sms=8679",
+        "download": "https://ws.hsinchu.gov.tw/Download.ashx?u=LzAwMS9VcGxvYWQvOC9yZWxmaWxlLzg2NzkvMTk3ODY5LzIxNTEzYjRlLTJkNTYtNDU4ZS1hMWFiLWYwNGExYWVjZDFlMC54bHN4&n=5Lq65rCR5ZyY6auU5ZCN5YaKMTE1LjEwLjUueGxzeA%3d%3d",
+        "columns": {"團體名稱", "團體類別", "官方編號", "成立日期", "xlsx_sheet", "xlsx_row", "xlsx_sha256"},
+        "sequence_column": None, "name_column": "團體名稱",
+        "description": "Hsinchu County official 2026-10-05 multi-category XLSX; source observations, not live status",
+        "locator_fields": ["團體類別", "官方編號", "成立日期", "xlsx_sheet", "xlsx_row", "xlsx_sha256"],
+        "expected_rows": 2181,
+        "category_counts": {
+            "工商職業團體": 70, "醫療職業團體": 14, "教育職業團體": 51,
+            "自由職業團體": 8, "社會團體─學術文化團體": 509,
+            "社會團體─宗教團體": 54, "社會團體─體育運動團體": 266,
+            "社會團體─社會服務及慈善團體": 698,
+            "社會團體─經濟業務團體": 120, "社會團體─國際團體": 71,
+            "社會團體─同鄉會": 3, "社會團體─同學校友會": 39,
+            "社會團體─宗親會": 277, "其他": 1,
+        },
+    },
     "tainan_social_foundations_json": {
         "name": "Official roster 102929: 臺南市財團法人名冊(社福基金會類)",
         "dataset": "102929", "url": "https://data.gov.tw/dataset/102929",
@@ -200,6 +220,10 @@ _manifest = json.loads((Path(__file__).with_name("civil_roster_manifest.json")).
 if set(_manifest) & set(SOURCES):
     raise ValueError("Duplicate official roster key")
 SOURCES.update(_manifest)
+_penghu_manifest = json.loads((Path(__file__).with_name("civil_roster_penghu_manifest.json")).read_text(encoding="utf-8"))
+if set(_penghu_manifest) & set(SOURCES):
+    raise ValueError("Duplicate official Penghu roster key")
+SOURCES.update(_penghu_manifest)
 
 
 def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,

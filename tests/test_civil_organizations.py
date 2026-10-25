@@ -64,7 +64,7 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
 
     def test_additional_official_rosters_keep_source_identity_and_redact_contact(self):
         for key, source in SOURCES.items():
-            if key.startswith("catalog_") or key in ("keelung_ods", "yilan_20260930", "yunlin_20260713", "hsinchu_city_20261025", "miaoli_society_20261025", "changhua_society_20261025", "kinmen_society_20261025", "tainan_social_foundations_json"):
+            if key.startswith(("catalog_", "penghu_1669")) or key in ("keelung_ods", "yilan_20260930", "yunlin_20260713", "hsinchu_city_20261025", "hsinchu_county_20261005", "miaoli_society_20261025", "changhua_society_20261025", "kinmen_society_20261025", "tainan_social_foundations_json"):
                 continue
             with self.subTest(key=key), tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / "official.csv"
@@ -303,6 +303,57 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
             locator = bundle["evidence"][0]["source_locator"]
             self.assertEqual(locator["官方編號"], "B0001")
             self.assertEqual(locator["成立日期"], "115/01/01")
+            self.assertNotIn("私人", str(bundle))
+
+    def test_penghu_category_projection_skips_contact_continuations(self):
+        from scripts.convert_penghu_civil_csv import convert
+        from unittest.mock import patch
+        key = "penghu_166901_20261025"
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "official.csv"
+            output = Path(directory) / "projected.csv"
+            source.write_text("編號,團體名稱,理事長及主要人員,會社址,人數,電話\n"
+                              "1,測試協會,私人姓名,私人地址,20,私人電話\n"
+                              ",,,,,私人電話\n", encoding="utf-8")
+            with patch.dict(SOURCES[key], {"expected_rows": 1}):
+                self.assertEqual(convert(source, output, key), 1)
+            bundle = next(official_roster_bundles(output, key, retrieved_at=NOW))
+            locator = bundle["evidence"][0]["source_locator"]
+            self.assertEqual(locator["csv_row"], "2")
+            self.assertEqual(locator["官方編號"], "1")
+            self.assertNotIn("私人", str(bundle))
+
+    def test_hsinchu_county_xlsx_keeps_category_and_redacts_personal_fields(self):
+        from scripts.convert_hsinchu_county_civil_xlsx import convert, NS
+        from unittest.mock import patch
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.xlsx"
+            output = Path(directory) / "projected.csv"
+            workbook = (f'<workbook xmlns="{NS[1:-1]}"><sheets>'
+                        '<sheet name="完成" sheetId="1"/></sheets></workbook>')
+            rows = [
+                (1, ("一、新竹縣人民團體名冊（工商職業團體）",)),
+                (2, ("編號", "團體名稱", "負責人姓名", "會址", "電話", "成立年月日")),
+                (3, ("1", "測試團體", "私人姓名", "私人地址", "私人電話", "115.10.05")),
+            ]
+            sheet_rows = []
+            for number, values in rows:
+                cells = "".join(f'<c r="{chr(65 + i)}{number}" t="inlineStr"><is><t>{value}</t></is></c>'
+                                for i, value in enumerate(values))
+                sheet_rows.append(f'<row r="{number}">{cells}</row>')
+            sheet = f'<worksheet xmlns="{NS[1:-1]}"><sheetData>{"".join(sheet_rows)}</sheetData></worksheet>'
+            with zipfile.ZipFile(source, "w") as package:
+                package.writestr("xl/workbook.xml", workbook)
+                package.writestr("xl/worksheets/sheet1.xml", sheet)
+            with patch.dict(SOURCES["hsinchu_county_20261005"],
+                            {"expected_rows": 1, "category_counts": {"工商職業團體": 1}}):
+                self.assertEqual(convert(source, output), 1)
+            bundle = next(official_roster_bundles(output, "hsinchu_county_20261005",
+                                                  retrieved_at=NOW))
+            locator = bundle["evidence"][0]["source_locator"]
+            self.assertEqual(locator["團體類別"], "工商職業團體")
+            self.assertEqual(locator["xlsx_row"], "3")
             self.assertNotIn("私人", str(bundle))
 
     def test_tainan_json_conversion_retains_original_hash_and_rejects_failed_response(self):
