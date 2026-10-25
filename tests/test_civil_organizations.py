@@ -64,7 +64,7 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
 
     def test_additional_official_rosters_keep_source_identity_and_redact_contact(self):
         for key, source in SOURCES.items():
-            if key.startswith("catalog_") or key in ("keelung_ods", "yilan_20260930", "yunlin_20260713", "hsinchu_city_20261025", "tainan_social_foundations_json"):
+            if key.startswith("catalog_") or key in ("keelung_ods", "yilan_20260930", "yunlin_20260713", "hsinchu_city_20261025", "miaoli_society_20261025", "changhua_society_20261025", "kinmen_society_20261025", "tainan_social_foundations_json"):
                 continue
             with self.subTest(key=key), tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / "official.csv"
@@ -223,6 +223,87 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
                                           "categories": categories}, ensure_ascii=False))
             with self.assertRaisesRegex(ValueError, "Incomplete official category"):
                 convert(source, output)
+
+    def test_miaoli_ods_keeps_filing_date_and_excludes_officer_contact(self):
+        from scripts.convert_miaoli_civil_ods import convert
+        from scripts.convert_official_civil_ods import TABLE, TEXT
+        import hashlib
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "official.ods"
+            output = Path(directory) / "projected.csv"
+            def row(*values):
+                cells = "".join(f'<table:table-cell><text:p>{value}</text:p></table:table-cell>'
+                                for value in values)
+                return f'<table:table-row>{cells}</table:table-row>'
+            xml = (f'<document xmlns:table="{TABLE}" xmlns:text="{TEXT}">'
+                   '<table:table table:name="Worksheet">' + row("名冊資料") +
+                   row("團體類別", "團體名稱", "立案日期", "理事長", "會址") +
+                   row("社會服務", "測試協會", "115/01/01", "私人姓名", "私人地址") +
+                   '</table:table></document>')
+            with zipfile.ZipFile(source, "w") as package:
+                package.writestr("content.xml", xml)
+            self.assertEqual(convert(source, output), 1)
+            bundle = next(official_roster_bundles(output, "miaoli_society_20261025", retrieved_at=NOW))
+            locator = bundle["evidence"][0]["source_locator"]
+            self.assertEqual(locator["立案日期"], "115/01/01")
+            self.assertEqual(locator["ods_row"], "3")
+            self.assertEqual(locator["ods_sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
+            self.assertNotIn("私人", str(bundle))
+
+    def test_changhua_ods_preserves_official_id_without_officer_address(self):
+        from scripts.convert_changhua_civil_ods import convert
+        from scripts.convert_official_civil_ods import TABLE, TEXT
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "official.ods"
+            output = Path(directory) / "projected.csv"
+            def row(*values):
+                cells = "".join(f'<table:table-cell><text:p>{value}</text:p></table:table-cell>'
+                                for value in values)
+                return f'<table:table-row>{cells}</table:table-row>'
+            xml = (f'<document xmlns:table="{TABLE}" xmlns:text="{TEXT}">'
+                   '<table:table table:name="社團立案名冊">' +
+                   row("C001", "自由職業", "測試教育會", "私人姓名", "私人地址") +
+                   '</table:table></document>')
+            with zipfile.ZipFile(source, "w") as package:
+                package.writestr("content.xml", xml)
+            self.assertEqual(convert(source, output), 1)
+            bundle = next(official_roster_bundles(output, "changhua_society_20261025",
+                                                  retrieved_at=NOW))
+            locator = bundle["evidence"][0]["source_locator"]
+            self.assertEqual(locator["官方編號"], "C001")
+            self.assertEqual(locator["ods_row"], "1")
+            self.assertNotIn("私人", str(bundle))
+
+    def test_kinmen_xlsx_preserves_dates_without_contacts(self):
+        from scripts.convert_kinmen_civil_xlsx import convert, NS
+        import zipfile
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.xlsx"
+            output = Path(directory) / "projected.csv"
+            workbook = (f'<workbook xmlns="{NS[1:-1]}"><sheets>'
+                        '<sheet name="金門縣社會團體" sheetId="1"/></sheets></workbook>')
+            rows = [
+                (1, ("資源彙整機關", "編號", "社會團體名稱", "會址", "聯絡電話", "成立日期", "最後更新時間")),
+                (2, ("金門縣政府社會處", "B0001", "測試社團", "私人地址", "私人電話", "115/01/01", "20261025")),
+            ]
+            sheet_rows = []
+            for number, values in rows:
+                cells = "".join(f'<c r="{chr(65 + i)}{number}" t="inlineStr"><is><t>{value}</t></is></c>'
+                                for i, value in enumerate(values))
+                sheet_rows.append(f'<row r="{number}">{cells}</row>')
+            sheet = f'<worksheet xmlns="{NS[1:-1]}"><sheetData>{"".join(sheet_rows)}</sheetData></worksheet>'
+            with zipfile.ZipFile(source, "w") as package:
+                package.writestr("xl/workbook.xml", workbook)
+                package.writestr("xl/worksheets/sheet1.xml", sheet)
+            self.assertEqual(convert(source, output), 1)
+            bundle = next(official_roster_bundles(output, "kinmen_society_20261025",
+                                                  retrieved_at=NOW))
+            locator = bundle["evidence"][0]["source_locator"]
+            self.assertEqual(locator["官方編號"], "B0001")
+            self.assertEqual(locator["成立日期"], "115/01/01")
+            self.assertNotIn("私人", str(bundle))
 
     def test_tainan_json_conversion_retains_original_hash_and_rejects_failed_response(self):
         from scripts.convert_tainan_foundation_json import convert

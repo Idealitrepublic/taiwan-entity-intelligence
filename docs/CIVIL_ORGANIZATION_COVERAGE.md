@@ -16,7 +16,10 @@ separate source-scoped Entity; no person or company relationship is inferred.
 | [Tainan social-welfare foundation JSON](https://data.gov.tw/dataset/102929) | 93 | Original JSON hash, item number, permit date/number and raw status retained |
 | [Yunlin official 2026-07-13 XLSX](https://social.yunlin.gov.tw/News_Content.aspx?n=746&s=578203) | 1,881 | Official row number, original XLSX hash and sheet/row retained; five names carry a source `休會` prefix, so no current-active claim |
 | [Hsinchu City official category pages](https://society.hccg.gov.tw/ch/home.jsp?id=161&parentpath=0,3,34) | 1,023 | All 12 listed categories; each category's page URL, update date, sequence and checked row count retained |
-| **Total** | **57,211** | **89 official roster sources; 57,211 Evidence links** |
+| [Miaoli official society ODS](https://sas.miaoli.gov.tw/roster_society) | 2,388 | Original ODS hash, sheet, row, category and filing date retained; officer/contact data excluded |
+| [Changhua official society ODS](https://www.chcg.gov.tw/DTO/social/07other/other01_con.aspx?cate_id=5105&data_id=20273&topsn=716) | 2,375 | Official identifier, original ODS hash and row retained; historical dissolution annotations do not imply current active status |
+| [Kinmen official society XLSX](https://social.kinmen.gov.tw/Content_List.aspx?n=5953401623861323) | 498 | Official identifier, establishment/update dates, original XLSX hash and row retained; contact data excluded |
+| **Total** | **62,472** | **92 official roster sources; 62,472 Evidence links** |
 
 The separate [Finance Ministry nonprofit tax file](https://data.gov.tw/dataset/34147)
 contains **99,788 tax-source observations**. Tax registration alone does not
@@ -30,13 +33,12 @@ Cooperatives, award recipients, subsidies, aggregate statistics and committee
 branch offices were not silently classified as civil organizations.
 
 The read-only Development audit (`python3 scripts/audit_civil_rosters_dev.py`)
-reconciled all 73 new source row counts: **0 mismatches, 0 missing/duplicate
+reconciled all 76 new source row counts: **0 mismatches, 0 missing/duplicate
 Evidence links, 0 missing source URL / retrieved timestamp / snapshot hash**.
 RLS is enabled on `entities`, `evidence_records` and `entity_evidence`. An
-anonymous-role searches of a Yunlin and a Hsinchu roster name each returned
-one published result; an anonymous-role count returned all **57,211** roster
-entries. The read-only database audit found **57,211** Evidence links and
-**411.9 MB** used, below the Supabase Free 500 MB
+anonymous-role search of one Miaoli, Changhua and Kinmen roster name each
+returned one published result. The read-only database audit found **62,472**
+published observations and Evidence links and **433.5 MB** used, below the Supabase Free 500 MB
 database limit, leaving limited headroom for additional imports and indexes.
 
 ## Reproduction and source integrity
