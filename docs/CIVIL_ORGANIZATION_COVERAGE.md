@@ -33,9 +33,10 @@ The read-only Development audit (`python3 scripts/audit_civil_rosters_dev.py`)
 reconciled all 73 new source row counts: **0 mismatches, 0 missing/duplicate
 Evidence links, 0 missing source URL / retrieved timestamp / snapshot hash**.
 RLS is enabled on `entities`, `evidence_records` and `entity_evidence`. An
-anonymous-role search of a Yilan roster name returned one published result;
-anonymous-role counts returned all 54,307 earlier roster entries and Evidence links.
-The current read-only database count is **57,211**, with **411.9 MB** used, below the Supabase Free 500 MB
+anonymous-role searches of a Yunlin and a Hsinchu roster name each returned
+one published result; an anonymous-role count returned all **57,211** roster
+entries. The read-only database audit found **57,211** Evidence links and
+**411.9 MB** used, below the Supabase Free 500 MB
 database limit, leaving limited headroom for additional imports and indexes.
 
 ## Reproduction and source integrity
