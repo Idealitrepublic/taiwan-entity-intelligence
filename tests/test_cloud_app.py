@@ -66,6 +66,29 @@ class CloudAppTests(unittest.TestCase):
             self.assertEqual(cached_status, status)
             self.assertEqual(json.loads(cached_body)['status'], 'partial')
             self.assertEqual(counted.call_count, first_calls)
+
+    def test_status_retries_only_a_transiently_failed_count(self):
+        import app as entrypoint
+        entrypoint.STATUS_CACHE.clear()
+        attempts = {'evidence_records': 0}
+
+        def count(table, **filters):
+            if table == 'evidence_records':
+                attempts[table] += 1
+                if attempts[table] == 1:
+                    raise TimeoutError('transient count failure')
+            return 42
+
+        with patch('app.db_count', side_effect=count) as counted, \
+                patch('app.core.SUPABASE_KEY', 'anon-test'):
+            status, body = self.request('/api/status')
+        self.assertTrue(status.startswith('200'))
+        payload = json.loads(body)
+        self.assertEqual(payload['status'], 'ok')
+        self.assertEqual(payload['supabase']['canonical']['evidence_records'], 42)
+        self.assertEqual(attempts['evidence_records'], 2)
+        self.assertEqual(counted.call_count, 12)
+
     def test_domain_requires_a_domain(self):
         with self.assertRaises(ValueError):
             cloud_company.check_domain('localhost')

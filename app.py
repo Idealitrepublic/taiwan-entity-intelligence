@@ -102,6 +102,14 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
 
             with ThreadPoolExecutor(max_workers=8) as pool:
                 results = list(pool.map(checked_count, specs))
+            failed_specs = [spec for spec, result in zip(specs, results) if result[2]]
+            if failed_specs:
+                # Exact counts on large Evidence tables can fail briefly during
+                # cold starts. Retry only those counts without repeating successes.
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    retried = dict((label, (label, value, failed))
+                                   for label, value, failed in pool.map(checked_count, failed_specs))
+                results = [retried.get(result[0], result) for result in results]
             for label, value, _ in results:
                 if label.startswith('canonical.'):
                     db.setdefault('canonical', {})[label.split('.', 1)[1]] = value
