@@ -36,3 +36,9 @@
 - **驗證邊界：** 真實中華電信公司報告已產生並檢視，含 13 位董監事、71 筆採購、50 筆裁罰來源候選、11 筆裁判名稱命中；這些數量不是全臺覆蓋或已核實違法數。報告 HTML 於 1440／1280／1024／768／390px 的 DOM 實測無水平溢出，桌面／手機已目視檢視，console 無 error／warn。此輪不宣稱全站 E2E 或真人 Pilot 通過。
 - **本輪檢查：** 362 項 Python tests、180 項 PGlite DB integration checks、既有前端回歸、lint、59 模組完整 build 通過；其中報告／健康報告的 targeted tests 涵蓋結構化定位、來源版本、候選提示、金額、日期、翻譯及不可修改原始 JSON。真實公司報告保留 147 筆來源，完整輸出 57 頁橫式 PDF；全頁渲染及文字邊界檢查無頁面外溢。大型報告仍會有多頁，不把未載入的資料宣稱已匯出。
 - **本輪尚未解除：** OPS High=1 為過期司法同步；另保留資料覆蓋、WAF 現況、正式版九筆 migration、異地與平台級復原、完整站點及真實使用者驗收門檻。Data Health High=0 不等於公開上線驗收完成。
+
+### Preview 實際驗證
+
+程式 commit `7012ff6` 的 [Development Preview](https://taiwan-entity-intelligence-cocwtzthi-coldlight871029-9944.vercel.app/) 為 READY，實際公開設定確認只連 `tei-development`。中華電信搜尋 HTTP 200、5 筆結果；公司報告 HTTP 200、`application/pdf`、333,090 bytes、PDF 檔頭及下載附檔名正確；匿名 Workspace 報告回 401。查詢期間未見 `request_failed` 事件。
+
+**仍需追查的統計可靠性：** 同一驗證期間 `/api/status` 的 `canonical.entity_evidence` 計數曾收到上游 HTTP 500，整體回 200／PARTIAL，其餘公開公司與 Evidence 統計可讀。已記錄安全的錯誤類型與 HTTP 狀態，沒有記錄憑證；目前沒有足夠證據將此歸因為資料遺失或 RLS 設定錯誤。此項尚未宣告修復，不能以本輪 PDF 成功或 Data Health=0 取代它的驗收。
