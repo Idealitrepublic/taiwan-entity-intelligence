@@ -17,14 +17,14 @@
 ## 仍是公開上線阻礙
 
 1. **來源與健康：** 10 月 27 日晚間重新實查，先前本機失敗的公司登記與董監事固定樣本均恢復為 3/3，Development `DATA_HEALTH.md` 為 High=0。這是目前樣本結果，不能推論全臺覆蓋。運維檢查仍有 **High=1：judicial_sync_stale**，因司法最近真實同步已過期；須在臺灣時間 00:00–06:00 開新視窗續跑，再重新驗證。健康報告的新產生時間不會改寫來源的實際取得時間。
-2. **正式環境版本差：** 唯讀 ledger 核對為 Development 28 筆、Production 19 筆，Production 少九筆已列入 repo 的 migration；另有約 93 個 commit 的程式差距。正式資料備份、九筆 migration 的逐筆演練與正式發版須另行進行，本階段禁止碰 Production。
+2. **正式環境版本差：** 原核對為 Development 28 筆、Production 19 筆；本輪 Development 再新增一筆計數索引 migration，故現有已知待正式環境評估項目為十筆。正式資料備份、migration 的逐筆演練與正式發版須另行進行，本階段禁止碰 Production。
 3. **資料覆蓋：** 已發布公司 462 家、一般人物 0、正式標案 2、裁罰 1、司法實體 0；來源索引與即時查詢不等於正式核身關係。勞動來源 80,122 列的多數缺統編，不能依名稱強制連線。政治獻金和財產申報公開資料都僅各一筆；不得稱為全臺完整資料。
 4. **其他運維：** WAF 規則現況未取得可驗證設定（讀取回 404），不宣稱沒有規則。Development 容量先前約 444 MB；公開上線前需重新確認方案與成長空間。異地備份、平台級還原和持續運轉監控尚未驗證。
 5. **完整操作：** 最新修復版仍須 Preview 實測、狹窄視窗與行動版、全部 Path Finder 範圍及越權寫入路徑。真實受測者 Pilot 按使用者指示暫不列入本輪修復。
 
 ## 正式發布前的安全順序
 
-先於 Development 官方服務時段更新司法資料與來源健康；在新 Preview 跑公開與私有流程、檢查 runtime；確定資料覆蓋說明與容量／WAF／復原門檻，再備份正式資料並演練九筆 migration。Production 的 migration、設定與部署均須獨立決策，不得以本文件自動執行。
+先於 Development 官方服務時段更新司法資料與來源健康；在新 Preview 跑公開與私有流程、檢查 runtime；確定資料覆蓋說明與容量／WAF／復原門檻，再備份正式資料並演練待套用的 migration。Production 的 migration、設定與部署均須獨立決策，不得以本文件自動執行。
 
 ## 本輪可獨立修復項目
 
@@ -35,10 +35,10 @@
 - **健康報告可信度：** 排除不同 Supabase 專案或超過 24 小時的舊 SQL 稽核，不再用舊快照推論目前 Preview 設定或聲稱公開政治資料仍全是草稿。政治人物改從實際 primary Evidence 量測 provenance；採購紀錄承接該次回應的來源及取得時間。
 - **驗證邊界：** 真實中華電信公司報告已產生並檢視，含 13 位董監事、71 筆採購、50 筆裁罰來源候選、11 筆裁判名稱命中；這些數量不是全臺覆蓋或已核實違法數。報告 HTML 於 1440／1280／1024／768／390px 的 DOM 實測無水平溢出，桌面／手機已目視檢視，console 無 error／warn。此輪不宣稱全站 E2E 或真人 Pilot 通過。
 - **本輪檢查：** 362 項 Python tests、180 項 PGlite DB integration checks、既有前端回歸、lint、59 模組完整 build 通過；其中報告／健康報告的 targeted tests 涵蓋結構化定位、來源版本、候選提示、金額、日期、翻譯及不可修改原始 JSON。真實公司報告保留 147 筆來源，完整輸出 57 頁橫式 PDF；全頁渲染及文字邊界檢查無頁面外溢。大型報告仍會有多頁，不把未載入的資料宣稱已匯出。
-- **本輪尚未解除：** OPS High=1 為過期司法同步；另保留資料覆蓋、WAF 現況、正式版九筆 migration、異地與平台級復原、完整站點及真實使用者驗收門檻。Data Health High=0 不等於公開上線驗收完成。
+- **本輪尚未解除：** OPS High=1 為過期司法同步；另保留資料覆蓋、WAF 現況、正式版 migration 差異、異地與平台級復原、完整站點及真實使用者驗收門檻。Data Health High=0 不等於公開上線驗收完成。
 
 ### Preview 實際驗證
 
 程式 commit `7012ff6` 的 [Development Preview](https://taiwan-entity-intelligence-cocwtzthi-coldlight871029-9944.vercel.app/) 為 READY，實際公開設定確認只連 `tei-development`。中華電信搜尋 HTTP 200、5 筆結果；公司報告 HTTP 200、`application/pdf`、333,090 bytes、PDF 檔頭及下載附檔名正確；匿名 Workspace 報告回 401。查詢期間未見 `request_failed` 事件。
 
-**仍需追查的統計可靠性：** 同一驗證期間 `/api/status` 的 `canonical.entity_evidence` 計數曾收到上游 HTTP 500，整體回 200／PARTIAL，其餘公開公司與 Evidence 統計可讀。已記錄安全的錯誤類型與 HTTP 狀態，沒有記錄憑證；目前沒有足夠證據將此歸因為資料遺失或 RLS 設定錯誤。此項尚未宣告修復，不能以本輪 PDF 成功或 Data Health=0 取代它的驗收。
+**修復前的統計異常：** 同一驗證期間 `/api/status` 的 `canonical.entity_evidence` 計數曾收到上游 HTTP 500。後續已確認為 RLS 精確計數超過匿名角色 3 秒上限，並於 Development 新增覆蓋索引；完整根因、權限驗證及驗收結果見 [統計 500 修復紀錄](STATUS_COUNT_INCIDENT_2026-10-27.md)。

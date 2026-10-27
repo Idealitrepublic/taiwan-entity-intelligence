@@ -26,9 +26,10 @@ from src.source_incidents import active_source_notices
 WEB = Path(__file__).parent / 'web'
 STATUS_CACHE = {}
 STATUS_CACHE_LOCK = Lock()
+STATUS_REFRESH_LOCK = Lock()
 
 def db_count(table, **filters):
-    query = urlencode({'select': '*', **filters})
+    query = urlencode({'select': 'entity_id' if table == 'entity_evidence' else 'id', **filters})
     req = urllib.request.Request(f'{core.SUPABASE}/rest/v1/{table}?{query}', method='HEAD', headers={'apikey': core.SUPABASE_KEY, 'Authorization': f'Bearer {core.SUPABASE_KEY}', 'Prefer': 'count=exact'})
     with urllib.request.urlopen(req, timeout=8) as response:
         return int(response.headers['Content-Range'].split('/')[-1])
@@ -44,6 +45,75 @@ def log_event(level, event, **fields):
     print(json.dumps(record, ensure_ascii=False, separators=(',', ':')),
           file=sys.stderr, flush=True)
 
+
+def database_status():
+    # One refresh per process; concurrent page loads share the resulting counts.
+    with STATUS_REFRESH_LOCK:
+        cache_key = (core.SUPABASE, id(db_count))
+        with STATUS_CACHE_LOCK:
+            cached = STATUS_CACHE.get(cache_key)
+        if cached and time.monotonic() - cached[0] < 55:
+            saved = cached[1]
+            return saved[0], {**saved[1], 'source_notices': active_source_notices()}, None
+        db = {'configured': bool(core.SUPABASE_KEY), 'connected': False}
+        retry_deadline = time.monotonic() + 12
+        if core.SUPABASE_KEY:
+            tables = ['source_files', 'companies', 'people', 'evidence', 'source_records']
+            counts = {
+                'companies': ('entities', {'entity_type': 'eq.Company'}),
+                'people': ('entities', {'entity_type': 'in.(Person,Politician,GovernmentOfficial)'}),
+                'entities': ('entities', {}),
+                'entity_evidence': ('entity_evidence', {}),
+                'evidence_records': ('evidence_records', {}),
+                'relationships': ('relationships', {}),
+            }
+            specs = [(name, name, {}) for name in tables] + [
+                ('canonical.' + name, table, filters)
+                for name, (table, filters) in counts.items()]
+
+            def checked_count(spec):
+                label, table, filters = spec
+                try:
+                    return label, db_count(table, **filters), None
+                except Exception as exc:
+                    return label, None, exc
+
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                results = list(pool.map(checked_count, specs))
+            failed_specs = [spec for spec, result in zip(specs, results) if result[2]]
+            if failed_specs:
+                # Exact counts on large Evidence tables can fail briefly during
+                # cold starts. Retry only those counts without repeating successes.
+                retried = {}
+                for spec in failed_specs:
+                    if time.monotonic() >= retry_deadline:
+                        break
+                    label, value, error = checked_count(spec)
+                    retried[label] = (label, value, error)
+                results = [retried.get(result[0], result) for result in results]
+            for label, _, error in results:
+                if error:
+                    log_event('warning', 'status_count_unavailable', metric=label,
+                              error_type=type(error).__name__,
+                              http_status=getattr(error, 'code', None))
+            for label, value, _ in results:
+                if label.startswith('canonical.'):
+                    db.setdefault('canonical', {})[label.split('.', 1)[1]] = value
+                else:
+                    db[label] = value
+            db['legacy'] = {key: db[key] for key in ('companies', 'people', 'evidence')}
+            db['connected'] = any(value is not None for _, value, _ in results)
+            db['partial'] = db['connected'] and any(failed for _, _, failed in results)
+            if not db['connected']:
+                db['error'] = '資料庫連線失敗，請檢查伺服器金鑰與資料表權限。'
+        code = 200 if db['connected'] else 503
+        body = {'status': 'partial' if db.get('partial') else 'ok' if db['connected'] else 'degraded',
+                'version': '9.3-directional-filters', 'supabase': db,
+                'source_notices': active_source_notices()}
+        if db['connected']:
+            with STATUS_CACHE_LOCK:
+                STATUS_CACHE[cache_key] = (time.monotonic(), (code, body))
+        return code, body, None
 
 def dispatch(path, query, method='GET', payload=None, authorization=None):
     if path.rstrip('/') == '/api/v1/workspace-config':
@@ -72,66 +142,7 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
         name = 'index.html' if page_route else path[1:]
         return 200, (WEB / name).read_text(), 'text/html; charset=utf-8' if page_route else 'application/javascript; charset=utf-8'
     if path == '/api/status':
-        cache_key = (core.SUPABASE, id(db_count))
-        with STATUS_CACHE_LOCK:
-            cached = STATUS_CACHE.get(cache_key)
-        if cached and time.monotonic() - cached[0] < 55:
-            saved = cached[1]
-            return saved[0], {**saved[1], 'source_notices': active_source_notices()}, None
-        db = {'configured': bool(core.SUPABASE_KEY), 'connected': False}
-        if core.SUPABASE_KEY:
-            tables = ['source_files', 'companies', 'people', 'evidence', 'source_records']
-            counts = {
-                'companies': ('entities', {'entity_type': 'eq.Company'}),
-                'people': ('entities', {'entity_type': 'in.(Person,Politician,GovernmentOfficial)'}),
-                'entities': ('entities', {}),
-                'entity_evidence': ('entity_evidence', {}),
-                'evidence_records': ('evidence_records', {}),
-                'relationships': ('relationships', {}),
-            }
-            specs = [(name, name, {}) for name in tables] + [
-                ('canonical.' + name, table, filters)
-                for name, (table, filters) in counts.items()]
-
-            def checked_count(spec):
-                label, table, filters = spec
-                try:
-                    return label, db_count(table, **filters), None
-                except Exception as exc:
-                    return label, None, exc
-
-            with ThreadPoolExecutor(max_workers=8) as pool:
-                results = list(pool.map(checked_count, specs))
-            failed_specs = [spec for spec, result in zip(specs, results) if result[2]]
-            if failed_specs:
-                # Exact counts on large Evidence tables can fail briefly during
-                # cold starts. Retry only those counts without repeating successes.
-                retried = dict((label, (label, value, error))
-                               for label, value, error in map(checked_count, failed_specs))
-                results = [retried.get(result[0], result) for result in results]
-            for label, _, error in results:
-                if error:
-                    log_event('warning', 'status_count_unavailable', metric=label,
-                              error_type=type(error).__name__,
-                              http_status=getattr(error, 'code', None))
-            for label, value, _ in results:
-                if label.startswith('canonical.'):
-                    db.setdefault('canonical', {})[label.split('.', 1)[1]] = value
-                else:
-                    db[label] = value
-            db['legacy'] = {key: db[key] for key in ('companies', 'people', 'evidence')}
-            db['connected'] = any(value is not None for _, value, _ in results)
-            db['partial'] = db['connected'] and any(failed for _, _, failed in results)
-            if not db['connected']:
-                db['error'] = '資料庫連線失敗，請檢查伺服器金鑰與資料表權限。'
-        code = 200 if db['connected'] else 503
-        body = {'status': 'partial' if db.get('partial') else 'ok' if db['connected'] else 'degraded',
-                'version': '9.3-directional-filters', 'supabase': db,
-                'source_notices': active_source_notices()}
-        if db['connected']:
-            with STATUS_CACHE_LOCK:
-                STATUS_CACHE[cache_key] = (time.monotonic(), (code, body))
-        return code, body, None
+        return database_status()
     if path == '/api/domain-check':
         try:
             return 200, core.check_domain(query.get('domain',[''])[0]), None

@@ -26,6 +26,15 @@ try {
     .filter(x => x.endsWith('.sql') && x >= '20260909143820')
     .sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
+  // The count optimization is additive and safely repeatable; all existing
+  // publication, withdrawal and private-data checks below still run with it.
+  const countIndexes = files.find(file => file.endsWith('_public_evidence_count_covering_indexes.sql'));
+  await db.exec(fs.readFileSync(`supabase/migrations/${countIndexes}`, 'utf8'));
+  assert.equal((await db.query(`select count(*)::int n from pg_index
+    where indexrelid in ('public.entities_published_type_id_idx'::regclass,
+                        'public.evidence_records_public_active_id_idx'::regclass)
+      and indisvalid and indpred is not null`)).rows[0].n, 2);
+  checks++;
   const bundle = JSON.parse(execFileSync(process.env.TEI_TEST_PYTHON || 'python', ['-c', `
 import json
 from src.entities.backfill import build_legacy_bundle

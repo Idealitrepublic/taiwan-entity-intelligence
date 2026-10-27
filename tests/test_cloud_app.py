@@ -1,6 +1,8 @@
 import json
 import io
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event, Lock
 from unittest.mock import patch
 from app import app
 from src import cloud_company
@@ -99,6 +101,58 @@ class CloudAppTests(unittest.TestCase):
         self.assertEqual(counted.call_count, 12)
         self.assertFalse(any(call.args[1] == 'status_count_unavailable'
                              for call in logged.call_args_list))
+
+    def test_concurrent_status_requests_share_one_database_refresh(self):
+        import app as entrypoint
+        entrypoint.STATUS_CACHE.clear()
+        first_wave = Event()
+        release = Event()
+        duplicate = Event()
+        calls_lock = Lock()
+        attempts = 0
+
+        def count(table, **filters):
+            nonlocal attempts
+            with calls_lock:
+                attempts += 1
+                if attempts == 11:
+                    first_wave.set()
+                if attempts > 11 and not release.is_set():
+                    duplicate.set()
+            if table == 'source_files':
+                release.wait(3)
+            return 42
+
+        with patch('app.db_count', side_effect=count), patch('app.core.SUPABASE_KEY', 'anon-test'):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                first = pool.submit(entrypoint.dispatch, '/api/status', {})
+                self.assertTrue(first_wave.wait(2))
+                second = pool.submit(entrypoint.dispatch, '/api/status', {})
+                try:
+                    self.assertFalse(duplicate.wait(.1), 'parallel requests repeated the full count fanout')
+                finally:
+                    release.set()
+                self.assertEqual(first.result()[0], 200)
+                self.assertEqual(second.result()[0], 200)
+        self.assertEqual(attempts, 11)
+
+    def test_slow_failed_status_wave_does_not_start_unbounded_sequential_retries(self):
+        import app as entrypoint
+        entrypoint.STATUS_CACHE.clear()
+        clock = [0]
+
+        def unavailable(table, **filters):
+            clock[0] = 20
+            raise TimeoutError('upstream unavailable')
+
+        with patch('app.db_count', side_effect=unavailable) as counted, \
+                patch('app.core.SUPABASE_KEY', 'anon-test'), \
+                patch('app.time.monotonic', side_effect=lambda: clock[0]), \
+                patch('app.log_event'):
+            status, payload, _ = entrypoint.database_status()
+        self.assertEqual(status, 503)
+        self.assertFalse(payload['supabase']['connected'])
+        self.assertEqual(counted.call_count, 11)
 
     def test_domain_requires_a_domain(self):
         with self.assertRaises(ValueError):
