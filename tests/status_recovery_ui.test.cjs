@@ -21,5 +21,8 @@ vm.runInContext(html.slice(start,end),ctx);
  resolve();await pending;assert.match(elements.systemStatus.textContent,/LIVE/);assert.doesNotMatch(elements.dbStatus.innerHTML,/status-stale/);
  assert(html.includes("window.addEventListener('online',loadStatus)"));
  assert(html.includes("setInterval(()=>{if(!document.hidden)loadStatus()},60000)"));
+ assert(html.includes('官方 API 與已保存快照 · 依當次查詢狀態'));
+ assert(html.includes('JList／JDoc API · 批次同步，非即時或全量'));
+ assert(!html.includes('JList／JDoc API · 每日同步索引'));
  console.log('Status recovery: initial failure, recovery, stale counts, concurrency, refresh PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});
