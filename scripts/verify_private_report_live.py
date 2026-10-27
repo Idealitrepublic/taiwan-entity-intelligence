@@ -82,7 +82,8 @@ def main():
     if not all(float(page.mediabox.width) > float(page.mediabox.height) for page in reader.pages):
         raise AssertionError("Report is not landscape on every page")
     text = "".join(page.extract_text() for page in reader.pages)
-    if "Sources / 來源" not in text or "Penalties / 裁罰" not in text:
+    if not all(any(label in text for label in alternatives) for alternatives in (
+            ("來源 / Sources", "Sources / 來源"), ("裁罰 / Penalties", "Penalties / 裁罰"))):
         raise AssertionError("Report PDF omits evidence sections")
     output = inputs.get("pdf_path")
     if output:

@@ -33,6 +33,25 @@ def read_local_env(path):
     return values
 
 
+def require_development_public_target(env):
+    """Keep a missing local setting from falling back to Production reads."""
+    from urllib.parse import urlsplit
+
+    url = env.get("TEI_ENTITY_SUPABASE_URL") or env.get("SUPABASE_URL") or ""
+    parsed = urlsplit(url)
+    if (parsed.scheme != "https" or parsed.hostname != "canqjiokrtcxkwblhmml.supabase.co"
+            or parsed.username or parsed.password or parsed.port or parsed.path not in ("", "/")
+            or parsed.query or parsed.fragment
+            or not (env.get("TEI_ENTITY_ANON_KEY") or env.get("SUPABASE_ANON_KEY"))):
+        raise RuntimeError("Local public reads require an explicit tei-development URL and anon key")
+    private_url = env.get("TEI_PRIVATE_SUPABASE_URL")
+    if private_url and private_url.rstrip("/") != url.rstrip("/"):
+        raise RuntimeError("Local public and private Supabase targets must both be tei-development")
+    if private_url and env.get("TEI_PRIVATE_SUPABASE_ANON_KEY") != (
+            env.get("TEI_ENTITY_ANON_KEY") or env.get("SUPABASE_ANON_KEY")):
+        raise RuntimeError("Local private access must use the same public anon key")
+
+
 def main():
     try:
         local = read_local_env(ROOT / ".env.local")
@@ -41,6 +60,11 @@ def main():
         raise SystemExit(1) from None
     env = os.environ.copy()
     env.update(local)
+    try:
+        require_development_public_target(env)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from None
     os.execve(sys.executable, [sys.executable, str(ROOT / "app.py")], env)
 
 

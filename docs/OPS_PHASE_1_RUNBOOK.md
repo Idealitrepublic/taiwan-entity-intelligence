@@ -110,6 +110,20 @@ extension portability, or original ACL/ownership restoration.
 
 ## Rate limits, WAF and incident recovery
 
+### 2026-10-27 Development recovery recheck
+
+An age-encrypted logical backup and six-file synchronization bundle were
+created from `tei-development` outside Git. Both decrypted successfully in a
+stream. A disposable local PostgreSQL 18 instance restored application schemas
+after locally provisioning the required `pg_trgm` index operator. Source and
+restore matched all 30 public tables and row counts, 28 migrations, 49 RLS
+policies, 117 indexes, columns, and RLS flags. A local `anon` role read 65,850
+public entities and 1,029 published relationships, while Workspace and saved
+items returned zero rows. The bundle verified all six file hashes. This is
+application-scope recovery evidence; managed Supabase services, original grants,
+and off-site retention are still outside the drill. The backup manifest is
+stored in the private backup directory and contains no credential values.
+
 The app retains its local fixed-window guard with `429` and `Retry-After`; this
 is per-instance defense, not distributed enforcement. A read-only Vercel
 Firewall overview on 2026-09-25 found one active `/api/` rule at 600/min/IP

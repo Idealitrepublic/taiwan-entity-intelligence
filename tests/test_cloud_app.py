@@ -21,12 +21,16 @@ class CloudAppTests(unittest.TestCase):
             status,body=self.request('/api/company/123')
         self.assertTrue(status.startswith('400'))
     def test_health_does_not_claim_success_on_failed_database(self):
+        import app as entrypoint
+        entrypoint.STATUS_CACHE.clear()
         with patch('app.db_count',side_effect=RuntimeError('Unavailable')):
             status,body=self.request('/api/status')
         self.assertTrue(status.startswith('503'))
         self.assertFalse(json.loads(body)['supabase']['connected'])
         self.assertIn('source_notices', json.loads(body))
     def test_status_separates_empty_legacy_tables_from_public_canonical_counts(self):
+        import app as entrypoint
+        entrypoint.STATUS_CACHE.clear()
         def count(table, **filters):
             if table == 'entities':
                 return 2 if filters.get('entity_type') == 'eq.Company' else 121 if filters else 140
@@ -41,6 +45,27 @@ class CloudAppTests(unittest.TestCase):
         self.assertEqual(data['canonical']['people'], 121)
         self.assertEqual(data['canonical']['entity_evidence'], 908)
         self.assertEqual(data['source_records'], 80122)
+
+    def test_partial_count_does_not_claim_the_whole_database_is_offline(self):
+        import app as entrypoint
+        entrypoint.STATUS_CACHE.clear()
+        def count(table, **filters):
+            if table == 'evidence_records':
+                raise TimeoutError('one source is slow')
+            return 462
+        with patch('app.db_count', side_effect=count) as counted, patch('app.core.SUPABASE_KEY', 'anon-test'):
+            status, body = self.request('/api/status')
+            self.assertTrue(status.startswith('200'))
+            payload = json.loads(body)
+            self.assertEqual(payload['status'], 'partial')
+            self.assertTrue(payload['supabase']['connected'])
+            self.assertIsNone(payload['supabase']['canonical']['evidence_records'])
+            self.assertEqual(payload['supabase']['canonical']['companies'], 462)
+            first_calls = counted.call_count
+            cached_status, cached_body = self.request('/api/status')
+            self.assertEqual(cached_status, status)
+            self.assertEqual(json.loads(cached_body)['status'], 'partial')
+            self.assertEqual(counted.call_count, first_calls)
     def test_domain_requires_a_domain(self):
         with self.assertRaises(ValueError):
             cloud_company.check_domain('localhost')

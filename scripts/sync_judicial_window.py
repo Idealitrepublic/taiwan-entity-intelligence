@@ -9,6 +9,9 @@ credential is written. A changed JList never silently resets progress.
 import argparse
 import hashlib
 import json
+import os
+import shutil
+import uuid
 import sys
 from collections import Counter
 from datetime import datetime
@@ -26,6 +29,78 @@ def in_service_window(now=None):
     # Official specification: https://opendata.judicial.gov.tw/api/Newses/42/file
     local = (now or datetime.now(ZoneInfo("Asia/Taipei"))).astimezone(ZoneInfo("Asia/Taipei"))
     return 0 <= local.hour < 6
+
+
+
+def prepare_new_window(*, batch_size=25):
+    """Explicitly stage a new feed only after a completed, verified window.
+
+    The old pair is archived before replacement. A journal permits completing
+    the exact same transition after interruption; Evidence/index are untouched.
+    No successful-publication timestamp is advanced by this operation.
+    """
+    if not in_service_window():
+        raise RuntimeError("New JList requires the official service window")
+    journal = sync.STATE.parent / "judicial_window_transition.json"
+    if journal.exists():
+        raise RuntimeError("Unfinished window transition; use --recover-window first")
+    checked = inspect_checkpoint()
+    if checked["completed_batches"] != checked["total_batches"] or checked["pending_jids"]:
+        raise RuntimeError("Existing judicial window is not complete")
+    old = json.loads(sync.JUDICIAL_SNAPSHOT.read_text(encoding="utf-8"))
+    metadata = {}
+    jids = changed_jids(get_token(), on_metadata=metadata.update)
+    if not jids or len(jids) != len(set(jids)) or any(not metadata.get(jid) for jid in jids):
+        raise RuntimeError("New JList is empty or metadata is incomplete; checkpoint preserved")
+    digest = hashlib.sha256("\n".join(jids).encode("utf-8")).hexdigest()
+    if digest == old["window_id"]:
+        return False
+    stamp = datetime.now(ZoneInfo("UTC")).isoformat()
+    archive = sync.STATE.parent / "judicial_window_history" / (old["window_id"] + "-" + uuid.uuid4().hex)
+    archive.mkdir(parents=True, mode=0o700)
+    for path in (sync.STATE, sync.JUDICIAL_SNAPSHOT, sync.STATUS):
+        if path.exists():
+            shutil.copy2(path, archive / path.name)
+            (archive / path.name).chmod(0o600)
+    state = sync.load_state()
+    state.update(judicial_progress={"window_id": digest, "batch_size": batch_size,
+                 "total": len(jids), "total_batches": (len(jids)+batch_size-1)//batch_size,
+                 "completed_batches": []}, judicial_batch_stats={}, judicial_pending={},
+                 judicial_source_unavailable={})
+    errors = dict(state.get("source_errors") or {})
+    errors.pop("judicial", None)
+    state["source_errors"] = errors
+    snapshot = {"jids": jids, "metadata": metadata, "window_id": digest,
+                "retrieved_at": stamp, "previous_window_id": old["window_id"],
+                "coverage_note": "Official rolling change feed; dates outside its retention remain unverified."}
+    _write_private_json(journal, {"snapshot": snapshot, "state": state})
+    recover_window_transition()
+    return True
+
+
+def _write_private_json(path, value):
+    temporary = path.with_name(path.name + ".new")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False)
+        stream.flush()
+        os.fsync(stream.fileno())
+    temporary.replace(path)
+
+
+def recover_window_transition():
+    """Idempotent local recovery; never contacts the API or updates freshness."""
+    journal = sync.STATE.parent / "judicial_window_transition.json"
+    if not journal.exists():
+        raise RuntimeError("No pending judicial window transition")
+    pair = json.loads(journal.read_text(encoding="utf-8"))
+    snapshot, state = pair["snapshot"], pair["state"]
+    digest = hashlib.sha256("\n".join(snapshot["jids"]).encode("utf-8")).hexdigest()
+    if snapshot["window_id"] != digest or state["judicial_progress"]["window_id"] != digest:
+        raise RuntimeError("Invalid judicial window transition")
+    _write_private_json(sync.JUDICIAL_SNAPSHOT, snapshot)
+    _write_private_json(sync.STATE, state)
+    journal.unlink()
 
 
 def ensure_snapshot():
@@ -167,6 +242,8 @@ def run(*, max_batches=None, batch_size=25, workers=3):
     if not in_service_window():
         print("Judicial API closed (Asia/Taipei 06:00–00:00); checkpoint preserved", flush=True)
         return 2
+    if (sync.STATE.parent / "judicial_window_transition.json").exists():
+        raise RuntimeError("Unfinished window transition; use --recover-window first")
     checkpoint = inspect_checkpoint() if sync.JUDICIAL_SNAPSHOT.exists() else None
     if checkpoint and checkpoint["total_batches"] != (checkpoint["jlist_jids"] + batch_size - 1) // batch_size:
         raise RuntimeError("Requested batch size differs from saved checkpoint")
@@ -232,6 +309,9 @@ def main():
     parser.add_argument("--batch-size", type=int, default=25)
     parser.add_argument("--workers", type=int, default=3)
     parser.add_argument("--check-only", action="store_true", help="Validate saved local checkpoint without API access")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--new-window", action="store_true", help="Archive completed checkpoint and fetch a fresh official change feed")
+    mode.add_argument("--recover-window", action="store_true", help="Recover an interrupted local window transition without API calls")
     args = parser.parse_args()
     if args.max_batches is not None and args.max_batches < 1:
         parser.error("--max-batches must be positive")
@@ -239,6 +319,13 @@ def main():
         parser.error("--batch-size must be 1..500")
     if not 1 <= args.workers <= 3:
         parser.error("--workers must be 1..3")
+    if args.check_only and (args.new_window or args.recover_window):
+        parser.error("--check-only cannot modify a window")
+    if args.recover_window:
+        recover_window_transition()
+        return 0
+    if args.new_window:
+        prepare_new_window(batch_size=args.batch_size)
     if args.check_only:
         print(json.dumps(inspect_checkpoint(), ensure_ascii=False, sort_keys=True))
         return 0

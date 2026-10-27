@@ -3,10 +3,22 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from scripts.run_dev import read_local_env
+from scripts.run_dev import read_local_env, require_development_public_target
 
 
 class LocalEnvLoaderTests(unittest.TestCase):
+    def test_local_server_requires_explicit_development_public_database(self):
+        valid = {"TEI_ENTITY_SUPABASE_URL": "https://canqjiokrtcxkwblhmml.supabase.co",
+                 "TEI_ENTITY_ANON_KEY": "public-test-only"}
+        require_development_public_target(valid)
+        for bad in ({}, {**valid, "TEI_ENTITY_SUPABASE_URL": "https://rztdbdurkjfrirsrrhtu.supabase.co"},
+                    {**valid, "TEI_ENTITY_ANON_KEY": ""},
+                    {**valid, "TEI_PRIVATE_SUPABASE_URL": "https://rztdbdurkjfrirsrrhtu.supabase.co"},
+                    {**valid, "TEI_PRIVATE_SUPABASE_URL": valid["TEI_ENTITY_SUPABASE_URL"],
+                     "TEI_PRIVATE_SUPABASE_ANON_KEY": "different-key"}):
+            with self.assertRaises(RuntimeError):
+                require_development_public_target(bad)
+
     def test_url_with_shell_metacharacters_is_not_executed_or_echoed(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".env.local"
