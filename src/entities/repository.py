@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -71,18 +72,26 @@ class EntityRepository:
         request = urllib.request.Request(
             f"{self.url.rstrip('/')}/rest/v1/{table}?{urlencode(params)}",
             headers={"apikey": self.key, "Authorization": f"Bearer {self.key}"})
-        try:
-            with urllib.request.urlopen(request, timeout=12) as response:
-                rows = json.load(response)
-        except urllib.error.HTTPError as exc:
-            if exc.code == 404 and table in (
-                    "rpc/find_entity_relationship_path", "rpc/find_company_shared_node_path",
-                    "rpc/political_contributions_for_entity",
-                    "politician_terms", "asset_declarations"):
-                raise EntityFeatureUnavailable("Additive Entity feature is not installed") from exc
-            raise EntityStoreUnavailable("Entity database unavailable") from exc
-        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
-            raise EntityStoreUnavailable("Entity database unavailable") from exc
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(request, timeout=12) as response:
+                    rows = json.load(response)
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code == 404 and table in (
+                        "rpc/find_entity_relationship_path", "rpc/find_company_shared_node_path",
+                        "rpc/political_contributions_for_entity",
+                        "politician_terms", "asset_declarations"):
+                    raise EntityFeatureUnavailable("Additive Entity feature is not installed") from exc
+                if attempt == 0 and (exc.code == 429 or 500 <= exc.code <= 599):
+                    time.sleep(0.2)
+                    continue
+                raise EntityStoreUnavailable("Entity database unavailable") from exc
+            except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+                if attempt == 0:
+                    time.sleep(0.2)
+                    continue
+                raise EntityStoreUnavailable("Entity database unavailable") from exc
         if not isinstance(rows, list):
             raise EntityStoreUnavailable("Unexpected entity database response")
         return rows

@@ -61,6 +61,34 @@ class EntitySearchTests(unittest.TestCase):
             "search_query": "測試", "result_limit": 7, "entity_type_filter": "Company"})])
         self.assertEqual(result["groups"], {"Company": 1, "Person": 1})
 
+    def test_public_store_retries_one_transient_read_failure(self):
+        response = Mock()
+        response.read.return_value = b'[{"entity_id":"company-1"}]'
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        with patch.dict("os.environ", {"TEI_ENTITY_SUPABASE_URL": "https://example.supabase.co",
+                                    "TEI_ENTITY_ANON_KEY": "test-public-key"}), \
+                patch("src.entities.repository.urllib.request.urlopen",
+                      side_effect=[TimeoutError("temporary"), response]) as opened, \
+                patch("src.entities.repository.time.sleep") as backoff:
+            rows = EntityRepository()._get("rpc/search_entities", {"search_query": "中華電信"})
+        self.assertEqual(rows, [{"entity_id": "company-1"}])
+        self.assertEqual(opened.call_count, 2)
+        backoff.assert_called_once()
+
+    def test_public_store_does_not_retry_permanent_client_error(self):
+        from urllib.error import HTTPError
+        with patch.dict("os.environ", {"TEI_ENTITY_SUPABASE_URL": "https://example.supabase.co",
+                                    "TEI_ENTITY_ANON_KEY": "test-public-key"}), \
+                patch("src.entities.repository.urllib.request.urlopen",
+                      side_effect=HTTPError("https://example.supabase.co", 400,
+                                            "Bad Request", {}, None)) as opened, \
+                patch("src.entities.repository.time.sleep") as backoff:
+            with self.assertRaises(EntityStoreUnavailable):
+                EntityRepository()._get("rpc/search_entities", {"search_query": "中華電信"})
+        opened.assert_called_once()
+        backoff.assert_not_called()
+
     def test_repository_adds_bounded_live_company_fallback(self):
         repository = EntityRepository(transport=lambda table, params: [])
         response = Mock()
