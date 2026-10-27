@@ -53,7 +53,9 @@ class CloudAppTests(unittest.TestCase):
             if table == 'evidence_records':
                 raise TimeoutError('one source is slow')
             return 462
-        with patch('app.db_count', side_effect=count) as counted, patch('app.core.SUPABASE_KEY', 'anon-test'):
+        with patch('app.db_count', side_effect=count) as counted, \
+                patch('app.core.SUPABASE_KEY', 'anon-test'), \
+                patch('app.log_event') as logged:
             status, body = self.request('/api/status')
             self.assertTrue(status.startswith('200'))
             payload = json.loads(body)
@@ -66,6 +68,12 @@ class CloudAppTests(unittest.TestCase):
             self.assertEqual(cached_status, status)
             self.assertEqual(json.loads(cached_body)['status'], 'partial')
             self.assertEqual(counted.call_count, first_calls)
+            warnings = [call for call in logged.call_args_list
+                        if call.args[1] == 'status_count_unavailable']
+            self.assertEqual(len(warnings), 1)
+            self.assertEqual(warnings[0].kwargs,
+                             {'metric': 'canonical.evidence_records',
+                              'error_type': 'TimeoutError', 'http_status': None})
 
     def test_status_retries_only_a_transiently_failed_count(self):
         import app as entrypoint
@@ -80,7 +88,8 @@ class CloudAppTests(unittest.TestCase):
             return 42
 
         with patch('app.db_count', side_effect=count) as counted, \
-                patch('app.core.SUPABASE_KEY', 'anon-test'):
+                patch('app.core.SUPABASE_KEY', 'anon-test'), \
+                patch('app.log_event') as logged:
             status, body = self.request('/api/status')
         self.assertTrue(status.startswith('200'))
         payload = json.loads(body)
@@ -88,6 +97,8 @@ class CloudAppTests(unittest.TestCase):
         self.assertEqual(payload['supabase']['canonical']['evidence_records'], 42)
         self.assertEqual(attempts['evidence_records'], 2)
         self.assertEqual(counted.call_count, 12)
+        self.assertFalse(any(call.args[1] == 'status_count_unavailable'
+                             for call in logged.call_args_list))
 
     def test_domain_requires_a_domain(self):
         with self.assertRaises(ValueError):

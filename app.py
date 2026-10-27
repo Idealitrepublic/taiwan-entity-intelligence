@@ -96,9 +96,9 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
             def checked_count(spec):
                 label, table, filters = spec
                 try:
-                    return label, db_count(table, **filters), False
-                except Exception:
-                    return label, None, True
+                    return label, db_count(table, **filters), None
+                except Exception as exc:
+                    return label, None, exc
 
             with ThreadPoolExecutor(max_workers=8) as pool:
                 results = list(pool.map(checked_count, specs))
@@ -106,10 +106,14 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
             if failed_specs:
                 # Exact counts on large Evidence tables can fail briefly during
                 # cold starts. Retry only those counts without repeating successes.
-                with ThreadPoolExecutor(max_workers=2) as pool:
-                    retried = dict((label, (label, value, failed))
-                                   for label, value, failed in pool.map(checked_count, failed_specs))
+                retried = dict((label, (label, value, error))
+                               for label, value, error in map(checked_count, failed_specs))
                 results = [retried.get(result[0], result) for result in results]
+            for label, _, error in results:
+                if error:
+                    log_event('warning', 'status_count_unavailable', metric=label,
+                              error_type=type(error).__name__,
+                              http_status=getattr(error, 'code', None))
             for label, value, _ in results:
                 if label.startswith('canonical.'):
                     db.setdefault('canonical', {})[label.split('.', 1)[1]] = value
