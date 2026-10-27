@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 from src.data_health import age_hours, metric, severity
 from scripts.sync_public_sources import should_publish_judicial_index
@@ -76,13 +77,37 @@ class DataHealthTests(unittest.TestCase):
 
     def test_report_separates_public_probe_from_all_state_sql_audit(self):
         report = {"generated_at": "2026-09-22T00:00:00Z", "metrics": []}
-        audit = {"audited_at": "2026-09-22T01:00:00Z", "project_ref": "example",
+        audit = {"audited_at": "2026-09-21T23:00:00Z", "project_ref": "example",
                  "all_states_counts": {"politician_entities": 0},
                  "missing_migration_versions": ["123"]}
-        output = markdown(report, audit)
+        with patch('scripts.data_health.public_supabase_config', return_value=('https://example.supabase.co', 'public')):
+            output = markdown(report, audit)
         self.assertIn("separate snapshot", output)
         self.assertIn("`politician_entities`: 0", output)
         self.assertIn("123", output)
+
+    def test_health_report_excludes_stale_or_other_project_audit(self):
+        report = {'generated_at': '2026-10-27T00:00:00Z', 'metrics': []}
+        for audit in ({'project_ref': 'example', 'audited_at': '2026-09-22T00:00:00Z'},
+                      {'project_ref': 'production', 'audited_at': '2026-10-27T00:00:00Z'}):
+            with patch('scripts.data_health.public_supabase_config', return_value=('https://example.supabase.co', 'public')):
+                output = markdown(report, audit)
+            self.assertIn('cross-check excluded', output)
+            self.assertNotIn('Preview has no Supabase override', output)
+            self.assertNotIn('All publication states were counted', output)
+
+    def test_political_findings_follow_current_public_rows_without_inventing_draft_state(self):
+        report = {'generated_at': '2026-10-27T00:00:00Z', 'metrics': [
+            {'source': 'political_contributions', 'observed': 1, 'severity': 'Unknown'},
+            {'source': 'asset_declarations', 'observed': 1, 'severity': 'Unknown'}]}
+        # Populate metric columns because the same rows render the benchmark table.
+        for row in report['metrics']:
+            row.update({key: None for key in ('scope', 'expected', 'coverage', 'freshness_hours',
+                                              'error_count', 'duplicate_rate', 'provenance_rate')})
+        output = markdown(report)
+        self.assertIn('1 contribution and 1 asset row(s)', output)
+        self.assertNotIn('are staged as Development drafts', output)
+        self.assertNotIn('two source-scoped, missing-ID rows remain draft', output)
 
     def test_report_describes_latest_local_judicial_failure(self):
         report = {"generated_at": "2026-09-23T18:00:00Z", "metrics": [],

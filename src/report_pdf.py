@@ -1,6 +1,7 @@
 """Offline PDF renderer for the existing evidence-backed report projection."""
 from html import escape
 from io import BytesIO
+import json
 from pathlib import Path
 from threading import RLock
 from urllib.parse import urlsplit
@@ -109,7 +110,7 @@ def _register_font():
 
 def render_report_pdf(report):
     # JSON retains the full projection; PDF emphasizes readable findings and sources.
-    from src.report_presentation import present_report
+    from src.report_presentation import LABELS, format_date, format_money, present_report, source_locator_text, unique_records
 
     _register_font()
     output = BytesIO()
@@ -118,10 +119,13 @@ def render_report_pdf(report):
     width = page_width - margin * 2
     view = present_report(report)
     live_company = report.get("report_type") == "LIVE_COMPANY"
-    source_refs = {}
-    for index, source in enumerate(report.get("sources") or [], 1):
+    def source_key(source):
         locator = source.get("source_record_id") or source.get("source_locator")
-        source_refs[(source.get("source_url"), locator)] = f"S{index:03d}"
+        return (source.get("source_url"), json.dumps(locator, sort_keys=True, ensure_ascii=False),
+                source.get("retrieved_at"), source.get("id"), source.get("content_hash"))
+
+    sources = unique_records(report.get("sources"))
+    source_refs = {source_key(source): f"S{index:03d}" for index, source in enumerate(sources, 1)}
     normal = ParagraphStyle(
         "Body", fontName=FONT, fontSize=9, leading=14, wordWrap="CJK",
         splitLongWords=True, textColor=colors.HexColor("#17202a"))
@@ -130,6 +134,7 @@ def render_report_pdf(report):
         spaceAfter=8, keepWithNext=True)
     title = ParagraphStyle("Title", parent=heading, fontSize=19, leading=27)
     muted = ParagraphStyle("Muted", parent=normal, textColor=colors.HexColor("#5c6975"))
+    item_heading = ParagraphStyle("Item heading", parent=muted, keepWithNext=True)
 
     def paragraph(value, style=normal, key=""):
         text = escape(str(value)).replace("\n", "<br/>")
@@ -140,7 +145,7 @@ def render_report_pdf(report):
         return Paragraph(text, style)
 
     story = [paragraph(report["title"], title), paragraph(report["methodology"]),
-             paragraph(f"產生時間 / Generated at: {report['generated_at']}", muted),
+             paragraph(f"產生時間 / Generated at: {view['generated_at'] or '—'}", muted),
              Spacer(1, 7), paragraph("調查摘要 / Investigation summary", heading)]
     summary = "    ·    ".join(f"{label}: {count}" for label, count in view["summary"].items())
     story.extend([paragraph(summary), Spacer(1, 5)])
@@ -148,7 +153,7 @@ def render_report_pdf(report):
         story.append(paragraph(warning, muted))
 
     def table(facts):
-        rows = [[paragraph("Field / 欄位"), paragraph("Value / 內容")]]
+        rows = [[paragraph("欄位 / Field"), paragraph("內容 / Value")]]
         rows.extend([paragraph(key, muted), paragraph(value, key=key)] for key, value in facts)
         if len(rows) == 1:
             return
@@ -168,13 +173,16 @@ def render_report_pdf(report):
         ])
         story.extend([result, Spacer(1, 8)])
 
-    def compact_table(rows, proportions):
+    def compact_table(rows, proportions, section_title):
+        rows = [[paragraph(section_title, heading)] + [''] * (len(proportions) - 1)] + rows
         result = LongTable(rows, colWidths=[width * part for part in proportions],
-                           repeatRows=1, splitByRow=1, splitInRow=1, hAlign="LEFT")
+                           repeatRows=2, splitByRow=1, splitInRow=1, hAlign="LEFT")
         result.setStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e9eef4")),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+            ("SPAN", (0, 0), (-1, 0)),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#e9eef4")),
+            ("ROWBACKGROUNDS", (0, 2), (-1, -1),
              [colors.white, colors.HexColor("#f7f9fb")]),
             ("LINEBELOW", (0, 0), (-1, -1), .25, colors.HexColor("#dce3e8")),
             ("LEFTPADDING", (0, 0), (-1, -1), 5),
@@ -186,16 +194,20 @@ def render_report_pdf(report):
 
     def source_ref(evidence):
         evidence = evidence or {}
-        url = evidence.get("source_url")
-        locator = evidence.get("source_record_id") or evidence.get("source_locator")
-        return source_refs.get((url, locator)) or next(
-            (ref for (source_url, _), ref in source_refs.items() if url and source_url == url), "—")
+        key = source_key(evidence)
+        if key in source_refs:
+            return source_refs[key]
+        matches = [ref for candidate, ref in source_refs.items()
+                   if key[0] and candidate[:3] == key[:3]]
+        return matches[0] if len(matches) == 1 else "來源表 / See sources"
 
     for section in view["sections"]:
         key = section["key"]
         if live_company and key in ("key_relationships", "government_contracts", "judgments", "penalties"):
-            records = report.get(key) or []
-            story.append(paragraph(f"{section['title']} · {len(records)} 筆", heading))
+            records = unique_records(report.get(key))
+            records.sort(key=lambda record: format_date((record.get('relationship') or {}).get('start_date') or
+                                                       (record.get('relationship') or {}).get('observed_at')) or '',
+                         reverse=True)
             if records:
                 rows = [[paragraph(value, muted) for value in
                          ("日期 / Date", "關係 / Relationship", "對象 / Connected record", "證據 / Evidence")]]
@@ -204,26 +216,31 @@ def render_report_pdf(report):
                     target = record.get("target_entity") or {}
                     source = record.get("source_entity") or {}
                     kind = relation.get("relationship_type") or "來源觀察 / Source observation"
-                    from src.report_presentation import LABELS
-                    rows.append([paragraph(relation.get("start_date") or "—"),
-                                 paragraph(LABELS.get(kind, kind)),
+                    amount = format_money(relation.get('amount'), relation.get('currency'))
+                    relation_label = LABELS.get(kind, kind) + (f"\n金額 / Amount: {amount}" if amount else "")
+                    if relation.get('source_role'):
+                        relation_label += "\n" + relation['source_role']
+                    rows.append([paragraph(format_date(relation.get("start_date") or relation.get('observed_at')) or "—"),
+                                 paragraph(relation_label),
                                  paragraph(f"{source.get('display_name') or '—'} → {target.get('display_name') or '—'}"),
                                  paragraph(source_ref(record.get("evidence")))])
-                compact_table(rows, (.14, .23, .53, .10))
+                compact_table(rows, (.14, .23, .53, .10), f"{section['title']} · {len(records)} 筆")
             continue
-        if live_company and key == "sources":
-            sources = report.get("sources") or []
-            story.append(paragraph(f"{section['title']} · {len(sources)} 筆", heading))
+        if key == "sources":
             if sources:
                 rows = [[paragraph(value, muted) for value in
                          ("編號 / Ref", "來源與定位 / Source & locator", "原始連結 / Source URL", "取得 / Retrieved")]]
-                for source in sources:
-                    locator = source.get("source_record_id") or source.get("source_locator") or ""
-                    rows.append([paragraph(source_ref(source)),
-                                 paragraph(f"{source.get('source_name') or source.get('title') or '—'} · {locator}"),
+                for source_index, source in enumerate(sources, 1):
+                    locator = source_locator_text(source)
+                    provider = source.get('source_name') or source.get('source') or ''
+                    title_text = source.get('title') or provider or '—'
+                    source_text = '\n'.join(str(part) for part in (title_text,
+                        provider if provider != title_text else '', locator) if part)
+                    rows.append([paragraph(f"S{source_index:03d}"),
+                                 paragraph(source_text),
                                  paragraph(source.get("source_url") or "—", key="Source URL"),
-                                 paragraph(str(source.get("retrieved_at") or "—")[:10])])
-                compact_table(rows, (.09, .28, .50, .13))
+                                 paragraph(format_date(source.get("retrieved_at")) or "—")])
+                compact_table(rows, (.07, .43, .30, .20), f"{section['title']} · {len(sources)} 筆")
             continue
         if section["key"] == "relationship_graph":
             diagrams = graph_diagrams(report.get("relationship_graph"), width)
@@ -237,7 +254,7 @@ def render_report_pdf(report):
         else:
             story.append(paragraph(f"{section['title']} · {len(section['items'])} 筆", heading))
         for index, item in enumerate(section["items"], 1):
-            story.append(paragraph(f"{index}. {item['title']}", muted))
+            story.append(paragraph(f"{index}. {item['title']}", item_heading))
             table(item["facts"])
     if view["empty"]:
         story.append(paragraph("尚無已發布紀錄 / No published records", heading))

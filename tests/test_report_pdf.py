@@ -32,8 +32,8 @@ class ReportPDFTests(unittest.TestCase):
         self.assertTrue(data.startswith(b"%PDF-"))
         reader = PdfReader(BytesIO(data))
         text = "".join(page.extract_text() for page in reader.pages)
-        for value in ("大魯閣實業股份有限公司", "府勞動字第1130101133號", "50000",
-                      "2026-10-06T08:01:44Z", "來源 / Sources"):
+        for value in ("大魯閣實業股份有限公司", "府勞動字第1130101133號", "50,000",
+                      "2026-10-06 16:01:44", "來源 / Sources"):
             self.assertIn(value, text)
         self.assertTrue(all(float(p.mediabox.width) > float(p.mediabox.height) for p in reader.pages))
         fonts = [f.get_object() for p in reader.pages for f in p['/Resources']['/Font'].get_object().values()]
@@ -81,13 +81,28 @@ class ReportPDFTests(unittest.TestCase):
             content = content.replace(
                 'T.E.I. · Evidence-backed public records / 公開資料與證據', '')
             content = re.sub(r'Page / 頁 \d+', '', content)
-            content = re.sub(r'Field / 欄位\s+Value / 內容', '', content)
+            content = re.sub(r'欄位 / Field\s+內容 / Value', '', content)
             pages.append(''.join(content.split()))
         text = ''.join(pages)
         self.assertGreater(len(reader.pages), 1)
         self.assertIn(english, text)
         self.assertIn(chinese, text)
         self.assertIn(url, text)
+
+    def test_structured_source_locator_and_distinct_record_refs_render_safely(self):
+        value = report()
+        value['sources'] = [
+            {'title': '官方一號紀錄', 'source_url': 'https://example.gov.tw/records',
+             'source_locator': {'dataset': 'labor', 'record': 1},
+             'retrieved_at': '2026-10-06T08:01:44Z'},
+            {'title': '官方二號紀錄', 'source_url': 'https://example.gov.tw/records',
+             'source_locator': {'dataset': 'labor', 'record': 2},
+             'retrieved_at': '2026-10-06T08:01:44Z'},
+        ]
+        reader = PdfReader(BytesIO(render_report_pdf(value)))
+        text = ''.join(page.extract_text() for page in reader.pages)
+        for token in ('S001', 'S002', '官方一號紀錄', '官方二號紀錄', '2026-10-06 16:01:44'):
+            self.assertIn(token, text)
 
     def test_pdf_format_preserves_auth_and_calls_same_report_projection(self):
         service = Mock()

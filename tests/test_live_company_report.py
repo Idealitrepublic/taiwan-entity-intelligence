@@ -32,6 +32,7 @@ class LiveCompanyReportTests(unittest.TestCase):
     def test_full_available_live_graph_and_sources_in_pdf(self):
         awards = {"status": "ok", "source": "政府電子採購網", "retrieved_at": "2026-10-21T00:00:00Z",
                   "records": [{"id": "award-1", "title": "通信採購", "date": "2025-02-01",
+                               "identity_status": "mirror_exact_bidder_id_unconfirmed_official",
                                "source_url": "https://example.gov.tw/award"}]}
         related = {"status": "ok", "items": [{"uniform_number": "12345678", "company_name": "關聯公司",
                     "connection_type": "same_award_notice", "connection_label": "共同得標 / Co-winner",
@@ -45,6 +46,7 @@ class LiveCompanyReportTests(unittest.TestCase):
         self.assertEqual(len(report["relationship_graph"]["nodes"]), 5)
         self.assertEqual(len(report["relationship_graph"]["edges"]), 4)
         self.assertEqual(len(report["government_contracts"]), 1)
+        self.assertIn('官方公告待核', report['government_contracts'][0]['relationship']['source_role'])
         self.assertEqual(len(report["penalties"]), 1)
         self.assertFalse(report["relationship_graph"]["truncated"])
         pdf = render_report_pdf(report)
@@ -92,6 +94,44 @@ class LiveCompanyReportTests(unittest.TestCase):
         html = (Path(__file__).resolve().parents[1] / 'web/index.html').read_text()
         self.assertIn('data-report-scope="company"', html)
         self.assertIn('預覽雙語 PDF / Preview PDF', html)
+
+    def test_dictionary_locator_survives_report_assembly_and_pdf_download(self):
+        def with_locator(uniform):
+            data = company(uniform)
+            evidence = data['graph']['nodes'][1]['evidence']
+            evidence.pop('source_record_id')
+            evidence['source_locator'] = {'dataset': 'labor', 'record': 1}
+            data['graph']['nodes'][1]['properties'].update(fine='12500.50', currency='TWD',
+                                                         identity_status='candidate')
+            return data
+
+        report = ReportService().company_report('96979933', company_loader=with_locator,
+                                                award_loader=lambda _: {'status': 'ok', 'records': []},
+                                                related_loader=lambda _: {'status': 'ok', 'items': []})
+        self.assertTrue(any(row.get('source_locator') == {'dataset': 'labor', 'record': 1}
+                            for row in report['sources']))
+        self.assertEqual(len(report['sources']), 2, 'registry source must not be duplicated')
+        binary = render_report_pdf(report)
+        self.assertTrue(binary.startswith(b'%PDF-'))
+        text = ''.join(page.extract_text() for page in PdfReader(BytesIO(binary)).pages)
+        self.assertIn('NT$ 12,500.50', text)
+        self.assertIn('來源觀察；身分待核', text)
+        self.assertIn('身分待核', report['penalties'][0]['relationship']['source_role'])
+
+    def test_distinct_retrieval_versions_of_one_source_remain_in_register(self):
+        def versions(uniform):
+            data = company(uniform)
+            first = data['graph']['nodes'][1]
+            data['graph']['nodes'].append({**first, 'id': 'penalty:version2',
+                'evidence': {**first['evidence'], 'retrieved_at': '2026-10-22T00:00:00Z'}})
+            return data
+
+        report = ReportService().company_report('96979933', company_loader=versions,
+                                                award_loader=lambda _: {'status': 'ok', 'records': []},
+                                                related_loader=lambda _: {'status': 'ok', 'items': []})
+        observed = [row['retrieved_at'] for row in report['sources']
+                    if row.get('source_record_id') == 'labor-1']
+        self.assertEqual(set(observed), {'2026-10-21T00:00:00Z', '2026-10-22T00:00:00Z'})
 
 
 if __name__ == "__main__":

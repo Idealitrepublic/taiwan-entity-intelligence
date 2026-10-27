@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 from html import escape
+import json
 import re
 from urllib.parse import urlsplit
 
@@ -345,7 +346,9 @@ class ReportService:
                         "retrieved_at": awards.get("retrieved_at")}
             nodes[record_id] = {"id": record_id, "type": "procurement",
                                 "label": row.get("title") or "政府決標公告",
-                                "properties": {"date": row.get("date"), "agency": row.get("agency")},
+                                "properties": {"date": row.get("date"), "agency": row.get("agency"),
+                                               "identity_status": row.get("identity_status"),
+                                               "verification_scope": row.get("verification_scope")},
                                 "evidence": evidence}
             edges.append({"source": root_id, "target": record_id,
                           "relationship": "procurement_award", "evidence": evidence})
@@ -375,11 +378,14 @@ class ReportService:
             evidence = node.get("evidence") or {}
             if evidence.get("source_url"):
                 locator = evidence.get("source_record_id") or evidence.get("source_locator")
-                key = (evidence.get("source_url"), locator)
+                key = (evidence.get("source_url"),
+                       json.dumps(locator, sort_keys=True, ensure_ascii=False),
+                       evidence.get("retrieved_at"), evidence.get("content_hash"))
                 sources[key] = {"title": evidence.get("title") or node.get("label"),
                                 "source_name": evidence.get("source_name"),
                                 "source_url": evidence["source_url"],
                                 "retrieved_at": evidence.get("retrieved_at"),
+                                "content_hash": evidence.get("content_hash"),
                                 "source_record_id": evidence.get("source_record_id"),
                                 "source_locator": evidence.get("source_locator")}
         for edge in edges:
@@ -389,11 +395,25 @@ class ReportService:
             if not evidence.get("source_url"):
                 continue
             raw_type = edge.get("relationship") or "source_observation"
+            unverified = (edge.get("observation_only") or target.get("type") == "judicial"
+                          or any(status in ("candidate", "name_mention_unverified", "unverified", "UNRESOLVED")
+                                 for status in (evidence.get("identity_status"),
+                                                (edge.get("properties") or {}).get("identity_status"),
+                                                (target.get("properties") or {}).get("identity_status"))))
             relationship = {"relationship_type": LIVE_RELATIONSHIP_TYPES.get(raw_type, raw_type),
                             "start_date": (target.get("properties") or {}).get("date"),
                             "source_role": "來源觀察；身分待核 / Source observation; verify identity"
-                            if edge.get("observation_only") or target.get("type") == "judicial"
+                            if unverified
                             else "官方統編或來源內紀錄 / Exact ID or source-scoped record"}
+            properties = target.get("properties") or {}
+            if properties.get("identity_status") == "mirror_exact_bidder_id_unconfirmed_official":
+                relationship["source_role"] = "民間介接統編命中；官方公告待核 / Mirror ID match; verify official notice"
+            amount = properties.get("amount")
+            if amount is None:
+                amount = properties.get("fine")
+            if amount is not None:
+                relationship["amount"] = amount
+                relationship["currency"] = properties.get("currency")
             record = {"relationship": relationship,
                       "source_entity": {"display_name": source.get("label") or source.get("id")},
                       "target_entity": {"display_name": target.get("label") or target.get("id")},
@@ -406,10 +426,11 @@ class ReportService:
             else:
                 relationships.append(record)
         if registry.get("source_url"):
-            sources[(registry["source_url"], uniform)] = {
+            sources[(registry["source_url"], json.dumps(uniform), registry.get("fetched_at"),
+                     root_evidence.get("content_hash"))] = {
                 "title": "公司登記 / Company registry", "source_name": registry["source"],
                 "source_url": registry["source_url"], "retrieved_at": registry.get("fetched_at"),
-                "source_record_id": uniform}
+                "source_record_id": uniform, "content_hash": root_evidence.get("content_hash")}
         truncated = bool(awards.get("limited") or (related or {}).get("limited")
                          or (data.get("judicial_result") or {}).get("limited"))
         return {"report_version": REPORT_VERSION, "report_type": "LIVE_COMPANY",
@@ -599,7 +620,7 @@ header,section{{min-width:0;max-width:100%;background:white;border:1px solid #dc
 dl{{display:block;min-width:0;margin:4px 0}}.report-field{{display:grid;grid-template-columns:minmax(145px,23%) minmax(0,1fr);gap:12px;min-width:0;padding:4px 0}}dt{{color:#5c6975;overflow-wrap:break-word}}dd{{min-width:0;margin:0;overflow-wrap:anywhere;word-break:normal;white-space:pre-wrap}}a{{color:#1769aa;overflow-wrap:anywhere}}@media(max-width:640px){{body{{padding:12px}}.summary{{grid-template-columns:1fr 1fr}}.report-field{{grid-template-columns:minmax(0,1fr);gap:2px}}}}
 @page{{size:A4 landscape;margin:12mm}}@media print{{html,body{{width:auto;max-width:none;margin:0;padding:0;background:white;font-size:10pt}}header,section{{border-color:#dce3e8;margin:0 0 7mm;padding:4mm;break-inside:auto}}article{{break-inside:auto}}h1,h2,h3,dt{{break-after:avoid-page}}.report-field{{break-inside:avoid-page;page-break-inside:avoid}}a{{color:#1769aa;text-decoration:underline}}}}
 </style></head><body><header><h1>{escape(report['title'])}</h1>
-<p>{escape(report['methodology'])}</p><p class="meta">產生時間 / Generated at: {escape(report['generated_at'])} · 類型 / Type: {escape(report['report_type'])}</p>
+<p>{escape(report['methodology'])}</p><p class="meta">產生時間 / Generated at: {escape(view['generated_at'] or '—')} · 類型 / Type: {escape(view['report_type'] or '—')}</p>
 <div class="summary">{summary}</div>{warnings}</header>{sections}{empty}</body></html>"""
 
 

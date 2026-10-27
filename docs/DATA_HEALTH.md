@@ -1,6 +1,6 @@
 # Data Health — DATA Phase 6
 
-Generated: 2026-10-26T14:25:35.910085+00:00
+Generated: 2026-10-27T14:34:27.512112+00:00
 Benchmark Supabase: https://canqjiokrtcxkwblhmml.supabase.co
 
 This is a read-only, fixed-sample benchmark, **not national coverage**.
@@ -9,28 +9,30 @@ See [Phase 6 offline acceptance](DATA_PHASE_6_OFFLINE_ACCEPTANCE.md) for sample 
 
 | Source | Scope | Observed | Expected | Coverage | Freshness h | Errors | Duplicate | Provenance | Severity |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---|
-| company_registration | 3 fixed valid-company identifiers; live MOEA | 0 | 3 | 0.0 | 0.0 | 3 | unknown | unknown | High |
-| directors | same 3 identifiers; presence only | 0 | 3 | 0.0 | 0.0 | 3 | unknown | unknown | High |
-| procurement | same 3 identifiers; mirror response, not award recall | 3 | 3 | 1.0 | unknown | 0 | 0.0 | 0.0 | Medium |
-| labor_penalties | indexed company-name reads; national recall unknown | 13 | unknown | unknown | 486.4 | 0 | 0.0 | 0.0 | Medium |
-| judiciary | 3 official known-case JIDs; not historical recall | 3 | 3 | 1.0 | 764.0 | 0 | 0.0 | 1.0 | Medium |
-| politicians | official term-11 committee lgno matched to published politician_terms; not all legislators | 121 | 121 | 1.0 | unknown | 0 | 0.0 | 0.0 | Medium |
-| political_contributions | public published-data sample; source denominator not yet established | 1 | unknown | unknown | 798.0 | 0 | 0.0 | 1.0 | Unknown |
-| asset_declarations | public published-data sample; source denominator not yet established | 1 | unknown | unknown | 798.0 | 0 | 0.0 | 1.0 | Unknown |
+| company_registration | 3 fixed valid-company identifiers; live MOEA | 3 | 3 | 1.0 | 0.0 | 0 | 0.0 | 1.0 | OK |
+| directors | same 3 identifiers; presence only | 3 | 3 | 1.0 | 0.0 | 0 | 0.0 | 1.0 | OK |
+| procurement | same 3 identifiers; mirror response, not award recall | 3 | 3 | 1.0 | unknown | 0 | 0.0 | 1.0 | OK |
+| labor_penalties | indexed company-name reads; national recall unknown | 13 | unknown | unknown | 510.5 | 0 | 0.0 | 0.0 | Medium |
+| judiciary | 3 official known-case JIDs; not historical recall | 3 | 3 | 1.0 | 788.2 | 0 | 0.0 | 1.0 | Medium |
+| politicians | official term-11 committee lgno matched to published politician_terms; not all legislators | 121 | 121 | 1.0 | 831.0 | 0 | 0.0 | 1.0 | Medium |
+| political_contributions | public published-data sample; source denominator not yet established | 1 | unknown | unknown | 822.1 | 0 | 0.0 | 1.0 | Unknown |
+| asset_declarations | public published-data sample; source denominator not yet established | 1 | unknown | unknown | 822.1 | 0 | 0.0 | 1.0 | Unknown |
 | entity_resolution | private resolution_candidates excluded by RLS | unknown | unknown | unknown | unknown | 0 | unknown | unknown | Unknown |
 
 ## Findings and disposition
 
-- **Release gate:** High = 2; company_registration, directors.
-- **Politician master data:** official Legislative Yuan term-11 rows were ingested into the isolated Development DB. Exact `lgno` rows are published; two source-scoped, missing-ID rows remain draft. This is an official-ID overlap benchmark, not national coverage.
-- **Contributions/assets:** real corporate-donor source rows and one Gazette asset line are staged as Development drafts. The Control Yuan ZIP has donor uniform numbers but no Legislative Yuan `lgno`; the Gazette PDF has declarant name and office but no `lgno`. A source-backed reviewed crosswalk remains required; staged rows do not count as public coverage.
+- **Data-quality benchmark gate:** High = 0; none. This does not clear operational freshness, security, capacity or deployment gates.
+- **Politician master data:** the current official term-11 `lgno` overlap is 121/121. This measures the stated public sample; it does not establish national coverage or private draft counts.
+- **Contributions/assets:** current public samples contain 1 contribution and 1 asset row(s). These are bounded public reads; national denominators and unpublished draft counts remain unknown. This probe does not re-audit private identity crosswalks or infer matching accuracy from row counts.
 - **Judiciary:** latest local official JList/JDoc attempt 2026-09-24T18:23:51+00:00: status upstream_unavailable, 15362 documents ingested across the window; 0 pending retries; 2720 verified upstream-unavailable documents; 0 T.E.I. ingestion errors; 724/724 JList batches complete (724 attempted; latest batch 0, 18082 changed JIDs). The completed window has source-side document gaps; it is not complete JDoc coverage or national historical recall.
 - **Provenance/unknowns:** procurement and penalty legacy records may lack row-level provenance. Private resolution candidates remain hidden by RLS, so live precision/recall is unknown.
+
+Database cross-check excluded from current findings: its target differs from this benchmark or its timestamp is missing/older than 24 hours. Refresh the target-specific read-only SQL audit before using all-state counts.
 
 ### Judicial JList window coverage (not national historical recall)
 
 - Attempted: 18082/18082 JIDs (1.0); ingested 15362, pending ingestion 0, verified upstream unavailable 2720.
-- Ingestion failure rate: 0.0; upstream-unavailable rate: 0.1504; latest attempt age: 764.0 h.
+- Ingestion failure rate: 0.0; upstream-unavailable rate: 0.1504; latest attempt age: 788.2 h.
 These ratios use only this fixed JList window and never stand in for all historical judgments.
 
 ### Verified upstream document unavailable (not T.E.I. ingestion failure)
@@ -2759,25 +2761,6 @@ These public JIDs stayed in the official JList but JDoc returned the same HTTP 2
 | ULDV,115,家護,320,20260720,1 | 2026-9-17 | upstream_document_error | 2 | 2026-09-24T16:05:51+00:00 | 2026-09-24T18:23:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
 | ULDV,115,家護,334,20260720,2 | 2026-9-17 | upstream_document_error | 2 | 2026-09-24T16:05:51+00:00 | 2026-09-24T18:23:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
 | ULDV,115,簡上,55,20260916,1 | 2026-9-17 | upstream_document_error | 2 | 2026-09-24T16:04:19+00:00 | 2026-09-24T18:23:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-
-## Privileged, read-only database cross-check
-
-Audited: 2026-09-22T19:20:00Z against rztdbdurkjfrirsrrhtu; this is a separate snapshot, not refreshed by the public benchmark.
-All publication states were counted using equivalent read-only SQL:
-
-- `politician_entities`: 0 record(s) across all states.
-- `politician_terms`: 0 record(s) across all states.
-- `political_contributions`: 0 record(s) across all states.
-- `asset_declarations`: 0 record(s) across all states.
-
-DATA Phase 1–4 migrations absent from that database: 20260922170414, 20260922173008, 20260922174447, 20260922182447.
-The master/contribution ingestion entrypoints are absent; the older asset entrypoint exists. Anon RLS is publication-filtered but cannot explain zero rows across all states.
-Preview has no Supabase override in Vercel environment variables and falls back to this same public project. Therefore Preview cannot gain independent data without an isolated database.
-
-## Previous GitHub judiciary sync
-
-[GitHub Actions run](https://github.com/Idealitrepublic/taiwan-entity-intelligence/actions/runs/35774296486): failed; 15 documents read before failure. Cause: official JDoc returned a server-side null-object error for one listed JID. No Production data was written.
-The connector now uses bounded JDoc batches, per-request timeout/retry, persisted window progress, and per-source failures. A failed or partial window cannot replace the last usable index; source-side gaps remain High until a clean verified run.
 
 ## Reproduce and rollback
 

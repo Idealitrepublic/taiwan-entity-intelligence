@@ -99,7 +99,9 @@ def benchmark(now=None):
         error_counts["procurement"] += bool(err or result and result.get("status") != "ok")
         if result and result.get("status") == "ok":
             awards.append(result)
-            observations["procurement"].extend(result["records"])
+            observations["procurement"].extend({**row,
+                "retrieved_at": result.get("retrieved_at"), "provenance": result.get("source")}
+                for row in result["records"])
         rows, err = probe("labor_penalties", lambda: public_rows(
             "source_records", {"company_name": "eq." + company, "dataset": "eq.penalties"}, 100))
         error_counts["labor_penalties"] += bool(err)
@@ -184,12 +186,17 @@ def benchmark(now=None):
     output.append(judicial_metric)
 
     source_ids, source_err = probe("politicians", official_term_11_ids)
-    terms, terms_err = probe("politicians", lambda: public_rows("politician_terms", {"term_number": "eq.11"}, 250))
+    terms, terms_err = probe("politicians", lambda: public_rows("politician_terms", {
+        "term_number": "eq.11", "select": "*,evidence_records!politician_terms_primary_evidence_id_fkey"
+        "(source_url,retrieved_at,source_name,source_record_id)"}, 250))
+    terms = with_primary_provenance(terms)
     matched_ids = ({str(row.get("legislator_number")) for row in terms if row.get("legislator_number") in source_ids}
                    if terms is not None and source_ids else set())
     output.append(metric("politicians", observed=len(matched_ids) if terms is not None and source_ids else None,
                          expected=len(source_ids) if source_ids else None,
-                         rows=terms, identity="id", timestamp=None, errors=int(bool(source_err)) + int(bool(terms_err)),
+                         rows=terms, identity="id",
+                         timestamp=max((row.get('retrieved_at') or '' for row in terms or []), default=None),
+                         errors=int(bool(source_err)) + int(bool(terms_err)),
                          scope="official term-11 committee lgno matched to published politician_terms; not all legislators",
                          note="Exact official identifier overlap, never name-only; source is Legislative Yuan dataset 14.",
                          required_data=True, now=now))
@@ -244,6 +251,16 @@ def markdown(report, db_audit=None):
         return "unknown" if value is None else str(value)
 
     target_url, _ = public_supabase_config()
+    audit_note = None
+    if db_audit:
+        target_ref = (urllib.parse.urlsplit(target_url).hostname or '').split('.')[0]
+        report_time = datetime.fromisoformat(report['generated_at'].replace('Z', '+00:00'))
+        audit_age = age_hours(db_audit.get('audited_at'), report_time)
+        if db_audit.get('project_ref') != target_ref or audit_age is None or audit_age > 24:
+            audit_note = ("Database cross-check excluded from current findings: its target differs "
+                          "from this benchmark or its timestamp is missing/older than 24 hours. "
+                          "Refresh the target-specific read-only SQL audit before using all-state counts.")
+            db_audit = None
     lines = ["# Data Health — DATA Phase 6", "", f"Generated: {report['generated_at']}",
              f"Benchmark Supabase: {target_url}",
              "", "This is a read-only, fixed-sample benchmark, **not national coverage**.",
@@ -255,13 +272,13 @@ def markdown(report, db_audit=None):
         lines.append("| " + " | ".join(fmt(item[key]).replace("|", "/") for key in
                      ("source", "scope", "observed", "expected", "coverage", "freshness_hours", "error_count", "duplicate_rate", "provenance_rate", "severity")) + " |")
     high = [item for item in report["metrics"] if item["severity"] == "High"]
-    reviewed_public = bool(db_audit and
-                           db_audit.get("published_counts", {}).get("political_contributions") and
-                           db_audit.get("published_counts", {}).get("asset_declarations"))
+    by_source = {item['source']: item for item in report['metrics']}
     political_finding = (
-        "- **Contributions/assets:** one Control Yuan corporate donation and one Gazette vehicle declaration were published in Development after a reviewed official-source crosswalk. Exact company uniform number, LY `lgno`, term/constituency or office/date, original Evidence, and an independent official URL are recorded. The remaining staged donations are unresolved drafts; this sample is not national coverage."
-        if reviewed_public else
-        "- **Contributions/assets:** real corporate-donor source rows and one Gazette asset line are staged as Development drafts. The Control Yuan ZIP has donor uniform numbers but no Legislative Yuan `lgno`; the Gazette PDF has declarant name and office but no `lgno`. A source-backed reviewed crosswalk remains required; staged rows do not count as public coverage.")
+        "- **Contributions/assets:** current public samples contain "
+        f"{fmt(by_source.get('political_contributions', {}).get('observed'))} contribution and "
+        f"{fmt(by_source.get('asset_declarations', {}).get('observed'))} asset row(s). "
+        "These are bounded public reads; national denominators and unpublished draft counts remain unknown. "
+        "This probe does not re-audit private identity crosswalks or infer matching accuracy from row counts.")
     judicial_sync = report.get("judicial_sync") or {}
     judicial_window = judicial_sync.get("judicial_window") or {}
     judicial_progress = judicial_sync.get("judicial_progress") or {}
@@ -294,13 +311,19 @@ def markdown(report, db_audit=None):
            "A failed or partial window is not a clean sync and cannot replace the last usable index.")
     )
     lines.extend(["", "## Findings and disposition", "",
-                  f"- **Release gate:** High = {len(high)}; " +
-                  (", ".join(item["source"] for item in high) if high else "none") + ".",
-                  "- **Politician master data:** official Legislative Yuan term-11 rows were ingested into the isolated Development DB. Exact `lgno` rows are published; two source-scoped, missing-ID rows remain draft. This is an official-ID overlap benchmark, not national coverage.",
+                  f"- **Data-quality benchmark gate:** High = {len(high)}; " +
+                  (", ".join(item["source"] for item in high) if high else "none") +
+                  ". This does not clear operational freshness, security, capacity or deployment gates.",
+                  "- **Politician master data:** the current official term-11 `lgno` overlap is "
+                  f"{fmt(by_source.get('politicians', {}).get('observed'))}/"
+                  f"{fmt(by_source.get('politicians', {}).get('expected'))}. "
+                  "This measures the stated public sample; it does not establish national coverage or private draft counts.",
                   political_finding,
                   judicial_finding,
                   "- **Provenance/unknowns:** procurement and penalty legacy records may lack row-level provenance. Private resolution candidates remain hidden by RLS, so live precision/recall is unknown.",
                   ""])
+    if audit_note:
+        lines.extend([audit_note, ""])
     if judicial_service_closed:
         lines.extend(["- **Source service hours:** the latest official `/Auth` response said the API was outside its service window. The [Judicial Yuan API specification](https://opendata.judicial.gov.tw/api/Newses/42/file) limits access to 00:00–06:00 Asia/Taipei. The fixed JList snapshot and checkpoint are preserved; this is source availability, not a credential failure or a successful ingestion.", ""])
     if judicial_quality:
