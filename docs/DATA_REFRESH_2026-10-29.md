@@ -1,6 +1,6 @@
 # 既有資料補齊紀錄 — 2026-10-29
 
-狀態：**本輪資料／本機驗收通過，Preview驗收待發布；未宣告全量完成或公開上線。** 僅更新本機與 `tei-development`，
+狀態：**本輪資料／本機與Preview API驗收通過，瀏覽器互動待登入；未宣告全量完成或公開上線。** 僅更新本機與 `tei-development`，
 Production、其憑證、資料、環境與部署均未修改。無付費升級或下一階段實作。
 
 ## 已實際更新
@@ -55,7 +55,7 @@ Production、其憑證、資料、環境與部署均未修改。無付費升級�
 - 財產PDF相關頁已渲染人工核對；原文空值、行數、股票股數及金額合計均對帳。
 - 所有公開資料寫入均通過既有資料庫約束；本輪未修改RLS或授權。
 - 唯讀全庫核對：462家公司、67,211筆已發布Evidence、1,390筆已發布關係；關係缺已發布主證據為0。
-- `accept_data_phase6.py --refresh-health`實測accepted=true、High=0；`ops_health.py --check`亦High=0，僅保留官方文件異常Medium。完整checks／build在達標後執行；Preview待部署。
+- `accept_data_phase6.py --refresh-health`實測accepted=true、High=0；`ops_health.py --check`亦High=0，僅保留官方文件異常Medium。完整checks／build在達標後執行；Preview API實測通過，瀏覽器互動未標PASS。
 
 ## 司法與發布閘門
 
@@ -113,3 +113,26 @@ Evidence成本不同，不能直接類比。未自行付費升級，也未宣稱
 健康報告的獻金觀察數100是有界公開樣本；已另以完整API分頁／SQL核對230筆，
 不將樣本數誤當總數。Unknown表示母體或品質仍未測定，不等於問題不存在。
 原始同步與修正版索引另以獨立檔案保存在私有目錄，既有原件不覆寫。
+
+## Preview 實際驗收
+
+應用程式 commit：`aa870406c004799001177f9da1b0d7058193a28e`。非main分支GitHub push成功。
+
+[本輪已驗證Preview](https://taiwan-entity-intelligence-8iq77lgj5-coldlight871029-9944.vercel.app/) READY，target不是Production。
+本節屬部署後紀錄；後續純文件提交不改變已測應用程式。
+
+| 項目 | 結果 | 實際驗證 |
+|---|---|---|
+| Development設定與連線 | PASS | Preview專用四項環境變數存在；workspace-config確認Development URL、Auth啟用；status回傳connected=true |
+| 首頁與來源搜尋 | PASS | 首頁200；黃珊珊／羅智強、劉世芳、遊說登記事項均命中；另以entity_type正確篩選驗證 |
+| 公司既有資料相容性 | PASS | 中華電信統編查詢200：13關係人、50裁罰、12司法；分流採購接口200／71筆，非公司主接口的0就判無資料 |
+| 財產與來源 | PASS | 黃珊珊3頁共63筆／63唯一ID／63主Evidence來源，頁尾無剩餘頁 |
+| 獻金與來源 | PASS | 羅智強3頁共51筆／51唯一關係ID，使用該接口回傳游標；不混用Graph游標 |
+| Graph與Evidence | PASS | Graph回傳12節點／12邊及後續游標；實際Evidence接口200並有原始來源 |
+| 最短路徑 | PASS | 兩家已發布捐贈公司找到2段公開路徑；traversal_bounded=true，兩段皆附獻金Evidence來源 |
+| 執行日誌 | PASS（本輪樣本） | 該deployment近30分鐘23筆request_complete皆200、5xx=0；另查error/fatal無紀錄，不推論永久零錯誤 |
+| 真實瀏覽器互動 | PARTIAL | 已嘗試開啟該Preview，但瀏覽器停在Vercel登入頁；未改保護設定，未把API回應冒稱可見UI驗收 |
+| 私有帳號完整流程 | 未驗證（本輪未改） | 未取得此Preview瀏覽器登入；Workspace／Watchlist／Report真人流程不因406個自動測試就標PASS |
+
+Vercel保護頁是存取驗收限制，不是Development資料遺失。受保護API以官方Vercel工具驗證。
+本輪沒有變更權限、公開正式環境或建立付費資源，也不標記整個產品／全國資料完整。

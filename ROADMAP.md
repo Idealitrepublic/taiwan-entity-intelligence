@@ -276,7 +276,8 @@ Exit gate: an accepted Preview artifact is the only path to Production.
   these are not Preview search results.
 - Judicial refresh completed 265/265 batches: 5,827 ingested, 790 verified
   upstream-unavailable, zero pending. Data Health/OPS High=0; 406 tests,
-  181 PostgreSQL checks, lint and build passed. Preview acceptance follows.
+  181 PostgreSQL checks, lint and build passed. Preview public API acceptance
+  passed; actual browser interaction remains pending Vercel sign-in.
   Independent audit repaired source-publication metadata on 6,525 index rows
   without changing Evidence/checkpoint or advancing the source timestamp.
 - Pending: other-region donations (current HTTP 403), other declarations and
