@@ -96,6 +96,19 @@ class DataHealthTests(unittest.TestCase):
             self.assertNotIn('Preview has no Supabase override', output)
             self.assertNotIn('All publication states were counted', output)
 
+    def test_current_aggregate_audit_does_not_invent_unmeasured_legacy_fields(self):
+        report = {'generated_at': '2026-10-29T00:00:00Z', 'metrics': []}
+        audit = {'project_ref': 'example', 'audited_at': '2026-10-29T00:00:00Z',
+                 'all_states_counts': {'political_contributions': 230},
+                 'published_counts': {'politician_terms': 121, 'political_contributions': 230,
+                                      'asset_declarations': 63},
+                 'migration_count': 29, 'public_tables': 30, 'rls_tables': 30, 'public_indexes': 119}
+        with patch('scripts.data_health.public_supabase_config', return_value=('https://example.supabase.co', 'public')):
+            output = markdown(report, audit)
+        self.assertIn('121/230/63', output)
+        self.assertIn('unknown; not counted in this audit', output)
+        self.assertIn('unknown; verify deployment separately', output)
+
     def test_political_findings_follow_current_public_rows_without_inventing_draft_state(self):
         report = {'generated_at': '2026-10-27T00:00:00Z', 'metrics': [
             {'source': 'political_contributions', 'observed': 1, 'severity': 'Unknown'},

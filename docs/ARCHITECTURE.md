@@ -1,5 +1,24 @@
 # T.E.I. architecture and Phase 0 repository audit
 
+## Development data refresh — 2026-10-29
+
+Reviewed refresh scripts consume private official snapshots outside Git. They
+retain immutable source hashes and locators, stop changed published facts for
+review, publish bounded transactions only to `tei-development`, and leave
+Production, core schema, RLS and public API paths unchanged. Political master
+rechecks attach new corroborating Evidence to unchanged facts rather than
+rewriting original retrieval dates. Contribution publication requires CEC
+election/district/party context, an exact LY identifier and a published exact
+company identifier. Returned/remitted, noncash and conflicting records remain
+unpublished. Asset publication uses an approved filing crosswalk; missing
+values remain null and issuer names never create ownership links.
+
+`build_official_reference_index.py` creates a private local SQLite source index
+for agency OID and term-11 bill snapshots. It is an operator artifact, not a
+runtime backend or Preview search index. Repeated bill IDs keep their separate
+source stages. No source observation is automatically promoted to a canonical
+Entity or Relationship. See [refresh acceptance](DATA_REFRESH_2026-10-29.md).
+
 Status: audited 2026-09-16 on branch `chore/local-dev-setup`, based on `main` commit `688f4c7`.
 
 ## System context
@@ -409,3 +428,11 @@ snapshot hash, official URL, source locator and one Evidence link; original
 ODS/JSON hashes and item locations survive conversion. No schema, entity
 resolution rule or graph relationship changed. The complete source/exception
 inventory is in `docs/CIVIL_ORGANIZATION_NATIONWIDE_GAP_REGISTER.md`.
+
+## 免費容量下的資料分層
+
+完整已取得原件與機關／議案來源索引保存在 Git 外私有目錄；
+Development 僅保留既有來源索引與審核後發布的圖譜資料。
+本機索引不直接供 Preview 搜尋，不以來源筆數宣稱全國完整。
+暫停大型雲端擴充，不刪歷史或私人資料、不升級付費方案。
+具體容量與發布條件見 [資料保存規則](FREE_DATA_STORAGE_POLICY.md)。

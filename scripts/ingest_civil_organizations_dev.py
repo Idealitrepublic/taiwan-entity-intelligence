@@ -18,6 +18,16 @@ from scripts.ops_backup import database_environment  # noqa: E402
 from scripts.run_dev import read_local_env  # noqa: E402
 from src.civil_organizations import roster_bundles, utc_now  # noqa: E402
 
+DEVELOPMENT_WRITE_STOP_BYTES = 480_000_000
+
+
+def capacity_guard_sql():
+    """Conservative local write gate; not a provider quota or automatic cleanup."""
+    return ("DO $$BEGIN IF pg_database_size(current_database()) >= "
+            f"{DEVELOPMENT_WRITE_STOP_BYTES} THEN "
+            "RAISE EXCEPTION 'Development capacity guard; retain source locally'; "
+            "END IF; END$$;\n")
+
 
 def development_environment():
     ignored = subprocess.run(["git", "check-ignore", "-q", ".env.local"],
@@ -64,11 +74,15 @@ def apply_bundles(bundles, *, source_name="MOI nationwide people's associations 
         stderr=subprocess.DEVNULL, text=True)
     try:
         process.stdin.write("BEGIN;\nSET LOCAL standard_conforming_strings = on;\n")
+        process.stdin.write(capacity_guard_sql())
         for bundle in bundles:
+            # Recheck between batches as indexes/storage can grow within one run.
+            process.stdin.write(capacity_guard_sql())
             payload = json.dumps(bundle, ensure_ascii=False, separators=(",", ":"))
             # Standard-conforming SQL string; source content never becomes SQL.
             literal = payload.replace("'", "''")
             process.stdin.write(f"select public.tei_ingest_bundle('{literal}'::jsonb);\n")
+        process.stdin.write(capacity_guard_sql())
         process.stdin.write("COMMIT;\n")
         process.stdin.close()
     except BrokenPipeError:

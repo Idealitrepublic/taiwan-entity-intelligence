@@ -60,14 +60,18 @@ def indexed_rows(dataset_id, rows):
     return result
 
 
-def sql_snapshot(dataset_id, source_url, payload, rows):
+def sql_snapshot(dataset_id, source_url, payload, rows, *, downloaded_at=None):
     digest = hashlib.sha256(payload).hexdigest()
     file_id = uuid.uuid5(uuid.NAMESPACE_URL, f"{source_url}#{digest}")
     now = datetime.now(timezone.utc).isoformat()
+    downloaded = downloaded_at or now
+    parsed = datetime.fromisoformat(downloaded)
+    if parsed.tzinfo is None:
+        raise ValueError("Official snapshot retrieval requires a timezone")
     metadata = json.dumps({"provider": "勞動部", "dataset_id": dataset_id,
                            "external_source_only": True}, ensure_ascii=False)
     file_values = [str(file_id), "penalties", f"external/data.gov.tw/{dataset_id}/{digest}.csv",
-                   f"mol-{dataset_id}.csv", "CSV", str(len(payload)), digest, source_url, now,
+                   f"mol-{dataset_id}.csv", "CSV", str(len(payload)), digest, source_url, downloaded,
                    now, "indexed", metadata]
     def quote(value):
         return "'" + str(value).replace("'", "''") + "'"

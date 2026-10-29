@@ -262,6 +262,28 @@ Exit gate: an accepted Preview artifact is the only path to Production.
 
 ## Deferred product work
 
+### Existing-data completion follow-up — 2026-10-29
+
+- Development refresh: 121 exact-ID legislator rechecks, 132 new committee
+  relationships, 230 published company contributions, 63 declaration lines,
+  31 minister observations and 14 lobbying-registration observations. These
+  are bounded sources, not national historical coverage.
+- MOL: 911 new immutable raw versions; historical rows and candidate identity
+  boundaries retained. Source-file provenance and original-file retention are
+  measured separately.
+- Local-only: 8,030 agency observations and 7,690 bill-stage observations /
+  7,437 bill IDs. Cloud publication awaits capacity and resolution review;
+  these are not Preview search results.
+- Judicial refresh completed 265/265 batches: 5,827 ingested, 790 verified
+  upstream-unavailable, zero pending. Data Health/OPS High=0; 406 tests,
+  181 PostgreSQL checks, lint and build passed. Preview acceptance follows.
+  Independent audit repaired source-publication metadata on 6,525 index rows
+  without changing Evidence/checkpoint or advancing the source timestamp.
+- Pending: other-region donations (current HTTP 403), other declarations and
+  years, unmatched identities, full company coverage, civil-roster exceptions
+  and cloud capacity. No paid plan, Production release or next phase is
+  authorized. See [refresh record](docs/DATA_REFRESH_2026-10-29.md).
+
 No unrelated UI/product features begin without an explicit phase. AI assistance remains deferred.
 
 Civil-organization coverage now starts with historical MOI association roster

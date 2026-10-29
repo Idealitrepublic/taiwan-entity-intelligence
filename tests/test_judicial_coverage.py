@@ -223,6 +223,20 @@ class JudicialCoverageTests(unittest.TestCase):
                             for row in result["records"] if row["jid"] in {JID, OTHER}))
         self.assertEqual(records_for_company("不存在測試股份有限公司")["status"], "partial")
 
+    def test_each_indexed_case_keeps_its_own_source_publication_time(self):
+        def row(jid, stamp):
+            return {"evidence_id": jid, "retrieved_at": "2026-10-29T00:00:00Z",
+                    "source": {"type": "judicial", "record_id": jid, "published_at": stamp},
+                    "fact": {"type": "court_record", "title": "判決", "summary": "測試股份有限公司"}}
+        first = row("TPDM,112,訴,1,20230501,1", "2023-05-02T00:00:00+08:00")
+        second = row("TPDM,113,訴,2,20240501,1", "2024-05-03T00:00:00+08:00")
+        unrelated = {"source": {"type": "government_open_data", "published_at": "2020-01-01"}}
+        for inputs in ([first, second, unrelated], [second, first, unrelated]):
+            records = {item['jid']: item for item in build_index(inputs)['records']}
+            self.assertEqual(records[first['source']['record_id']]['source_published_at'], first['source']['published_at'])
+            self.assertEqual(records[second['source']['record_id']]['source_published_at'], second['source']['published_at'])
+            self.assertEqual(records[first['source']['record_id']]['date'], '2023-05-01')
+
     def test_benchmark_reports_sample_scope_and_no_duplicate(self):
         result = benchmark()
         self.assertEqual(result["verified_case_recall"], 1.0)

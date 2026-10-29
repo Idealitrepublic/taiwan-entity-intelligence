@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Read-only, bounded cross-source benchmark. No ingestion or DB writes."""
 import argparse
+import hashlib
 import json
+import re
 import subprocess
 import sys
 import urllib.parse
@@ -62,6 +64,66 @@ def with_primary_provenance(rows):
     return output
 
 
+def with_source_file_provenance(rows):
+    """Verify the existing MOL raw-row -> official snapshot chain, not a URL alone."""
+    output = []
+    for row in rows or []:
+        item = dict(row)
+        source = row.get("source_files") or {}
+        dataset_id = str((source.get("metadata") or {}).get("dataset_id") or "")
+        raw = row.get("raw")
+        digest = hashlib.sha256((dataset_id + "|" + json.dumps(
+            raw, ensure_ascii=False, sort_keys=True)).encode()).hexdigest() if isinstance(raw, dict) else None
+        url = urllib.parse.urlsplit(str(source.get("source_url") or ""))
+        if (source.get("id") == row.get("source_file_id") and source.get("id")
+                and source.get("dataset") == row.get("dataset") == "penalties"
+                and dataset_id in ("109896", "109897", "110908")
+                and row.get("source_url") == f"https://data.gov.tw/dataset/{dataset_id}"
+                and url.scheme == "https" and url.hostname == "apiservice.mol.gov.tw"
+                and re.fullmatch(r"[0-9a-f]{64}", str(source.get("sha256") or ""))
+                and row.get("id") == f"mol:{digest}"
+                and age_hours(source.get("downloaded_at"), datetime.now(timezone.utc)) is not None):
+            item.update(retrieved_at=source["downloaded_at"], provenance={
+                "source_file_id": source["id"], "snapshot_sha256": source["sha256"],
+                "source_record_id": row["id"], "download_url": source["source_url"],
+                "raw_record_sha256": digest, "scope": "indexed_row_and_snapshot_metadata",
+                "original_file_retained": None,
+                "original_file_retention_scope": "not_verifiable_from_public_snapshot_metadata"})
+        output.append(item)
+    return output
+
+
+def verified_term_freshness(terms, verifications):
+    """Use rechecks only for their exact original term proof; never hide stale peers."""
+    stamps, verified, unknown = [], 0, False
+    for term in terms or []:
+        stamp = term.get("retrieved_at")
+        if age_hours(stamp, datetime.now(timezone.utc)) is None:
+            stamp = None
+        candidates = []
+        for proof in verifications or []:
+            locator = proof.get("source_locator") or {}
+            if (locator.get("verified_evidence_id") == term.get("primary_evidence_id")
+                    and locator.get("legislator_number") == term.get("legislator_number")
+                    and locator.get("term") == term.get("term_number") == 11
+                    and locator.get("match_method") == "unchanged_fact_exact_official_identifier"
+                    and re.fullmatch(r"[0-9a-f]{64}", str(locator.get("snapshot_sha256") or ""))
+                    and proof.get("source_url") == term.get("source_url")
+                    and age_hours(proof.get("retrieved_at"), datetime.now(timezone.utc)) is not None):
+                candidates.append(proof["retrieved_at"])
+        if candidates:
+            latest = max(candidates, key=lambda value: datetime.fromisoformat(value.replace("Z", "+00:00")))
+            if not stamp or datetime.fromisoformat(latest) > datetime.fromisoformat(stamp.replace("Z", "+00:00")):
+                stamp = latest
+                verified += 1
+        if stamp:
+            stamps.append(stamp)
+        else:
+            unknown = True
+    oldest = min(stamps, key=lambda value: datetime.fromisoformat(value.replace("Z", "+00:00"))) if stamps and not unknown else None
+    return oldest, verified
+
+
 def official_term_11_ids():
     # The official host uses legacy TLS renegotiation that Python's OpenSSL
     # rejects on some Macs. curl supports this endpoint without disabling TLS.
@@ -103,10 +165,11 @@ def benchmark(now=None):
                 "retrieved_at": result.get("retrieved_at"), "provenance": result.get("source")}
                 for row in result["records"])
         rows, err = probe("labor_penalties", lambda: public_rows(
-            "source_records", {"company_name": "eq." + company, "dataset": "eq.penalties"}, 100))
+            "source_records", {"company_name": "eq." + company, "dataset": "eq.penalties",
+                               "select": "*,source_files(id,dataset,sha256,source_url,downloaded_at,metadata)"}, 100))
         error_counts["labor_penalties"] += bool(err)
         if rows is not None:
-            penalty_rows.extend(rows)
+            penalty_rows.extend(with_source_file_provenance(rows))
     sample_count = len(SAMPLE)
     output.append(metric("company_registration", observed=company_hits, expected=sample_count,
                          rows=observations["company_registration"], identity="id", timestamp=now.isoformat(),
@@ -119,9 +182,9 @@ def benchmark(now=None):
                          errors=error_counts["procurement"], scope="same 3 identifiers; mirror response, not award recall",
                          note="Notice source may lack retrieved_at/provenance; official PCC URL is a search entry.", now=now))
     output.append(metric("labor_penalties", observed=len(penalty_rows), expected=None,
-                         rows=penalty_rows, identity="id", timestamp=max((row.get("indexed_at") or "" for row in penalty_rows), default=None),
+                         rows=penalty_rows, identity="id", timestamp=max((row.get("retrieved_at") or "" for row in penalty_rows), default=None),
                          errors=error_counts["labor_penalties"], scope="indexed company-name reads; national recall unknown",
-                         note="Source records may mix penalty types; dataset-level count is deliberately omitted after timeout.", now=now))
+                         note="Raw-row hashes and official snapshot metadata checked; external_source_only does not prove original CSV retention. National recall unknown.", now=now))
 
     index = load_index()
     known = json.loads(Path(VERIFIED_CASES).read_text(encoding="utf-8"))["records"]
@@ -192,13 +255,18 @@ def benchmark(now=None):
     terms = with_primary_provenance(terms)
     matched_ids = ({str(row.get("legislator_number")) for row in terms if row.get("legislator_number") in source_ids}
                    if terms is not None and source_ids else set())
+    verifications, verification_err = probe("politicians", lambda: public_rows("evidence_records", {
+        "source_name": "eq.立法院開放資料服務平台", "source_record_id": "like.verification:member:11:*",
+        "select": "source_url,source_locator,retrieved_at", "order": "retrieved_at.desc"}, 250))
+    term_freshness, rechecked = verified_term_freshness(terms, verifications)
     output.append(metric("politicians", observed=len(matched_ids) if terms is not None and source_ids else None,
                          expected=len(source_ids) if source_ids else None,
                          rows=terms, identity="id",
-                         timestamp=max((row.get('retrieved_at') or '' for row in terms or []), default=None),
-                         errors=int(bool(source_err)) + int(bool(terms_err)),
+                         timestamp=term_freshness,
+                         errors=int(bool(source_err)) + int(bool(terms_err)) + int(bool(verification_err)),
                          scope="official term-11 committee lgno matched to published politician_terms; not all legislators",
-                         note="Exact official identifier overlap, never name-only; source is Legislative Yuan dataset 14.",
+                         note=(f"Exact official IDs; {rechecked} term facts rechecked against immutable official snapshot proofs. "
+                               "Freshness uses the oldest verified/read term in this cohort; term dates and original Evidence are unchanged."),
                          required_data=True, now=now))
 
     for name, table, foreign_key, filters in (
@@ -320,7 +388,7 @@ def markdown(report, db_audit=None):
                   "This measures the stated public sample; it does not establish national coverage or private draft counts.",
                   political_finding,
                   judicial_finding,
-                  "- **Provenance/unknowns:** procurement and penalty legacy records may lack row-level provenance. Private resolution candidates remain hidden by RLS, so live precision/recall is unknown.",
+                  "- **Provenance/unknowns:** labor samples verify raw-row hashes against official snapshot metadata; this does not prove retention of older CSV bytes or canonical company identity. Procurement mirror provenance is not independent official notice confirmation. Private resolution candidates remain hidden by RLS, so live precision/recall is unknown.",
                   ""])
     if audit_note:
         lines.extend([audit_note, ""])
@@ -369,7 +437,7 @@ def markdown(report, db_audit=None):
         for name, count in db_audit["all_states_counts"].items():
             lines.append(f"- `{name}`: {count} record(s) across all states.")
         if db_audit.get("migration_count") is not None:
-            lines.extend([f"- Corporate contribution Evidence, unresolved draft: {db_audit['unmatched_corporate_contribution_evidence_draft']}.",
+            lines.extend([f"- Corporate contribution Evidence, unresolved draft: {db_audit.get('unmatched_corporate_contribution_evidence_draft', 'unknown; not counted in this audit')}.",
                           f"- Published terms/contributions/assets: {db_audit['published_counts']['politician_terms']}/"
                           f"{db_audit['published_counts']['political_contributions']}/"
                           f"{db_audit['published_counts']['asset_declarations']}.",
@@ -377,7 +445,7 @@ def markdown(report, db_audit=None):
                           f"{db_audit['rls_tables']}/{db_audit['public_tables']}; "
                           f"public indexes: {db_audit['public_indexes']}.",
                           f"Preview Supabase override configured for new deployments: "
-                          f"{db_audit['preview_supabase_override_configured']}. "
+                          f"{db_audit.get('preview_supabase_override_configured', 'unknown; verify deployment separately')}. "
                           "Existing Preview deployments may still use prior settings. "
                           "Production data was not copied or modified.", ""])
         else:

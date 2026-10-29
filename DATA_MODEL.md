@@ -1,5 +1,21 @@
 # T.E.I. data model
 
+## Reviewed source refresh — 2026-10-29
+
+Existing `GovernmentOfficial` and `LobbyingRecord` types hold explicitly
+`SOURCE_SCOPED` official roster/registration observations. Snapshot hashes and
+row/page locators identify observations; names never merge people,
+organizations or lobbying cases. Office start/end dates remain unknown when
+not supplied. Registration, amendment and termination rows remain separate
+observations rather than inferred current legal status.
+
+Political master rechecks append corroborating Evidence/supporting links
+without overwriting original term proofs. Contribution refunds/remittances,
+noncash and label conflicts require review/presentation before publication as
+ordinary donation edges. Unreported declaration prices stay null, not zero;
+source TWD equivalents retain decimals and documented rounding differences.
+The offline agency/bill SQLite index does not change the canonical schema.
+
 ## Core invariant
 
 Every published relationship must point to active primary evidence. Entity identity, relationship meaning, and source provenance remain separate concerns:

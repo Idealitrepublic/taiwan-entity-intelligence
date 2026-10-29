@@ -69,6 +69,7 @@ def build_index(rows: Iterable[dict[str, Any]], generated_at: str | None = None)
     removed_jids = []
     unindexable_docs = 0
     for jid, row in latest.items():
+        source = row.get("source") or {}
         fact = row.get("fact") or {}
         if fact.get("type") != "court_record" or row.get("status") == "removed":
             removed_jids.append(jid)
