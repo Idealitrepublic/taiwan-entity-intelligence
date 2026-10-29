@@ -136,3 +136,23 @@ Evidence成本不同，不能直接類比。未自行付費升級，也未宣稱
 
 Vercel保護頁是存取驗收限制，不是Development資料遺失。受保護API以官方Vercel工具驗證。
 本輪沒有變更權限、公開正式環境或建立付費資源，也不標記整個產品／全國資料完整。
+
+## Chrome 瀏覽器續驗 — 2026-10-29
+
+使用者確認已登入後，改用其Chrome登入狀態；最新Preview `5a9d86e` 可直接開啟。
+先前被擋的是Codex內建瀏覽器的獨立Vercel登入狀態，不能推論使用者未登入。
+
+- 實際搜尋中華電信：頁面顯示462家已發布公司、152名已發布人物／政治人物、
+  66,919個實體證據連結、67,211筆Evidence；公司頁有13關係人、50裁罰、71標案、12司法。
+- 關係人展開可見姓名與職稱；縮小控制從156%降至96%，確認仍可操作。
+- 黃珊珊搜尋／Entity Profile／年度Timeline實際可見；Timeline顯示63筆，
+  展開一筆債務可見金額及監察院原始PDF連結。財產清單另標示當頁25筆及更多紀錄。
+- 人工滑鼠點擊發現P0：公司圖的 `.legacy-evidence-edge` 沒有排除於畫布拖曳，
+  pointer capture把點擊轉給SVG，Evidence面板未開啟。已先建立回歸測試重現FAIL，
+  再補入拖曳排除名單；空白畫布拖曳與knowledge節點拖曳仍通過。
+- 修復後406項Python測試、181項PostgreSQL檢查、全部既有JS測試及新增2項
+  pointer互動回歸、lint及build通過；新Preview實際滑鼠操作待部署後再確認。
+
+仍保留呈現改善待辦：部分搜尋脈絡仍顯示 `term/session/co_chair` 等原始值；
+分類資訊仍有 `related_people` 技術名稱。這些未在本輪資料修復中宣稱已整理完成。
+私有Workspace／Watchlist／Report仍需T.E.I.測試帳號狀態；Vercel登入與T.E.I.登入是兩層。

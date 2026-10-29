@@ -45,6 +45,40 @@ function test(name, run) {
   catch (error) { console.error(`FAIL ${name}`,error); process.exitCode = 1; }
 }
 
+function pointerHarness(targetClass, mode='legacy') {
+  const registered=html.split('\n').find(row=>row.trimStart().startsWith("graphSvg.addEventListener('pointerdown',"));
+  assert(registered, 'Missing shipped graph pointer handler');
+  const calls=[];
+  const target={dataset:{nodeId:'node-a'},closest:selector=>
+    selector.split(',').some(value=>value.trim()==='.'+targetClass)?target:null};
+  const context=vm.createContext({graphMode:mode,dragState:null,nodeDragState:null,panX:0,panY:0,
+    knowledgeGraph:{nodes:new Map([['node-a',{}]])},
+    knowledgePositions:()=>new Map([['node-a',{x:10,y:20}]]),
+    graphSvg:{getBoundingClientRect:()=>({width:1000,height:700}),
+      classList:{add:value=>calls.push(value)},setPointerCapture:id=>calls.push(id)}});
+  const handler=registered.trim().slice("graphSvg.addEventListener('pointerdown',".length,-2);
+  vm.runInContext('('+handler+')',context)({button:0,clientX:100,clientY:100,pointerId:7,
+    target,stopPropagation:()=>calls.push('stop')});
+  return {context,calls};
+}
+
+test('legacy evidence and canonical edges never start background pointer capture',()=>{
+  for(const edge of ['legacy-evidence-edge','edge-group']) {
+    const result=pointerHarness(edge);
+    assert.equal(result.context.dragState,null);
+    assert.deepEqual(result.calls,[]);
+  }
+});
+test('blank canvas still pans and knowledge nodes still drag',()=>{
+  const canvas=pointerHarness('background');
+  assert(canvas.context.dragState);
+  assert.deepEqual(canvas.calls,['dragging',7]);
+  const node=pointerHarness('node','knowledge');
+  assert.equal(node.context.nodeDragState.id,'node-a');
+  assert.equal(node.context.dragState,null);
+  assert.deepEqual(node.calls,['stop','dragging',7]);
+});
+
 test('shared canonical node renders Company A → agency → Company B with clickable evidence edges',()=>{
   const h=harness();
   assert.equal(vm.runInContext('renderPathGraph(data)',Object.assign(h.context,
