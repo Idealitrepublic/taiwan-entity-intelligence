@@ -436,3 +436,13 @@ Development 僅保留既有來源索引與審核後發布的圖譜資料。
 本機索引不直接供 Preview 搜尋，不以來源筆數宣稱全國完整。
 暫停大型雲端擴充，不刪歷史或私人資料、不升級付費方案。
 具體容量與發布條件見 [資料保存規則](FREE_DATA_STORAGE_POLICY.md)。
+
+## Development Preview對外來源連線隔離
+
+2026-10-29在非main分支以`vercel.json`指定單一Tokyo `hnd1`區域。
+同時段舊部署採購來源逾時，新區域部署與Chrome皆取得71筆；判定為部署區域／
+對外路由相關現象，沒有證據認定IP封鎖。採購GET僅對傳輸失敗做2次共享預算
+短重試，保留partial及安全錯誤分類，不把錯誤當作零筆，不關閉TLS驗證。
+此為分支部署設定，不變更Production或Vercel全域設定，不使用多區付費能力。
+規則依[官方Function regions文件](https://vercel.com/docs/functions/configuring-functions/region)，
+實測範圍與限制見[本輪驗收](DATA_REFRESH_2026-10-29.md)。

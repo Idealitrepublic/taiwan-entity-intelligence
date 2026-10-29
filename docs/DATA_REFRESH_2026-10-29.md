@@ -1,6 +1,6 @@
 # 既有資料補齊紀錄 — 2026-10-29
 
-狀態：**本輪資料／本機與Preview API驗收通過，瀏覽器互動待登入；未宣告全量完成或公開上線。** 僅更新本機與 `tei-development`，
+狀態：**本輪資料／本機、Preview API與公開瀏覽器流程通過；私有帳號流程仍待T.E.I.登入，未宣告全量完成或公開上線。** 僅更新本機與 `tei-development`，
 Production、其憑證、資料、環境與部署均未修改。無付費升級或下一階段實作。
 
 ## 已實際更新
@@ -180,3 +180,32 @@ Chrome實測的部分term/session/co_chair、related_people等技術名稱仍列
 
 本機Data Health High=0不代表每個Preview到第三方來源的連線都正常；採購雲端
 可用性在完成新部署實測前仍是驗收未通過項目。Production全程未修改。
+
+## 最終公開流程重驗 — Chrome／Development
+
+已驗證的應用程式／設定commit：`7c95cf1bcf4860e37a5fb40a08e862a14f9a420a`。
+[Tokyo單區Preview](https://taiwan-entity-intelligence-aia6pd1h1-coldlight871029-9944.vercel.app/)
+READY，deployment `dpl_H29fkypWDBtJWegUFwnd1ULK3EY1`、target=null、regions=[hnd1]；
+實際workspace-config仍指向tei-development。沒有更改Vercel專案全域設定或Production。
+
+同時段相同採購查詢，在前一個區域部署回傳partial／timeout，在僅改單區設定的
+新部署反覆回傳ok／71筆；Chrome亦實際顯示71標案。這支持部署區域／對外路由
+相關的連線問題，尚不能證實第三方IP封鎖或整個區域故障。原有有界重試及安全
+錯誤分類保留；不是透過偽造、刪除資料或停用TLS取得成功。
+
+| 本輪實際操作 | 結果 | 證據／限制 |
+|---|---|---|
+| Vercel登入與公開首頁 | PASS | Chrome可直接開啟；先前Codex內建瀏覽器登入狀態不同，並非使用者未登入 |
+| 公司搜尋與資料合流 | PASS | 中華電信13關係人、50裁罰、12司法、71標案；採購獨立接口成功後合流 |
+| Graph縮放、展開、Evidence | PASS | 真實滑鼠展開關係人、縮小、點擊關係線開啟董事長Evidence及官方來源；見附圖 |
+| 政治人物、Timeline、財產來源 | PASS | 黃珊珊Profile／任期／委員會、63筆Timeline；實際展開債務與官方PDF連結 |
+| Path Finder三種範圍 | PASS | 仲齊83459707與柏鼎53533526：直接關係無可驗證路徑，舊路徑圖清除；最多1與2個中介皆找到經羅智強的2段路徑；兩段有日期、金額、Evidence與來源，反向遍歷標示正確 |
+| Runtime與前端錯誤 | PASS（有界樣本） | 最新部署近30分鐘error/fatal查詢無紀錄；瀏覽器無應用程式JS錯誤，另有既有第三方閱讀擴充套件錯誤，不當作T.E.I.錯誤 |
+| 私有Workspace／Watchlist／Report、跨帳號RLS | PARTIAL | 點Workspace實際出現T.E.I.登入表單；Vercel登入不能代替產品帳號登入，未冒稱私人收藏／下載與跨帳號已實測 |
+| 全國資料覆蓋與全站術語 | PARTIAL | 仍遵守本文各來源範圍；部分原始欄位／代碼待整理，未宣告P2或Product Consolidation完成 |
+
+[最新版實測畫面](assets/graph-evidence-hnd-2026-10-29.jpg)顯示公司資料、71標案與
+關係線Evidence，沒有包含密碼、token或登入儲存狀態。
+最後完整程式驗證為412項Python、181項PostgreSQL檢查、全部JS回歸、lint與build通過；
+單區設定後另跑build通過。後續純文件與截圖提交不重跑相同完整測試。
+本次沒有更改Entity／Relationship模型、RLS、資料發布範圍或付費方案，Production未修改。

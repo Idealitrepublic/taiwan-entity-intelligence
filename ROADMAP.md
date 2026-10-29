@@ -308,3 +308,13 @@ not complete current registration coverage. Open work remains for unavailable
 and live-only local registries, all competent-authority reconciliation,
 versioned refreshes, verified identifiers and evidence-backed relationships.
 Production has not received this expansion.
+
+2026-10-29 public Chrome acceptance: company lookup, people/penalty/judgment
+counts, graph expansion/zoom and real edge Evidence clicks, politician asset
+timeline, and all three Path Finder ranges verified on Development Preview.
+The legacy-edge pointer capture regression is fixed; bounded procurement
+transport diagnostics and a branch-only single Tokyo region restored the
+observed 71-award lookup. The regional cause is not proof of an upstream IP ban.
+Private Workspace/Watchlist/Report and cross-account browser acceptance remain
+pending a T.E.I. user session; Vercel login alone does not complete that gate.
+No Production release, nationwide-coverage claim or next phase is authorized.
