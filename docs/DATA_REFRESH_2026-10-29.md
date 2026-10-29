@@ -156,3 +156,27 @@ Vercel保護頁是存取驗收限制，不是Development資料遺失。受保護
 仍保留呈現改善待辦：部分搜尋脈絡仍顯示 `term/session/co_chair` 等原始值；
 分類資訊仍有 `related_people` 技術名稱。這些未在本輪資料修復中宣稱已整理完成。
 私有Workspace／Watchlist／Report仍需T.E.I.測試帳號狀態；Vercel登入與T.E.I.登入是兩層。
+
+## 瀏覽器實測修復與採購連線隔離
+
+`986618d` 的Preview已以Chrome真實滑鼠點擊公司關係線，成功開啟「簡志誠 · 董事長」
+Evidence面板、來源定位及經濟部原始查詢連結；縮放可操作。原先攔截點擊的P0已實際
+重驗PASS。[實際畫面](assets/graph-evidence-click-2026-10-29.jpg)未包含登入憑證。
+
+同時不能忽略新發現：`895pwirdc` 的採購來源兩次各約40秒失敗，回傳partial而不是
+正確零筆；同commit隔離重建 `773k15zuh` 仍逾時。舊Preview `l07vftovh` 在相同時段
+可回傳71筆，本機來源100列亦可取得。因此沒有證據指向DB遺失或此次前端修改，
+但部署與來源之間的連線差異仍未確定，不推斷為已證實的IP封鎖。
+
+現有採購GET已補2次有界短重試、共享時間預算與安全錯誤分類；不重試HTTP限流、
+憑證驗證錯誤或格式錯誤，不停用TLS驗證。HTTP200但缺少records陣列不當作零筆。
+重試失敗保留partial與attempted_at，不填成功retrieved_at或假資料。
+6項新回歸測試通過；最新412項Python測試、181項PostgreSQL檢查、全部JS回歸、
+lint與build通過。本機真實來源約1.8秒回傳71筆，雲端新Preview仍待確認。
+
+Chrome實測的部分term/session/co_chair、related_people等技術名稱仍列呈現改善，
+本輪不宣稱P2已完成。Workspace目前顯示T.E.I.登入表單；Vercel登入已確認，
+但不能把它當作已完成T.E.I.使用者登入或跨帳號RLS真人測試。
+
+本機Data Health High=0不代表每個Preview到第三方來源的連線都正常；採購雲端
+可用性在完成新部署實測前仍是驗收未通過項目。Production全程未修改。

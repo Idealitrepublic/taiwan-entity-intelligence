@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import json
 import re
+import socket
+import ssl
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -14,9 +18,39 @@ OFFICIAL_SEARCH = "https://web.pcc.gov.tw/prkms/tender/common/basic/indexTenderB
 
 def _json_get(url: str, timeout: int = 40) -> dict[str, Any]:
     request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "T.E.I./9.1"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        data = json.loads(response.read().decode("utf-8-sig", "replace"))
-    return data if isinstance(data, dict) else {}
+    deadline = time.monotonic() + timeout
+    for attempt in range(2):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("Procurement request budget exhausted")
+        try:
+            with urllib.request.urlopen(request, timeout=min(8, remaining / (2 - attempt))) as response:
+                data = json.loads(response.read().decode("utf-8-sig", "replace"))
+            if not isinstance(data, dict) or not isinstance(data.get("records"), list):
+                raise ValueError("Procurement response lacks a records array")
+            return data
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            reason = getattr(exc, "reason", exc)
+            # No blind HTTP/rate-limit retries or certificate-validation bypass.
+            if (attempt or isinstance(exc, urllib.error.HTTPError)
+                    or isinstance(reason, ssl.SSLError)):
+                raise
+            time.sleep(min(.25, max(0, deadline - time.monotonic())))
+    raise TimeoutError("Procurement request budget exhausted")
+
+
+def _source_error(exc):
+    """Expose only error classes/codes, never exception text, headers or tokens."""
+    reason = getattr(exc, "reason", exc)
+    category = ("http" if isinstance(exc, urllib.error.HTTPError) else
+                "format" if isinstance(exc, ValueError) else
+                "tls" if isinstance(reason, ssl.SSLError) else
+                "dns" if isinstance(reason, socket.gaierror) else
+                "timeout" if isinstance(reason, TimeoutError) else "transport")
+    return {"category": category, "error_type": type(exc).__name__,
+            "reason_type": type(reason).__name__,
+            "http_status": exc.code if isinstance(exc, urllib.error.HTTPError) else None,
+            "errno": reason.errno if isinstance(getattr(reason, "errno", None), int) else None}
 
 
 def _normalize(row: dict[str, Any], uniform: str) -> dict[str, Any]:
@@ -143,6 +177,8 @@ def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str
             "source": "政府電子採購網公告（OpenFun 民間結構化介接）",
             "official_search_url": OFFICIAL_SEARCH,
             "message": f"決標資料暫時無法讀取：{type(exc).__name__}",
+            "source_error": _source_error(exc),
+            "attempted_at": datetime.now(timezone.utc).isoformat(),
         }
 
 
