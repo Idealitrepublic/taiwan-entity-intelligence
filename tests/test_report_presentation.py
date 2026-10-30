@@ -89,6 +89,19 @@ class ReportPresentationTests(unittest.TestCase):
         self.assertIn(("詳細資料 / Details", "裁罰 / Penalties"),
                       sections["key_relationships"]["items"][0]["facts"])
 
+    def test_known_source_codes_and_query_keys_are_readable_without_mutating_json(self):
+        from copy import deepcopy
+        value = {'report_type':'WORKSPACE', 'saved_evidence':[{
+            'title':'真實來源標題', 'source_name':'MOL/penalties',
+            'source_locator':{'query':{'Business_Accounting_NO':'04690983'}}}]}
+        original=deepcopy(value)
+        facts=present_report(value)['sections'][0]['items'][0]['facts']
+        text=str(facts)
+        self.assertIn('勞動部裁罰 / MOL penalties', text)
+        self.assertIn('查詢條件 / Query', text)
+        self.assertIn('統一編號 / Company ID', text)
+        self.assertEqual(value,original)
+
     def test_unavailable_saved_references_are_flagged_without_fake_records(self):
         report = {"report_type": "WORKSPACE", "coverage": {"unavailable_saved_references":
                   [{"entity_id": "missing"}]}, "workspace_items": [{"title": "研究筆記",

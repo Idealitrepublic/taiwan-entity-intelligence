@@ -174,10 +174,20 @@ def render_report_pdf(report):
         ])
         story.extend([result, Spacer(1, 8)])
 
-    def compact_table(rows, proportions, section_title):
+    def compact_table(rows, proportions, section_title, *, keep_source_rows=False):
         rows = [[paragraph(section_title, heading)] + [''] * (len(proportions) - 1)] + rows
+        # Keep ordinary source citations together. Only an oversized row may
+        # split inside a cell; otherwise ReportLab can repeat headings within
+        # one page after splitting the next source into the remaining space.
+        split_inside = 1
+        if keep_source_rows:
+            heights = [max(cell.wrap(width * part - 10, page_height)[1]
+                           for cell, part in zip(row, proportions)) + 6
+                       for row in rows[1:]]
+            split_inside = int(max(heights[1:], default=0) + sum(heights[:1]) + 52
+                               > page_height - margin * 2 - 12)
         result = LongTable(rows, colWidths=[width * part for part in proportions],
-                           repeatRows=2, splitByRow=1, splitInRow=1, hAlign="LEFT")
+                           repeatRows=2, splitByRow=1, splitInRow=split_inside, hAlign="LEFT")
         result.setStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("SPAN", (0, 0), (-1, 0)),
@@ -250,7 +260,8 @@ def render_report_pdf(report):
                          ("編號 / Ref", "來源與定位 / Source & locator", "原始連結 / Source URL", "取得 / Retrieved")]]
                 for source_index, source in enumerate(sources, 1):
                     locator = source_locator_text(source)
-                    provider = source.get('source_name') or source.get('source') or ''
+                    provider_code = source.get('source_name') or source.get('source') or ''
+                    provider = LABELS.get(provider_code, provider_code)
                     title_text = source.get('title') or provider or '—'
                     source_text = '\n'.join(str(part) for part in (title_text,
                         provider if provider != title_text else '', locator) if part)
@@ -258,7 +269,7 @@ def render_report_pdf(report):
                                  paragraph(source_text),
                                  paragraph(source.get("source_url") or "—", key="Source URL"),
                                  paragraph(format_date(source.get("retrieved_at")) or "—")])
-                compact_table(rows, (.07, .43, .30, .20), f"{section['title']} · {len(sources)} 筆")
+                compact_table(rows, (.07, .43, .30, .20), f"{section['title']} · {len(sources)} 筆", keep_source_rows=True)
             continue
         if section["key"] == "relationship_graph":
             diagrams = graph_diagrams(report.get("relationship_graph"), width)

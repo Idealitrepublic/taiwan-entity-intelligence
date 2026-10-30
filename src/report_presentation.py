@@ -14,6 +14,8 @@ from src.reports import SECTION_TITLES
 
 
 LABELS = {
+    "MOL/penalties": "勞動部裁罰 / MOL penalties",
+    "MOEA/GCI": "經濟部公司登記 / MOEA company registry",
     "ENTITY": "實體 / Entity", "RELATIONSHIP": "關係 / Relationship",
     "EVIDENCE": "證據 / Evidence", "GRAPH": "關係圖 / Graph",
     "SOURCE": "來源 / Source", "NOTE": "筆記 / Note",
@@ -150,6 +152,7 @@ def format_locator(value):
     labels = {"dataset": "資料集 / Dataset", "record": "紀錄 / Record",
               "row": "列 / Row", "row_number": "列號 / Row number",
               "uniform_number": "統一編號 / Company ID", "company_name": "公司 / Company",
+              "query": "查詢條件 / Query", "Business_Accounting_NO": "統一編號 / Company ID",
               "source_record_id": "來源編號 / Source record", "page": "頁碼 / Page",
               "disposition_number": "處分文號 / Disposition number",
               "disposition_date": "處分日期 / Disposition date",
@@ -239,7 +242,7 @@ def _item(title, *facts):
 def _evidence_facts(evidence):
     evidence = evidence or {}
     return (_fact("證據 / Evidence", evidence.get("title") or evidence.get("id")),
-            _fact("來源 / Source", evidence.get("source_name") or evidence.get("source")),
+            _fact("來源 / Source", LABELS.get(evidence.get("source_name") or evidence.get("source"), evidence.get("source_name") or evidence.get("source"))),
             _fact("原始連結 / Source URL", evidence.get("source_url")),
             _fact("取得時間 / Retrieved at", format_date(evidence.get("retrieved_at"))))
 
@@ -332,7 +335,7 @@ def _records(key, values, detail_sections=None):
                                 _fact("收藏時間 / Saved at", format_date(row.get("created_at")))))
         elif key in ("sources", "saved_evidence"):
             result.append(_item(row.get("title") or row.get("source_name") or row.get("source") or row.get("id"),
-                                _fact("提供者 / Provider", row.get("source_name") or row.get("source")),
+                                _fact("提供者 / Provider", LABELS.get(row.get("source_name") or row.get("source"), row.get("source_name") or row.get("source"))),
                                 _fact("來源定位 / Source locator", source_locator_text(row)),
                                 _fact("原始連結 / Source URL", row.get("source_url")),
                                 _fact("取得時間 / Retrieved at", format_date(row.get("retrieved_at")))))

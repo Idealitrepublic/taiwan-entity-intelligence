@@ -46,6 +46,22 @@ class ReportPDFTests(unittest.TestCase):
         self.assertLessEqual(len(reader.pages),5)
         self.assertEqual(value,original)
 
+    def test_source_rows_keep_citations_together_and_known_provider_is_bilingual(self):
+        value=report()
+        value['sources']=[{'title':f'官方來源{i}', 'source_name':'MOL/penalties',
+                          'source_url':f'https://example.gov.tw/record/{i}',
+                          'source_locator':{'violation':('公開公告內容，不自行判定。' * 32)},
+                          'retrieved_at':'2026-10-30T00:00:00Z'} for i in range(7)]
+        reader=PdfReader(BytesIO(render_report_pdf(value)))
+        text=''.join(page.extract_text() for page in reader.pages)
+        self.assertIn('勞動部裁罰 / MOL penalties',text)
+        self.assertNotIn('MOL/penalties',text)
+        for i in range(7):
+            self.assertIn(f'官方來源{i}',text)
+        # A source header may repeat on the next page, never twice on one page.
+        for page in reader.pages:
+            self.assertLessEqual(page.extract_text().count('來源 / Sources · 7 筆'),1)
+
     def test_real_landscape_pdf_embeds_chinese_font_and_source_link(self):
         data = render_report_pdf(report())
         self.assertTrue(data.startswith(b"%PDF-"))

@@ -38,4 +38,9 @@ ctx.activeWorkspace={items:[{id:'saved',item_type:'EVIDENCE',title:'來源證據
 vm.runInContext('renderWorkspaceItems()',ctx);
 for(const text of ['證據 / Evidence','識別與權限 / Identity & ownership','擁有者 / Owner ID：owner'])
   assert(elements.workspaceItems.innerHTML.includes(text),text);
+assert(!html.includes('owner-only RLS'));
+assert(html.includes('.workspace-grid,.watchlist-layout{grid-template-columns:minmax(0,1fr)}'));
+assert(html.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));
+assert(html.includes('.workspace-dialog .notice,.workspace-owner,.workspace-item b{overflow-wrap:anywhere}'));
+assert(html.includes('追蹤實體 / Followed entities'));
 console.log('PASS bilingual terminology, scope, dates, escaping, notification states and ownership details');
