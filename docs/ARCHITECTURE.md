@@ -308,6 +308,12 @@ The private path remains browser session JWT → WSGI API → Supabase Data API/
 
 `watchlist_entries` supports published Company, Person, and Politician Entities only. The browser triggers a bounded `SECURITY INVOKER` sync; it scans at most 25 subscriptions and considers at most 500 new event candidates. Evidence retrieval time must be on or after the watch start, which establishes an objective baseline instead of labeling all historical records as new. Unique source keys make repeated syncs idempotent.
 
+Repeated follow requests also ignore the existing `(owner_user_id, entity_id)`
+conflict atomically, then return the current owner's original entry through an
+RLS-scoped, one-row lookup. They do not update the notification baseline or
+require UPDATE permission. Verified on Development with two independent users;
+see [private-flow acceptance](PRIVATE_FLOW_ACCEPTANCE_2026-10-30.md).
+
 Procurement, judgment, penalty, officer/director, and political-contribution alerts are projected from published Relationships with their active published primary Evidence. Asset alerts are projected from published asset declarations with the same Evidence requirement. The Dashboard provides all/read/unread filtering, individual read toggles, and mark-all-read. It deliberately adds no scheduler, Email, webhook, external push, or Production database mutation; the checked-in migration remains gated for acceptance.
 
 ## Phase 11 Report Export

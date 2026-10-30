@@ -318,3 +318,9 @@ observed 71-award lookup. The regional cause is not proof of an upstream IP ban.
 Private Workspace/Watchlist/Report and cross-account browser acceptance remain
 pending a T.E.I. user session; Vercel login alone does not complete that gate.
 No Production release, nationwide-coverage claim or next phase is authorized.
+
+2026-10-30續驗：兩個授權測試帳號已實際登入，六類收藏、真正PDF下載、跨帳號
+工作區／報告／追蹤隔離通過；重複追蹤已修復為不重設時間的安全重試。
+414項Python、181項PostgreSQL及既有JS回歸、lint、build通過。
+PDF瀏覽器blob預覽受工具政策限制、真實新通知狀態與真人Pilot仍待驗證。
+見[私人流程驗收](docs/PRIVATE_FLOW_ACCEPTANCE_2026-10-30.md)，不自動開始下一階段或部署Production。

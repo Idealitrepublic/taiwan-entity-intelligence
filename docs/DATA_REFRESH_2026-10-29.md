@@ -1,6 +1,6 @@
 # 既有資料補齊紀錄 — 2026-10-29
 
-狀態：**本輪資料／本機、Preview API與公開瀏覽器流程通過；私有帳號流程仍待T.E.I.登入，未宣告全量完成或公開上線。** 僅更新本機與 `tei-development`，
+狀態：**本輪資料／本機、Preview API與公開瀏覽器流程通過；私人流程已於10月30日續驗，預覽畫面與真實通知事件仍有驗證限制，未宣告全量完成或公開上線。** 僅更新本機與 `tei-development`，
 Production、其憑證、資料、環境與部署均未修改。無付費升級或下一階段實作。
 
 ## 已實際更新
@@ -209,3 +209,7 @@ READY，deployment `dpl_H29fkypWDBtJWegUFwnd1ULK3EY1`、target=null、regions=[h
 最後完整程式驗證為412項Python、181項PostgreSQL檢查、全部JS回歸、lint與build通過；
 單區設定後另跑build通過。後續純文件與截圖提交不重跑相同完整測試。
 本次沒有更改Entity／Relationship模型、RLS、資料發布範圍或付費方案，Production未修改。
+
+10月30日續驗已實際登入兩個授權測試帳號，確認私人收藏、真實PDF下載、帳號隔離，
+並發現及修復重複追蹤誤報400的問題。歷史待登入敘述為當時狀態；
+本次結果與尚未實測的部分見[私人流程驗收紀錄](PRIVATE_FLOW_ACCEPTANCE_2026-10-30.md)。
