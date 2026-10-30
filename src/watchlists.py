@@ -76,6 +76,10 @@ class WatchlistRepository:
                    "Content-Type": "application/json", "Accept": "application/json"}
         if method != "GET":
             headers["Prefer"] = "return=representation"
+        if method == "POST" and resource == "watchlist_entries":
+            # Ignore the owner's duplicate without UPDATE privilege or resetting
+            # created_at, which is the notification baseline.
+            headers["Prefer"] += ",resolution=ignore-duplicates"
         request = urllib.request.Request(
             f"{self.url.rstrip('/')}/rest/v1/{resource}{query}", data=data,
             headers=headers, method=method)
@@ -103,7 +107,15 @@ class WatchlistRepository:
         return {"items": rows[:50], "has_more": len(rows) > 50}
 
     def add_entry(self, payload):
-        rows = self.transport("POST", "watchlist_entries", None, watchlist_payload(payload))
+        values = watchlist_payload(payload)
+        rows = self.transport("POST", "watchlist_entries", {
+            "on_conflict": "owner_user_id,entity_id"}, values)
+        if not rows:
+            # A concurrent/repeated follow is a successful no-op. RLS restricts
+            # this bounded lookup to the signed-in owner's existing entry.
+            rows = self.transport("GET", "watchlist_entries", {
+                "select": WATCHLIST_FIELDS, "entity_id": f"eq.{values['entity_id']}",
+                "limit": 1}, None)
         return rows[0] if rows else None
 
     def delete_entry(self, entry_id):

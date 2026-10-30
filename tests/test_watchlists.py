@@ -70,6 +70,40 @@ class WatchlistTests(unittest.TestCase):
         self.assertNotIn("do-not-use", str(request.headers))
         self.assertEqual(parse_qs(urlsplit(request.full_url).query)["limit"], ["51"])
 
+    def test_duplicate_follow_returns_existing_entry_without_resetting_baseline(self):
+        original = {"id": ENTRY, "entity_id": ENTITY, "created_at": "2026-10-19T00:00:00Z"}
+        calls = []
+
+        def transport(method, resource, params, body):
+            calls.append((method, resource, params, body))
+            if method == "POST":
+                self.assertEqual(params, {"on_conflict": "owner_user_id,entity_id"})
+                self.assertEqual(body, {"entity_id": ENTITY})
+                return []  # Atomic INSERT ... ON CONFLICT DO NOTHING.
+            self.assertEqual(params["entity_id"], f"eq.{ENTITY}")
+            self.assertEqual(params["limit"], 1)
+            return [original]
+
+        repository = WatchlistRepository(TOKEN, transport=transport)
+        self.assertEqual(repository.add_entry({"entity_id": ENTITY}), original)
+        self.assertEqual([call[0] for call in calls], ["POST", "GET"])
+
+    def test_follow_transport_ignores_duplicates_without_update_privilege(self):
+        with patch.dict(os.environ, {
+                "TEI_PRIVATE_SUPABASE_URL": "https://preview.example.supabase.co",
+                "TEI_PRIVATE_SUPABASE_ANON_KEY": "public-key"}, clear=True):
+            repository = WatchlistRepository(TOKEN)
+            with patch("urllib.request.urlopen") as open_url:
+                open_url.return_value.__enter__.return_value.read.return_value = (
+                    json.dumps([{"id": ENTRY, "entity_id": ENTITY}]).encode())
+                repository.add_entry({"entity_id": ENTITY})
+                request = open_url.call_args.args[0]
+        self.assertEqual(request.get_header("Prefer"),
+                         "return=representation,resolution=ignore-duplicates")
+        self.assertEqual(parse_qs(urlsplit(request.full_url).query)["on_conflict"],
+                         ["owner_user_id,entity_id"])
+        self.assertNotIn("owner_user_id", json.loads(request.data))
+
     def test_api_requires_auth_and_routes_watchlist_alert_actions(self):
         self.assertEqual(dispatch_watchlist_api(
             "GET", "/api/v1/watchlist", {}, None, None)[0], 401)
