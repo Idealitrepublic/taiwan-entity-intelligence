@@ -1,8 +1,13 @@
 import json
 import sqlite3
 import unittest
+import tempfile
+import hashlib
+import subprocess
+import sys
+from pathlib import Path
 
-from scripts.build_official_reference_index import AGENCY_URL, BILL_URL, agency_rows, bill_rows, build
+from scripts.build_official_reference_index import AGENCY_URL, BILL_URL, agency_rows, bill_rows, build, build_supplementary_sources
 
 
 class OfficialReferenceIndexTests(unittest.TestCase):
@@ -32,6 +37,38 @@ class OfficialReferenceIndexTests(unittest.TestCase):
                 bill_rows(json.dumps(payload).encode())
         with self.assertRaises(ValueError):
             build(sqlite3.connect(":memory:"), [("agencies", b"x", AGENCY_URL + "?wrong", "2026-10-29T00:00:00+08:00")])
+
+    def test_officer_source_rows_keep_same_names_separate_and_are_idempotent(self):
+        from scripts.sync_moea_officers_dev import RESOURCE
+        with tempfile.TemporaryDirectory() as directory:
+            folder=Path(directory)
+            raw=('統一編號,公司名稱,職稱,姓名,所代表法人,持有股份數\n'
+                 '96979933,甲公司,董事,同名人物,,0\n'
+                 '22099131,乙公司,董事,同名人物,,123\n'
+                 '22099131,乙公司,董事,,,0\n').encode()
+            (folder/'official.csv').write_bytes(raw)
+            metadata=[{'complete_download':True,'source_url':RESOURCE,'file':'official.csv',
+                       'sha256':hashlib.sha256(raw).hexdigest(),'source_rows':3,
+                       'retrieved_at':'2026-10-30T00:00:00+08:00'}]
+            (folder/'full_acquisition.json').write_text(json.dumps(metadata))
+            db=sqlite3.connect(':memory:')
+            first=build_supplementary_sources(db,folder)
+            self.assertEqual(first,build_supplementary_sources(db,folder))
+            self.assertEqual(db.execute('select count(*) from officer_observations').fetchone()[0],2)
+            self.assertEqual(first['sources'][0]['indexed_observations'],2)
+            self.assertEqual(first['sources'][0]['excluded_from_index_retained_in_original'],1)
+            self.assertEqual(first['canonical_entities_published'],0)
+            self.assertEqual(db.execute('select count(distinct company_id) from officer_observations').fetchone()[0],2)
+            cli=subprocess.run([sys.executable,str(Path(__file__).resolve().parents[1] /
+                                'scripts/build_official_reference_index.py'),str(folder),
+                                '--supplementary-only','--output',str(folder/'index.sqlite3')],
+                               capture_output=True,text=True,timeout=20)
+            self.assertEqual(cli.returncode,0,cli.stderr)
+            self.assertEqual(json.loads(cli.stdout)['cloud_writes'],0)
+            metadata[0]['sha256']='0'*64
+            (folder/'full_acquisition.json').write_text(json.dumps(metadata))
+            with self.assertRaisesRegex(ValueError,'hash mismatch'):
+                build_supplementary_sources(db,folder)
 
 
 if __name__ == "__main__":

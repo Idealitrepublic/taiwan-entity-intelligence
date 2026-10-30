@@ -15,7 +15,8 @@ function test(name, run) {
   });
 }
 
-const registry = vm.createContext({esc: value => String(value)});
+const registry = vm.createContext({esc: value => String(value), companySearchItem:null});
+require('./web_display_harness.cjs').loadDisplay(registry);
 vm.runInContext(shipped('  function formatRegistryAmount(', '  function companyOverview('), registry);
 test('registry amounts preserve decimals and group thousands without floating-point conversion', () => {
   assert.equal(vm.runInContext("formatRegistryAmount('120000000000.50')", registry), 'NT$ 120,000,000,000.50');
@@ -37,8 +38,9 @@ test('company profile translates official fields once and keeps capital distinct
   registry.websiteCard=()=>'';
   vm.runInContext(shipped('  function companyOverview(', '  function renderRecordPanes('),registry);
   const overview=vm.runInContext("companyOverview({company_name:'測試公司',uniform_number:'96979933'},{Company_Status_Desc:'核准設立'},[],null,false)",registry);
-  assert.equal((overview.match(/測試公司/g)||[]).length,1);
-  assert.equal((overview.match(/96979933/g)||[]).length,1);
+  const visible = overview.replace(/<[^>]+>/g,'');
+  assert.equal((visible.match(/測試公司/g)||[]).length,1);
+  assert.equal((visible.match(/96979933/g)||[]).length,1);
   assert(!overview.includes('企業 / Company · 96979933'));
 });
 test('narrow path controls can shrink inside the mobile viewport', () => {

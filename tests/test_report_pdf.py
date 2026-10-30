@@ -27,6 +27,25 @@ def report():
 
 
 class ReportPDFTests(unittest.TestCase):
+    def test_compact_workspace_retains_all_facts_without_a_page_per_saved_item(self):
+        from copy import deepcopy
+        value = report()
+        value['report_type'] = 'WORKSPACE'
+        value['workspace_items'] = [
+            {'item_type':kind, 'title':f'收藏{kind}', 'created_at':'2026-10-30T00:00:00Z',
+             **({'note_text':'中英文筆記完整保留 / Full note retained'} if kind=='NOTE' else {})}
+            for kind in ('ENTITY','GRAPH','RELATIONSHIP','EVIDENCE','SOURCE','NOTE')]
+        value['saved_evidence'] = [{'title':'已收藏官方證據', **value['sources'][0]}]
+        original=deepcopy(value)
+        reader=PdfReader(BytesIO(render_report_pdf(value)))
+        text=''.join(page.extract_text() for page in reader.pages)
+        for token in ('大魯閣實業股份有限公司','50,000','府勞動字第1130101133號',
+                      '已收藏官方證據','Full note retained','來源 / Sources',
+                      '關係圖 / Relationship Graph'):
+            self.assertIn(token,text)
+        self.assertLessEqual(len(reader.pages),5)
+        self.assertEqual(value,original)
+
     def test_real_landscape_pdf_embeds_chinese_font_and_source_link(self):
         data = render_report_pdf(report())
         self.assertTrue(data.startswith(b"%PDF-"))

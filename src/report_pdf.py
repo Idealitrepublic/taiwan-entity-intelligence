@@ -110,7 +110,7 @@ def _register_font():
 
 def render_report_pdf(report):
     # JSON retains the full projection; PDF emphasizes readable findings and sources.
-    from src.report_presentation import LABELS, format_date, format_money, present_report, source_locator_text, unique_records
+    from src.report_presentation import LABELS, format_context, format_date, format_money, present_report, source_locator_text, unique_records
 
     _register_font()
     output = BytesIO()
@@ -118,7 +118,6 @@ def render_report_pdf(report):
     margin = 12 * mm
     width = page_width - margin * 2
     view = present_report(report)
-    live_company = report.get("report_type") == "LIVE_COMPANY"
     def source_key(source):
         locator = source.get("source_record_id") or source.get("source_locator")
         return (source.get("source_url"), json.dumps(locator, sort_keys=True, ensure_ascii=False),
@@ -151,6 +150,8 @@ def render_report_pdf(report):
     story.extend([paragraph(summary), Spacer(1, 5)])
     for warning in view["warnings"]:
         story.append(paragraph(warning, muted))
+    if view["empty"]:
+        story.append(paragraph("尚無已發布紀錄 / No published records：" + "、".join(view["empty"]), muted))
 
     def table(facts):
         rows = [[paragraph("欄位 / Field"), paragraph("內容 / Value")]]
@@ -203,7 +204,7 @@ def render_report_pdf(report):
 
     for section in view["sections"]:
         key = section["key"]
-        if live_company and key in ("key_relationships", "government_contracts", "judgments", "penalties"):
+        if key in ("key_relationships", "political_relationships", "government_contracts", "judgments", "penalties"):
             records = unique_records(report.get(key))
             records.sort(key=lambda record: format_date((record.get('relationship') or {}).get('start_date') or
                                                        (record.get('relationship') or {}).get('observed_at')) or '',
@@ -212,19 +213,36 @@ def render_report_pdf(report):
                 rows = [[paragraph(value, muted) for value in
                          ("日期 / Date", "關係 / Relationship", "對象 / Connected record", "證據 / Evidence")]]
                 for record in records:
-                    relation = record.get("relationship") or {}
+                    relation = record.get("relationship") or record
                     target = record.get("target_entity") or {}
                     source = record.get("source_entity") or {}
                     kind = relation.get("relationship_type") or "來源觀察 / Source observation"
                     amount = format_money(relation.get('amount'), relation.get('currency'))
                     relation_label = LABELS.get(kind, kind) + (f"\n金額 / Amount: {amount}" if amount else "")
-                    if relation.get('source_role'):
-                        relation_label += "\n" + relation['source_role']
-                    rows.append([paragraph(format_date(relation.get("start_date") or relation.get('observed_at')) or "—"),
+                    for field in ('source_role', 'target_role', 'contribution_type', 'note'):
+                        if relation.get(field):
+                            relation_label += f"\n{LABELS[field]}: {format_context(relation[field])}"
+                    date_text = format_date(relation.get("start_date") or relation.get('observed_at')) or "—"
+                    if relation.get('end_date'):
+                        date_text += " → " + (format_date(relation['end_date']) or "—")
+                    target_name = (target.get('display_name') or target.get('canonical_name')
+                                   or record.get('disposition') or record.get('evidence', {}).get('title') or '—')
+                    rows.append([paragraph(date_text),
                                  paragraph(relation_label),
-                                 paragraph(f"{source.get('display_name') or '—'} → {target.get('display_name') or '—'}"),
+                                 paragraph(f"{source.get('display_name') or '—'} → {target_name}"),
                                  paragraph(source_ref(record.get("evidence")))])
                 compact_table(rows, (.14, .23, .53, .10), f"{section['title']} · {len(records)} 筆")
+            continue
+        if key in ("entity_profiles", "saved_evidence", "workspace_items") and all(
+                sum(len(str(value)) for _, value in item["facts"]) < 1800
+                and all(len(str(value)) < 500 for _, value in item["facts"])
+                for item in section["items"]):
+            rows = [[paragraph(label, muted) for label in
+                     ("項目 / Item", "已核對資料與筆記 / Facts & notes")]]
+            for item in section["items"]:
+                facts = "\n".join(f"{label}: {value}" for label, value in item["facts"])
+                rows.append([paragraph(item["title"]), paragraph(facts)])
+            compact_table(rows, (.28, .72), f"{section['title']} · {len(section['items'])} 筆")
             continue
         if key == "sources":
             if sources:
@@ -256,9 +274,6 @@ def render_report_pdf(report):
         for index, item in enumerate(section["items"], 1):
             story.append(paragraph(f"{index}. {item['title']}", item_heading))
             table(item["facts"])
-    if view["empty"]:
-        story.append(paragraph("尚無已發布紀錄 / No published records", heading))
-        story.append(paragraph("、".join(view["empty"]), muted))
 
     def footer(canvas, document):
         canvas.saveState()

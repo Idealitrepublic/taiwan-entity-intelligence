@@ -115,7 +115,7 @@ class LiveCompanyReportTests(unittest.TestCase):
         self.assertTrue(binary.startswith(b'%PDF-'))
         text = ''.join(page.extract_text() for page in PdfReader(BytesIO(binary)).pages)
         self.assertIn('NT$ 12,500.50', text)
-        self.assertIn('來源觀察；身分待核', text)
+        self.assertIn('來源觀察；身分待核', ''.join(text.split()))
         self.assertIn('身分待核', report['penalties'][0]['relationship']['source_role'])
 
     def test_distinct_retrieval_versions_of_one_source_remain_in_register(self):

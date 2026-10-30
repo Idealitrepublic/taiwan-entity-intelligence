@@ -140,7 +140,11 @@ def unique_records(rows):
 
 def format_locator(value):
     if not isinstance(value, (dict, list)):
-        return _text(value)
+        text = _text(value)
+        if text and not re.match(r"^https?://", text):
+            text = re.sub(r"Business_Accounting_NO=(\d{8})", r"統一編號 / Company ID: \1", text)
+            text = re.sub(r"(?:^|;)row=(\d+)", r"；來源列 / Source row: \1", text)
+        return text
     if isinstance(value, list):
         return "；".join(format_locator(item) or "—" for item in value)
     labels = {"dataset": "資料集 / Dataset", "record": "紀錄 / Record",
@@ -151,10 +155,32 @@ def format_locator(value):
               "disposition_date": "處分日期 / Disposition date",
               "issuing_authority": "處分機關 / Issuing authority",
               "reported_name": "公告名稱 / Published name", "jid": "裁判識別 / Judgment ID",
-              "case_number": "案號 / Case number"}
-    return "\n".join(f"{labels.get(key, str(key).replace('_', ' '))}: "
+              "case_number": "案號 / Case number", "law": "法規 / Law",
+              "authority": "主管機關 / Authority", "violation": "公告事實 / Published facts",
+              "match_method": "比對方式 / Match method", "review_method": "核對方式 / Review method",
+              "source_amount": "公告金額 / Published amount", "source_company_label": "公告公司名稱 / Published company name",
+              "title": "公告標題 / Notice title", "agency": "採購機關 / Procuring agency",
+              "amount": "金額 / Amount", "winner": "得標標記 / Award marker",
+              "unit_id": "機關代碼 / Agency ID", "award_date": "決標日期 / Award date",
+              "job_number": "標案案號 / Contract number", "mirror_url": "結構化介接 / Structured mirror URL",
+              "bidder_name": "投標廠商 / Bidder", "notice_date": "公告日期 / Notice date",
+              "notice_filename": "公告識別 / Notice reference", "bidder_uniform_number": "廠商統編 / Bidder company ID",
+              "candidate_name": "申報對象 / Candidate", "election": "選舉 / Election",
+              "term_number": "屆別 / Term", "constituency": "選區 / Constituency",
+              "csv_row": "來源列 / Source row", "pdf_page": "來源頁 / Source page",
+              "archive_member": "原件檔名 / Archive member", "row_serial": "紀錄序號 / Record serial",
+              "contribution_year": "獻金年度 / Contribution year", "return_status": "返還註記 / Return notation"}
+    meanings = {"explicit_uniform_number_verified_moea": "公告統編與公司登記核對 / Published company ID verified with registry",
+                "official_row_compared_with_exact_bidder_id_and_award_role": "公告列、統編及得標角色核對 / Official notice, company ID and award role verified",
+                "exact_uniform_number": "統編精確匹配 / Exact company ID",
+                "exact_official_identifier": "官方識別精確匹配 / Exact official identifier",
+                "not_marked_returned_in_source": "來源未標示返還 / Not marked as returned in source",
+                "reviewed_crosswalk": "經核對身分對照 / Reviewed identity crosswalk"}
+    readable = {key: meanings.get(item, item) if isinstance(item, str) else item
+                for key, item in value.items()}
+    return "\n".join(f"{labels.get(key, '來源欄位 / ' + str(key).replace('_', ' '))}: "
                      f"{format_date(item) if key == 'disposition_date' else format_locator(item) or '—'}"
-                     for key, item in value.items() if key != "source_file_id")
+                     for key, item in readable.items() if key != "source_file_id")
 
 
 def source_locator_text(row):
@@ -173,10 +199,24 @@ def source_locator_text(row):
 def _additional_facts(row, excluded):
     """Show only human-labelled facts, never opaque IDs or database internals."""
     return [_fact(LABELS[key], format_date(value) if key == "end_date" else
+                  format_context(value) if key in ('source_role', 'target_role') else
                   format_number(value) if key == "quantity" else value)
             for key, value in row.items()
             if key not in excluded and key in LABELS
             and isinstance(value, (str, int, float, bool))]
+
+
+def format_context(value):
+    """Translate known official context codes without changing source JSON."""
+    names = {'term':'屆別 / Term', 'session':'會期 / Session', 'co_chair':'召集委員 / Convener'}
+
+    def replace(match):
+        key, item = match[1], match[2].strip()
+        if key == 'co_chair':
+            item = {'Y':'是 / Yes', 'N':'否 / No'}.get(item, item)
+        return f'{names[key]}：{item}'
+
+    return re.sub(r'\b(term|session|co_chair):\s*([^;]+)', replace, str(value or ''))
 
 
 def _text(value):

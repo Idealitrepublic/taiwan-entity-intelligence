@@ -2,7 +2,7 @@
 import unittest
 from copy import deepcopy
 
-from src.report_presentation import LABELS, format_date, format_money, present_report, source_locator_text
+from src.report_presentation import LABELS, format_context, format_date, format_money, present_report, source_locator_text
 from src.reports import render_report_html
 
 
@@ -99,6 +99,23 @@ class ReportPresentationTests(unittest.TestCase):
         self.assertEqual(len(view["sections"]), 1)
         self.assertEqual(view["sections"][0]["items"][0]["title"], "研究筆記")
         self.assertIn("實體概況 / Entity Profile", view["empty"])
+
+    def test_source_locator_labels_are_bilingual_and_preserve_original_urls(self):
+        url = 'https://example.gov.tw/records?Business_Accounting_NO=96979933'
+        locator = {'law': '勞基法第36條', 'authority': '主管機關',
+                   'match_method': 'explicit_uniform_number_verified_moea',
+                   'mirror_url': url, 'future_field': '保留原值'}
+        original = deepcopy(locator)
+        text = source_locator_text({'source_locator': locator})
+        for value in ('法規 / Law', '主管機關 / Authority', '比對方式 / Match method',
+                      '公告統編與公司登記核對', url, '來源欄位 / future field', '保留原值'):
+            self.assertIn(value, text)
+        self.assertNotIn('explicit_uniform_number_verified_moea', text)
+        self.assertEqual(locator, original)
+        self.assertIn('統一編號 / Company ID: 96979933',
+                      source_locator_text({'source_locator': 'Business_Accounting_NO=96979933;row=1'}))
+        self.assertEqual(format_context('term:11;session:4;co_chair:N'),
+                         '屆別 / Term：11;會期 / Session：4;召集委員 / Convener：否 / No')
 
 
 if __name__ == "__main__":

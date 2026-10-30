@@ -25,11 +25,42 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts.ops_backup import database_environment  # noqa: E402
+from scripts.ingest_civil_organizations_dev import (  # noqa: E402
+    DEVELOPMENT_WRITE_STOP_BYTES, capacity_guard_sql,
+)
 
 PROJECT = "canqjiokrtcxkwblhmml"
 DATASET = "https://data.gov.tw/dataset/96731"
 RESOURCE = "https://data.gcis.nat.gov.tw/od/file?oid=7E5201D9-CAD2-494E-8920-5319D66F66A1"
 REQUIRED = {"統一編號", "公司名稱", "職稱", "姓名", "所代表法人", "持有股份數"}
+
+
+def capacity_plan(database_bytes: int, stage_bytes: int, valid_rows: int) -> dict:
+    """Conservative planning bound, not an exact PostgreSQL storage prediction."""
+    values = (database_bytes, stage_bytes, valid_rows)
+    if any(type(value) is not int or value < 0 for value in values):
+        raise ValueError("Capacity inputs must be nonnegative integer byte/row counts")
+    estimate = stage_bytes * 4 + valid_rows * 2048
+    return {"database_bytes": database_bytes, "estimated_growth_bytes": estimate,
+            "stop_bytes": DEVELOPMENT_WRITE_STOP_BYTES,
+            "allowed": database_bytes + estimate < DEVELOPMENT_WRITE_STOP_BYTES}
+
+
+def require_index_capacity(stage: Path, valid_rows: int) -> dict:
+    # Check before even uploading the raw archive: manual --confirm-capacity
+    # cannot bypass the free-project budget. A rejected input stays local.
+    env = {**os.environ, **database_environment(os.environ.get("TEI_DEV_DATABASE_URL", "")),
+           "PGCONNECT_TIMEOUT": "10"}
+    result = subprocess.run(
+        ["psql", "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c",
+         "select pg_database_size(current_database())"],
+        capture_output=True, text=True, env=env, timeout=25)
+    if result.returncode or not result.stdout.strip().isdigit():
+        raise RuntimeError("Development capacity probe failed; details suppressed")
+    plan = capacity_plan(int(result.stdout.strip()), stage.stat().st_size, valid_rows)
+    if not plan["allowed"]:
+        raise RuntimeError("Development capacity guard: retain official snapshot locally; no upload/index performed")
+    return plan
 
 
 def download(destination: Path) -> None:
@@ -94,6 +125,7 @@ def index(stage: Path, source: Path, digest: str, valid: int, invalid: int, retr
     file_id = uuid.uuid5(uuid.NAMESPACE_URL, DATASET + "#" + digest)
     # The stage path comes from a private TemporaryDirectory, never from CSV content.
     sql = f"""BEGIN;
+{capacity_guard_sql()}
 SET LOCAL statement_timeout = '20min';
 INSERT INTO public.source_files
  (id,dataset,object_path,file_name,format,size_bytes,sha256,source_url,downloaded_at,indexed_at,status,metadata)
@@ -108,6 +140,7 @@ INSERT INTO public.source_records
 SELECT id,'{file_id}','moea_officers',uniform_number,raw->>'公司名稱',
  '經濟部公司登記董監事資料','公司統編與來源列可核對；人物身分限本公司來源範圍','{DATASET}',raw,now()
 FROM tei_officers_stage ON CONFLICT (id) DO NOTHING;
+{capacity_guard_sql()}
 COMMIT;
 """
     result = subprocess.run(["psql", "-X", "-q", "-v", "ON_ERROR_STOP=1"], input=sql,
@@ -142,6 +175,7 @@ def main() -> int:
             raise RuntimeError("Review Free-project Storage and Postgres capacity before --apply --confirm-capacity")
         # Validate the database target before any Storage write.
         database_environment(os.environ.get("TEI_DEV_DATABASE_URL", ""))
+        require_index_capacity(stage, valid)
         object_path = f"moea_officers/{digest}.csv"
         archive(source, object_path, os.environ.get("TEI_DEV_STORAGE_TOKEN", ""))
         index(stage, source, digest, valid, invalid, datetime.now(timezone.utc).isoformat(), object_path)
