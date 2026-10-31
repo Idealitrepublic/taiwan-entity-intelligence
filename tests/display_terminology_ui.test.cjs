@@ -38,6 +38,8 @@ ctx.activeWorkspace={items:[{id:'saved',item_type:'EVIDENCE',title:'來源證據
 vm.runInContext('renderWorkspaceItems()',ctx);
 for(const text of ['證據 / Evidence','識別與權限 / Identity & ownership','擁有者 / Owner ID：owner'])
   assert(elements.workspaceItems.innerHTML.includes(text),text);
+assert.equal(vm.runInContext("displayValue('比對方式 / Match rule','exact_company_uniform;person_identity_source_scoped')",ctx),'公司統編精確核對；人物僅限該公司來源 / Exact company ID; company-scoped person');
+assert(html.includes('.workspace-dialog a{color:#9ac8ff;overflow-wrap:anywhere}'));
 assert(!html.includes('owner-only RLS'));
 assert(html.includes('.workspace-grid,.watchlist-layout{grid-template-columns:minmax(0,1fr)}'));
 assert(html.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));

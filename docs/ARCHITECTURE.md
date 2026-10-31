@@ -452,3 +452,20 @@ Development 僅保留既有來源索引與審核後發布的圖譜資料。
 此為分支部署設定，不變更Production或Vercel全域設定，不使用多區付費能力。
 規則依[官方Function regions文件](https://vercel.com/docs/functions/configuring-functions/region)，
 實測範圍與限制見[本輪驗收](DATA_REFRESH_2026-10-29.md)。
+
+
+## 2026-10-31：通知、報告與來源索引驗收
+
+通知仍只由登入者的既有追蹤基準及已發布 Evidence 產生，不回填假的事件；
+紀錄日期與首次通知時間分列。顯示層集中翻譯已知欄位／信心／職務上下文，
+原始 JSON、來源 URL、身分判斷及 RLS 不變。PDF 對關係、收藏與證據使用橫式
+欄表；長內容保留跨頁能力，普通來源列盡量整列換頁，不縮小字體掩蓋溢出。
+工作區於小螢幕使用單欄及可收縮欄寬，保留擁有者資訊於可展開區塊。
+
+`scripts/build_official_reference_index.py --supplementary-only` 在 Git 外建立
+董監事及臺北／新北政治獻金來源觀察 SQLite：逐檔核對官方 URL、SHA-256、
+取得時間與來源列，不建立 canonical 人物或正式關係。索引可重建、可重跑，
+不直接供 Preview 查詢。`scripts/development_gap_report.py` 僅以只讀 Development
+交易計算發布數、關聯證據、來源時間分布與實際容量，區分零個實體與非零專表紀錄。
+董監事發布入口於原件上傳前新增保守容量預估；即使有確認旗標也不能超過操作停止線。
+沒有新 schema、API、付費儲存或 Production 修改。完整數字與限制見本輪驗收文件。

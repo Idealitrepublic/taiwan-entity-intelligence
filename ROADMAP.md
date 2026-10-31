@@ -324,3 +324,13 @@ No Production release, nationwide-coverage claim or next phase is authorized.
 414項Python、181項PostgreSQL及既有JS回歸、lint、build通過。
 PDF瀏覽器blob預覽受工具政策限制、真實新通知狀態與真人Pilot仍待驗證。
 見[私人流程驗收](docs/PRIVATE_FLOW_ACCEPTANCE_2026-10-30.md)，不自動開始下一階段或部署Production。
+
+
+2026-10-31續驗2／4／5：使用P06既有追蹤與真實公開標案產生1則新通知，驗證
+已讀／未讀、重載保留及重複同步0新增；其他授權帳號看不到該通知。報告改為
+雙語欄表、來源引用與完整已載入圖譜；手機工作區溢出於實測發現後修復。
+官方董監事及臺北／新北獻金原件已完整保存並建立可重跑本機來源索引，沒有
+以同名合併或繞過免費容量限制。全國／歷年母體、其他地區／年度申報、未核對
+法律身分與雲端容量仍未完成，不能標記全國資料完整或Product Consolidation COMPLETE。
+以 `docs/CONSOLIDATION_245_2026-10-31.md` 與可重跑的 Development 缺口報告為準。
+Production 未修改；真人Pilot與另行正式發布授權仍為後續閘門。
