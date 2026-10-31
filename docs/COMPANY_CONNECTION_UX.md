@@ -58,3 +58,21 @@ Preview驗收將使用相同程式提交，核對Development環境與上述真�
 - 類別線及來源觀察不能當成正式股權／合作關係；證據按鈕保留原始定位及查詢範圍。
 - 本輪沒有重新執行私人帳號新增／刪除收藏或真人Pilot；Auth、RLS與Report程式未改動，
   以既有回歸及PostgreSQL權限檢查確認相容，不把未做的私人端到端實測寫為PASS。
+
+## Preview驗收結果
+
+程式提交：`90251db38139d6245f030628da19e180bc41b508`。
+[已實測Preview](https://taiwan-entity-intelligence-cdbqizxty-coldlight871029-9944.vercel.app/)：
+READY、非Production、單一hnd1；workspace-config實際200，public/private Auth環境指向
+tei-development，未指向Production，沒有調整環境變數或WAF。
+
+- 仲齊→羅智強←柏鼎：摘要、日期、兩段Evidence、真實關係方向及全螢幕顯示PASS。
+- Evidence 2顯示來源柏鼎、目標羅智強及監察院原始連結；返回公司A後恢復已發布公司圖，
+  再次查核前回到「尚未查核」狀態，沒有殘留先前路徑結論。
+- 大魯閣與三功／彤晴欣：真實法人代表來源摘要PASS；11節點中7個淡化，
+  切換全部分支後仍11節點、淡化0。沒有刪除原始節點或關係。
+- 三功公司仍可展開：11→12節點（資料分類），再展開其2位關係人達14節點；
+  原公司比較與來源摘要保留。聚焦會淡化連接鏈以外的紀錄，需要閱讀全部公司分支時可切換「顯示全部分支」。
+- Preview操作後瀏覽器error紀錄0；Vercel對本部署指定15分鐘視窗的error/fatal查詢無紀錄。
+  這是本次驗收範圍，不保證所有外部來源未來永不維修、逾時或缺件。
+- 沒有修改Production資料、部署、環境變數或正式分支；沒有開始其他開發階段。
