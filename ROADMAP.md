@@ -334,3 +334,11 @@ PDF瀏覽器blob預覽受工具政策限制、真實新通知狀態與真人Pilo
 法律身分與雲端容量仍未完成，不能標記全國資料完整或Product Consolidation COMPLETE。
 以 `docs/CONSOLIDATION_245_2026-10-31.md` 與可重跑的 Development 缺口報告為準。
 Production 未修改；真人Pilot與另行正式發布授權仍為後續閘門。
+
+
+公司關係呈現收斂：沿用現有來源圖與最短路徑，新增雙語白話摘要、
+比較公司選擇、其他分支淡化／恢復、常駐關係日期及證據入口。
+反向查找與關係實際方向分列，不將同一政治人物／機關／裁判自動解讀為
+兩家公司的合作、控制或不法。未查核圖中公司不顯示為已確認路徑。
+此為本機／Development Preview呈現改善，沒有新增資料源或Production發布。
+詳見`docs/COMPANY_CONNECTION_UX.md`。

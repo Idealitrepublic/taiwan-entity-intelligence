@@ -18,7 +18,7 @@ function pathHarness() {
   const requests = [], renders = [];
   const context = vm.createContext({AbortController,URLSearchParams,console,
     $:id=>elements[id],entityTypeLabels:{Company:'公司 / Company'},esc:String,
-    clearPathGraph:()=>{},
+    clearPathGraph:()=>{},clearConnectionSummary:()=>{},connectionModel:null,
     renderPathResult:data=>renders.push(data),setTimeout:()=>1,clearTimeout:()=>{},
     fetch:(url,options)=>new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}))});
   vm.runInContext(`let pathRequestSerial=0,pathRequestController=null,pathLoading=false;

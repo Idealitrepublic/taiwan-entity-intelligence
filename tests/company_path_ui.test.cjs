@@ -79,7 +79,7 @@ function pathHarness(response) {
     AbortController, URLSearchParams, console,
     $: id => elements[id], esc: value => String(value),
     entityTypeLabels: {Company:'公司 / Company'},graphMode:'legacy',
-    clearTimeout: () => {}, clearPathGraph: () => {},
+    clearTimeout: () => {}, clearPathGraph: () => {}, clearConnectionSummary: () => {},connectionModel:null,
     fetch: async (url, options) => {context.lastRequest = {url,options};return response},
   });
   vm.runInContext(`let pathRequestSerial=0,pathRequestController=null,pathLoading=false;

@@ -43,8 +43,8 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
         self.assertIn(".graph svg{inset:170px 0 44px", html)
         self.assertIn("knowledgePositions([...knowledgeGraph.nodes.values()])", html)
         self.assertIn("graphRoot.getBBox()", html)
-        self.assertIn("900/Math.max(180,box.width+60)", html)
-        self.assertIn("panX=-zoom*", html)
+        self.assertIn("function graphFitArea()", html)
+        self.assertIn("const area=graphFitArea()", html)
 
     def test_ui_uses_progressive_category_graph(self):
         _, html, _ = dispatch("/", {})
