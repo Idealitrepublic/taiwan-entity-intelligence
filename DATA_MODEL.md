@@ -1,5 +1,15 @@
 # T.E.I. data model
 
+## Reviewed court announcements — 2026-11-01
+
+Three selected historical case announcements reuse `Judgment` with
+`SOURCE_SCOPED` identity by official notice ID. A multi-docket notice stays one
+source observation, not fabricated individual JIDs. Evidence distinguishes a
+notice from full judgment text, preserves finality announcement and retrieval
+dates, and discloses unverified subsequent-review status. No personal criminal
+profiles, name joins or new Relationships are emitted. Scope and rollback:
+`docs/COURT_NOTICE_IMPORT_2026-11-01.md`.
+
 ## Reviewed source refresh — 2026-10-29
 
 Existing `GovernmentOfficial` and `LobbyingRecord` types hold explicitly

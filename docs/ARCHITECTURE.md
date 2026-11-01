@@ -1,5 +1,15 @@
 # T.E.I. architecture and Phase 0 repository audit
 
+## Reviewed court-notice pilot — 2026-11-01
+
+The offline `court_notices` adapter exports only three reviewed case-level
+official announcements, with no Person/Company identities or inferred edges.
+The Development operator script validates private snapshot hashes, recent
+encrypted backup and exact project target, then uses the existing bundle RPC
+in one capacity-guarded transaction. A private receipt records only the new IDs
+for idempotent retries and scoped withdrawal. Existing schema, RLS, runtime APIs
+and Production are unchanged. See `docs/COURT_NOTICE_IMPORT_2026-11-01.md`.
+
 ## Development data refresh — 2026-10-29
 
 Reviewed refresh scripts consume private official snapshots outside Git. They
