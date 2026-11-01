@@ -59,9 +59,19 @@ Production、既有身分／Relationship／私人 Workspace 不修改。
   API 真實讀取，共15項200回應；Graph 均無憑空推論的連結。
 - 9項新增回歸、62項既有 targeted tests、433項完整 Python tests、181項 PostgreSQL
   integration checks及既有 JS regression、lint、build通過。
-- Preview 驗收於部署完成後補記；本文件不宣告整體產品收斂或全臺覆蓋完成。
+- App commit：`1eec93a72fbe7761c779fc53bf8ac908f63ddedd`，GitHub branch push成功。
+- [Preview](https://taiwan-entity-intelligence-jgyoa1pe6-coldlight871029-9944.vercel.app/)
+  READY，確認屬非Production部署。三組案件Profile／Evidence真實回傳200，
+  案號4710的搜尋與Graph API回傳200；人工瀏覽器完成4710搜尋、選取、
+  案件頁、來源摘要與單節點圖顯示。未將另外兩組瀏覽器逐頁互動標為已驗證。
+- 瀏覽器console error=0；本次Preview驗收15分鐘視窗查無error／fatal runtime logs。
+- 本文件不宣告整體產品收斂或全臺覆蓋完成。
 
 ## 限制
 
 全臺五年完整覆蓋、逐一當事人裁判結論、後續救濟最新狀態、企業案件身分連結均未完成。
 不可把這三組試批當成完整名冊、犯罪傾向評分或關聯者有罪的依據。
+既有圖譜概覽的「已發布證據」統計僅涵蓋已載入關係的Evidence，未納入案件本身的
+Entity Evidence；本批無關係線時可能顯示0，實際案件頁及API均有1筆來源證據。
+這是既有呈現口徑限制，不是資料遺失；本次未擴大修改UI。公告日資料以來源的
+`finality_announced_on`日精度為準；既有Evidence時間欄位顯示UTC時戳。
