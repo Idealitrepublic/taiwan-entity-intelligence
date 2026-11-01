@@ -27,6 +27,16 @@ test('edge Evidence shows a specific source role without turning co-mentions int
  assert(out.includes('&lt;img'));assert(!out.includes('<img'));assert(out.includes('共同提及不等於有罪'));
  assert(courtRoleDetail(null).includes('未提供 / Not provided'));
 });
+test('court announcements display a source record and role, never an invented JID',()=>{
+ const h=harness();Object.assign(h.context,{filterState:{},uniqueValues:(rows,f)=>rows.map(f),recordDate:r=>r.date||'',filterSelect:()=>'',filterBox:()=>'',recordText:String});
+ vm.runInContext(shipped('  function judicialCard(', '  function procurementCard('),h.context);
+ h.context.result={records:[{record_kind:'court_case_announcement_not_judgment_text',title:'法院公告',date:'2022-07-29',source_record_id:'notice:1',party_role:'當事法人 <x>',summary:'僅來源角色'}]};
+ const out=vm.runInContext('judicialCard(result)',h.context);
+ assert(out.includes('司法院裁判與公告'));assert(out.includes('來源紀錄 / Source record：notice:1'));
+ assert(out.includes('案件角色 / Case role：當事法人 &lt;x&gt;'));assert(!out.includes('JID：'));assert(!out.includes('undefined'));
+ h.context.result={records:[{jid:'REAL-JDOC-ID',title:'裁判書'}]};
+ assert(vm.runInContext('judicialCard(result)',h.context).includes('JID：REAL-JDOC-ID'));
+});
 function harness(){
  const panel={hidden:true,innerHTML:'',listeners:{},addEventListener(k,f){this.listeners[k]=f}},elements={connectionSummary:panel,pathResult:{innerHTML:''}};
  const nodes=[mockElement('a'),mockElement('p'),mockElement('b'),mockElement('unrelated')],edges=[];const calls=[];

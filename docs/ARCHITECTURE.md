@@ -13,6 +13,10 @@ one manually reviewed identifier-backed Company→case role, retaining the old
 notice Evidence versions and excluding news name mining or personal dossiers.
 Graph edge details now expose the existing `source_role` field. See
 `docs/COURT_COVERAGE_AND_CORPORATE_ROLES_2026-11-01.md`.
+The existing company response also projects bounded, identifier-backed published
+case roles alongside the local JDoc index. It preserves the distinction between
+name mentions and reviewed corporate roles, carries source availability, and
+never invents a JID for an announcement. No new endpoint is added.
 
 ## Development data refresh — 2026-10-29
 

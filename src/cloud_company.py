@@ -51,9 +51,69 @@ def _supabase_evidence(uniform: str):
     try:
         with urllib.request.urlopen(req, timeout=8) as r:
             data = json.loads(r.read().decode("utf-8-sig", "replace"))
-            return (data if isinstance(data, list) else []), True
+            legacy, legacy_ok = (data if isinstance(data, list) else []), True
     except Exception:
-        return [], False
+        legacy, legacy_ok = [], False
+    published, status = _published_case_evidence(uniform)
+    result = _CaseEvidenceRows(legacy + published)
+    result.case_status = status
+    return result, legacy_ok or status['status'] == 'ok'
+
+
+class _CaseEvidenceRows(list):
+    """Carry read availability to the existing company response without secrets."""
+    case_status = {'status': 'not_checked', 'matched': 0}
+
+
+def _published_case_evidence(uniform, repository=None):
+    """Bounded public reads of explicit Company→Judgment roles, never name joins."""
+    repository = repository or EntityRepository()
+    company_id = stable_id('entity', 'tw:uniform_number', uniform)
+    try:
+        identifiers = repository.transport('entity_public_identifiers', {
+            'select': 'entity_id,value', 'entity_id': f'eq.{company_id}',
+            'namespace': 'eq.tw:uniform_number', 'value': f'eq.{uniform}', 'limit': 1})
+        if (not identifiers or identifiers[0].get('value') != uniform
+                or identifiers[0].get('entity_id') != company_id):
+            return [], {'status': 'not_indexed', 'matched': 0}
+        graph = repository.graph_neighbors(company_id, limit=12, relationship_type='RELATED_TO_JUDGMENT')
+    except EntityStoreUnavailable:
+        return [], {'status': 'partial', 'matched': None}
+    if not graph:
+        return [], {'status': 'not_indexed', 'matched': 0}
+    nodes = {n['id']: n for n in graph.get('nodes', [])}
+    root = nodes.get(company_id) or {}
+    if root.get('entity_type') != 'Company' or root.get('identity_status') != 'EXACT':
+        return [], {'status': 'not_indexed', 'matched': 0}
+    rows = []
+    for edge in graph.get('edges', []):
+        target = nodes.get(edge.get('target_entity_id')) or {}
+        evidence = edge.get('primary_evidence') or {}
+        if (edge.get('source_entity_id') != company_id or target.get('entity_type') != 'Judgment'
+                or edge.get('relationship_type') != 'RELATED_TO_JUDGMENT'
+                or edge.get('confidence') not in ('EXACT', 'HIGH') or not edge.get('source_role')
+                or edge.get('status') != 'published' or evidence.get('status') != 'active'
+                or not evidence.get('id') or not evidence.get('source_url')):
+            continue
+        locator = evidence.get('source_locator') or {}
+        record = {'id': target['id'], 'relationship_id': edge['id'],
+                  'record_kind': ('court_case_announcement_not_judgment_text' if locator.get('notice_id')
+                                  else 'published_judgment_relation'),
+                  'title': target.get('display_name') or target.get('canonical_name'),
+                  'date': locator.get('event_date') or edge.get('start_date'),
+                  'summary': evidence.get('summary'), 'source_url': evidence['source_url'],
+                  'retrieved_at': evidence.get('retrieved_at'), 'source_name': evidence.get('source_name'),
+                  'source_record_id': evidence.get('source_record_id'), 'evidence_id': evidence['id'],
+                  'party_role': edge['source_role'], 'party_role_status': 'reviewed_role_only',
+                  'match_rule': 'published_identifier_backed_corporate_role',
+                  'provenance': {'entity_id': target['id'], 'relationship_id': edge['id'],
+                                 'primary_evidence_id': evidence['id'], 'confidence': edge['confidence']}}
+        rows.append({**evidence, 'source_type': 'judicial', 'event_date': record['date'],
+                     'match_rule': record['match_rule'], 'identity_status': 'verified_identifier',
+                     'party_role_status': record['party_role_status'],
+                     '_published_case_record': record})
+    return rows, {'status': 'partial' if graph.get('has_more') else 'ok',
+                  'matched': len(rows), 'limited': bool(graph.get('has_more'))}
 
 
 def _supabase_company(uniform: str):
@@ -265,6 +325,7 @@ def build_company(uniform: str):
         "website_crosscheck": {"status": "not_available_in_public_runtime", "matched": 0, "website_url": website_url, "website_host": website_host, "records": [], "message": "網址×165 交叉比對不在 Vercel 核心路由執行。"},
         "judicial_search_url": JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name)),
         "data_mode": "published_registry_snapshot_plus_supabase" if snapshot else "live_moea_core_plus_supabase",
+        "published_case_status": getattr(evidence, 'case_status', {'status': 'not_checked', 'matched': 0}),
         "registry_snapshot_retrieved_at": retrieved_at if snapshot else None,
         "officer_snapshot_retrieved_at": (officer_snapshot or {}).get("downloaded_at"),
         "evidence_note": "來源讀取成功與是否命中是兩個不同指標；公開紀錄不直接等於法律結論。",
@@ -426,11 +487,26 @@ def build_company(uniform):
     except Exception:
         data['evidence_status']['裁罰'] = {'status':'partial','matched':0,'message':'裁罰索引暫時無法讀取。'}
         data['labor_penalties'] = []
-    judicial = records_for_company(data['company_name'])
+    judicial = dict(records_for_company(data['company_name']))
+    published_cases = [e['_published_case_record'] for e in data['evidence']
+                       if isinstance(e, dict) and e.get('_published_case_record')]
+    if published_cases:
+        judicial['indexed_matched'] = judicial['matched']
+        judicial['published_role_matched'] = len(published_cases)
+        judicial['matched'] += len(published_cases)
+        judicial['records'] = sorted(judicial['records'] + published_cases,
+                                     key=lambda r: r.get('date') or '', reverse=True)
+        judicial['coverage_note'] += ' 另載入已發布、官方統編核對的法人案件角色（最多12筆），公告非判決全文。'
+        judicial['interpretation'] = '索引名稱命中與已核對法人案件角色分開標示；均不推論其他關聯者有罪。 / Name mentions and reviewed corporate case roles are distinct; neither implies others are guilty.'
+    if data.get('published_case_status', {}).get('status') == 'partial':
+        judicial['status'] = 'partial'
+        judicial['coverage_note'] += ' 已發布案件角色讀取不完整，不能視為零筆或完整清單。'
     data['judicial_records'] = judicial['records']
     data['judicial_result'] = judicial
     data['evidence_status']['司法院'] = {'status': judicial['status'], 'matched': judicial['matched'], 'message': judicial['coverage_note'] + ' ' + judicial['interpretation'], 'url': data['judicial_search_url']}
     for row in judicial['records']:
+        if row.get('relationship_id'):
+            continue  # Already present as canonical Evidence; do not duplicate or fabricate a JID.
         data['evidence'].append({'id':'judicial:'+row['jid'], 'title':row['title'], 'summary':row['summary'], 'source_type':'judicial', 'source_name':'司法院裁判書開放資料', 'source_url':row['source_url'], 'source_record_id':row['jid'], 'source_locator_type':'judicial_jid', 'retrieved_at':row.get('retrieved_at'), 'provenance':row.get('provenance'), 'event_date':row.get('date'), 'match_rule':judicial['match_rule'], 'identity_status':'name_mention_unverified', 'party_role_status':'unverified', 'raw':row})
     company_node = f"company:{uniform}"
     evidence_by_id = {str(item.get('id')): item for item in data['evidence']
@@ -466,20 +542,23 @@ def build_company(uniform):
                                                      'retrieved_at':row.get('_retrieved_at')},
                                        'evidence': source_evidence})
     for row in judicial['records']:
-        node_id = 'judicial:' + row['jid']
-        source_evidence = evidence_by_id.get(node_id) or {}
+        reviewed_role = bool(row.get('relationship_id'))
+        node_id = ('published-case:' + row['relationship_id'] if reviewed_role else 'judicial:' + row['jid'])
+        source_evidence = evidence_by_id.get(row.get('evidence_id') if reviewed_role else node_id) or {}
         data['graph']['nodes'].append({'id':node_id, 'type':'judicial',
                                       'label':str(row.get('title') or '裁判書'),
-                                      'properties':{'date':row.get('date'), 'jid':row['jid'],
+                                      'properties':{'date':row.get('date'), **({'jid':row['jid']} if row.get('jid') else {}),
                                                     'source_url':row['source_url'],
-                                                    'identity_status':'name_mention_unverified',
-                                                    'party_role_status':'unverified'},
+                                                    'identity_status':'verified_identifier' if reviewed_role else 'name_mention_unverified',
+                                                    'party_role_status':row.get('party_role') or 'unverified',
+                                                    **({'entity_id':row['id'], 'record_kind':'法院案件公告 / Court case announcement'} if reviewed_role else {})},
                                       'evidence':source_evidence})
         data['graph']['edges'].append({'source':company_node, 'target':node_id,
-                                      'relationship':'mentioned_in_judgment',
-                                      'properties':{'source':'司法院 JDoc API',
-                                                    'party_role_status':'unverified',
-                                                    'match_rule':'exact_full_name_mention_only',
+                                      'relationship':row.get('party_role') or 'mentioned_in_judgment',
+                                      'properties':{'source':row.get('source_name') or '司法院 JDoc API',
+                                                    'party_role_status':row.get('party_role') or 'unverified',
+                                                    'match_rule':row.get('match_rule') or 'exact_full_name_mention_only',
+                                                    **({'relationship_id':row['relationship_id']} if reviewed_role else {}),
                                                     'legal_conclusion':False},
                                       'evidence':source_evidence})
     data['evidence_count'] = len(data['evidence'])

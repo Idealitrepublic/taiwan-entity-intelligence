@@ -51,6 +51,19 @@
 角色文字經既有安全轉義，不執行來源內的HTML。保留既有展開、拖曳、縮放與Evidence功能。
 沒有新增Relationship type、API、schema、RLS或大型產品功能。
 
+## 驗收發現的預設公司流程漏接與修復
+
+第一版Preview中，公司名稱搜尋會進入既有即時調查流程。該流程只讀舊
+`evidence`表及本機JDoc名稱索引，沒有讀canonical Company→Judgment角色；
+因此同一筆案件在已發布圖譜可見，預設公司頁卻顯示司法0筆。資料未遺失。
+
+修復在既有company資料組裝層：依公開統編identifier與EXACT公司識別，
+最多讀12條已發布、EXACT/HIGH且角色非空、primary Evidence active的相關裁判線。
+不依公司名稱新增連結，不讀service-role，不覆蓋舊司法索引。
+這些角色資料進入預設公司Evidence、司法清單、Graph及報告資料；
+司法名稱命中數與已核對法人角色數分開顯示，公告沒有JID時只顯示來源紀錄，禁止造JID。
+來源不可用或更多頁未載入則標partial／未知，保留既有可讀索引，不當成確認零筆。
+
 ## 可重跑與復原
 
 沿用 `scripts/ingest_court_notices_dev.py`，預設只校驗。
@@ -68,13 +81,16 @@ receipt新增 `new_relationship_ids`，區分這輪新增與重跑前既有資�
 - DB合計：65,900 → 65,907 Entity；67,833 → 67,841 Evidence；1,395 → 1,396 Relationship。
 - 已發布公司463家；本來源公告9組；人工核對法人案件線1條。
 - DB容量475,335,827 bytes，低於480,000,000保守停寫線，未清除資料或升級方案。
-- 18項adapter／guard回歸、13項關係說明UI測試通過；完整442項Python、181項DB checks、
+- 18項adapter／guard、8項預設公司投影回歸及14項關係說明UI測試通過；完整450項Python、181項DB checks、
   既有JS regression、lint、完整build通過。
 - Development匿名讀取真測：公司統編搜尋、Entity兩筆Evidence、Relationship角色、
   Graph一條線及Report API均200。
+- 本機真實預設 `/api/company/59066479` 回應200（本次6.83秒）：司法1筆、
+  已核對法人角色1筆、Evidence1筆、預設Graph包含該角色；未產生假JID。
 - 真實transaction演練：撤下角色primary Evidence後匿名可見關係為0；ROLLBACK後恢復1，
   演練未留下持久異動。未重新執行完整平台隔離還原。
-- Preview與瀏覽器驗收待部署後補記；未驗證的項目不標PASS。
+- 第一版Preview為 `a3d306c`，發現上述預設流程缺口後未宣告整體PASS；
+  修復版Preview與瀏覽器驗收待部署後補記，未驗證的項目不標PASS。
 
 ## 仍未完成
 
