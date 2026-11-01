@@ -101,6 +101,7 @@ class PublishedCaseCompanyTests(unittest.TestCase):
         self.assertEqual(len(result['judicial_records']), 1)
         self.assertEqual(result['judicial_result']['indexed_matched'], 0)
         self.assertEqual(result['judicial_result']['published_role_matched'], 1)
+        self.assertIn('兩者不混用', result['judicial_result']['date_note'])
         self.assertEqual(len(result['evidence']), 1)
         self.assertEqual(result['graph']['edges'][0]['properties']['relationship_id'], EDGE)
         self.assertEqual(result['graph']['nodes'][0]['evidence']['id'], EVIDENCE)

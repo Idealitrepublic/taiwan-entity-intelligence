@@ -497,6 +497,7 @@ def build_company(uniform):
         judicial['records'] = sorted(judicial['records'] + published_cases,
                                      key=lambda r: r.get('date') or '', reverse=True)
         judicial['coverage_note'] += ' 另載入已發布、官方統編核對的法人案件角色（最多12筆），公告非判決全文。'
+        judicial['date_note'] = 'JDoc日期來自官方JID；法院公告日期依已核對的公告事件日保留，兩者不混用。 / JDoc dates and reviewed court-announcement event dates are distinct.'
         judicial['interpretation'] = '索引名稱命中與已核對法人案件角色分開標示；均不推論其他關聯者有罪。 / Name mentions and reviewed corporate case roles are distinct; neither implies others are guilty.'
     if data.get('published_case_status', {}).get('status') == 'partial':
         judicial['status'] = 'partial'
