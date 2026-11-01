@@ -4,12 +4,13 @@ All phases use: **Local -> Test -> Git -> Vercel Preview -> Acceptance -> Produc
 
 ## Reviewed court-notice pilot — 2026-11-01
 
-Three historical official case-announcement groups are imported to Development
-with traceable Evidence and no personal criminal dossiers or inferred identity
-links. This is a bounded pilot, not nationwide five-year judgment coverage.
+Nine historical official case-announcement groups are imported to Development
+with traceable Evidence, plus one manually reviewed corporate case-role edge.
+No personal criminal dossiers or inferred co-mention links are added. This is a
+bounded pilot, not nationwide five-year judgment coverage.
 Independent corroboration, comprehensive later-review checks and verified
-corporate case links remain uncompleted; no next phase is automatically begun.
-Acceptance and withdrawal procedure: `docs/COURT_NOTICE_IMPORT_2026-11-01.md`.
+additional corporate case links remain uncompleted; no next phase is automatically begun.
+Acceptance and withdrawal: `docs/COURT_COVERAGE_AND_CORPORATE_ROLES_2026-11-01.md`.
 
 ## v2 DATA Phase 1 — Political Master Data
 

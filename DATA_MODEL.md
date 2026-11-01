@@ -2,13 +2,17 @@
 
 ## Reviewed court announcements — 2026-11-01
 
-Three selected historical case announcements reuse `Judgment` with
+Nine selected historical case announcements reuse `Judgment` with
 `SOURCE_SCOPED` identity by official notice ID. A multi-docket notice stays one
 source observation, not fabricated individual JIDs. Evidence distinguishes a
 notice from full judgment text, preserves finality announcement and retrieval
 dates, and discloses unverified subsequent-review status. No personal criminal
-profiles, name joins or new Relationships are emitted. Scope and rollback:
-`docs/COURT_NOTICE_IMPORT_2026-11-01.md`.
+profiles or name joins are emitted by that adapter. A separate, explicitly
+reviewed corporate-role adapter adds one official-ID Company and an evidenced
+`RELATED_TO_JUDGMENT` edge with HIGH association confidence and a concrete
+source role; it emits no people or generic news co-mention edges. Original
+three Evidence IDs are retained. Scope and rollback:
+`docs/COURT_COVERAGE_AND_CORPORATE_ROLES_2026-11-01.md`.
 
 ## Reviewed source refresh — 2026-10-29
 

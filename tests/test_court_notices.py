@@ -8,7 +8,8 @@ import unittest
 from unittest.mock import patch
 
 from src.sources.court_notices import CATALOG, reviewed_bundle
-from scripts.ingest_court_notices_dev import literal
+from scripts.ingest_court_notices_dev import literal, apply
+from src.sources.corporate_court_links import add_reviewed_corporate_link, LEGAL_NAME, UNIFORM
 
 
 class CourtNoticeTests(unittest.TestCase):
@@ -36,8 +37,8 @@ class CourtNoticeTests(unittest.TestCase):
 
     def test_exports_only_case_metadata_with_traceable_evidence(self):
         bundle = self.bundle(publication_status="published")
-        self.assertEqual(len(bundle["entities"]), 3)
-        self.assertEqual(len(bundle["evidence"]), 3)
+        self.assertEqual(len(bundle["entities"]), len(CATALOG))
+        self.assertEqual(len(bundle["evidence"]), len(CATALOG))
         self.assertNotIn("relationships", bundle)
         self.assertTrue(all(e["entity_type"] == "Judgment" for e in bundle["entities"]))
         self.assertTrue(all(e["identity_status"] == "SOURCE_SCOPED" for e in bundle["entities"]))
@@ -109,6 +110,90 @@ class CourtNoticeTests(unittest.TestCase):
 
     def test_sql_literal_cannot_inject_statements(self):
         self.assertEqual(literal("a'); DROP TABLE x;--"), "'a''); DROP TABLE x;--'")
+
+    def corporate_fixture(self, *, role_proof=True, uniform=UNIFORM, setup="0630308"):
+        from urllib.parse import urlencode
+        target = self.directory / "wei-case.html"
+        raw = target.read_bytes() + (LEGAL_NAME + "（下稱頂新公司）" +
+                                   ("頂新公司不服；對頂新公司科以罰金刑" if role_proof else "僅被提及")).encode()
+        target.write_bytes(raw)
+        entry = next(r for r in self.manifest if r["file"] == target.name)
+        entry.update(sha256=sha256(raw).hexdigest(), bytes=len(raw))
+        registry = [{"Business_Accounting_NO": uniform, "Company_Name": LEGAL_NAME,
+                     "Company_Status_Desc": "核准設立", "Company_Setup_Date": setup,
+                     "Responsible_Name": "私人姓名不得輸出", "Company_Location": "私人地址不得輸出"}]
+        raw = json.dumps(registry, ensure_ascii=False).encode()
+        (self.directory / "registry-59066479.json").write_bytes(raw)
+        self.manifest.append({"file": "registry-59066479.json", "sha256": sha256(raw).hexdigest(),
+                              "bytes": len(raw), "retrieved_at": "2026-11-01T10:00:00+00:00",
+                              "source_url": "https://data.gcis.nat.gov.tw/od/data/api/"
+                              "5F64D864-61CB-4D0D-8AD9-492047CC1EA6?" +
+                              urlencode({"$filter": "Business_Accounting_NO eq " + UNIFORM})})
+        self.save()
+
+    def test_reviewed_corporate_role_has_identifier_proofs_and_no_person_records(self):
+        self.corporate_fixture()
+        bundle = add_reviewed_corporate_link(self.bundle(publication_status="published"), self.directory)
+        self.assertEqual(len(bundle["entities"]), len(CATALOG) + 1)
+        self.assertEqual([r["relationship_type"] for r in bundle["relationships"]], ["RELATED_TO_JUDGMENT"])
+        relation = bundle["relationships"][0]
+        self.assertEqual(relation["confidence"], "HIGH")
+        self.assertEqual(relation["start_date"], relation["end_date"])
+        self.assertIn("Corporate party", relation["source_role"])
+        self.assertFalse(any(e["entity_type"] == "Person" for e in bundle["entities"]))
+        self.assertEqual(bundle["identifiers"][0]["value"], UNIFORM)
+        self.assertNotIn("私人姓名", json.dumps(bundle, ensure_ascii=False))
+        self.assertNotIn("私人地址", json.dumps(bundle, ensure_ascii=False))
+        role = next(e for e in bundle["evidence"] if e["id"] == relation["primary_evidence_id"])
+        self.assertFalse(role["source_locator"]["news_comention_is_relationship"])
+        self.assertIn("registry_snapshot_sha256", role["source_locator"])
+
+    def test_news_comention_without_a_specific_role_cannot_make_an_edge(self):
+        self.corporate_fixture(role_proof=False)
+        with self.assertRaisesRegex(ValueError, "co-mention"):
+            add_reviewed_corporate_link(self.bundle(), self.directory)
+
+    def test_wrong_identifier_even_with_same_name_is_rejected(self):
+        self.corporate_fixture(uniform="12345678")
+        with self.assertRaisesRegex(ValueError, "identifier mismatch"):
+            add_reviewed_corporate_link(self.bundle(), self.directory)
+
+    def test_company_created_after_case_cannot_be_linked_by_name(self):
+        self.corporate_fixture(setup="1150101")
+        with self.assertRaisesRegex(ValueError, "postdates"):
+            add_reviewed_corporate_link(self.bundle(), self.directory)
+
+    def test_nonofficial_registry_cannot_establish_identity(self):
+        self.corporate_fixture()
+        self.manifest[-1]["source_url"] = "https://example.com/company/" + UNIFORM
+        self.save()
+        with self.assertRaisesRegex(ValueError, "official exact"):
+            add_reviewed_corporate_link(self.bundle(), self.directory)
+
+    def test_dry_run_keeps_corporate_entities_and_relationships_draft(self):
+        self.corporate_fixture()
+        result = add_reviewed_corporate_link(self.bundle(), self.directory)
+        self.assertTrue(all(e["publication_status"] == "draft" for e in result["entities"] + result["evidence"]))
+        self.assertEqual(result["relationships"][0]["status"], "draft")
+
+    def test_personal_record_is_rejected_before_backup_or_connection(self):
+        bundle = self.bundle()
+        bundle["entities"][0]["entity_type"] = "Person"
+        with patch("scripts.ingest_court_notices_dev.check_backup", side_effect=AssertionError("must not connect")):
+            with self.assertRaisesRegex(ValueError, "Personal records"):
+                apply(bundle, self.directory / "receipt", self.directory / "backup")
+
+    def test_unapproved_relationship_is_rejected_before_connection(self):
+        bundle = self.bundle()
+        bundle["relationships"] = [{"id": "r", "relationship_type": "OFFICER_OF"}]
+        with self.assertRaisesRegex(ValueError, "corporate case roles"):
+            apply(bundle, self.directory / "receipt", self.directory / "backup")
+
+    def test_duplicate_entity_cannot_create_an_incorrect_expected_delta(self):
+        bundle = self.bundle()
+        bundle["entities"].append(bundle["entities"][0])
+        with self.assertRaisesRegex(ValueError, "Duplicate identifiers"):
+            apply(bundle, self.directory / "receipt", self.directory / "backup")
 
 
 if __name__ == "__main__":

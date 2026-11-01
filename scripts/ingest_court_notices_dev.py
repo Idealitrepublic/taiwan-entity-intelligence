@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Dry-run or atomically import three reviewed case announcements to Development.
+"""Dry-run or atomically import the bounded reviewed catalog to Development.
 
-No personal records, identity merges, Relationships, migrations or UI changes.
+An explicit option adds one reviewed corporate case role, never personal links.
 """
 import argparse
 from datetime import date, datetime, timezone
@@ -19,6 +19,7 @@ from scripts.ingest_civil_organizations_dev import (  # noqa: E402
 )
 from scripts.ops_backup import DEV_REF  # noqa: E402
 from src.sources.court_notices import SOURCE, reviewed_bundle  # noqa: E402
+from src.sources.corporate_court_links import add_reviewed_corporate_link  # noqa: E402
 
 
 def literal(value):
@@ -55,28 +56,50 @@ def run_sql(sql, env):
 
 
 def apply(bundle, receipt, backup_manifest):
+    if any(e["entity_type"] not in ("Judgment", "Company") for e in bundle["entities"]):
+        raise ValueError("Personal records are outside this ingestion scope")
+    if any(r["relationship_type"] != "RELATED_TO_JUDGMENT" for r in bundle.get("relationships", [])):
+        raise ValueError("Only individually reviewed corporate case roles are permitted")
+    for rows in (bundle["entities"], bundle["evidence"], bundle.get("relationships", [])):
+        if len(rows) != len({r["id"] for r in rows}):
+            raise ValueError("Duplicate identifiers in the prepared bundle")
     check_backup(backup_manifest)
     if (receipt.resolve().is_relative_to(ROOT) or receipt.exists()
             or receipt.parent.stat().st_mode & 0o077):
         raise ValueError("Receipt must be a new file in an owner-only directory outside Git")
     env = development_environment()  # Strict Dev URL parser, ignored 0600 .env.local.
     source = literal(SOURCE)
+    def ids(rows):
+        return "ARRAY[" + ",".join(literal(e["id"]) for e in rows) + "]::uuid[]"
+    entity_ids, evidence_ids = ids(bundle["entities"]), ids(bundle["evidence"])
+    relationships = bundle.get("relationships", [])
+    relationship_ids = ids(relationships)
+    case_count = sum(e["source"] == SOURCE for e in bundle["entities"])
     baseline = json.loads(run_sql("select jsonb_build_object("
                                  "'entities',(select count(*) from public.entities),"
                                  "'evidence',(select count(*) from public.evidence_records),"
                                  "'relationships',(select count(*) from public.relationships),"
                                  "'source_entities',(select coalesce(jsonb_agg(id),'[]'::jsonb) "
-                                 f"from public.entities where source={source}),"
+                                 f"from public.entities where id=ANY({entity_ids})),"
                                  "'source_evidence',(select coalesce(jsonb_agg(id),'[]'::jsonb) "
+                                 f"from public.evidence_records where id=ANY({evidence_ids})),"
+                                 "'existing_relationships',(select coalesce(jsonb_agg(id),'[]'::jsonb) "
+                                 f"from public.relationships where id=ANY({relationship_ids})),"
+                                 "'known_notices',(select coalesce(jsonb_agg(id),'[]'::jsonb) "
+                                 f"from public.entities where source={source}),"
+                                 "'known_notice_evidence',(select coalesce(jsonb_agg(id),'[]'::jsonb) "
                                  f"from public.evidence_records where source_name={source}))", env))
     new_entities = [e["id"] for e in bundle["entities"] if e["id"] not in baseline["source_entities"]]
     new_evidence = [e["id"] for e in bundle["evidence"] if e["id"] not in baseline["source_evidence"]]
-    if (set(baseline["source_entities"]) - {e["id"] for e in bundle["entities"]}
-            or set(baseline["source_evidence"]) - {e["id"] for e in bundle["evidence"]}):
+    new_relationships = [r["id"] for r in relationships if r["id"] not in baseline["existing_relationships"]]
+    if (set(baseline["known_notices"]) - {e["id"] for e in bundle["entities"]}
+            or set(baseline["known_notice_evidence"]) - {e["id"] for e in bundle["evidence"]}):
         raise ValueError("Existing source version differs; review before inserting or withdrawing")
     document = {"project_ref": DEV_REF, "state": "prepared", "baseline": baseline,
                 "new_entity_ids": new_entities, "new_evidence_ids": new_evidence,
-                "expected_case_groups": 3, "personal_records": 0, "new_relationships": 0}
+                "new_relationship_ids": new_relationships,
+                "expected_case_groups": case_count, "personal_records": 0,
+                "new_relationships": len(new_relationships)}
     # Record the planned delta BEFORE the transaction, including disconnect recovery.
     with receipt.open("x", encoding="utf-8") as stream:
         receipt.chmod(0o600)
@@ -85,11 +108,13 @@ def apply(bundle, receipt, backup_manifest):
 DO $$BEGIN
  IF (SELECT count(*) FROM public.entities) <> {baseline['entities'] + len(new_entities)}
  OR (SELECT count(*) FROM public.evidence_records) <> {baseline['evidence'] + len(new_evidence)}
- OR (SELECT count(*) FROM public.relationships) <> {baseline['relationships']}
+ OR (SELECT count(*) FROM public.relationships) <> {baseline['relationships'] + len(new_relationships)}
  OR (SELECT count(*) FROM public.entities WHERE source={source}
-     AND entity_type='Judgment' AND publication_status='published') <> 3
+     AND entity_type='Judgment' AND publication_status='published') <> {case_count}
  OR (SELECT count(*) FROM public.evidence_records WHERE source_name={source}
-     AND publication_status='published' AND status='active') <> 3
+     AND publication_status='published' AND status='active') <> {case_count}
+ OR (SELECT count(*) FROM public.relationships WHERE id=ANY({relationship_ids})
+     AND status='published') <> {len(relationships)}
  THEN RAISE EXCEPTION 'Unexpected ingestion delta'; END IF;
 END$$;
 """
@@ -101,8 +126,8 @@ END$$;
     document["state"] = "committed"
     receipt.write_text(json.dumps(document, ensure_ascii=False, indent=2))
     receipt.chmod(0o600)
-    return {"case_groups": 3, "new_entities": len(new_entities),
-            "new_evidence": len(new_evidence), "new_relationships": 0, "personal_records": 0}
+    return {"case_groups": case_count, "new_entities": len(new_entities),
+            "new_evidence": len(new_evidence), "new_relationships": len(new_relationships), "personal_records": 0}
 
 
 def main():
@@ -110,6 +135,8 @@ def main():
     parser.add_argument("source_directory", type=Path)
     parser.add_argument("--as-of", type=date.fromisoformat, required=True)
     parser.add_argument("--apply-dev", action="store_true")
+    parser.add_argument("--with-reviewed-corporate-link", action="store_true",
+                        help="Add only the identifier-backed, individually reviewed corporate case role")
     parser.add_argument("--backup-manifest", type=Path)
     parser.add_argument("--receipt", type=Path)
     args = parser.parse_args()
@@ -117,13 +144,16 @@ def main():
         parser.error("Official originals must stay outside Git")
     bundle = reviewed_bundle(args.source_directory, as_of=args.as_of,
                              publication_status="published" if args.apply_dev else "draft")
+    if args.with_reviewed_corporate_link:
+        add_reviewed_corporate_link(bundle, args.source_directory)
     if args.apply_dev:
         if not args.receipt or not args.backup_manifest:
             parser.error("Applying requires --receipt and --backup-manifest")
         result = apply(bundle, args.receipt, args.backup_manifest)
     else:
-        result = {"case_groups": len(bundle["entities"]), "evidence": len(bundle["evidence"]),
-                  "personal_records": 0, "relationships": 0}
+        result = {"case_groups": sum(e["source"] == SOURCE for e in bundle["entities"]),
+                  "evidence": len(bundle["evidence"]), "personal_records": 0,
+                  "relationships": len(bundle.get("relationships", []))}
     print(json.dumps({"mode": "development" if args.apply_dev else "dry_run", **result}))
 
 

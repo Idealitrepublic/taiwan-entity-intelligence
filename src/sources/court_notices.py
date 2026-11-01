@@ -36,6 +36,54 @@ CATALOG = {
         "proof": "本院於民國113年12月11日以113年度台上字第4710號判決，上訴駁回，而全案確定。",
         "result": "上訴駁回；法院公告全案確定 / Appeals dismissed; finality announced",
     },
+    "984048": {
+        "file": "notice-984048.html", "url_suffix": "984048-4263c-1.html",
+        "date": "2023-11-16", "dockets": ["112年度台上字第4688號"],
+        "lower_court": "111年度上重訴字第29號",
+        "proof": "本院於民國112年11月16日以112年度台上字第4688號判決，駁回上訴",
+        "result": "駁回上訴；法院公告全案確定 / Appeals dismissed; finality announced",
+        "coverage": "six_additional_selected_notices_20261101",
+    },
+    "937067": {
+        "file": "notice-937067.html", "url_suffix": "937067-42991-1.html",
+        "date": "2023-09-07", "dockets": ["112年度台上字第3396號"],
+        "lower_court": "111年度上重訴字第36號",
+        "proof": "本院於民國112年9月7日以112年度台上字第3396號判決，駁回上訴",
+        "result": "駁回上訴；法院公告全案確定 / Appeals dismissed; finality announced",
+        "coverage": "six_additional_selected_notices_20261101",
+    },
+    "1207403": {
+        "file": "notice-1207403.html", "url_suffix": "1207403-050dd-1.html",
+        "date": "2024-11-27", "dockets": ["113年度台上字第3919號"],
+        "lower_court": "112年度矚上重更二字第23號",
+        "proof": "本院於民國113年11月27日以113年度台上字第3919號判決",
+        "result": "上訴駁回；法院公告全案確定 / Appeals dismissed; finality announced",
+        "coverage": "six_additional_selected_notices_20261101",
+    },
+    "947052": {
+        "file": "notice-947052.html", "url_suffix": "947052-54003-1.html",
+        "date": "2023-09-21", "dockets": ["112年度台上字第3852號"],
+        "lower_court": "112年度上重更一字第1號",
+        "proof": "本院於民國112年9月21日以112年度台上字第3852號判決，駁回上訴",
+        "result": "駁回上訴；法院公告全案確定 / Appeals dismissed; finality announced",
+        "coverage": "six_additional_selected_notices_20261101",
+    },
+    "857388": {
+        "file": "notice-857388.html", "url_suffix": "857388-8f4f8-1.html",
+        "date": "2023-05-02", "dockets": ["112年度台上字第1046號"],
+        "lower_court": "110年度上重更三字第8號",
+        "proof": "本院於民國112年5月2日以112年度台上字第1046號判決，撤銷第二審及第一審判決",
+        "result": "部分撤銷自為改判，其他上訴駁回；法院公告全案確定 / Partly reversed and decided; other appeals dismissed; finality announced",
+        "coverage": "six_additional_selected_notices_20261101",
+    },
+    "1175483": {
+        "file": "notice-1175483.html", "url_suffix": "1175483-9f64d-1.html",
+        "date": "2024-10-04", "dockets": ["113年度台上字第3802號"],
+        "lower_court": "112年度上重訴字第5號",
+        "proof": "本院於民國113年10月4日，以113年度台上字第3802號判決駁回",
+        "result": "上訴駁回；法院公告全案確定 / Appeals dismissed; finality announced",
+        "coverage": "six_additional_selected_notices_20261101",
+    },
 }
 LIMITATION = (
     "本筆為法院公告的歷史案件結果，並非判決全文或個人犯罪檔案；"
@@ -72,7 +120,7 @@ def _normalize(value):
 def reviewed_bundle(directory: Path, *, as_of: date, publication_status="draft"):
     """Fail closed before any write if even the final source is inconsistent.
 
-    Exactly three reviewed announcement groups are supported. The two-docket
+    Only the bounded reviewed catalog is supported. The two-docket
     notice remains one source observation; it is not split into invented JIDs.
     No raw HTML, party names, contact fields or raw attachment text are exported.
     """
@@ -85,7 +133,7 @@ def reviewed_bundle(directory: Path, *, as_of: date, publication_status="draft")
     except ValueError:  # Leap-day review: calendar-year window, not 1825 days.
         start = as_of.replace(year=as_of.year - 5, day=28)
     acquisition = json.loads((directory / "acquisition.json").read_text())
-    if not isinstance(acquisition, list) or len(acquisition) > 20:
+    if not isinstance(acquisition, list) or len(acquisition) > 64 or len(CATALOG) > 50:
         raise ValueError("Invalid acquisition manifest")
     files = {}
     for record in acquisition:
@@ -129,7 +177,8 @@ def reviewed_bundle(directory: Path, *, as_of: date, publication_status="draft")
             "cross_check": "official_notice_docket_date_result_and_lower_court_reference",
             "independent_source_corroboration": False,
             "subsequent_review_status": "not_comprehensively_verified",
-            "party_identity_matching": "not_performed", "coverage": "three_selected_notices_only",
+            "party_identity_matching": "not_performed",
+            "coverage": fact.get("coverage", "three_selected_notices_only"),
         }
         evidence = evidence_from_projection(
             source_name=SOURCE, source_record_id=source_id, source_class="Court Record",

@@ -2,13 +2,17 @@
 
 ## Reviewed court-notice pilot — 2026-11-01
 
-The offline `court_notices` adapter exports only three reviewed case-level
+The offline `court_notices` adapter exports only nine reviewed case-level
 official announcements, with no Person/Company identities or inferred edges.
 The Development operator script validates private snapshot hashes, recent
 encrypted backup and exact project target, then uses the existing bundle RPC
 in one capacity-guarded transaction. A private receipt records only the new IDs
 for idempotent retries and scoped withdrawal. Existing schema, RLS, runtime APIs
-and Production are unchanged. See `docs/COURT_NOTICE_IMPORT_2026-11-01.md`.
+and Production are unchanged. The optional `corporate_court_links` adapter adds
+one manually reviewed identifier-backed Company→case role, retaining the old
+notice Evidence versions and excluding news name mining or personal dossiers.
+Graph edge details now expose the existing `source_role` field. See
+`docs/COURT_COVERAGE_AND_CORPORATE_ROLES_2026-11-01.md`.
 
 ## Development data refresh — 2026-10-29
 

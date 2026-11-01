@@ -9,6 +9,24 @@ function segment(from,to,id,reverse=false,kind='POLITICAL_CONTRIBUTION_TO'){
 }
 function path(){return{found:true,depth:2,source_entity:A,target_entity:B,segments:[segment(A,P,'one'),segment(P,B,'two',true)],max_depth:3}}
 function mockElement(id){const classes=new Set();return{dataset:{nodeId:id},classList:{toggle(k,on){on?classes.add(k):classes.delete(k)},contains:k=>classes.has(k)},style:{setProperty(){}},classes}}
+// Exercise the shipped edge detail renderer, including its real HTML escaping.
+function courtRoleDetail(role){
+ const elements={nodeInfoTitle:{},nodeInfoKind:{},nodeInfoBody:{},nodeInfo:{hidden:true}};
+ const edge={id:'case-role',source:'a',target:'case',relationship_type:'RELATED_TO_JUDGMENT',source_role:role,primary_evidence:{title:'法院公告',source_url:'https://example.gov.tw/case',summary:'共同提及不等於有罪'}};
+ const context=vm.createContext({URL,$:id=>elements[id],document:{querySelectorAll:()=>[]},knowledgeGraph:{nodes:new Map([['a',A],['case',node('case','Judgment','裁判公告')]])},selectedNodeId:null,selectedEdgeId:null,edge});
+ loadDisplay(context);
+ vm.runInContext(html.split('\n').find(row=>row.startsWith('  function safeSourceUrl(')),context);
+ vm.runInContext(html.split('\n').find(row=>row.includes('function nodeRows(')),context);
+ vm.runInContext(shipped('  function showKnowledgeEdge(', '  function renderKnowledgeGraph('),context);
+ vm.runInContext('showKnowledgeEdge(edge)',context);
+ return elements.nodeInfoBody.innerHTML;
+}
+test('edge Evidence shows a specific source role without turning co-mentions into guilt',()=>{
+ const out=courtRoleDetail('法院公告當事法人 / Corporate party <img src=x onerror=alert(1)>');
+ assert(out.includes('來源角色 / Source role'));assert(out.includes('Corporate party'));
+ assert(out.includes('&lt;img'));assert(!out.includes('<img'));assert(out.includes('共同提及不等於有罪'));
+ assert(courtRoleDetail(null).includes('未提供 / Not provided'));
+});
 function harness(){
  const panel={hidden:true,innerHTML:'',listeners:{},addEventListener(k,f){this.listeners[k]=f}},elements={connectionSummary:panel,pathResult:{innerHTML:''}};
  const nodes=[mockElement('a'),mockElement('p'),mockElement('b'),mockElement('unrelated')],edges=[];const calls=[];
