@@ -42,24 +42,28 @@ class PoliticalMasterTests(unittest.TestCase):
         return build_political_master_bundle(
             members, committees, retrieved_at="2026-09-23T10:00:00+08:00")
 
-    def test_exact_lgno_links_terms_without_name_based_cross_term_merge(self):
-        bundle, report = self.build(
-            [member(), member(term="10", onboardDate="2020/02/01")],
-            [committee(), committee(term="10", sessionPeriod="8")])
-        politicians = [item for item in bundle["entities"]
-                       if item["entity_type"] == "Politician"]
-        self.assertEqual(len(politicians), 1)
-        self.assertEqual(len(bundle["politician_terms"]), 2)
-        self.assertEqual({item["politician_entity_id"]
-                          for item in bundle["politician_terms"]}, {politicians[0]["id"]})
-        self.assertEqual(bundle["identifiers"], [{
-            "entity_id": politicians[0]["id"],
-            "namespace": LEGISLATOR_NUMBER_NAMESPACE,
-            "value": "110001",
-        }])
-        self.assertEqual(report["quality"]["exact_identifier_rate"], 1.0)
-        self.assertEqual(sum(item["relationship_type"] == "COMMITTEE_MEMBER"
-                             for item in bundle["relationships"]), 2)
+    def test_reused_number_across_terms_never_merges_people(self):
+        bundle, _ = self.build([member(), member(term="10", onboardDate="2020/02/01")],
+                               [committee(), committee(term="10", sessionPeriod="8")])
+        people = [r for r in bundle["entities"] if r["entity_type"] == "Politician"]
+        self.assertEqual(len(people), 2)
+        self.assertEqual(len({r["politician_entity_id"] for r in bundle["politician_terms"]}), 2)
+        self.assertEqual({r["namespace"] for r in bundle["identifiers"]},
+            {LEGISLATOR_NUMBER_NAMESPACE, "tw:legislative_yuan:id14:term:10", "tw:legislative_yuan:id14:term:11"})
+
+    def test_other_term_committee_does_not_attach_to_term_11_member(self):
+        bundle, report = self.build([member()], [committee(), committee(term="10")])
+        edges = [r for r in bundle["relationships"] if r["relationship_type"] == "COMMITTEE_MEMBER"]
+        self.assertEqual(len(edges), 1)
+        self.assertTrue(any(r["reason"] == "unmatched_committee_member" for r in report["skipped"]))
+
+    def test_term_11_preserves_existing_identity_and_identifier(self):
+        from src.entities.models import stable_id
+        bundle, _ = self.build([member()], [committee()])
+        person = next(r for r in bundle["entities"] if r["entity_type"] == "Politician")
+        self.assertEqual(person["id"], stable_id("entity", LEGISLATOR_NUMBER_NAMESPACE, "110001"))
+        self.assertIn({"entity_id": person["id"], "namespace": LEGISLATOR_NUMBER_NAMESPACE,
+                       "value": "110001"}, bundle["identifiers"])
 
     def test_ambiguous_same_name_never_creates_exact_identifier_or_committee_edge(self):
         bundle, report = self.build(

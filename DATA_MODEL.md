@@ -122,8 +122,10 @@ acceptance is distinct from published-data coverage.
 Party membership, legislature, committee service, proposal, and co-sponsorship remain directed Relationships (`MEMBER_OF`, `LEGISLATOR_OF`, `COMMITTEE_MEMBER`, `PROPOSED_BILL`, `CO_SPONSORED_BILL`). Committees are `GovernmentAgency` Entities and bills are `LegislativeBill` Entities, so Graph and path queries remain reusable.
 
 DATA Phase 1 adds a draft-only Legislative Yuan master-data projection. An exact
-`tw:legislative_yuan:legislator_number` identifier is created only from official
-`lgno`. Dataset-internal term/name joins may locate `lgno` only when one exact
+`tw:legislative_yuan:id14:term:<term>` identifier is created only from official
+ID14 `lgno` and its term. The old `tw:legislative_yuan:legislator_number` alias
+is retained only for term 11 compatibility, with existing UUIDs/FKs unchanged.
+The separate official PDF numbering system must not be inserted as ID14 `lgno`. Dataset-internal term/name joins may locate `lgno` only when one exact
 normalized pair maps to one value; missing or ambiguous cases remain separate
 `SOURCE_SCOPED` Politician Entities. `politician_terms` records the official
 legislator number and immutable source identity alongside its Evidence. Committee

@@ -19,7 +19,7 @@ required. Production schema and data remain unchanged.
 
 - Ingest official Legislative Yuan member and committee observations as draft,
   evidence-backed Entity/Relationship/term records.
-- Resolve a politician across records only by exact official `lgno`; keep missing
+- Resolve a politician across records only by exact official ID14 `lgno` plus term; keep missing
   or ambiguous rows source-scoped and never merge people by name alone.
 - Preserve term, party, constituency, onboard/leave dates, committee session,
   source record, source URL, retrieval time, and quality metrics.

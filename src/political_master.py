@@ -1,8 +1,8 @@
 """Draft-only Legislative Yuan political master-data projection.
 
-People are consolidated across source rows only by the Legislative Yuan's
-``lgno``.  A name can help join two rows inside the same official dataset and
-term only when that mapping is unique; it is never an identity key by itself.
+The old identifier namespace is retained only for term 11 compatibility.
+New identifiers include their ID14 source and term; existing term-11 entity
+IDs remain unchanged. Committee observations must match term and name.
 """
 from datetime import date
 from hashlib import sha256
@@ -170,6 +170,8 @@ def build_political_master_batches(member_rows, committee_rows, *, retrieved_at,
 
 def build_political_master_bundle(member_rows, committee_rows, *, retrieved_at):
     """Build a bounded, reviewable ingestion bundle from official LY rows."""
+    member_rows = list(member_rows)
+    committee_rows = list(committee_rows)
     retrieved = timestamp(retrieved_at)
     bundle = _empty_bundle()
     report = {
@@ -233,7 +235,8 @@ def build_political_master_bundle(member_rows, committee_rows, *, retrieved_at):
                 "term": term, "name": name, "values": sorted(number_set)})
         if number:
             source_record_id = f"member:{term}:{number}"
-            entity_id = stable_id("entity", LEGISLATOR_NUMBER_NAMESPACE, number)
+            namespace = f"tw:legislative_yuan:id14:term:{term}"
+            entity_id = stable_id("entity", LEGISLATOR_NUMBER_NAMESPACE if term == 11 else namespace, number)
             identity_status = "EXACT"
         else:
             fingerprint = _record_fingerprint(term, name, start_date, constituency)
@@ -256,14 +259,18 @@ def build_political_master_bundle(member_rows, committee_rows, *, retrieved_at):
         politician = Entity(
             id=entity_id, entity_type="Politician", canonical_name=name,
             display_name=name, source=SOURCE_NAME,
-            source_id=(f"legislator:{number}" if number else source_record_id),
+            source_id=((f"legislator:{number}" if term == 11 else f"legislator:{term}:{number}")
+                       if number else source_record_id),
             identity_status=identity_status)
         politician_by_term_name[(term, name.casefold())] = politician
         if number:
-            politician_by_number[number] = politician
+            politician_by_number[(term, number)] = politician
             bundle["identifiers"].append({
-                "entity_id": politician.id, "namespace": LEGISLATOR_NUMBER_NAMESPACE,
+                "entity_id": politician.id, "namespace": f"tw:legislative_yuan:id14:term:{term}",
                 "value": number})
+            if term == 11:
+                bundle["identifiers"].append({"entity_id": politician.id,
+                    "namespace": LEGISLATOR_NUMBER_NAMESPACE, "value": number})
 
         party_name = _text(row.get("party"))
         party = None
@@ -325,7 +332,11 @@ def build_political_master_bundle(member_rows, committee_rows, *, retrieved_at):
                 "support_type": "supports"})
 
     for index, (row, term, session, number, name, committee_name) in enumerate(valid_committee_rows):
-        politician = politician_by_number.get(number)
+        politician = politician_by_number.get((term, number))
+        if politician is not None and _text(_entity_value(politician, "canonical_name")) != name:
+            report["skipped"].append({"dataset": 14, "row": index,
+                                      "reason": "committee_identifier_name_conflict"})
+            continue
         if politician is None:
             candidate = politician_by_term_name.get((term, name.casefold()))
             if candidate and _entity_value(candidate, "identity_status") == "EXACT":

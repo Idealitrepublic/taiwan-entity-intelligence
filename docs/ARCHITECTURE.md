@@ -350,7 +350,9 @@ datasets 16 and 14, emits draft Entity/Relationship/Evidence records, and adds
 draft `politician_terms` in the same transaction. Existing politician reads and
 the version-1 API remain unchanged; `legislator_number` is an additive term field.
 
-Politicians are consolidated only by official `lgno`. A dataset-internal exact
+Politicians are resolved by official ID14 `lgno` **within its term**, using
+`tw:legislative_yuan:id14:term:<term>`. ID14 numbers are reused across terms.
+Term 11 retains legacy UUIDs and identifier aliases; other terms never reuse them. A dataset-internal exact
 term/name join may discover one unique `lgno`, but a name never merges people
 across terms or sources. Missing/ambiguous identifiers create source-scoped rows;
 identifier/name conflicts and unmatched committee rows are reported and skipped.
