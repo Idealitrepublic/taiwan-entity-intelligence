@@ -134,3 +134,15 @@ test('changing range keeps the unverified company comparison action available',(
  vm.runInContext(html.split('\n').find(row=>row.startsWith('  function invalidatePathRequest(')),h.context);vm.runInContext('invalidatePathRequest()',h.context);
  assert(!h.panel.hidden);assert(h.panel.innerHTML.includes('data-connection-find'));assert(h.panel.innerHTML.includes('尚未查核'));
 });
+
+
+test('loaded evidence includes entity-only news and deduplicates shared edge evidence',()=>{
+ const context=vm.createContext({});
+ vm.runInContext(shipped('  function loadedEvidenceCount(', '  function createKnowledgeGraph('),context);
+ const count=context.loadedEvidenceCount;
+ const profile={evidence:[{evidence:{id:'official'}},{evidence:{id:'news'}}]};
+ assert.equal(count(profile,[]),2);
+ assert.equal(count(profile,[{primary_evidence:{id:'news'}},{primary_evidence_id:'edge'}]),3);
+ assert.equal(count(null,[{primary_evidence:{id:'edge'}},{primary_evidence_id:'edge'}]),1);
+ assert.equal(count(null,[]),0);
+});
