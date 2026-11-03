@@ -50,7 +50,7 @@ function reportHarness({popup=null,status=200,mime='application/pdf',bytes='%PDF
 const cases=[];
 function test(name,run){cases.push({name,run})}
 test('range remains 1/2/3, not an API semantic change',()=>{
-  for(const [depth,label] of [[1,'直接關係 / Direct'],[2,'最多 1 個中介 / Up to 1 intermediary'],[3,'最多 2 個中介 / Up to 2 intermediaries']])
+  for(const [depth,label] of [[1,'直接關係 / Direct'],[2,'1 個中介 / 1 intermediary'],[3,'2 個中介 / 2 intermediaries']])
     assert(html.includes(`<option value="${depth}"${depth===3?' selected':''}>${label}</option>`));
   assert(!html.includes('max depth 3'));
 });

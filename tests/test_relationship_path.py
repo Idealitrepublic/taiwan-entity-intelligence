@@ -179,7 +179,7 @@ class RelationshipPathTests(unittest.TestCase):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
         for token in ("pathSource", "pathTarget", "findRelationshipPath",
                       "/api/v1/paths", "traversal_direction",
-                      "原始來源 / Original source", "最多 2 個中介 / Up to 2 intermediaries"):
+                      "原始來源 / Original source", "2 個中介 / 2 intermediaries"):
             self.assertIn(token, html)
 
 

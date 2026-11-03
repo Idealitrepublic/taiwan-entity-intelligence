@@ -190,3 +190,14 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  const before=requests.length;await vm.runInContext("expandKnowledgeNode('deeper')",h.context);assert.equal(requests.length,before);
  console.log('PASS path nodes and newly added nodes expand, paginate, deduplicate, preserve anchors and obey 60-node cap');
 })().catch(error=>{console.error(error);process.exitCode=1});
+
+test('path click directly expands on the same canvas without opening a detail overlay',()=>{
+ const calls=[],node={id:'bridge',entity_type:'Politician'},info={hidden:false};
+ const context=vm.createContext({graphMode:'path',knowledgeGraph:{nodes:new Map([['bridge',node]])},
+  nodeDragState:{id:'bridge',moved:false},dragState:null,suppressNodeClick:false,selectedNodeId:null,
+  $:()=>info,showKnowledgeNode:()=>calls.push('details'),expandKnowledgeNode:id=>calls.push(id),
+  renderKnowledgeGraph:()=>{},setTimeout:()=>{},graphSvg:{classList:{remove(){}},hasPointerCapture:()=>false}});
+ const code=html.split('\n').find(row=>row.trimStart().startsWith('const stopDrag='));
+ vm.runInContext(code,context);vm.runInContext('stopDrag({pointerId:1})',context);
+ assert.deepEqual(calls,['bridge']);assert.equal(info.hidden,true);assert.equal(context.selectedNodeId,'bridge');
+});
