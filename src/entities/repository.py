@@ -567,8 +567,8 @@ class EntityRepository:
         source_id, target_id = uuid_string(source_entity_id), uuid_string(target_entity_id)
         if depth not in (1, 2, 3) or source_id == target_id:
             raise ValueError("Invalid exact path depth")
-        left = self.graph_neighbors(source_id, limit=50)
-        right = self.graph_neighbors(target_id, limit=50)
+        left = self.graph_neighbors(source_id, limit=25)
+        right = self.graph_neighbors(target_id, limit=25)
         if not left or not right:
             return None
         nodes = {n["id"]: n for graph in (left, right) for n in graph["nodes"]}
@@ -577,9 +577,9 @@ class EntityRepository:
         result = {"found": False, "depth": None, "segments": [],
                   "source_entity": nodes[source_id], "target_entity": nodes[target_id],
                   "max_depth": depth, "exact_depth": depth, "backend": "company_exact_intermediaries",
-                  "traversal_bounded": True, "relationship_limit_per_node": 50,
+                  "traversal_bounded": True, "relationship_limit_per_node": 25,
                   "truncated": bool(left["has_more"] or right["has_more"]),
-                  "coverage_note": "指定中介數；每端讀取50條關係、中間連線200條，僅已發布資料。 / Exact intermediary count; bounded published data only."}
+                  "coverage_note": "指定中介數；每端讀取25條關係、中間連線200條，僅已發布資料。 / Exact intermediary count; bounded published data only."}
 
         def adjacent(graph, root):
             return {other: edge for edge in graph["edges"]
@@ -600,7 +600,7 @@ class EntityRepository:
             if xs and ys:
                 xlist, ylist = ",".join(xs), ",".join(ys)
                 middle = self.transport("relationships", {
-                    "select": f"{RELATIONSHIP_FIELDS},primary_evidence:evidence_records!inner({EVIDENCE_FIELDS})",
+                    "select": f"{RELATIONSHIP_FIELDS},primary_evidence:evidence_records!relationships_primary_evidence_id_fkey!inner({EVIDENCE_FIELDS})",
                     "or": f"(and(source_entity_id.in.({xlist}),target_entity_id.in.({ylist})),and(source_entity_id.in.({ylist}),target_entity_id.in.({xlist})))",
                     "status": "eq.published", "primary_evidence.status": "eq.active",
                     "primary_evidence.publication_status": "eq.published", "order": "id.asc", "limit": 201})

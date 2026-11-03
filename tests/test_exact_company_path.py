@@ -30,6 +30,7 @@ class ExactCompanyPathTests(unittest.TestCase):
         result = repo.company_path_at_depth(A, B, depth=3)
         self.assertTrue(result['found'])
         self.assertEqual(result['depth'], 3)
+        self.assertTrue(all(c.kwargs['limit'] == 25 for c in repo.graph_neighbors.call_args_list))
         self.assertEqual(len(result['segments']), 3)
         self.assertEqual(len({result['segments'][0]['from_entity']['id'],
                               *[s['to_entity']['id'] for s in result['segments']]}), 4)
@@ -37,6 +38,7 @@ class ExactCompanyPathTests(unittest.TestCase):
         self.assertEqual(params['status'], 'eq.published')
         self.assertEqual(params['primary_evidence.publication_status'], 'eq.published')
         self.assertEqual(params['limit'], 201)
+        self.assertIn('relationships_primary_evidence_id_fkey!inner', params['select'])
 
     def test_shared_node_does_not_satisfy_two_intermediaries(self):
         repo = self.repo([])

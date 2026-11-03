@@ -517,7 +517,7 @@ without a published neighborhood can return unavailable; no edges are invented.
 
 The company-path UI now sends `exact_depth` equal to 1/2/3: direct/one/two
 intermediaries. Existing clients omitting it retain the shortest-within-range
-API behavior. Exact paths use public Graph API neighborhoods (50 relationships
+API behavior. Exact paths use public Graph API neighborhoods (25 relationships
 per endpoint) and a bounded published, active-Evidence middle-edge query (200
 results plus one truncation sentinel). Two-intermediary paths require four
 distinct Entity IDs and three supported segments; a shorter path is not substituted.
