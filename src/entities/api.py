@@ -30,6 +30,9 @@ def dispatch_entity_api(path, query, repository=None):
             target_id = uuid_string(query.get("target", [None])[0])
             max_depth = int(query.get("max_depth", ["3"])[0])
             company_only = query.get("company_only", ["0"])[0]
+            exact_depth = int(query.get("exact_depth", ["0"])[0])
+            if exact_depth and (exact_depth != max_depth or company_only != "1"):
+                raise ValueError("Invalid exact path depth")
             live_requested = query.get("live", ["0"])[0]
             source_uniform = query.get("source_uniform", [None])[0]
             target_uniform = query.get("target_uniform", [None])[0]
@@ -51,7 +54,9 @@ def dispatch_entity_api(path, query, repository=None):
             return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
         repository = repository or EntityRepository()
         try:
-            if live_requested == "1":
+            if exact_depth:
+                result = repository.company_path_at_depth(source_id, target_id, depth=exact_depth)
+            elif live_requested == "1":
                 result = live_company_path(source_uniform, target_uniform,
                                            max_depth=max_depth)
             elif company_only == "1":

@@ -562,6 +562,67 @@ class EntityRepository:
             return None
         return result
 
+    def company_path_at_depth(self, source_entity_id, target_entity_id, *, depth):
+        """Exact intermediate count, bounded endpoint joins and public RLS reads."""
+        source_id, target_id = uuid_string(source_entity_id), uuid_string(target_entity_id)
+        if depth not in (1, 2, 3) or source_id == target_id:
+            raise ValueError("Invalid exact path depth")
+        left = self.graph_neighbors(source_id, limit=50)
+        right = self.graph_neighbors(target_id, limit=50)
+        if not left or not right:
+            return None
+        nodes = {n["id"]: n for graph in (left, right) for n in graph["nodes"]}
+        if any(nodes.get(key, {}).get("entity_type") != "Company" for key in (source_id, target_id)):
+            return None
+        result = {"found": False, "depth": None, "segments": [],
+                  "source_entity": nodes[source_id], "target_entity": nodes[target_id],
+                  "max_depth": depth, "exact_depth": depth, "backend": "company_exact_intermediaries",
+                  "traversal_bounded": True, "relationship_limit_per_node": 50,
+                  "truncated": bool(left["has_more"] or right["has_more"]),
+                  "coverage_note": "指定中介數；每端讀取50條關係、中間連線200條，僅已發布資料。 / Exact intermediary count; bounded published data only."}
+
+        def adjacent(graph, root):
+            return {other: edge for edge in graph["edges"]
+                    if (other := edge["target"] if edge["source"] == root else edge["source"]) != root
+                    and edge.get("primary_evidence", {}).get("id")}
+
+        a, b = adjacent(left, source_id), adjacent(right, target_id)
+        route = None
+        if depth == 1 and target_id in a:
+            route = [(source_id, target_id, a[target_id])]
+        elif depth == 2:
+            shared = sorted(set(a) & set(b) - {source_id, target_id})
+            if shared:
+                x = shared[0]
+                route = [(source_id, x, a[x]), (x, target_id, b[x])]
+        elif depth == 3:
+            xs, ys = sorted(set(a) - {source_id, target_id}), sorted(set(b) - {source_id, target_id})
+            if xs and ys:
+                xlist, ylist = ",".join(xs), ",".join(ys)
+                middle = self.transport("relationships", {
+                    "select": f"{RELATIONSHIP_FIELDS},primary_evidence:evidence_records!inner({EVIDENCE_FIELDS})",
+                    "or": f"(and(source_entity_id.in.({xlist}),target_entity_id.in.({ylist})),and(source_entity_id.in.({ylist}),target_entity_id.in.({xlist})))",
+                    "status": "eq.published", "primary_evidence.status": "eq.active",
+                    "primary_evidence.publication_status": "eq.published", "order": "id.asc", "limit": 201})
+                result["truncated"] |= len(middle) > 200
+                for edge in middle[:200]:
+                    u, v = edge["source_entity_id"], edge["target_entity_id"]
+                    if not edge.get("primary_evidence", {}).get("id"):
+                        continue
+                    for x, y in ((u, v), (v, u)):
+                        if x != y and x in a and y in b and len({source_id, x, y, target_id}) == 4:
+                            route = [(source_id, x, a[x]), (x, y, edge), (y, target_id, b[y])]
+                            break
+                    if route:
+                        break
+        if route:
+            result.update(found=True, depth=depth, segments=[{
+                "from_entity": nodes[u], "to_entity": nodes[v],
+                "traversal_direction": "forward" if edge["source_entity_id"] == u else "reverse",
+                "relationship": {k: val for k, val in edge.items() if k not in ("primary_evidence", "source", "target")},
+                "evidence": edge["primary_evidence"]} for u, v, edge in route])
+        return result
+
     def _relationship_path_from_graph(self, source_entity_id, target_entity_id, *, max_depth):
         page_size, entity_limit = 12, 30
         target_graph = self.graph_neighbors(target_entity_id, limit=1)

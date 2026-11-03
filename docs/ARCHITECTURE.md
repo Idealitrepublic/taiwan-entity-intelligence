@@ -512,3 +512,17 @@ The path query still has max_depth 1–3. Manual click exploration is independen
 of that query depth, with a hard 60-node canvas limit, no recursive auto-crawl,
 and no new API, schema, inference, or Production changes. Live-only observations
 without a published neighborhood can return unavailable; no edges are invented.
+
+### Explicit intermediary count and loading state (2026-11-03)
+
+The company-path UI now sends `exact_depth` equal to 1/2/3: direct/one/two
+intermediaries. Existing clients omitting it retain the shortest-within-range
+API behavior. Exact paths use public Graph API neighborhoods (50 relationships
+per endpoint) and a bounded published, active-Evidence middle-edge query (200
+results plus one truncation sentinel). Two-intermediary paths require four
+distinct Entity IDs and three supported segments; a shorter path is not substituted.
+No database migration or ingestion is involved. Results explicitly report
+truncation; absence in a bounded result is never proof of no relationship.
+The circular loader reflects actual in-flight path/neighbor requests and clears
+on success/error/cancellation, with aria-busy and reduced-motion support. It is
+indeterminate because the remote queries do not expose percentage completion.

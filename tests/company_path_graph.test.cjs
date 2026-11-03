@@ -201,3 +201,15 @@ test('path click directly expands on the same canvas without opening a detail ov
  vm.runInContext(code,context);vm.runInContext('stopDrag({pointerId:1})',context);
  assert.deepEqual(calls,['bridge']);assert.equal(info.hidden,true);assert.equal(context.selectedNodeId,'bridge');
 });
+
+test('loading ring tracks path and neighbor requests and clears on completion',()=>{
+ const panel={hidden:true},label={textContent:''},attrs={},svg={setAttribute:(k,v)=>attrs[k]=v};
+ const context=vm.createContext({$:id=>({graphLoading:panel,graphLoadingText:label,svg})[id],pathLoading:true,knowledgeGraph:null});
+ vm.runInContext(line('updateGraphLoading'),context);
+ vm.runInContext('updateGraphLoading()',context);assert.equal(panel.hidden,false);assert.equal(attrs['aria-busy'],'true');
+ context.pathLoading=false;context.knowledgeGraph={loading:new Set(['one','two'])};
+ vm.runInContext('updateGraphLoading()',context);assert(label.textContent.includes('2'));assert(!label.textContent.includes('%'));
+ context.knowledgeGraph.loading.clear();vm.runInContext('updateGraphLoading()',context);
+ assert.equal(panel.hidden,true);assert.equal(attrs['aria-busy'],'false');
+ assert(html.includes('exact_depth:'));assert(html.includes('prefers-reduced-motion:reduce'));
+});
