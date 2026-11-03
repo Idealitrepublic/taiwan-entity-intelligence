@@ -500,3 +500,15 @@ Development 僅保留既有來源索引與審核後發布的圖譜資料。
 聚焦只改變其他分支透明度，不移除已載入節點、展開狀態或拖曳位置。
 沒有schema、migration、權限、資料寫入或最短路徑演算法更動。
 操作、驗收與範圍見[公司關係摘要](COMPANY_CONNECTION_UX.md)。
+
+### Manual exploration from a company path (2026-11-03)
+
+The shortest-path result remains immutable in the browser's `pathData`. Its nodes
+are seeds, not already-expanded neighborhood pages. Clicking any published node
+loads one existing public Graph API page (12 relationships); further clicks follow
+that node's cursor. Original node IDs, path roles, positions by level, and Evidence
+remain intact, and expanded branches are not dimmed as unrelated to the path.
+The path query still has max_depth 1–3. Manual click exploration is independent
+of that query depth, with a hard 60-node canvas limit, no recursive auto-crawl,
+and no new API, schema, inference, or Production changes. Live-only observations
+without a published neighborhood can return unavailable; no edges are invented.
