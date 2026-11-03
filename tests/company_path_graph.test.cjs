@@ -143,3 +143,21 @@ test('published company selected from live overview retains its exact ID for a m
   assert.match(actions,/data-path-uniform="04690983"/);
   assert.match(actions,/data-path-role="source"/);
 });
+
+
+test('query preview keeps both companies visible without inventing a relationship',()=>{
+ const h=harness();vm.runInContext(line('renderPathEndpoints'),h.context);
+ assert.equal(vm.runInContext('renderPathEndpoints()',h.context),true);
+ assert.equal(h.context.knowledgeGraph.nodes.size,2);
+ assert.equal(h.context.knowledgeGraph.edges.size,0);
+ assert.equal(h.context.knowledgeGraph.nodes.get('a').pathRole,'公司 A / Company A');
+ assert.equal(h.context.knowledgeGraph.nodes.get('b').pathRole,'公司 B / Company B');
+ h.context.pathSelection.target=A;
+ assert.equal(vm.runInContext('renderPathEndpoints()',h.context),false);
+});
+test('successful path marks the actual bridge and both endpoint roles',()=>{
+ const h=harness();Object.assign(h.context,{data:path([segment(A,shared,'r1'),segment(shared,B,'r2',true)])});
+ vm.runInContext('renderPathGraph(data)',h.context);
+ assert.equal(h.context.knowledgeGraph.nodes.get('shared').pathRole,'連結節點 / Connecting node');
+ assert.equal(h.context.knowledgeGraph.nodes.get('b').pathRole,'公司 B / Company B');
+});

@@ -90,7 +90,7 @@ test('unverified loaded co-occurrence is a candidate action and never a confirme
  h.panel.listeners.click({target:{closest:()=>({hasAttribute:k=>k==='data-connection-find'})}});assert.deepEqual(h.calls,[['source','a'],['target','b'],'find']);
 });
 test('no result clears stale relation claims and preserves bounded-coverage warning',()=>{
- const h=harness();vm.runInContext(shipped('  function renderPathResult(', '  function renderPathGraph('),h.context);
+ const h=harness();h.context.pathSelection={source:null,target:null};vm.runInContext(shipped('  function renderPathResult(', '  function renderPathGraph('),h.context);
  vm.runInContext('renderPathResult({found:false,truncated:true,coverage_note:"目前來源範圍"})',h.context);
  assert(!h.panel.hidden);assert(h.panel.innerHTML.includes('不代表兩家公司沒有關係'));assert(h.panel.innerHTML.includes('目前來源範圍'));assert(!h.panel.innerHTML.includes('connection-arrow'));
 });
