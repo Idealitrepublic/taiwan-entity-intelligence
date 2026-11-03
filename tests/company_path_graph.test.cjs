@@ -213,3 +213,23 @@ test('loading ring tracks path and neighbor requests and clears on completion',(
  assert.equal(panel.hidden,true);assert.equal(attrs['aria-busy'],'false');
  assert(html.includes('exact_depth:'));assert(html.includes('prefers-reduced-motion:reduce'));
 });
+
+test('expanded graphs use uniform measured spacing and keep nodes, labels and routed lines apart',()=>{
+ const context=vm.createContext({graphMode:'path',knowledgeGraph:{manualPositions:new Map(),edges:new Map()},graphDepthLimit:()=>3,num:Number,graphContext:null,relationshipLabels:{MEMBER_OF:'成員 / Member of'},entityTypeLabels:{Company:'公司 / Company'},connectionEdgeLabel:edge=>edge.label});
+ vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  function knowledgeMetrics(', '  function showKnowledgeNode('),context);
+ for(const count of [3,12,23,60]){
+  const nodes=[{...A,depth:0},{...shared,depth:1},{...B,depth:2}];
+  for(let i=3;i<count;i++)nodes.push({id:'n'+i,depth:i<14?2:3,display_name:'很長的官方公司名稱及 English organization '+i,entity_type:i%2?'Company':'GovernmentAgency'});
+  const edges=nodes.slice(1).map((n,i)=>({id:'edge'+i,source:n.depth===1?'a':n.depth===2?'shared':'n3',target:n.id,label:'政治獻金 / Political contribution\n2023-10-13',relationship_type:'MEMBER_OF'}));
+  context.nodes=nodes;context.edges=edges;const layout=vm.runInContext('knowledgeLayout(nodes,edges)',context);
+  const boxes=nodes.map(n=>{const p=layout.positions.get(n.id),m=context.knowledgeMetrics(n);return{id:n.id,left:p.x-m.halfWidth,right:p.x+m.halfWidth,top:p.y-m.top,bottom:p.y+m.bottom}});
+  function overlaps(a,b){return a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top}
+  for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)assert(!overlaps(boxes[i],boxes[j]),'node overlap');
+  const routes=[...layout.routes.values()];for(let i=0;i<routes.length;i++){
+   for(const box of boxes)assert(!overlaps(routes[i].labelBox,box),'label/node overlap');
+   for(let j=i+1;j<routes.length;j++)assert(!overlaps(routes[i].labelBox,routes[j].labelBox),'edge label overlap');
+   for(let k=1;k<routes[i].points.length;k++){const [x1,y1]=routes[i].points[k-1],[x2,y2]=routes[i].points[k],segment={left:Math.min(x1,x2)-.1,right:Math.max(x1,x2)+.1,top:Math.min(y1,y2)-.1,bottom:Math.max(y1,y2)+.1};for(const box of boxes.filter(b=>![edges[i].source,edges[i].target].includes(b.id)))assert(!overlaps(segment,box),'line crosses unrelated node');for(const other of routes)assert(!overlaps(segment,other.labelBox),'line crosses label')}
+  }
+  for(const depth of [2,3]){const rows=nodes.filter(n=>n.depth===depth).map(n=>layout.positions.get(n.id).y);for(let i=1;i<rows.length;i++)assert.equal(rows[i]-rows[i-1],layout.rowPitch)}
+ }
+});
