@@ -32,7 +32,7 @@ vm.runInContext(focusCode+'\nfocusKnowledgeExpansion("bridge");',focusContext);
 assert.equal(focusContext.zoom,2.08,'expansion retains readable labels rather than fitting 12 nodes into tiny text');
 assert(Number.isFinite(focusContext.panX)&&Number.isFinite(focusContext.panY));
 assert.match(graphSub.textContent,/Fit for the full graph/);
-assert.match(html,/if\(newIds.size\)focusKnowledgeExpansion\(entityId\)/);
+assert(html.includes("if(entityId===state.rootId&&!continuing&&graphMode!=='path')fitGraphBounds();else focusKnowledgeExpansion(entityId)"),'initial overview stays fully visible; user expansion focuses the readable branch');
 console.log('PASS expanded published graph keeps readable branch zoom; manual zoom remains unrestricted');
 
 const parentLeft=500+focusContext.panX+(500-500)*focusContext.zoom-95*focusContext.zoom;

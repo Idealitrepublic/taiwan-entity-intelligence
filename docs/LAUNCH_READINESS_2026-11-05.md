@@ -54,10 +54,38 @@ ACTIVE_HEALTHY。此授權不包含 migration、資料發布、環境變數變�
 | 全公司 PDF | PARTIAL | 中華 60 頁 PDF 結構／文字有效；未逐頁人工檢查全部 60 頁；另實測聯上報告含政治獻金 |
 | Responsive | PASS | 1440／1280／1024／768／390px：圖譜容器存在、無頁面水平溢出、手機提供清單 |
 | 真實外部受測者 | 未執行 | 不以內部測試代替議員／助理／記者的 Pilot |
-| 新 Preview／雲端 CI | 待驗收 | 以推送候選 commit 後的實際結果為準 |
+| 新 Preview／雲端 CI | PASS（已驗版本） | `ca3df80`／`154d0d3` Preview READY；`154d0d3` push workflow 成功，詳見下方收據 |
 | Production 備份 | 阻塞 | 本機缺 `TEI_PROD_DATABASE_URL`，已請使用者只在本機安全設定；未重設密碼 |
 
 所有「本機」驗證只指 Development 設定，不代表 Production 已具同等資料或 schema。
+
+### Preview 實測收據
+
+- 主修復 `ca3df80cb0c8a085240f261b1f484040e409314a`：
+  https://taiwan-entity-intelligence-i42ug5ubu-coldlight871029-9944.vercel.app/
+- 分支標籤／置中補修 `154d0d37f55252450614356d5e4b44d62b1ff1bc`：
+  https://taiwan-entity-intelligence-e7lqvjspp-coldlight871029-9944.vercel.app/
+- 最新開發分支 alias（會隨 branch 後續推送變動，不是 Production）：
+  https://taiwan-entity-intelligence-git-fix-764717-coldlight871029-9944.vercel.app/
+- GitHub 實際 **push** CI，而不是僅查 PR workflow：
+  https://github.com/Idealitrepublic/taiwan-entity-intelligence/actions/runs/41952847765
+  `154d0d3` completed/success。
+- Browser 實際登入 test1，6 筆收藏可見並下載新 PDF：80,998 bytes、6 頁、全頁橫式、
+  中文文字有效；登出後改登入 test2，只見自己的 Workspace 與 0 筆收藏，未殘留 test1 項目。
+- 中華完整調查實測：13 位關係人、50 筆裁罰候選、16 筆裁判來源、72 筆標案。
+  counts 隨查詢時點更新，與較早本機 12／71 筆不同，不代表刪除。
+  關係人、違法紀錄及標案分類均實際展開；裁罰分為勞動基準法／性別平等工作法。
+- 公開名稱與統編搜尋 200；匿名 Workspace 401。聯上↔敦峰的 UI 指定深度 API：
+  `exact_depth=1/2/3` 全部 200；分別未命中／兩段且一個中介／未命中。
+  舊 API 未指定 exact_depth 時保留「範圍內最短路徑」相容行為，不能將兩種查詢混為一談。
+- 吳思瑤真實公開圖譜 11 節點／12 線；分支放大後姓名約 15 螢幕像素。
+  自我檢查曾發現置中把母節點推到左側邊界，已補左右邊界回歸；補修版母節點標籤完整可見。
+  大圖仍需拖曳／縮放；Fit 可返回全部節點。初次載入保留全圖總覽，僅使用者繼續展開時聚焦。
+- 1440／1280／1024／768／390px 均無頁面水平溢出；390px 顯示簡化清單。
+- Runtime 檢查限所述驗收時段：`ca3df80` 的 2026-11-05 01:35–01:50 UTC
+  無 error/fatal 記錄；Browser console error 為 0。這不是長期零錯誤保證。
+
+最終上架仍受下列 Production 關卡阻擋，**不能據此標記整個產品或正式發布 COMPLETE**。
 
 ## 真實資料範圍
 
