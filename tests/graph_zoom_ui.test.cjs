@@ -18,28 +18,24 @@ assert.match(html, /這家公司連結了什麼 \/ Relationship summary/);
 console.log('PASS related-company zoom and dashboard relationship summary');
 
 const focusCode = html.slice(html.indexOf('  function focusKnowledgeExpansion('), html.indexOf('  function focusLegacyExpansion('));
-const graphSub = {textContent: '12 nodes'};
 const focusContext = vm.createContext({
-  zoom: .35, panX: 0, panY: 0,
-  knowledgeGraph: {nodes: new Map([['bridge',{id:'bridge'}],['child',{id:'child'}]]), edges: new Map([['edge',{source:'bridge',target:'child'}]])},
-  fitGraphBounds() {this.zoom=.35;}, readableLegacyZoom:()=>1.6,
-  knowledgeMetrics:()=>({halfWidth:95}),
-  knowledgePositions:()=>new Map([['bridge',{x:500,y:350}],['child',{x:900,y:350}]]),
+  zoom: 1, panX: 0, panY: 0,
+  knowledgeGraph: {nodes: new Map([['bridge',{id:'bridge'}]])},
+  knowledgeMetrics:()=>({halfWidth:45,top:45,bottom:22}),
+  syncGraphCanvasTop:()=>{},
   graphFitArea:()=>({x:50,y:70,width:900,height:560}),
-  setZoom(value) {focusContext.zoom=value;}, applyGraphTransform:()=>{}, $:()=>graphSub,
+  setZoom(value) {focusContext.zoom=value;}, applyGraphTransform:()=>{},
+  newIds:new Set(['child']),
+  layout:{positions:new Map([['bridge',{x:500,y:350}]]),zones:[{ids:['child'],left:600,right:780,top:280,bottom:410}]},
 });
-vm.runInContext(focusCode+'\nfocusKnowledgeExpansion("bridge");',focusContext);
-assert.equal(focusContext.zoom,2.08,'expansion retains readable labels rather than fitting 12 nodes into tiny text');
-assert(Number.isFinite(focusContext.panX)&&Number.isFinite(focusContext.panY));
-assert.match(graphSub.textContent,/Fit for the full graph/);
-assert(html.includes("if(graphMode==='path')fitGraphBounds(true);else if(entityId===state.rootId&&!continuing)fitGraphBounds();else focusKnowledgeExpansion(entityId)"),'initial overview stays fully visible; user expansion focuses the readable branch');
-console.log('PASS expanded published graph keeps readable branch zoom; manual zoom remains unrestricted');
-
-const parentLeft=500+focusContext.panX+(500-500)*focusContext.zoom-95*focusContext.zoom;
-assert(parentLeft>=74,'expanded branch keeps the clicked node and its label inside the canvas left padding');
-console.log('PASS automatic branch focus does not clip the expanded parent label');
-
-focusContext.knowledgePositions=()=>new Map([['bridge',{x:500,y:350}],['child',{x:100,y:350}]]);
-vm.runInContext('focusKnowledgeExpansion("bridge");',focusContext);
-const parentRight=500+focusContext.panX+95*focusContext.zoom;
-assert(parentRight<=926,'expanding a node with only left neighbors also preserves its right label boundary');
+vm.runInContext(focusCode+'\nfocusKnowledgeExpansion("bridge",layout,newIds);',focusContext);
+assert.equal(focusContext.zoom,1,'local expansion keeps the current scale when the branch fits');
+assert.equal(focusContext.panX,0,'the camera stays put when the new group is visible');
+assert.equal(focusContext.panY,0);
+focusContext.layout.zones[0]={ids:['child'],left:840,right:980,top:280,bottom:410};
+vm.runInContext('focusKnowledgeExpansion("bridge",layout,newIds);',focusContext);
+assert.equal(focusContext.zoom,1,'no global zoom-out for a group just beyond the canvas');
+assert.equal(focusContext.panX,-30,'pan only the distance needed to reveal the group');
+assert.equal(focusContext.panY,0);
+assert(html.includes("focusKnowledgeExpansion(entityId,layout,newIds)"));
+console.log('PASS expansion preserves the camera and pans minimally to reveal a nearby group');

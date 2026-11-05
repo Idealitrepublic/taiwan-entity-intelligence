@@ -79,6 +79,23 @@ test('blank canvas still pans and knowledge nodes still drag',()=>{
   assert.deepEqual(node.calls,['stop','dragging',7]);
 });
 
+test('drag preview keeps incident arrows attached and leaves unrelated lines untouched',()=>{
+ const element=()=>({attrs:{},setAttribute(key,value){this.attrs[key]=value}});
+ const node={...element(),dataset:{nodeId:'moved'}},line=element(),hit=element(),label=element(),other=element();
+ Object.assign(line,{getTotalLength:()=>100,getPointAtLength:()=>({x:180,y:20})});
+ const edge={dataset:{source:'moved',target:'still'},classList:{add(){}},
+  querySelector:selector=>({'.edge':line,'.edge-hit':hit,'.edge-label':label})[selector]};
+ const unrelated={dataset:{source:'still',target:'other'},querySelector:()=>other};
+ const context=vm.createContext({zoom:2,graphSvg:{querySelectorAll:selector=>selector==='.node'?[node]:[edge,unrelated]},
+  nodeDragState:{id:'moved',x:10,y:10,startX:10,startY:20,scaleX:2,scaleY:2,radius:10,moved:false}});
+ vm.runInContext(shipped('  function moveKnowledgeDrag(', "  graphSvg.addEventListener('pointerdown'")+
+   '\nmoveKnowledgeDrag({clientX:60,clientY:10});',context);
+ assert.equal(node.attrs.transform,'translate(50 0)');
+ assert.equal(line.attrs.d,'M 70 20 L 180 20');
+ assert.equal(hit.attrs.d,line.attrs.d);
+ assert.deepEqual(other.attrs,{});
+});
+
 test('shared canonical node renders Company A → agency → Company B with clickable evidence edges',()=>{
   const h=harness();
   assert.equal(vm.runInContext('renderPathGraph(data)',Object.assign(h.context,
@@ -165,7 +182,7 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
 (async()=>{
  const h=harness(),requests=[];
  Object.assign(h.context,{URLSearchParams,encodeURIComponent,GRAPH_PAGE_SIZE:20,GRAPH_MAX_NODES:60,
-   graphDepthLimit:()=>1,fitGraphBounds:()=>{},showKnowledgeNode:()=>{},autoExpandPublishedCompanies:()=>{},
+   graphDepthLimit:()=>1,fitGraphBounds:()=>{},focusKnowledgeExpansion:()=>{},showKnowledgeNode:()=>{},autoExpandPublishedCompanies:()=>{},
    fetch:async(url)=>{requests.push(url);return{ok:true,json:async()=>({data:h.context.reply})}}});
  Object.assign(h.context,{data:path([segment(A,shared,'r1'),segment(shared,B,'r2',true)])});
  vm.runInContext('renderPathGraph(data)',h.context);
@@ -187,7 +204,7 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  h.context.reply={nodes:[extra,{id:'deeper',entity_type:'GovernmentAgency'}],edges:[{id:'deep-edge',source:'extra',target:'deeper',primary_evidence:{id:'deep-proof'}}]};
  await vm.runInContext("expandKnowledgeNode('extra')",h.context);
  assert(h.context.knowledgeGraph.nodes.has('deeper'));assert.equal(h.context.knowledgeGraph.nodes.get('deeper').depth,3);
- assert.equal(h.context.knowledgeGraph.manualPositions.size,0,'new branch restores the automatic path layout after a drag');
+ assert.deepEqual(h.context.knowledgeGraph.manualPositions.get('b'),{x:700,y:360},'new branch preserves a manually moved node');
  for(let i=h.context.knowledgeGraph.nodes.size;i<60;i++)h.context.knowledgeGraph.nodes.set('cap-'+i,{id:'cap-'+i,depth:4});
  const before=requests.length;await vm.runInContext("expandKnowledgeNode('deeper')",h.context);assert.equal(requests.length,before);
  console.log('PASS path nodes and newly added nodes expand, paginate, deduplicate, preserve anchors and obey 60-node cap');
@@ -252,7 +269,7 @@ test('expanding a shared person keeps the company path level and bundles repeate
  const before=context.groupedGraphLayout(spine,original);
  const after=context.groupedGraphLayout([...spine,...children],[...original,...branchEdges,extraRecord]);
  for(const node of spine)assert.deepEqual(after.positions.get(node.id),before.positions.get(node.id));
- assert.equal(new Set(children.map(node=>after.positions.get(node.id).y)).size,2,'nine neighbors fit in two rows');
+ assert.equal(after.zones.length,6,'neighbors are split into compact groups by type');
  assert.equal(after.routes.size,11,'one visible line per pair');
  assert.deepEqual(Array.from(after.routes.get('branch0').records,record=>record.id),['branch0','different-evidence']);
  assert.equal(after.routes.get('branch0').lines.length,0,'details stay in evidence panel');
@@ -278,7 +295,12 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
   }
  }
  edges.push({id:'cross-evidence',source:'Politician0',target:'PoliticalParty0'});
+ const firstBatch=nodes.filter(node=>node.expandedFromId!=='GovernmentAgency0');
+ const firstIds=new Set(firstBatch.map(node=>node.id));
+ const before=context.groupedGraphLayout(firstBatch,edges.filter(e=>firstIds.has(e.source)&&firstIds.has(e.target)));
  const {zones,positions,routes}=context.groupedGraphLayout(nodes,edges);
+ for(const node of firstBatch)assert.deepEqual(positions.get(node.id),before.positions.get(node.id),'later expansion keeps existing nodes fixed');
+ for(const old of before.zones)assert.deepEqual(zones.find(zone=>zone.ids[0]===old.ids[0]),old,'later expansion keeps existing frames fixed');
  assert(zones.some(zone=>zone.type==='Company'&&zone.ids.length===4));
  assert.equal(zones.filter(zone=>zone.type==='Politician').reduce((total,zone)=>total+zone.ids.length,0),10);
  for(const node of nodes){
@@ -294,7 +316,7 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
   const edge=edges.find(e=>e.id===id);
   for(let i=1;i<geometry.points.length;i++){
    const [x,y]=geometry.points[i-1],[u,v]=geometry.points[i];
-   assert(x===u||y===v,'route is orthogonal');
+   assert(x===u||y===v,id+' route is orthogonal');
    for(const zone of zones.filter(z=>!z.ids.includes(edge.source)&&!z.ids.includes(edge.target))){
     assert(!(x===u?x>zone.left&&x<zone.right&&Math.max(y,v)>zone.top&&Math.min(y,v)<zone.bottom:
       y>zone.top&&y<zone.bottom&&Math.max(x,u)>zone.left&&Math.min(x,u)<zone.right),
@@ -303,5 +325,17 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
   }
  }
  assert(routes.get('cross-evidence').secondary);
+ assert(html.includes("arrow.setAttribute('fill','#80e4ff')"));
  assert(html.includes(':not(.show-cross-links) .path-cross-link{display:none}'));
+ const blocker={left:-90,right:90,top:-160,bottom:160};
+ const east={left:100,right:300,top:-300,bottom:300};
+ const spot=context.graphZoneSpot({x:0,y:0},100,60,[blocker,east]);
+ assert.equal(spot.right,-134,'an occupied direction sends the group to the closest available side');
+ const routed=context.graphConnector([0,0],[100,0],[],[[[20,0],[80,0]]]);
+ assert(routed.points.some(([,y])=>y!==0),'unrelated trunks avoid sharing the same lane when a short detour exists');
+ const moved='GovernmentAgency0',occupied=positions.get('Company0');
+ state.manualPositions.set(moved,occupied);
+ const afterDrop=context.groupedGraphLayout(nodes,edges);
+ assert.notDeepEqual(afterDrop.positions.get(moved),occupied,'a drop on an occupied frame snaps to free space');
+ for(const node of nodes.filter(n=>n.id!==moved))assert.deepEqual(afterDrop.positions.get(node.id),positions.get(node.id));
 });
