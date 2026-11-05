@@ -103,13 +103,12 @@ test('live-company path action requires published exact identifier, never names'
   assert(code.includes('serial!==companyRequestSerial'));
 });
 test('initial lazy load does not open an overlay that blocks node/edge pointer targets',async()=>{
-  const node={id:'A',depth:0},state={nodes:new Map([['A',node]]),loading:new Set(),expanded:new Set(),hasMore:new Map(),cursors:new Map(),edges:new Map()};
+  const node={id:'A',depth:0},state={rootId:'A',nodes:new Map([['A',node]]),loading:new Set(),expanded:new Set(),hasMore:new Map(),cursors:new Map(),edges:new Map()};
   const shown=[],context=vm.createContext({graphMode:'knowledge',knowledgeGraph:state,selectedNodeId:null,
     GRAPH_MAX_NODES:60,GRAPH_PAGE_SIZE:12,URLSearchParams,
-    graphDepthLimit:()=>3,$:()=>({value:'',textContent:''}),renderKnowledgeGraph:()=>{},showKnowledgeNode:node=>shown.push(node.id),
+    graphDepthLimit:()=>3,$:()=>({value:'',textContent:''}),renderKnowledgeGraph:()=>{},showKnowledgeNode:node=>shown.push(node.id),autoExpandPublishedCompanies:()=>{},
     fetch:async()=>({ok:true,json:async()=>({data:{nodes:[node],edges:[],has_more:false}})})});
-  const line=html.split('\n').find(row=>row.trimStart().startsWith('async function expandKnowledgeNode('));
-  assert(line);vm.runInContext(line,context);
+  vm.runInContext(shipped('  async function loadKnowledgeNeighbors(', '  async function openEntityGraph('),context);
   await vm.runInContext("expandKnowledgeNode('A')",context);
   assert.equal(shown.length,0);
   state.expanded.clear();context.selectedNodeId='A';

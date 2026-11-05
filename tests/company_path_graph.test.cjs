@@ -187,8 +187,8 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  Object.assign(h.context,{data:path([segment(A,shared,'r1'),segment(shared,B,'r2',true)])});
  vm.runInContext('renderPathGraph(data)',h.context);
  h.elements.relationshipFilter.value='STALE_HIDDEN_FILTER';
- vm.runInContext(shipped('  async function expandKnowledgeNode(', '  async function openEntityGraph('),h.context);
- const original=h.context.knowledgeGraph.pathData,extra={id:'extra',entity_type:'Company',display_name:'Additional company'};
+ vm.runInContext(shipped('  async function loadKnowledgeNeighbors(', '  async function openEntityGraph('),h.context);
+ const original=h.context.knowledgeGraph.pathData,extra={id:'extra',entity_type:'Person',display_name:'Additional person'};
  h.context.reply={nodes:[shared,A,extra],edges:[{id:'new',source:'extra',target:'shared',primary_evidence:{id:'proof',source_url:'https://example.gov.tw/proof'}}],has_more:true,next_cursor:'page-two'};
  await vm.runInContext("expandKnowledgeNode('shared')",h.context);
  assert.equal(requests.length,1);assert(!requests[0].includes('relationship_type'));
@@ -210,6 +210,50 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  console.log('PASS path nodes and newly added nodes expand, paginate, deduplicate, preserve anchors and obey 60-node cap');
 })().catch(error=>{console.error(error);process.exitCode=1});
 
+(async()=>{
+ const h=harness(),requests=[];
+ const selectedA={...A,public_identifier:'22659295'},selectedB={...B,public_identifier:'54690903'};
+ const role=(uniform)=>({source_name:'Official company registry',source_url:'https://example.gov.tw/officers',
+  source_locator:`Business_Accounting_NO=${uniform};row=1`,match_rule:'exact_company_uniform;person_identity_source_scoped'});
+ const company=(uniform)=>({status:'ok',uniform_number:uniform,company:{Business_Accounting_NO:uniform},
+  graph:{nodes:[
+    {id:'person:same',type:'person',label:'Same name',properties:{position:'董事',identity_status:'source_scoped_observation'}},
+    {id:'penalty:name-only',type:'penalty',label:'Name-only penalty',properties:{identity_status:'candidate'}}
+  ],edges:['person:same','penalty:name-only'].map(target=>({source:'company:'+uniform,target,evidence:role(uniform)}))}});
+ const firstEdge={...segment(A,shared,'r1').relationship,source:A.id,target:shared.id};
+ let unavailable=true;
+ Object.assign(h.context,{pathSelection:{source:selectedA,target:selectedB},
+  data:path([segment(A,shared,'r1'),segment(shared,B,'r2',true)]),
+  URLSearchParams,encodeURIComponent,GRAPH_PAGE_SIZE:12,GRAPH_MAX_NODES:60,graphDepthLimit:()=>3,
+  safeSourceUrl:url=>url.startsWith('https://'),fitGraphBounds:()=>{},focusKnowledgeExpansion:()=>{},
+  fetch:async(url)=>{
+    requests.push(url);
+    if(url.startsWith('/api/v1/graph/'))return {ok:true,json:async()=>({data:{nodes:[A,shared],edges:[firstEdge]}})};
+    if(url.endsWith('22659295')&&unavailable){unavailable=false;return {ok:false}}
+    return {ok:true,json:async()=>company(url.split('/').at(-1))};
+  }
+ });
+ vm.runInContext('renderPathGraph(data)',h.context);
+ vm.runInContext(shipped('  async function loadKnowledgeNeighbors(', '  async function openEntityGraph('),h.context);
+ const state=h.context.knowledgeGraph;
+ await vm.runInContext("expandKnowledgeNode('a')",h.context);
+ assert.equal(state.nodes.size,3);
+ assert.match(state.expansionNote,/Click to retry/);
+ await vm.runInContext("expandKnowledgeNode('a')",h.context);
+ await vm.runInContext("expandKnowledgeNode('b')",h.context);
+ const officers=[...state.nodes.values()].filter(n=>n.observation_only);
+ assert.equal(officers.length,2,'each endpoint expands an official source-scoped officer');
+ assert.notEqual(officers[0].id,officers[1].id,'same names across companies do not share a person node');
+ assert.deepEqual(officers.map(n=>n.expandedFromId),['a','b']);
+ assert.equal(state.nodes.size,5,'name-only penalties remain outside the relationship graph');
+ assert.equal(requests.filter(url=>url.startsWith('/api/v1/graph/a?')).length,1,'retry only the failed source');
+ h.context.clicked=officers[0].id;
+ const before=requests.length;await vm.runInContext('expandKnowledgeNode(clicked)',h.context);
+ assert.equal(requests.length,before,'registry observations do not query canonical entity endpoints');
+ assert.match(state.expansionNote,/新增 1 個節點/);
+ console.log('PASS company endpoints add exact registry roles and retry only the failed source');
+})().catch(error=>{console.error(error);process.exitCode=1});
+
 test('path click directly expands on the same canvas without opening a detail overlay',()=>{
  const calls=[],node={id:'bridge',entity_type:'Politician'},info={hidden:false};
  const context=vm.createContext({graphMode:'path',knowledgeGraph:{nodes:new Map([['bridge',node]])},
@@ -217,7 +261,8 @@ test('path click directly expands on the same canvas without opening a detail ov
   $:()=>info,showKnowledgeNode:()=>calls.push('details'),expandKnowledgeNode:id=>calls.push(id),
   renderKnowledgeGraph:()=>{},setTimeout:()=>{},graphSvg:{classList:{remove(){}},hasPointerCapture:()=>false}});
  const code=html.split('\n').find(row=>row.trimStart().startsWith('const stopDrag='));
- vm.runInContext(code,context);vm.runInContext('stopDrag({pointerId:1})',context);
+ vm.runInContext(shipped('  function activateKnowledgeNode(', '  async function expandKnowledgeNode(')+code,context);
+ vm.runInContext('stopDrag({pointerId:1})',context);
  assert.deepEqual(calls,['bridge']);assert.equal(info.hidden,true);assert.equal(context.selectedNodeId,'bridge');
 });
 
@@ -326,7 +371,7 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
  }
  assert(routes.get('cross-evidence').secondary);
  assert(html.includes("arrow.setAttribute('fill','#80e4ff')"));
- assert(html.includes(':not(.show-cross-links) .path-cross-link{display:none}'));
+ assert(html.includes(':not(.show-cross-links) .path-cross-link:not(.focused-cross-link){display:none}'));
  const blocker={left:-90,right:90,top:-160,bottom:160};
  const east={left:100,right:300,top:-300,bottom:300};
  const spot=context.graphZoneSpot({x:0,y:0},100,60,[blocker,east]);
