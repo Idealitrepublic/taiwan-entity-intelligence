@@ -233,3 +233,29 @@ test('expanded graphs use uniform measured spacing and keep nodes, labels and ro
   for(const depth of [2,3]){const rows=nodes.filter(n=>n.depth===depth).map(n=>layout.positions.get(n.id).y);for(let i=1;i<rows.length;i++)assert.equal(rows[i]-rows[i-1],layout.rowPitch)}
  }
 });
+
+test('expanding a shared person keeps the company path level and bundles repeated evidence',()=>{
+ const data=path([segment(A,shared,'r1'),segment(shared,B,'r2',true)]);
+ const state={pathData:data,rootId:A.id,manualPositions:new Map()};
+ const context=vm.createContext({graphMode:'path',knowledgeGraph:state,num:Number,graphContext:null,
+   relationshipLabels:{CONTRACT_WITH:'標案 / Contract'},entityTypeLabels:{Company:'公司 / Company'},
+   connectionEdgeLabel:edge=>edge.label||'政治獻金 / Political contribution\n2023-10-13'});
+ vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  function knowledgeMetrics(', '  function showKnowledgeNode('),context);
+ const spine=[{...A,pathRole:'公司 A / Company A'},{...shared,pathRole:'連結節點 / Connecting node'},{...B,pathRole:'公司 B / Company B'}];
+ const original=data.segments.map(({relationship:r})=>({...r,source:r.source_entity_id,target:r.target_entity_id}));
+ const children=Array.from({length:9},(_,i)=>({id:'neighbor'+i,entity_type:i%2?'Company':'GovernmentAgency',
+   display_name:'延伸關係及 English organization '+i,pathParentId:shared.id}));
+ const branchEdges=children.map((node,i)=>({id:'branch'+i,source:i%2?node.id:shared.id,target:i%2?shared.id:node.id}));
+ const extraRecord={...branchEdges[0],id:'different-evidence',primary_evidence_id:'proof-2'};
+ const before=context.pathSpineLayout(spine,original);
+ const after=context.pathSpineLayout([...spine,...children],[...original,...branchEdges,extraRecord]);
+ for(const node of spine)assert.deepEqual(after.positions.get(node.id),before.positions.get(node.id));
+ assert.equal(new Set(children.map(node=>after.positions.get(node.id).y)).size,2,'nine neighbors fit in two rows');
+ assert.equal(after.routes.size,11,'one visible line per pair');
+ assert.deepEqual(Array.from(after.routes.get('branch0').records,record=>record.id),['branch0','different-evidence']);
+ assert.equal(after.routes.get('branch0').lines.length,0,'details stay in evidence panel');
+ assert(after.routes.get('branch0').hitRoute,'each branch has its own evidence hit area');
+ assert(after.routes.get('r1').main&&after.routes.get('r2').main);
+ assert(after.routes.get('r2').points[0][0]>after.routes.get('r2').points.at(-1)[0],'arrow retains source-to-target direction');
+ assert(after.routes.get('r2').points.every(([,y])=>y===350),'main route remains horizontal');
+});
