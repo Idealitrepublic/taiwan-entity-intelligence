@@ -215,20 +215,26 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  const selectedA={...A,public_identifier:'22659295'},selectedB={...B,public_identifier:'54690903'};
  const role=(uniform)=>({source_name:'Official company registry',source_url:'https://example.gov.tw/officers',
   source_locator:`Business_Accounting_NO=${uniform};row=1`,match_rule:'exact_company_uniform;person_identity_source_scoped'});
+ const judgment={id:'case-1',type:'judicial',label:'Company name in judgment',properties:{jid:'case-1',identity_status:'name_mention_unverified'}};
  const company=(uniform)=>({status:'ok',uniform_number:uniform,company:{Business_Accounting_NO:uniform},
   graph:{nodes:[
     {id:'person:same',type:'person',label:'Same name',properties:{position:'董事',identity_status:'source_scoped_observation'}},
-    {id:'penalty:name-only',type:'penalty',label:'Name-only penalty',properties:{identity_status:'candidate'}}
-  ],edges:['person:same','penalty:name-only'].map(target=>({source:'company:'+uniform,target,evidence:role(uniform)}))}});
+    {id:'penalty:name-only',type:'penalty',label:'Name-only penalty',properties:{identity_status:'candidate'}},
+    ...(uniform==='22659295'?[judgment]:[])
+  ],edges:['person:same','penalty:name-only',...(uniform==='22659295'?[judgment.id]:[])].map(target=>({source:'company:'+uniform,target,evidence:role(uniform)}))}});
  const firstEdge={...segment(A,shared,'r1').relationship,source:A.id,target:shared.id};
  let unavailable=true;
  Object.assign(h.context,{pathSelection:{source:selectedA,target:selectedB},
   data:path([segment(A,shared,'r1'),segment(shared,B,'r2',true)]),
-  URLSearchParams,encodeURIComponent,GRAPH_PAGE_SIZE:12,GRAPH_MAX_NODES:60,graphDepthLimit:()=>3,
+  URLSearchParams,encodeURIComponent,AbortController,setTimeout,clearTimeout,GRAPH_PAGE_SIZE:12,GRAPH_MAX_NODES:60,graphDepthLimit:()=>3,
   safeSourceUrl:url=>url.startsWith('https://'),fitGraphBounds:()=>{},focusKnowledgeExpansion:()=>{},
   fetch:async(url)=>{
     requests.push(url);
     if(url.startsWith('/api/v1/graph/'))return {ok:true,json:async()=>({data:{nodes:[A,shared],edges:[firstEdge]}})};
+    if(url.startsWith('/api/procurement/')){
+      const winner={id:'award-1',uniform_number:'22659295',award_role:'winner',title:'Exact award',source_url:'https://example.gov.tw/award'};
+      return {ok:true,json:async()=>({status:'ok',records:[winner,{...winner,id:'award-2',award_role:'nonwinner'}]})};
+    }
     if(url.endsWith('22659295')&&unavailable){unavailable=false;return {ok:false}}
     return {ok:true,json:async()=>company(url.split('/').at(-1))};
   }
@@ -237,21 +243,48 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  vm.runInContext(shipped('  async function loadKnowledgeNeighbors(', '  async function openEntityGraph('),h.context);
  const state=h.context.knowledgeGraph;
  await vm.runInContext("expandKnowledgeNode('a')",h.context);
- assert.equal(state.nodes.size,3);
+ assert.equal(state.nodes.size,4,'award records load even when registry is temporarily unavailable');
  assert.match(state.expansionNote,/Click to retry/);
  await vm.runInContext("expandKnowledgeNode('a')",h.context);
  await vm.runInContext("expandKnowledgeNode('b')",h.context);
- const officers=[...state.nodes.values()].filter(n=>n.observation_only);
+ const officers=[...state.nodes.values()].filter(n=>n.observation_kind==='RegistryOfficer');
  assert.equal(officers.length,2,'each endpoint expands an official source-scoped officer');
  assert.notEqual(officers[0].id,officers[1].id,'same names across companies do not share a person node');
  assert.deepEqual(officers.map(n=>n.expandedFromId),['a','b']);
- assert.equal(state.nodes.size,5,'name-only penalties remain outside the relationship graph');
+ assert.equal(state.nodes.size,7,'name-only penalties and nonwinner notices stay outside the company branch');
+ assert.equal([...state.nodes.values()].filter(n=>n.observation_kind==='AwardNotice').length,1);
+ assert.equal([...state.nodes.values()].filter(n=>n.observation_kind==='JudgmentMention').length,1);
+ assert.equal(requests.filter(url=>url==='/api/procurement/22659295').length,1,'the successful source stays cached on retry');
  assert.equal(requests.filter(url=>url.startsWith('/api/v1/graph/a?')).length,1,'retry only the failed source');
  h.context.clicked=officers[0].id;
  const before=requests.length;await vm.runInContext('expandKnowledgeNode(clicked)',h.context);
  assert.equal(requests.length,before,'registry observations do not query canonical entity endpoints');
  assert.match(state.expansionNote,/新增 1 個節點/);
  console.log('PASS company endpoints add exact registry roles and retry only the failed source');
+})().catch(error=>{console.error(error);process.exitCode=1});
+
+(async()=>{
+ const state={pathData:{found:true},nodes:new Map([[A.id,A],[B.id,B]])};
+ const select={value:''},renders=[],responses=new Map();
+ const context=vm.createContext({
+  knowledgeGraph:state,graphMode:'path',filterState:{judicialType:'old'},
+  $:()=>select,renderPathCompanyDetails:()=>renders.push({...state.companyPanel}),
+  graphCompanySource:(_,node,kind)=>new Promise(resolve=>responses.set(node.id+kind,resolve))
+ });
+ vm.runInContext(shipped('  function selectPathCompany(', '  function activateKnowledgeNode(')+
+  '\nselectPathCompany("a");selectPathCompany("b");',context);
+ responses.get('bregistry')({uniform_number:'54690903'});
+ responses.get('bawards')({records:[]});
+ await new Promise(setImmediate);
+ const expected=renders.at(-1),count=renders.length;
+ responses.get('aregistry')({uniform_number:'22659295'});
+ responses.get('aawards')({records:[{title:'Old selection'}]});
+ await new Promise(setImmediate);
+ assert.equal(renders.length,count,'a late response for the previous company never redraws the inspector');
+ assert.equal(expected.registry.uniform_number,'54690903');
+ assert.equal(select.value,'b');
+ assert.equal(state.nodes.size,2,'right-side lookup preserves the path graph');
+ console.log('PASS switching the right-side company ignores stale registry and award responses');
 })().catch(error=>{console.error(error);process.exitCode=1});
 
 test('path click directly expands on the same canvas without opening a detail overlay',()=>{
