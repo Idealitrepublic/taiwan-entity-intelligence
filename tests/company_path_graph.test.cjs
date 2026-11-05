@@ -268,11 +268,11 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  const select={value:''},renders=[],responses=new Map();
  const context=vm.createContext({
   knowledgeGraph:state,graphMode:'path',filterState:{judicialType:'old'},
-  $:()=>select,renderPathCompanyDetails:()=>renders.push({...state.companyPanel}),
+  $:()=>select,renderPathEntityDetails:()=>renders.push({...state.entityPanel}),
   graphCompanySource:(_,node,kind)=>new Promise(resolve=>responses.set(node.id+kind,resolve))
  });
- vm.runInContext(shipped('  function selectPathCompany(', '  function activateKnowledgeNode(')+
-  '\nselectPathCompany("a");selectPathCompany("b");',context);
+ vm.runInContext(shipped('  function selectPathEntity(', '  function activateKnowledgeNode(')+
+  '\nselectPathEntity("a");selectPathEntity("b");',context);
  responses.get('bregistry')({uniform_number:'54690903'});
  responses.get('bawards')({records:[]});
  await new Promise(setImmediate);
@@ -291,12 +291,26 @@ test('path click directly expands on the same canvas without opening a detail ov
  const calls=[],node={id:'bridge',entity_type:'Politician'},info={hidden:false};
  const context=vm.createContext({graphMode:'path',knowledgeGraph:{nodes:new Map([['bridge',node]])},
   nodeDragState:{id:'bridge',moved:false},dragState:null,suppressNodeClick:false,selectedNodeId:null,
-  $:()=>info,showKnowledgeNode:()=>calls.push('details'),expandKnowledgeNode:id=>calls.push(id),
+  $:()=>info,showKnowledgeNode:()=>calls.push('details'),selectPathEntity:id=>calls.push('inspect:'+id),expandKnowledgeNode:id=>calls.push(id),
   renderKnowledgeGraph:()=>{},setTimeout:()=>{},graphSvg:{classList:{remove(){}},hasPointerCapture:()=>false}});
  const code=html.split('\n').find(row=>row.trimStart().startsWith('const stopDrag='));
  vm.runInContext(shipped('  function activateKnowledgeNode(', '  async function expandKnowledgeNode(')+code,context);
  vm.runInContext('stopDrag({pointerId:1})',context);
- assert.deepEqual(calls,['bridge']);assert.equal(info.hidden,true);assert.equal(context.selectedNodeId,'bridge');
+ assert.deepEqual(calls,['inspect:bridge','bridge']);assert.equal(info.hidden,true);assert.equal(context.selectedNodeId,'bridge');
+});
+
+test('company coverage distinguishes an unplotted record, an empty lookup and an unavailable source',()=>{
+ const context=vm.createContext({});
+ vm.runInContext(shipped('  function pathCompanyCoverage(', '  function renderPathCompanyCoverage('),context);
+ const panel={id:A.id,registry:{people:[],judicial_result:{status:'ok',records:[{}]},labor_penalties:[],
+  evidence_status:{'董監事':{status:'ok'},'裁罰':{status:'partial'}}},awards:{status:'ok',records:[]}};
+ const rows=context.pathCompanyCoverage(panel,new Map(),[]);
+ assert.match(rows[1].graph,/圖上未顯示/);
+ assert.match(rows[1].detail,/右欄 1 筆/);
+ assert.match(rows[2].detail,/本次無符合紀錄/);
+ assert.match(rows[3].detail,/來源涵蓋未確認/);
+ const visible=context.pathCompanyCoverage(panel,new Map([['case',{entity_type:'Judgment'}]]),[{source:A.id,target:'case'}]);
+ assert.match(visible[1].graph,/圖上 1 個節點/);
 });
 
 test('loading ring tracks path and neighbor requests and clears on completion',()=>{
@@ -416,4 +430,10 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
  const afterDrop=context.groupedGraphLayout(nodes,edges);
  assert.notDeepEqual(afterDrop.positions.get(moved),occupied,'a drop on an occupied frame snaps to free space');
  for(const node of nodes.filter(n=>n.id!==moved))assert.deepEqual(afterDrop.positions.get(node.id),positions.get(node.id));
+ const home=zones.find(zone=>zone.ids.includes(moved));
+ state.manualPositions.set(moved,{x:(home.left+home.right)/2,y:(home.top+home.bottom)/2});
+ const back=context.groupedGraphLayout(nodes,edges);
+ assert(!state.manualPositions.has(moved),'dropping inside the original frame clears the separate position');
+ assert.deepEqual(back.positions.get(moved),positions.get(moved));
+ assert.deepEqual(back.zones.find(zone=>zone.ids.includes(moved)),home);
 });
