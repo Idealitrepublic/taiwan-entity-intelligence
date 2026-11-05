@@ -23,6 +23,7 @@ const focusContext = vm.createContext({
   zoom: .35, panX: 0, panY: 0,
   knowledgeGraph: {nodes: new Map([['bridge',{id:'bridge'}],['child',{id:'child'}]]), edges: new Map([['edge',{source:'bridge',target:'child'}]])},
   fitGraphBounds() {this.zoom=.35;}, readableLegacyZoom:()=>1.6,
+  knowledgeMetrics:()=>({halfWidth:95}),
   knowledgePositions:()=>new Map([['bridge',{x:500,y:350}],['child',{x:900,y:350}]]),
   graphFitArea:()=>({x:50,y:70,width:900,height:560}),
   setZoom(value) {focusContext.zoom=value;}, applyGraphTransform:()=>{}, $:()=>graphSub,
@@ -33,3 +34,12 @@ assert(Number.isFinite(focusContext.panX)&&Number.isFinite(focusContext.panY));
 assert.match(graphSub.textContent,/Fit for the full graph/);
 assert.match(html,/if\(newIds.size\)focusKnowledgeExpansion\(entityId\)/);
 console.log('PASS expanded published graph keeps readable branch zoom; manual zoom remains unrestricted');
+
+const parentLeft=500+focusContext.panX+(500-500)*focusContext.zoom-95*focusContext.zoom;
+assert(parentLeft>=74,'expanded branch keeps the clicked node and its label inside the canvas left padding');
+console.log('PASS automatic branch focus does not clip the expanded parent label');
+
+focusContext.knowledgePositions=()=>new Map([['bridge',{x:500,y:350}],['child',{x:100,y:350}]]);
+vm.runInContext('focusKnowledgeExpansion("bridge");',focusContext);
+const parentRight=500+focusContext.panX+95*focusContext.zoom;
+assert(parentRight<=926,'expanding a node with only left neighbors also preserves its right label boundary');
