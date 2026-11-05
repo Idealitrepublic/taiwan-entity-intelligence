@@ -45,6 +45,19 @@
     @media(max-width:720px){.graph{height:940px;min-height:940px}.graph svg{top:180px;bottom:auto;height:280px}.mobile-graph-list:not([hidden]){display:block;position:absolute;z-index:2;top:475px;right:14px;bottom:55px;left:14px;overflow:auto;padding:12px;border:1px solid #34495b;border-radius:9px;background:#0b141e}.mobile-graph-list h3{margin:0 0 8px;font-size:14px}.mobile-graph-list p{margin:0 0 9px;color:#9fb2c4;font-size:12px;line-height:1.5}.mobile-graph-list button{display:block;width:100%;min-height:44px;margin:6px 0;padding:9px 11px;border:1px solid #385269;border-radius:7px;background:#122232;color:#edf3f8;text-align:left;font-size:14px;line-height:1.4;overflow-wrap:anywhere}.mobile-graph-list button small{display:block;color:#a9bac9;font-size:11px}.graph:has(.node-info:not([hidden])){height:1200px}.graph:has(.node-info:not([hidden])) svg{top:180px;bottom:auto;height:280px}.graph:has(.node-info:not([hidden])) .node-info{top:475px;bottom:auto;max-height:225px}.graph:has(.node-info:not([hidden])) .mobile-graph-list:not([hidden]){top:720px}}
   .graph-loading{position:absolute;z-index:7;left:50%;top:42%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:14px;padding:18px 24px;border:1px solid #56718a;border-radius:14px;background:#0c1728ed;box-shadow:0 8px 32px #0007;pointer-events:none;font-size:14px}.graph-loading[hidden]{display:none}.loading-ring{display:block;flex:none;width:44px;height:44px;border:4px solid #34475e;border-top-color:#8bb9ff;border-right-color:#8bb9ff;border-radius:50%;animation:loading-ring-spin 1s linear infinite}@keyframes loading-ring-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.loading-ring{animation:none}}
 .graph svg[data-entity-graph] .node.selected circle:not(.hit){transform:none;animation:none}.graph svg[data-entity-graph] .edge-label{font-size:12px;fill:#c4d5e8}.graph svg[data-entity-graph] .edge{stroke-width:1.6;opacity:.85}
+
+    .graph-type-zone{pointer-events:none}
+    .graph-type-zone rect{fill-opacity:.075;stroke-opacity:.55;stroke-width:1.2;vector-effect:non-scaling-stroke}
+    .graph-type-zone text{font:600 12px system-ui,sans-serif;letter-spacing:.02em;stroke:none}
+    .graph svg[data-type-zones="true"] .path-main-edge .edge{stroke:#9dc7ff;stroke-width:2.8}
+    .graph svg[data-type-zones="true"] .path-branch-edge .edge{stroke:#64859e;stroke-width:1.5;opacity:1;pointer-events:none;stroke-linecap:round;stroke-linejoin:round}
+    .graph svg[data-type-zones="true"] .path-cross-link .edge{stroke:#8796b2;stroke-dasharray:4 5;opacity:.72}
+    .graph svg[data-type-zones="true"]:not(.show-cross-links) .path-cross-link{display:none}
+    .graph svg[data-type-zones="true"] .path-branch-edge:is(:hover,:focus-visible,.selected) .edge{stroke:#c7dcff;opacity:1}
+    .graph svg[data-type-zones="true"] .node text.child-label{font-size:14px}
+    .graph svg[data-type-zones="true"] .node text.node-type{font-size:10px}
+    @media(min-width:1121px){.graph:has(svg[data-type-zones="true"]) .graphbar{display:grid;grid-template-columns:minmax(0,1fr) max-content}.graph:has(svg[data-type-zones="true"]) .graphbar>div:first-child{max-width:none}.graph:has(svg[data-type-zones="true"]) .tools{width:auto}}
+    @media(max-width:720px){#graphCrossLinks{display:none}}
 </style>
   <style>.app:has(.source-announcement:not([hidden])){grid-template-rows:auto 64px 88px minmax(0,1fr)}.app:has(.source-announcement:not([hidden])):has(.main.graph-focused){grid-template-rows:auto 64px 88px auto}.source-announcement{z-index:11;padding:9px 22px;border-bottom:1px solid #8b6423;background:#33240c;color:#fff0cb;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.source-announcement a{color:#fff4d8;text-decoration:underline}.source-announcement b{margin-right:8px}@media(max-width:1120px){.app:has(.source-announcement:not([hidden])){display:block}}</style>
 </head>
@@ -91,6 +104,19 @@
   window.addEventListener('resize',syncGraphCanvasTop);syncGraphCanvasTop();
   const connectionJump=document.createElement('button');connectionJump.id='connectionSummaryJump';connectionJump.type='button';connectionJump.className='toolbtn connection-summary-jump';connectionJump.textContent='關係摘要 / Connection summary';connectionJump.hidden=true;graphFocus.after(connectionJump);connectionJump.addEventListener('click',()=>{const panel=$('connectionSummary');if(!panel.hidden){placeConnectionSummary();panel.scrollIntoView({block:'nearest',behavior:'smooth'})}});
   graphFocus.addEventListener('click',()=>{const focused=document.querySelector('.main').classList.toggle('graph-focused');graphFocus.textContent=focused?'返回完整畫面 / Show panels':'展開圖譜 / Expand graph';graphFocus.setAttribute('aria-pressed',String(focused));requestAnimationFrame(()=>{placeConnectionSummary();resetGraphView()})});
+  const graphCrossLinks=document.createElement('button');
+  graphCrossLinks.id='graphCrossLinks';graphCrossLinks.type='button';graphCrossLinks.className='toolbtn connection-summary-jump';
+  graphCrossLinks.hidden=true;graphCrossLinks.setAttribute('aria-pressed','false');
+  connectionJump.after(graphCrossLinks);
+  graphCrossLinks.addEventListener('click',()=>{
+    if(!knowledgeGraph)return;
+    knowledgeGraph.showCrossLinks=!knowledgeGraph.showCrossLinks;
+    const svg=$('svg');
+    svg.classList.toggle('show-cross-links',knowledgeGraph.showCrossLinks);
+    graphCrossLinks.setAttribute('aria-pressed',String(knowledgeGraph.showCrossLinks));
+    graphCrossLinks.textContent=knowledgeGraph.showCrossLinks?'隱藏交叉關係 / Hide cross-links':`交叉關係 ${graphCrossLinks.dataset.count} / Cross-links`;
+    if(knowledgeGraph.showCrossLinks)fitGraphBounds();
+  });
   const mobileGraphList=document.createElement('section');mobileGraphList.id='mobileGraphList';mobileGraphList.className='mobile-graph-list';mobileGraphList.setAttribute('aria-label','圖譜節點與關係 / Graph nodes and relationships');mobileGraphList.hidden=true;$('svg').after(mobileGraphList);
   let workspaceConfig=null,workspaceSession=null,workspaceList=[],activeWorkspace=null,watchlistEntries=[],dashboardAlerts=[];
   let workspaceEpoch=0;
@@ -454,17 +480,23 @@
   function fitGraphBounds(readablePath=false){
     if(!graphRoot||!graphRoot.children.length)return;
     const box=graphRoot.getBBox();if(!box.width&&!box.height)return;
-    const path=graphMode==='path';if(path)syncGraphCanvasTop();
-    const area=graphFitArea(path),widthFit=area.width/Math.max(180,box.width+(path?36:60));
-    const fullFit=Math.min(path?3:1.2,widthFit,area.height/Math.max(120,box.height+(path?42:60)));
+    const path=graphMode==='path',grouped=path||$('svg').dataset.typeZones==='true';if(grouped)syncGraphCanvasTop();
+    const area=graphFitArea(grouped),widthFit=area.width/Math.max(180,box.width+(path?36:60));
+    const fullFit=Math.min(grouped?3:1.2,widthFit,area.height/Math.max(120,box.height+(path?42:60)));
     const screenScale=readablePath===true&&path?$('svg').getScreenCTM()?.a||1:1;
-    const readable=readablePath===true&&path?Math.min(3,widthFit,11/(14*screenScale)):0;
+    const readable=readablePath===true&&path&&fullFit*14*screenScale<8.5?Math.min(3,widthFit,11/(14*screenScale)):0;
     setZoom(Math.max(fullFit,readable));
     panX=area.x+area.width/2-500-zoom*(box.x+box.width/2-500);
     panY=area.y+area.height/2-350-zoom*(readable>fullFit?0:box.y+box.height/2-350);
     applyGraphTransform();
     const needsPan=readable>fullFit&&Math.max(350-box.y,box.y+box.height-350)*zoom>area.height/2;
-    if(needsPan)$('graphSub').textContent+=' · 拖曳查看其他分支 / Pan for more branches';
+    const subtitle=$('graphSub');
+    subtitle.querySelector('.graph-pan-hint')?.remove();
+    if(needsPan){
+      const hint=document.createElement('span');hint.className='graph-pan-hint';
+      hint.textContent=' · 拖曳查看其他分支 / Pan for more branches';
+      subtitle.appendChild(hint);
+    }
   }
   function focusKnowledgeExpansion(entityId){
     fitGraphBounds();
@@ -545,6 +577,7 @@
     for(const edge of supported){const button=document.createElement('button'),caption=document.createElement('small');button.type='button';const from=nodes.find(node=>node.id===edge.source),to=nodes.find(node=>node.id===edge.target);button.textContent=`${from?.display_name||from?.label||'—'} → ${to?.display_name||to?.label||'—'}`;caption.textContent=relationshipLabels[edge.relationship_type]||edge.relationship_type||'公開來源 / Public source';button.appendChild(caption);button.addEventListener('click',()=>openEdge(edge));mobileGraphList.appendChild(button)}
   }
   function renderGraph(graph){
+    graphCrossLinks.hidden=true;delete $('svg').dataset.typeZones;$('svg').classList.remove('show-cross-links');
     $('people').nextElementSibling.textContent='董監事 / Officers';
     const svg=$('svg');svg.replaceChildren();delete svg.dataset.pathGraph;const view=buildGraphView(graph),nodes=view.nodes,edges=view.edges;lastGraphView=view;
     renderMobileGraphList(nodes,edges,node=>activateNode(node,graph),edge=>{const target=nodes.find(node=>node.id===edge.target);if(target)showNode(target,edges)});
@@ -760,7 +793,7 @@
   function loadedEvidenceCount(profile,edges){const ids=new Set();for(const link of profile?.evidence||[]){const id=link.evidence?.id||link.evidence_id;if(id)ids.add(id)}for(const edge of edges||[]){const id=edge.primary_evidence?.id||edge.primary_evidence_id;if(id)ids.add(id)}return ids.size}
   function createKnowledgeGraph(profile,item={}){return{rootId:profile.id,rootProfile:profile,searchItem:item,nodes:new Map([[profile.id,{...profile,depth:0}]]),edges:new Map(),expanded:new Set(),loading:new Set(),cursors:new Map(),hasMore:new Map(),manualPositions:new Map(),draggingId:null}}
   function knowledgeMetrics(node){
-    const path=graphMode==='path'&&knowledgeGraph?.pathData,branch=path&&!node.pathRole;
+    const path=Boolean(graphMode==='path'&&knowledgeGraph?.pathData||graphMode==='knowledge'&&knowledgeGraph?.rootId),branch=path&&!node.pathRole&&node.id!==knowledgeGraph?.rootId;
     const radius=branch?14:node.pathRole?.startsWith('公司')||node.id===knowledgeGraph?.rootId?30:node.entity_type==='Company'?20:16;
     const nameSize=path?14:11,typeSize=path?10:8,nameWidth=path?140:190;
     const nameLines=graphLabelLines(node.display_name||node.canonical_name||node.id,nameWidth,nameSize);
@@ -768,47 +801,70 @@
     const halfWidth=Math.max(radius+3,...nameLines.map(line=>graphTextWidth(line,nameSize)/2),...typeLines.map(line=>graphTextWidth(line,typeSize,600)/2));
     return {radius,nameLines,typeLines,halfWidth,top:radius+10+nameLines.length*15,bottom:radius+9+typeLines.length*12};
   }
-  function pathSpineLayout(nodes,edges){
-    const data=knowledgeGraph.pathData,byId=new Map(nodes.map(node=>[node.id,node]));
-    const spine=[data.source_entity.id,...data.segments.map(segment=>segment.to_entity.id)];
-    const spineIds=new Set(spine),mainIds=new Set(data.segments.map(segment=>segment.relationship.id));
+  function graphZoneLabel(type){
+    const labels={Company:'公司 / Company',Politician:'政治人物 / Politician',Person:'人物 / Person',
+      GovernmentOfficial:'政府官員 / Official',GovernmentAgency:'政府機關 / Agency',PoliticalParty:'政黨 / Party',
+      CivilOrganization:'民間團體 / Organization',Contract:'標案 / Contract',Judgment:'裁判 / Judgment',Penalty:'裁罰 / Penalty',
+      PoliticalContribution:'政治獻金 / Donation',AssetDeclaration:'財產申報 / Assets',
+      LegislativeBill:'提案 / Bill',LobbyingRecord:'遊說紀錄 / Lobbying'};
+    return labels[type]||'實體 / Entity';
+  }
+  function groupedGraphLayout(nodes,edges){
+    const data=graphMode==='path'?knowledgeGraph.pathData:null;
+    const byId=new Map(nodes.map(node=>[node.id,node]));
+    const spine=data?[data.source_entity.id,...data.segments.map(segment=>segment.to_entity.id)]:[knowledgeGraph.rootId];
+    const spineIds=new Set(spine),mainIds=new Set((data?.segments||[]).map(segment=>segment.relationship.id));
     const metrics=new Map(nodes.map(node=>[node.id,knowledgeMetrics(node)]));
-    // Grid gutters carry the branch stems without going through node labels.
-    const slot=160; // 140-unit labels plus a 20-unit gutter.
-    const positions=new Map(spine.map((id,index)=>[id,{x:500+(index-(spine.length-1)/2)*slot*2,y:350}]));
-    const sides=new Map(),rows={[-1]:0,[1]:0},children=new Map();
+    const slot=160,centerY=350;
+    const positions=new Map(spine.map((id,index)=>[id,{x:500+(index-(spine.length-1)/2)*slot*2,y:centerY}]));
+    const zones=[],zoneByNode=new Map(),sides=new Map();
+    function addZone(type,ids,left,top,right,bottom,side=0){
+      const zone={type,ids,left,top,right,bottom,side};
+      zones.push(zone);ids.forEach(id=>zoneByNode.set(id,zone));
+      return zone;
+    }
+    for(const id of spine){
+      const p=positions.get(id),m=metrics.get(id);
+      addZone(byId.get(id).entity_type,[id],p.x-82,p.y-m.top-30,p.x+82,p.y+m.bottom+12);
+    }
+    const spineRail={[-1]:Math.min(...zones.map(zone=>zone.top)),[1]:Math.max(...zones.map(zone=>zone.bottom))};
+    const clusters=new Map();
     for(const node of nodes){
       if(spineIds.has(node.id))continue;
-      const parentId=byId.has(node.pathParentId)?node.pathParentId:spine[0];
-      if(!children.has(parentId))children.set(parentId,[]);
-      children.get(parentId).push(node);
+      const type=node.entity_type||'Entity';
+      if(!clusters.has(type))clusters.set(type,[]);
+      clusters.get(type).push(node);
     }
-    const branchMetrics=nodes.filter(node=>!spineIds.has(node.id)).map(node=>metrics.get(node.id));
-    const rowPitch=Math.max(122,...branchMetrics.map(metric=>metric.top+metric.bottom+30));
-    const placedParents=[...spine];
-    for(const parentId of placedParents){
-      const group=children.get(parentId)||[];
-      if(!group.length)continue;
-      const parentSide=sides.get(parentId),split=!parentSide&&group.length>5?Math.ceil(group.length/2):0;
-      const groups=parentSide?[[parentSide,group]]:[[-1,group.slice(0,split)],[1,group.slice(split)]];
-      for(const [side,items] of groups){
-        for(let offset=0;offset<items.length;offset+=5){
-          const row=items.slice(offset,offset+5),level=++rows[side];
-          const parentColumn=Math.round((positions.get(parentId).x-500)/slot);
-          const columnLimit=Math.max(2,spine.length-1);
-          const start=Math.max(-columnLimit,Math.min(parentColumn-Math.floor(row.length/2),columnLimit-row.length+1));
-          row.forEach((node,index)=>{
-            positions.set(node.id,{x:500+(start+index)*slot,y:350+side*(145+(level-1)*rowPitch)});
-            sides.set(node.id,side);
-            placedParents.push(node.id);
-          });
-        }
+    // Pack the type groups into shallow shelves on either side of the main route.
+    const shelves=[];
+    for(const [type,members] of [...clusters].sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0]))){
+      for(let start=0;start<members.length;start+=5){
+        const group=members.slice(start,start+5);
+        let shelf=shelves.find(row=>row.size+group.length<=5);
+        if(!shelf){shelf={size:0,groups:[]};shelves.push(shelf)}
+        shelf.groups.push({type,members:group});shelf.size+=group.length;
       }
     }
+    const extents={[-1]:Math.max(...zones.map(zone=>centerY-zone.top)),[1]:Math.max(...zones.map(zone=>zone.bottom-centerY))};
+    shelves.forEach((shelf,index)=>{
+      const side=index%2===0?-1:1;
+      const nameHeight=Math.max(...shelf.groups.flatMap(group=>group.members.map(node=>metrics.get(node.id).nameLines.length*15)));
+      const y=centerY+side*(extents[side]+84),near=y-side*26,far=y+side*(nameHeight+54);
+      let left=500-shelf.size*slot/2;
+      for(const group of shelf.groups){
+        const right=left+group.members.length*slot;
+        const zone=addZone(group.type,group.members.map(node=>node.id),left+4,Math.min(near,far),right-4,Math.max(near,far),side);
+        zone.near=near;
+        group.members.forEach((node,i)=>{
+          positions.set(node.id,{x:left+(i+.5)*slot,y});sides.set(node.id,side);
+        });
+        left=right;
+      }
+      extents[side]=Math.abs(far-centerY);
+    });
     const automaticPositions=new Map(positions);
     for(const [id,point] of knowledgeGraph.manualPositions||[])if(positions.has(id))positions.set(id,point);
 
-    // Keep each relationship as evidence, with one visible route per endpoint pair.
     const bundles=new Map(),routes=new Map();
     for(const edge of edges){
       if(!positions.has(edge.source)||!positions.has(edge.target))continue;
@@ -816,43 +872,80 @@
       if(mainIds.has(edge.id))records.unshift(edge);else records.push(edge);
       bundles.set(key,records);
     }
-    const svgPath=points=>points.map(([x,y],index)=>`${index?'L':'M'} ${x} ${y}`).join(' ');
+    const svgPath=points=>points.map(([x,y],i)=>`${i?'L':'M'} ${x} ${y}`).join(' ');
+    const outerLeft=Math.min(...zones.map(zone=>zone.left)),outerRight=Math.max(...zones.map(zone=>zone.right));
+    const outsideLanes=new Map(),shelfLanes=new Map();
+    function laneIndex(lanes,key,family){
+      if(!lanes.has(key))lanes.set(key,new Map());
+      const used=lanes.get(key);
+      if(!used.has(family))used.set(family,used.size);
+      return used.get(family);
+    }
+    function port(id,side,toward,family,secondary,origin){
+      const p=positions.get(id),m=metrics.get(id),zone=zoneByNode.get(id);
+      const near=zone.side?zone.near:spineRail[side];
+      const direction=zone.side?-zone.side:side;
+      const lane=laneIndex(shelfLanes,secondary?near+'-cross':near,family);
+      const y=near+direction*(12+(secondary?(lane%9)*4+2:lane*4));
+      if(zone.side){
+        const dx=origin?toward*7:0,x=p.x+dx;
+        return [[x,p.y+direction*Math.sqrt(m.radius*m.radius-dx*dx)],[x,y]];
+      }
+      const x=p.x+toward*90,portY=p.y+side*m.radius*.6;
+      return [[p.x+toward*m.radius*.8,portY],[x,portY],[x,y]];
+    }
     for(const records of bundles.values()){
       const edge=records[0],a=positions.get(edge.source),b=positions.get(edge.target);
       const main=mainIds.has(edge.id),sourceRadius=metrics.get(edge.source).radius,targetRadius=metrics.get(edge.target).radius;
-      const parentToChild=byId.get(edge.target).pathParentId===edge.source;
-      const childToParent=byId.get(edge.source).pathParentId===edge.target;
+      const parentToChild=byId.get(edge.target).expandedFromId===edge.source;
+      const childToParent=byId.get(edge.source).expandedFromId===edge.target;
       const manual=a!==automaticPositions.get(edge.source)||b!==automaticPositions.get(edge.target);
-      let points,hitRoute,secondary=false;
+      const secondary=!main&&!parentToChild&&!childToParent;
+      let points,hitRoute;
       if(main||manual){
         const length=Math.hypot(b.x-a.x,b.y-a.y)||1,dx=(b.x-a.x)/length,dy=(b.y-a.y)/length;
         points=[[a.x+dx*sourceRadius,a.y+dy*sourceRadius],[b.x-dx*targetRadius,b.y-dy*targetRadius]];
-      }else if(parentToChild||childToParent){
-        const parent=parentToChild?a:b,child=parentToChild?b:a;
-        const parentRadius=parentToChild?sourceRadius:targetRadius,childRadius=parentToChild?targetRadius:sourceRadius;
-        const side=Math.sign(child.y-parent.y)||1,stemX=parent.x-side*slot/2;
-        const railY=child.y-side*48,startY=parent.y+side*parentRadius*.6;
-        const childStem=[[child.x,railY],[child.x,child.y-side*childRadius]];
-        points=[[parent.x-side*parentRadius*.8,startY],[stemX,startY],[stemX,railY],...childStem];
-        if(childToParent)points.reverse();
-        hitRoute=svgPath(childStem);
       }else{
-        // Keep cross-links distinct from the expansion tree.
-        secondary=true;
-        const side=sides.get(edge.target),railY=side?b.y-side*48:b.y+64;
-        const startX=a.x+slot/2,endX=b.x-slot/2;
-        points=[[a.x+sourceRadius,a.y],[startX,a.y],[startX,railY],[endX,railY],[endX,b.y],[b.x-targetRadius,b.y]];
-        if(a.x===b.x&&a.y!==b.y)points=[[a.x+sourceRadius,a.y],[startX,a.y],[startX,b.y],[b.x+targetRadius,b.y]];
+        const parent=childToParent?edge.target:edge.source,child=childToParent?edge.source:edge.target;
+        const parentZone=zoneByNode.get(parent),childZone=zoneByNode.get(child);
+        const side=childZone.side||parentZone.side||1;
+        const toward=positions.get(child).x>=positions.get(parent).x?1:-1;
+        const family=secondary?'cross:'+parent:parent;
+        const start=port(parent,side,toward,family,secondary,true),end=port(child,side,-toward,family,secondary,false);
+        const [x1,y1]=start.at(-1),[x2,y2]=end.at(-1);
+        // The innermost shelf has a clear corridor to the main line. Other
+        // shelves use dedicated outside lanes so a route never crosses a zone.
+        const nearSpine=!parentZone.side&&childZone.side&&
+          !zones.some(zone=>zone.side===side&&Math.abs(zone.near-centerY)<Math.abs(childZone.near-centerY));
+        let middle;
+        if(y1===y2||nearSpine&&!secondary){
+          middle=[[x1,y2]];
+        }else{
+          const outerSide=side<0?1:-1;
+          const lane=laneIndex(outsideLanes,outerSide,family);
+          const x=outerSide>0?outerRight+24+lane*8:outerLeft-24-lane*8;
+          middle=[[x,y1],[x,y2]];
+        }
+        points=[...(nearSpine&&!secondary?start.slice(0,-1):start),...middle,...end.slice().reverse()];
+        if(childToParent)points.reverse();
+        if(!secondary)hitRoute=svgPath([end[0],[end[0][0],childZone.near]]);
       }
       const labelX=(a.x+b.x)/2,labelY=(a.y+b.y)/2-11;
       routes.set(edge.id,{route:svgPath(points),hitRoute,records,main,secondary,points,labelX,labelY,
-        lines:main?graphLabelLines(connectionEdgeLabel(edge),132,12):[]});
+        lines:main?graphLabelLines(connectionEdgeLabel(edge),118,12):[]});
     }
-    return {positions,routes,sides};
+    const visibleZones=zones.filter(zone=>zone.ids.some(id=>positions.get(id)===automaticPositions.get(id)));
+    for(const [id,p] of positions){
+      if(p===automaticPositions.get(id))continue;
+      const m=metrics.get(id),side=sides.get(id)||0,top=side===1?p.y-m.radius-12:p.y-m.top-29;
+      const bottom=side===-1?p.y+m.radius+12:p.y+m.bottom+26;
+      visibleZones.push({type:byId.get(id).entity_type,ids:[id],left:p.x-82,right:p.x+82,top,bottom,side});
+    }
+    return {positions,routes,sides,zones:visibleZones};
   }
   function knowledgePositions(nodes){return knowledgeLayout(nodes,[...knowledgeGraph?.edges?.values()||[]]).positions}
   function knowledgeLayout(nodes,edges){
-    if(graphMode==='path'&&knowledgeGraph?.pathData)return pathSpineLayout(nodes,edges);
+    if(graphMode==='path'&&knowledgeGraph?.pathData||graphMode==='knowledge'&&nodes.some(node=>node.id===knowledgeGraph?.rootId))return groupedGraphLayout(nodes,edges);
     const levels=new Map(),byId=new Map(nodes.map(n=>[n.id,n])),incoming=new Map(),labels=new Map(),path=graphMode==='path';
     for(const n of nodes){const depth=Math.max(0,path?num(n.depth):Math.min(graphDepthLimit(),num(n.depth)));if(!levels.has(depth))levels.set(depth,[]);levels.get(depth).push(n)}
     for(const edge of edges){const a=byId.get(edge.source),b=byId.get(edge.target);if(!a||!b)continue;const right=num(a.depth)<=num(b.depth)?b:a,list=incoming.get(right.id)||[];list.push(edge);incoming.set(right.id,list);labels.set(edge.id,graphLabelLines(path?connectionEdgeLabel(edge):relationshipLabels[edge.relationship_type]||edge.relationship_type,190,12))}
@@ -881,22 +974,49 @@
       options.addEventListener('change',()=>showKnowledgeEdge(records.find(record=>record.id===options.value)||edge,records));
       selector.appendChild(options);$('nodeInfoBody').prepend(selector);
     }$('nodeInfo').hidden=false}
+  function renderKnowledgeZones(root,zones,colors){
+    const namespace='http://www.w3.org/2000/svg';
+    for(const zone of zones){
+      const group=document.createElementNS(namespace,'g');
+      const frame=document.createElementNS(namespace,'rect'),label=document.createElementNS(namespace,'text');
+      const color=colors[zone.type]||'#a9b8cd';
+      group.setAttribute('class','graph-type-zone');
+      group.setAttribute('aria-hidden','true');
+      group.dataset.entityType=zone.type||'Entity';
+      frame.setAttribute('x',zone.left);frame.setAttribute('y',zone.top);
+      frame.setAttribute('width',zone.right-zone.left);frame.setAttribute('height',zone.bottom-zone.top);
+      frame.setAttribute('rx','10');frame.setAttribute('stroke',color);frame.setAttribute('fill',color);
+      label.setAttribute('x',zone.left+11);label.setAttribute('y',zone.side===1?zone.bottom-12:zone.top+18);
+      label.setAttribute('fill',color);
+      label.textContent=graphZoneLabel(zone.type)+(zone.ids.length>1?` · ${zone.ids.length}`:'');
+      group.append(frame,label);root.appendChild(group);
+    }
+  }
   function renderKnowledgeGraph(newIds=new Set()){
     updateSourceNotice();
     mobileGraphList.hidden=true;
     updateGraphLoading();
     $('people').nextElementSibling.textContent='人物／政治人物 / People & politicians';
-    const svg=$('svg');svg.replaceChildren();svg.dataset.entityGraph='true';graphPager.hidden=true;if(graphMode==='path')svg.dataset.pathGraph='true';else delete svg.dataset.pathGraph;if(!knowledgeGraph||!knowledgeGraph.nodes.size){$('graphEmpty').hidden=false;graphRoot=null;return}$('graphEmpty').hidden=true;const nodes=[...knowledgeGraph.nodes.values()],edges=[...knowledgeGraph.edges.values()],layout=knowledgeLayout(nodes,edges),positions=layout.positions,root=document.createElementNS('http://www.w3.org/2000/svg','g'),colors={Company:'#7fb0ff',Person:'#63d39f',Politician:'#b99aff',GovernmentOfficial:'#b99aff',GovernmentAgency:'#f2c56a',PoliticalParty:'#dc8cff',CivilOrganization:'#54c7c2',Contract:'#f2c56a',Judgment:'#c58cff',Penalty:'#ef7d8d',PoliticalContribution:'#f09bc0',AssetDeclaration:'#54c7c2',LegislativeBill:'#8eaaff',LobbyingRecord:'#ff9f68'};graphRoot=root;applyGraphTransform();svg.appendChild(root);
+    const svg=$('svg');svg.replaceChildren();svg.dataset.entityGraph='true';delete svg.dataset.typeZones;svg.classList.remove('show-cross-links');graphCrossLinks.hidden=true;graphPager.hidden=true;if(graphMode==='path')svg.dataset.pathGraph='true';else delete svg.dataset.pathGraph;if(!knowledgeGraph||!knowledgeGraph.nodes.size){$('graphEmpty').hidden=false;graphRoot=null;return}$('graphEmpty').hidden=true;const nodes=[...knowledgeGraph.nodes.values()],edges=[...knowledgeGraph.edges.values()],layout=knowledgeLayout(nodes,edges),positions=layout.positions,root=document.createElementNS('http://www.w3.org/2000/svg','g'),colors={Company:'#7fb0ff',Person:'#63d39f',Politician:'#b99aff',GovernmentOfficial:'#b99aff',GovernmentAgency:'#f2c56a',PoliticalParty:'#dc8cff',CivilOrganization:'#54c7c2',Contract:'#f2c56a',Judgment:'#c58cff',Penalty:'#ef7d8d',PoliticalContribution:'#f09bc0',AssetDeclaration:'#54c7c2',LegislativeBill:'#8eaaff',LobbyingRecord:'#ff9f68'};graphRoot=root;applyGraphTransform();svg.appendChild(root);
+    if(layout.zones){
+      svg.dataset.typeZones='true';
+      renderKnowledgeZones(root,layout.zones,colors);
+      const crossCount=[...layout.routes.values()].filter(route=>route.secondary).length;
+      graphCrossLinks.hidden=!crossCount;graphCrossLinks.dataset.count=String(crossCount);
+      graphCrossLinks.setAttribute('aria-pressed',String(Boolean(knowledgeGraph.showCrossLinks)));
+      graphCrossLinks.textContent=knowledgeGraph.showCrossLinks?'隱藏交叉關係 / Hide cross-links':`交叉關係 ${crossCount} / Cross-links`;
+      svg.classList.toggle('show-cross-links',Boolean(knowledgeGraph.showCrossLinks));
+    }
     const defs=document.createElementNS('http://www.w3.org/2000/svg','defs'),marker=document.createElementNS('http://www.w3.org/2000/svg','marker'),arrow=document.createElementNS('http://www.w3.org/2000/svg','path');marker.setAttribute('id','kg-arrow');marker.setAttribute('markerWidth','8');marker.setAttribute('markerHeight','8');marker.setAttribute('refX','7');marker.setAttribute('refY','3');marker.setAttribute('orient','auto-start-reverse');marker.setAttribute('markerUnits','strokeWidth');arrow.setAttribute('d','M0,0 L0,6 L7,3 z');arrow.setAttribute('fill','#63778c');marker.appendChild(arrow);defs.appendChild(marker);svg.insertBefore(defs,root);
     const nodeById=new Map(nodes.map(node=>[node.id,node]));
     renderMobileGraphList(nodes,edges,node=>{if(graphMode==='path'){selectedNodeId=node.id;$('nodeInfo').hidden=true}else showKnowledgeNode(node);expandKnowledgeNode(node.id)},edge=>showKnowledgeEdge(edge));
     edges.forEach(edge=>{const a=positions.get(edge.source),b=positions.get(edge.target),geometry=layout.routes.get(edge.id);if(!a||!b||!geometry)return;const source=nodeById.get(edge.source),target=nodeById.get(edge.target),{route,labelX,labelY}=geometry;
-      const group=document.createElementNS('http://www.w3.org/2000/svg','g'),hit=document.createElementNS('http://www.w3.org/2000/svg','path'),line=document.createElementNS('http://www.w3.org/2000/svg','path'),label=document.createElementNS('http://www.w3.org/2000/svg','text');group.setAttribute('class','edge-group'+(geometry.main?' path-main-edge':geometry.records?' path-branch-edge':'')+(geometry.secondary?' path-cross-link':'')+(edge.id===selectedEdgeId?' selected':''));group.setAttribute('role','button');group.setAttribute('tabindex','0');group.setAttribute('aria-label',`查看${relationshipLabels[edge.relationship_type]||edge.relationship_type}證據${geometry.records?.length>1?`（${geometry.records.length} 筆）`:''}`);group.dataset.edgeId=edge.id;group.dataset.source=edge.source;group.dataset.target=edge.target;hit.setAttribute('d',geometry.hitRoute||route);line.setAttribute('d',route);hit.setAttribute('class','edge-hit');line.setAttribute('class','edge');line.setAttribute('marker-end','url(#kg-arrow)');if(geometry.records?.some(record=>record.source===edge.target))line.setAttribute('marker-start','url(#kg-arrow)');label.setAttribute('class','edge-label');label.setAttribute('x',labelX);label.setAttribute('y',labelY);label.setAttribute('text-anchor','middle');if(graphMode==='path'){const lines=geometry.lines;graphTextLines(label,lines,labelX,labelY-(lines.length-1)*16,16);const bridge=source.entity_type==='Company'?target:source;group.style.setProperty('--connection-color',connectionColor(bridge.entity_type))}else graphTextLines(label,geometry.lines,labelX,labelY-(geometry.lines.length-1)*16,16);group.append(hit,line);if(geometry.lines.length)group.appendChild(label);const activate=event=>{event.stopPropagation();showKnowledgeEdge(edge,geometry.records)};group.addEventListener('click',activate);group.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event)}});root.appendChild(group)});
+      const group=document.createElementNS('http://www.w3.org/2000/svg','g'),hit=document.createElementNS('http://www.w3.org/2000/svg','path'),line=document.createElementNS('http://www.w3.org/2000/svg','path'),label=document.createElementNS('http://www.w3.org/2000/svg','text');group.setAttribute('class','edge-group'+(geometry.main?' path-main-edge':geometry.records?' path-branch-edge':'')+(geometry.secondary?' path-cross-link':'')+(edge.id===selectedEdgeId?' selected':''));group.setAttribute('role','button');group.setAttribute('tabindex','0');group.setAttribute('aria-label',`查看${relationshipLabels[edge.relationship_type]||edge.relationship_type}證據${geometry.records?.length>1?`（${geometry.records.length} 筆）`:''}`);group.dataset.edgeId=edge.id;group.dataset.source=edge.source;group.dataset.target=edge.target;hit.setAttribute('d',geometry.hitRoute||route);line.setAttribute('d',route);hit.setAttribute('class','edge-hit');line.setAttribute('class','edge');line.setAttribute('marker-end','url(#kg-arrow)');if(geometry.records?.some(record=>record.source===edge.target))line.setAttribute('marker-start','url(#kg-arrow)');label.setAttribute('class','edge-label');label.setAttribute('x',labelX);label.setAttribute('y',labelY);label.setAttribute('text-anchor','middle');if(graphMode==='path'){const lines=geometry.lines;graphTextLines(label,lines,labelX,labelY-(lines.length-1)*16,16,'middle');const bridge=source.entity_type==='Company'?target:source;group.style.setProperty('--connection-color',connectionColor(bridge.entity_type))}else graphTextLines(label,geometry.lines,labelX,labelY-(geometry.lines.length-1)*16,16,'middle');group.append(hit,line);if(geometry.lines.length)group.appendChild(label);const activate=event=>{event.stopPropagation();showKnowledgeEdge(edge,geometry.records)};group.addEventListener('click',activate);group.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event)}});root.appendChild(group)});
     for(const node of nodes){const p=positions.get(node.id);if(!p)continue;const group=document.createElementNS('http://www.w3.org/2000/svg','g'),hit=document.createElementNS('http://www.w3.org/2000/svg','circle'),circle=document.createElementNS('http://www.w3.org/2000/svg','circle'),title=document.createElementNS('http://www.w3.org/2000/svg','title'),name=document.createElementNS('http://www.w3.org/2000/svg','text'),type=document.createElementNS('http://www.w3.org/2000/svg','text'),metric=knowledgeMetrics(node),radius=metric.radius;group.setAttribute('class','node'+(node.id===selectedNodeId?' selected':'')+(newIds.has(node.id)?' kg-new':''));group.setAttribute('role','button');group.setAttribute('tabindex','0');group.setAttribute('aria-label',`${node.display_name||node.id}，點擊展開關係`);group.dataset.nodeId=node.id;for(const item of[hit,circle]){item.setAttribute('cx',p.x);item.setAttribute('cy',p.y)}hit.setAttribute('r',radius+9);hit.setAttribute('class','hit');circle.setAttribute('r',radius);circle.setAttribute('fill',colors[node.entity_type]||'#a9b8cd');title.textContent=node.display_name||node.id;name.setAttribute('class','child-label');const branchSide=layout.sides?.get(node.id),nameY=branchSide===1?p.y+radius+17:p.y-radius-10-(metric.nameLines.length-1)*15;
       graphTextLines(name,metric.nameLines,p.x,nameY,15,'middle');
       type.setAttribute('class','node-type');
       const typeY=branchSide===1?nameY+metric.nameLines.length*15:branchSide===-1?nameY-metric.typeLines.length*12:p.y+radius+17;
-      graphTextLines(type,metric.typeLines,p.x,typeY,12,'middle');group.append(hit,circle,title,name,type);const activate=event=>{event.stopPropagation();if(graphMode==='path'){selectedNodeId=node.id;$('nodeInfo').hidden=true}else showKnowledgeNode(node);expandKnowledgeNode(node.id)};group.addEventListener('click',activate);group.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event)}});root.appendChild(group)}
+      graphTextLines(type,metric.typeLines,p.x,typeY,12,'middle');group.append(hit,circle,title,name);if(!branchSide&&(!layout.zones||node.pathRole))group.appendChild(type);const activate=event=>{event.stopPropagation();if(graphMode==='path'){selectedNodeId=node.id;$('nodeInfo').hidden=true}else showKnowledgeNode(node);expandKnowledgeNode(node.id)};group.addEventListener('click',activate);group.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event)}});root.appendChild(group)}
     const people=nodes.filter(node=>['Person','Politician','GovernmentOfficial'].includes(node.entity_type)).length;$('people').textContent=people;$('edges').textContent=edges.length;$('evcount').textContent=loadedEvidenceCount(graphMode==='path'?null:knowledgeGraph.rootProfile,edges);$('evcount').nextElementSibling.textContent='已載入證據 / Loaded evidence';$('penaltyCount').textContent=nodes.filter(node=>node.entity_type==='Penalty').length;$('judicialCount').textContent=nodes.filter(node=>node.entity_type==='Judgment').length;$('procurementCount').textContent=nodes.filter(node=>node.entity_type==='Contract').length;const loading=knowledgeGraph.loading.size,limitReached=nodes.length>=GRAPH_MAX_NODES,depthLimit=graphDepthLimit();$('graphSub').innerHTML=graphMode==='path'?`${nodes.length} 個路徑與延伸節點 / path & expanded nodes · ${edges.length} 段有來源關係 / evidenced links · ${loading?'載入中 / Loading':limitReached?'已達60節點上限 / 60-node limit':'點節點繼續展開 / Click nodes to expand'}`:loading?'正在載入相鄰關係 / Loading neighbors…':`${nodes.length} 節點 / nodes · ${edges.length} 關係 / relationships · 最多 ${depthLimit} 層 / hops${limitReached?' · <span class="graph-limit">已達 60 節點上限 / node limit</span>':''}${knowledgeGraph.autoCompanyNote?' · '+esc(knowledgeGraph.autoCompanyNote):''}`;$('zoomValue').textContent=Math.round(zoom*100)+'%';renderKnowledgeSummary(nodes,edges);renderConnectionSummary()
   }
   function renderKnowledgeSummary(nodes,edges){
@@ -913,12 +1033,12 @@
     if(state!==knowledgeGraph||graphMode!=='knowledge')return;
     const newIds=new Set();let incomplete=bridgeCandidates.length>bridges.length||state.hasMore.get(state.rootId)||responses.some(response=>!response);
     for(const entry of responses){if(!entry)continue;const data=entry.payload.data||{},candidates=new Map((data.nodes||[]).filter(node=>node.entity_type==='Company').map(node=>[node.id,node]));incomplete=incomplete||Boolean(data.has_more);
-      for(const edge of data.edges||[]){const other=edge.source===entry.bridge.id?edge.target:edge.target===entry.bridge.id?edge.source:null,candidate=candidates.get(other);if(!candidate||candidate.id===state.rootId||!edge.primary_evidence?.id||!edge.primary_evidence?.source_url)continue;if(!state.nodes.has(candidate.id)){if(state.nodes.size>=GRAPH_MAX_NODES)break;state.nodes.set(candidate.id,{...candidate,depth:2});newIds.add(candidate.id)}state.edges.set(edge.id,edge)}
+      for(const edge of data.edges||[]){const other=edge.source===entry.bridge.id?edge.target:edge.target===entry.bridge.id?edge.source:null,candidate=candidates.get(other);if(!candidate||candidate.id===state.rootId||!edge.primary_evidence?.id||!edge.primary_evidence?.source_url)continue;if(!state.nodes.has(candidate.id)){if(state.nodes.size>=GRAPH_MAX_NODES)break;state.nodes.set(candidate.id,{...candidate,depth:2,expandedFromId:entry.bridge.id});newIds.add(candidate.id)}state.edges.set(edge.id,edge)}
     }
     state.autoCompanyLoading=false;const companyCount=[...state.nodes.values()].filter(node=>node.entity_type==='Company'&&node.id!==state.rootId).length;state.autoCompanyNote=`顯示 ${companyCount} 家其他已發布公司${incomplete?'（限前段資料）':''} / ${companyCount} other published companies shown`;
     renderKnowledgeGraph(newIds);if(newIds.size)fitGraphBounds()
   }
-  async function expandKnowledgeNode(entityId){const state=knowledgeGraph,node=state?.nodes.get(entityId);if(!state||!node||state.loading.has(entityId)||(graphMode!=='path'&&node.depth>=graphDepthLimit())||state.nodes.size>=GRAPH_MAX_NODES)return;const continuing=state.expanded.has(entityId)&&state.hasMore.get(entityId);if(state.expanded.has(entityId)&&!continuing)return;state.loading.add(entityId);renderKnowledgeGraph();try{const params=new URLSearchParams({limit:String(GRAPH_PAGE_SIZE)}),filter=graphMode==='path'?'':$('relationshipFilter').value,cursor=continuing?state.cursors.get(entityId):null;if(filter)params.set('relationship_type',filter);if(cursor)params.set('after',cursor);const response=await fetch(`/api/v1/graph/${encodeURIComponent(entityId)}?${params}`,{cache:'no-store'}),payload=await response.json();if(state!==knowledgeGraph)return;if(!response.ok)throw Error(payload.error||'關係圖載入失敗 / Graph load failed');const data=payload.data||{},newIds=new Set(),depth=node.depth;for(const candidate of data.nodes||[]){if(state.nodes.has(candidate.id)){if(graphMode!=='path')state.nodes.get(candidate.id).depth=Math.min(state.nodes.get(candidate.id).depth,candidate.id===entityId?depth:depth+1);continue}if(state.nodes.size>=GRAPH_MAX_NODES)break;state.nodes.set(candidate.id,{...candidate,depth:candidate.id===entityId?depth:depth+1,...(graphMode==='path'?{pathParentId:entityId}:{})});newIds.add(candidate.id)}for(const edge of data.edges||[])if(state.nodes.has(edge.source)&&state.nodes.has(edge.target))state.edges.set(edge.id,edge);if(newIds.size)state.manualPositions?.clear();if(graphMode==='path')state.pathExplored=true;state.expanded.add(entityId);state.hasMore.set(entityId,Boolean(data.has_more));if(data.next_cursor)state.cursors.set(entityId,data.next_cursor);state.loading.delete(entityId);renderKnowledgeGraph(newIds);if(newIds.size){if(graphMode==='path')fitGraphBounds(true);else if(entityId===state.rootId&&!continuing)fitGraphBounds();else focusKnowledgeExpansion(entityId);}if(graphMode!=='path'&&selectedNodeId===entityId)showKnowledgeNode(state.nodes.get(entityId));if(entityId===state.rootId&&!continuing)void autoExpandPublishedCompanies(state)}catch(error){state.loading.delete(entityId);if(state!==knowledgeGraph)return;renderKnowledgeGraph();$('graphSub').textContent=error.message}}
+  async function expandKnowledgeNode(entityId){const state=knowledgeGraph,node=state?.nodes.get(entityId);if(!state||!node||state.loading.has(entityId)||(graphMode!=='path'&&node.depth>=graphDepthLimit())||state.nodes.size>=GRAPH_MAX_NODES)return;const continuing=state.expanded.has(entityId)&&state.hasMore.get(entityId);if(state.expanded.has(entityId)&&!continuing)return;state.loading.add(entityId);renderKnowledgeGraph();try{const params=new URLSearchParams({limit:String(GRAPH_PAGE_SIZE)}),filter=graphMode==='path'?'':$('relationshipFilter').value,cursor=continuing?state.cursors.get(entityId):null;if(filter)params.set('relationship_type',filter);if(cursor)params.set('after',cursor);const response=await fetch(`/api/v1/graph/${encodeURIComponent(entityId)}?${params}`,{cache:'no-store'}),payload=await response.json();if(state!==knowledgeGraph)return;if(!response.ok)throw Error(payload.error||'關係圖載入失敗 / Graph load failed');const data=payload.data||{},newIds=new Set(),depth=node.depth;for(const candidate of data.nodes||[]){if(state.nodes.has(candidate.id)){if(graphMode!=='path')state.nodes.get(candidate.id).depth=Math.min(state.nodes.get(candidate.id).depth,candidate.id===entityId?depth:depth+1);continue}if(state.nodes.size>=GRAPH_MAX_NODES)break;state.nodes.set(candidate.id,{...candidate,depth:candidate.id===entityId?depth:depth+1,expandedFromId:entityId});newIds.add(candidate.id)}for(const edge of data.edges||[])if(state.nodes.has(edge.source)&&state.nodes.has(edge.target))state.edges.set(edge.id,edge);if(newIds.size)state.manualPositions?.clear();if(graphMode==='path')state.pathExplored=true;state.expanded.add(entityId);state.hasMore.set(entityId,Boolean(data.has_more));if(data.next_cursor)state.cursors.set(entityId,data.next_cursor);state.loading.delete(entityId);renderKnowledgeGraph(newIds);if(newIds.size){if(graphMode==='path')fitGraphBounds(true);else if(entityId===state.rootId&&!continuing)fitGraphBounds();else focusKnowledgeExpansion(entityId);}if(graphMode!=='path'&&selectedNodeId===entityId)showKnowledgeNode(state.nodes.get(entityId));if(entityId===state.rootId&&!continuing)void autoExpandPublishedCompanies(state)}catch(error){state.loading.delete(entityId);if(state!==knowledgeGraph)return;renderKnowledgeGraph();$('graphSub').textContent=error.message}}
   async function openEntityGraph(entityId,item={},updateHistory=true){clearConnectionSummary();$('search').disabled=true;$('search').textContent='載入中 / Loading…';try{const response=await fetch('/api/v1/entities/'+encodeURIComponent(entityId),{cache:'no-store'}),payload=await response.json();if(!response.ok)throw Error(payload.error||'實體載入失敗 / Entity load failed');let politician=null;const contributionPromise=['Company','Politician'].includes(payload.data.entity_type)?fetchPoliticalContributions(entityId):Promise.resolve(null),assetPromise=payload.data.entity_type==='Politician'?fetchAssetDeclarations(entityId):Promise.resolve(null),timelinePromise=payload.data.entity_type==='Politician'?fetchAssetTimeline(entityId):Promise.resolve(null);if(payload.data.entity_type==='Politician'){const detailResponse=await fetch('/api/v1/politicians/'+encodeURIComponent(entityId)+'?limit=25',{cache:'no-store'}),detailPayload=await detailResponse.json();if(detailResponse.ok)politician=detailPayload.data}const[contributions,assets,timeline]=await Promise.all([contributionPromise,assetPromise,timelinePromise]);graphMode='knowledge';knowledgeGraph=createKnowledgeGraph(payload.data,item);$('relationshipFilter').hidden=false;hopLimit.hidden=false;renderIndexedEntity(payload.data,item,politician,contributions,assets,timeline);renderKnowledgeGraph();if(payload.data.entity_type==='Company'&&/^\d{8}$/.test(payload.data.public_identifier||item.public_identifier||''))void loadIndexed165(payload.data.public_identifier||item.public_identifier,entityId);if(updateHistory)history.pushState({entityId},'',`${payload.data.entity_type==='Politician'?'/politician':'/graph'}/${entityId}`);await expandKnowledgeNode(entityId)}catch(error){$('company').textContent='載入失敗 / Load failed';$('uniform').textContent=error.message}finally{$('search').disabled=false;$('search').textContent='開始調查 / Search'}}
   async function loadIndexed165(uniform,entityId){
     const card=$('indexed165Card');if(!card)return;

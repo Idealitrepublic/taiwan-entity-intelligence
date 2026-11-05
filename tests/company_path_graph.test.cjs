@@ -246,11 +246,11 @@ test('expanding a shared person keeps the company path level and bundles repeate
  const spine=[{...A,pathRole:'公司 A / Company A'},{...shared,pathRole:'連結節點 / Connecting node'},{...B,pathRole:'公司 B / Company B'}];
  const original=data.segments.map(({relationship:r})=>({...r,source:r.source_entity_id,target:r.target_entity_id}));
  const children=Array.from({length:9},(_,i)=>({id:'neighbor'+i,entity_type:i%2?'Company':'GovernmentAgency',
-   display_name:'延伸關係及 English organization '+i,pathParentId:shared.id}));
+   display_name:'延伸關係及 English organization '+i,expandedFromId:shared.id}));
  const branchEdges=children.map((node,i)=>({id:'branch'+i,source:i%2?node.id:shared.id,target:i%2?shared.id:node.id}));
  const extraRecord={...branchEdges[0],id:'different-evidence',primary_evidence_id:'proof-2'};
- const before=context.pathSpineLayout(spine,original);
- const after=context.pathSpineLayout([...spine,...children],[...original,...branchEdges,extraRecord]);
+ const before=context.groupedGraphLayout(spine,original);
+ const after=context.groupedGraphLayout([...spine,...children],[...original,...branchEdges,extraRecord]);
  for(const node of spine)assert.deepEqual(after.positions.get(node.id),before.positions.get(node.id));
  assert.equal(new Set(children.map(node=>after.positions.get(node.id).y)).size,2,'nine neighbors fit in two rows');
  assert.equal(after.routes.size,11,'one visible line per pair');
@@ -260,4 +260,48 @@ test('expanding a shared person keeps the company path level and bundles repeate
  assert(after.routes.get('r1').main&&after.routes.get('r2').main);
  assert(after.routes.get('r2').points[0][0]>after.routes.get('r2').points.at(-1)[0],'arrow retains source-to-target direction');
  assert(after.routes.get('r2').points.every(([,y])=>y===350),'main route remains horizontal');
+});
+
+test('typed zones contain only their own nodes and visible routes avoid unrelated zones',()=>{
+ const data=path([segment(A,shared,'r1'),segment(shared,B,'r2',true)]);
+ const state={pathData:data,rootId:A.id,manualPositions:new Map()};
+ const context=vm.createContext({graphMode:'path',knowledgeGraph:state,num:Number,graphContext:null,
+   relationshipLabels:{},entityTypeLabels:{},connectionEdgeLabel:()=> '政治獻金 / Political contribution\n2023-10-13'});
+ vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  function knowledgeMetrics(', '  function showKnowledgeNode('),context);
+ const nodes=[{...A,pathRole:'公司 A'}, {...shared,entity_type:'Politician',pathRole:'中介'}, {...B,pathRole:'公司 B'}];
+ const edges=data.segments.map(({relationship:r})=>({...r,source:r.source_entity_id,target:r.target_entity_id}));
+ for(const [type,amount,parent] of [['Company',4,shared.id],['GovernmentAgency',4,shared.id],['PoliticalParty',1,shared.id],['Politician',9,'GovernmentAgency0']]){
+  for(let index=0;index<amount;index++){
+   const id=type+index;
+   nodes.push({id,display_name:'公開紀錄名稱及 English name '+index,entity_type:type,expandedFromId:parent});
+   edges.push({id:'rel-'+id,source:parent,target:id});
+  }
+ }
+ edges.push({id:'cross-evidence',source:'Politician0',target:'PoliticalParty0'});
+ const {zones,positions,routes}=context.groupedGraphLayout(nodes,edges);
+ assert(zones.some(zone=>zone.type==='Company'&&zone.ids.length===4));
+ assert.equal(zones.filter(zone=>zone.type==='Politician').reduce((total,zone)=>total+zone.ids.length,0),10);
+ for(const node of nodes){
+  const p=positions.get(node.id),zone=zones.find(z=>z.ids.includes(node.id));
+  assert.equal(zone.type,node.entity_type);
+  assert(p.x>zone.left&&p.x<zone.right&&p.y>zone.top&&p.y<zone.bottom);
+ }
+ for(let i=0;i<zones.length;i++)for(const b of zones.slice(i+1)){
+  const a=zones[i];
+  assert(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top,'typed frames never overlap');
+ }
+ for(const [id,geometry] of routes){
+  const edge=edges.find(e=>e.id===id);
+  for(let i=1;i<geometry.points.length;i++){
+   const [x,y]=geometry.points[i-1],[u,v]=geometry.points[i];
+   assert(x===u||y===v,'route is orthogonal');
+   for(const zone of zones.filter(z=>!z.ids.includes(edge.source)&&!z.ids.includes(edge.target))){
+    assert(!(x===u?x>zone.left&&x<zone.right&&Math.max(y,v)>zone.top&&Math.min(y,v)<zone.bottom:
+      y>zone.top&&y<zone.bottom&&Math.max(x,u)>zone.left&&Math.min(x,u)<zone.right),
+      id+' crosses an unrelated '+zone.type+' frame');
+   }
+  }
+ }
+ assert(routes.get('cross-evidence').secondary);
+ assert(html.includes(':not(.show-cross-links) .path-cross-link{display:none}'));
 });
