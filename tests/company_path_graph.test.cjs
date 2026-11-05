@@ -183,9 +183,11 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  await vm.runInContext("expandKnowledgeNode('shared')",h.context);
  assert(requests[1].includes('after=page-two'));assert.equal(h.context.knowledgeGraph.nodes.size,4);
  await vm.runInContext("expandKnowledgeNode('shared')",h.context);assert.equal(requests.length,2);
+ h.context.knowledgeGraph.manualPositions=new Map([['b',{x:700,y:360}]]);
  h.context.reply={nodes:[extra,{id:'deeper',entity_type:'GovernmentAgency'}],edges:[{id:'deep-edge',source:'extra',target:'deeper',primary_evidence:{id:'deep-proof'}}]};
  await vm.runInContext("expandKnowledgeNode('extra')",h.context);
  assert(h.context.knowledgeGraph.nodes.has('deeper'));assert.equal(h.context.knowledgeGraph.nodes.get('deeper').depth,3);
+ assert.equal(h.context.knowledgeGraph.manualPositions.size,0,'new branch restores the automatic path layout after a drag');
  for(let i=h.context.knowledgeGraph.nodes.size;i<60;i++)h.context.knowledgeGraph.nodes.set('cap-'+i,{id:'cap-'+i,depth:4});
  const before=requests.length;await vm.runInContext("expandKnowledgeNode('deeper')",h.context);assert.equal(requests.length,before);
  console.log('PASS path nodes and newly added nodes expand, paginate, deduplicate, preserve anchors and obey 60-node cap');
