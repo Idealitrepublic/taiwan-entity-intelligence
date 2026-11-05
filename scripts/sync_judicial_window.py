@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts import sync_public_sources as sync  # noqa: E402
 from src.sources.judicial import changed_jids, get_token  # noqa: E402
+from src.local_artifacts import source_write_lock, SyncAlreadyRunning  # noqa: E402
 
 
 def in_service_window(now=None):
@@ -304,6 +305,15 @@ def run(*, max_batches=None, batch_size=25, workers=3):
 
 
 def main():
+    try:
+        with source_write_lock(sync.STATE.parent):
+            return _main()
+    except SyncAlreadyRunning:
+        print(json.dumps({'status': 'already_running', 'checkpoint_preserved': True}))
+        return 3
+
+
+def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-batches", type=int)
     parser.add_argument("--batch-size", type=int, default=25)

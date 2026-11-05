@@ -57,7 +57,7 @@ function segment(from, to, id, evidenceId, reverse=false) {
     await page.locator('#pathTargetMatches .path-match').first().click();
     await page.locator('#pathDepth').selectOption('1');
     await page.locator('#pathFind').click();
-    await assert.doesNotReject(page.locator('#pathResult').getByText('未找到共用節點',{
+    await assert.doesNotReject(page.locator('#pathResult').getByText('未找到符合條件的關係路徑',{
       exact:false}).waitFor());
     assert.equal(await page.locator('#svg .node').count(),0);
     await page.locator('#pathDepth').selectOption('2');

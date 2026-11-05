@@ -286,9 +286,10 @@ def _records(key, values, detail_sections=None):
                                 *_additional_facts(row, PROFILE_FIELDS)))
         elif key == "company_registry":
             result.append(_item(row.get("name") or row.get("uniform_number"),
-                                _fact("資料狀態 / Data status", "即時官方查詢 / Live official lookup"
-                                      if row.get("data_status") == "live_official_exact_id"
-                                      else "已儲存登記資料 / Stored registry record"),
+                                _fact("資料狀態 / Data status", {
+                                    'live_official_exact_id': '即時官方查詢 / Live official lookup',
+                                    'published_registry_snapshot_exact_id': '官方歷史快照 / Dated official snapshot',
+                                }.get(row.get('data_status'), '已儲存登記資料 / Stored registry record')),
                                 _fact("統一編號 / Company ID", row.get("uniform_number")),
                                 _fact("登記狀態 / Registry status", row.get("status")),
                                 _fact("代表人 / Representative", row.get("representative_name")),
@@ -351,6 +352,8 @@ def present_report(report):
         order += [("saved_evidence", "已收藏證據 / Saved evidence"),
                   ("workspace_items", "調查筆記與收藏 / Notes & saved items")]
     sections, empty = [], []
+    coverage = report.get('coverage') or {}
+    unavailable_sections = set(coverage.get('unavailable_sections') or [])
     detail_sections = {
         json.dumps(row, sort_keys=True, ensure_ascii=False, default=str): title
         for key, title in order if key in ("political_relationships", "government_contracts", "judgments", "penalties")
@@ -360,17 +363,19 @@ def present_report(report):
         if items and (key == "relationship_graph" and (report.get(key) or {}).get("nodes")
                       or key != "relationship_graph"):
             sections.append({"key": key, "title": title, "items": items})
-        else:
+        elif key not in unavailable_sections:
             empty.append(title)
-    coverage = report.get("coverage") or {}
     warnings = []
+    if unavailable_sections:
+        titles = [title for key, title in order if key in unavailable_sections]
+        warnings.append('尚未完成來源核對 / Source verification unavailable：' + '、'.join(titles))
     if any(value for key, value in coverage.items() if key.endswith("_truncated")):
         warnings.append("部分紀錄達顯示上限；本報告並非完整來源清單。 / Some records reached display limits.")
     unavailable = coverage.get("unavailable_saved_references") or []
     if unavailable:
         warnings.append(f"{len(unavailable)} 個收藏參照目前無法公開取得。 / Saved references unavailable.")
     if coverage.get("source_partial"):
-        warnings.append("部分即時來源暫時無法取得，以下不是完整查詢結果。 / Some live sources were unavailable; this is not a complete query.")
+        warnings.append("部分資料來源暫時無法取得，以下不是完整查詢結果。 / Some data sources were unavailable; this is not a complete query.")
     if report.get("report_type") == "WORKSPACE" and not report.get("entity_profiles"):
         warnings.append("此工作區未收藏可公開的公司或人物實體；單獨收藏來源不會自動生成公司資料或關係圖。 / Save a published Entity or Graph to include its profile and evidenced links; a source bookmark alone does not identify a company.")
     relationship_count = len(unique_records([

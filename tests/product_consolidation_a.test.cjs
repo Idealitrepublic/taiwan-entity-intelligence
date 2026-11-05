@@ -44,6 +44,7 @@ function reportHarness({popup=null,status=200,mime='application/pdf',bytes='%PDF
     setTimeout:(callback,delay)=>{timers.push({callback,delay});return timers.length},clearTimeout:()=>{},setInterval:()=>1,clearInterval:()=>{},
     fetch:async(url,options)=>{requests.push({url,options});return {ok:status===200,status,
       headers:{get:()=>mime},blob:async()=>new Blob([bytes]),text:async()=>'<html>Report</html>',json:async()=>({error:'Denied'})}}});
+  vm.runInContext(shipped('  let workspaceRefresh=', '  const reportRequests='),context);
   vm.runInContext(shipped('  async function exportReport(', '  function workspaceItemTarget'),context);
   return {context,events,requests,timers,link,elements};
 }
@@ -85,6 +86,8 @@ test('empty/truncated path does not claim absence of relationships',()=>{
   vm.runInContext(shipped('  function renderPathResult(', '  async function findRelationshipPath('),h.context);
   vm.runInContext('renderPathResult({found:false,truncated:true})',h.context);
   assert(h.elements.pathResult.innerHTML.includes('不代表兩家公司沒有關係'));
+  assert(h.elements.pathResult.innerHTML.includes('符合條件的關係路徑'));
+  assert(!h.elements.pathResult.innerHTML.includes('未找到共用節點'));
   assert(h.elements.pathResult.innerHTML.includes('High-degree nodes truncated'));
 });
 test('path API error reenables button without bogus result',async()=>{
@@ -194,7 +197,7 @@ test('account clearing resets all private forms, rows, notification state and UR
 });
 test('old-owner API response is rejected after a session boundary',async()=>{
   let resolve;const context=vm.createContext({workspaceEpoch:0,workspaceSession:{access_token:'test-only'},fetch:()=>new Promise(done=>resolve=done),clearWorkspaceSession:()=>{}});
-  vm.runInContext(html.split('\n').find(row=>row.trimStart().startsWith('async function workspaceRequest(')),context);
+  vm.runInContext(shipped('  let workspaceRefresh=', '  const reportRequests='),context);
   const pending=vm.runInContext("workspaceRequest('/api/v1/workspaces')",context);context.workspaceEpoch++;
   resolve({ok:true,status:200,json:async()=>({data:{items:[{name:'P05 private'}]}})});
   await assert.rejects(pending,/Account changed/);

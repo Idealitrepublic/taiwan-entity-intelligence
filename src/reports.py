@@ -196,6 +196,7 @@ class ReportService:
         nodes.setdefault(entity_id, entity)
         relationships = [_relation(edge, nodes) for edge in graph.get("edges", [])]
         asset_records = []
+        assets = None
         politician = None
         if entity.get("entity_type") == "Politician":
             politician = self.entities.politician_profile(
@@ -203,6 +204,10 @@ class ReportService:
             assets = self.entities.asset_declarations(
                 entity_id, limit=MAX_GRAPH_RELATIONSHIPS)
             asset_records = [_asset(row) for row in (assets or {}).get("items", [])]
+        elif entity.get('entity_type') == 'Company':
+            assets = self.entities.company_asset_declarations(entity_id, limit=MAX_GRAPH_RELATIONSHIPS)
+            if isinstance(assets, dict):
+                asset_records = [_asset(row) for row in assets.get('items', [])]
 
         entity_evidence = []
         for link in entity.get("evidence", []):
@@ -228,6 +233,9 @@ class ReportService:
                 "relationship_limit": MAX_REPORT_GRAPH_EDGES,
                 "relationship_truncated": bool(graph.get("has_more")),
                 "asset_limit": MAX_GRAPH_RELATIONSHIPS,
+                "asset_truncated": bool(isinstance(assets, dict) and assets.get('has_more')),
+                "unavailable_sections": ['asset_records'] if isinstance(assets, dict)
+                    and assets.get('schema_available') is False else [],
             },
             "entity_profiles": [profile],
             "company_registry": [registry] if isinstance(registry, dict) else [],
@@ -264,7 +272,15 @@ class ReportService:
     def politician_report(self, entity_id):
         return self._entity_report(entity_id, "POLITICIAN")
 
-    def company_report(self, uniform, *, company_loader=None, award_loader=None, related_loader=None):
+    def _company_published_context(self, uniform):
+        entity = self.entities.company_for_uniform(uniform)
+        if not entity:
+            return None
+        return {'entity': entity, 'graph': self._report_graph(entity['id']),
+                'assets': self.entities.company_asset_declarations(entity['id'], limit=MAX_GRAPH_RELATIONSHIPS)}
+
+    def company_report(self, uniform, *, company_loader=None, award_loader=None, related_loader=None,
+                       published_loader=None):
         """Snapshot the same bounded live sources used by the company screen."""
         if not isinstance(uniform, str) or not re.fullmatch(r"[0-9]{8}", uniform):
             raise ReportValidationError("Invalid company identifier")
@@ -282,6 +298,7 @@ class ReportService:
             company_job = pool.submit(company_loader, uniform)
             award_job = pool.submit(award_loader, uniform)
             related_job = pool.submit(related_loader, uniform)
+            published_job = pool.submit(published_loader or self._company_published_context, uniform)
             try:
                 data = company_job.result()
             except Exception as exc:
@@ -294,6 +311,11 @@ class ReportService:
                 related = related_job.result()
             except Exception:
                 related = {"status": "partial", "items": [], "limited": True}
+            published_unavailable = False
+            try:
+                published = published_job.result()
+            except EntityStoreUnavailable:
+                published, published_unavailable = None, True
         if data.get("status") != "ok" or data.get("uniform_number") != uniform:
             raise ReportNotFound("Official company not found")
         company = data.get("company") or {}
@@ -301,7 +323,7 @@ class ReportService:
             raise ReportNotFound("Official company ID mismatch")
         graph = data.get("graph") or {}
         nodes = {row["id"]: dict(row) for row in graph.get("nodes", []) if row.get("id")}
-        edges = list(graph.get("edges") or [])
+        edges = [dict(edge) for edge in graph.get("edges") or []]
         root_id = f"company:{uniform}"
         check = data.get("website_crosscheck") or {}
         if check.get("domain"):
@@ -337,7 +359,9 @@ class ReportService:
                     "source": root_evidence.get("source_name") or "經濟部公司登記",
                     "source_url": root_evidence.get("source_url"),
                     "fetched_at": root_evidence.get("retrieved_at"),
-                    "data_status": "live_official_exact_id"}
+                    "data_status": ('published_registry_snapshot_exact_id'
+                                    if data.get('data_mode') == 'published_registry_snapshot_plus_supabase'
+                                    else "live_official_exact_id")}
         for row in awards.get("records") or []:
             record_id = "procurement:" + str(row.get("id"))
             evidence = {"title": row.get("title"), "source_name": awards.get("source"),
@@ -415,8 +439,8 @@ class ReportService:
                 relationship["amount"] = amount
                 relationship["currency"] = properties.get("currency")
             record = {"relationship": relationship,
-                      "source_entity": {"display_name": source.get("label") or source.get("id")},
-                      "target_entity": {"display_name": target.get("label") or target.get("id")},
+                      "source_entity": {"id": source.get('id'), "display_name": source.get("label") or source.get("id")},
+                      "target_entity": {"id": target.get('id'), "display_name": target.get("label") or target.get("id")},
                       "evidence": evidence}
             category = {"procurement_award": "government_contracts",
                         "mentioned_in_judgment": "judgments",
@@ -433,10 +457,10 @@ class ReportService:
                 "source_record_id": uniform, "content_hash": root_evidence.get("content_hash")}
         truncated = bool(awards.get("limited") or (related or {}).get("limited")
                          or (data.get("judicial_result") or {}).get("limited"))
-        return {"report_version": REPORT_VERSION, "report_type": "LIVE_COMPANY",
+        report = {"report_version": REPORT_VERSION, "report_type": "LIVE_COMPANY",
                 "generated_at": self.clock(),
                 "title": f"{data.get('company_name')}｜公司調查報告 / Company Investigation Report",
-                "methodology": "本報告重查即時來源；來源觀察、名稱候選與正式關係分開標示，不推論犯罪或違法。 Live source snapshot; observations and name candidates are not formal findings.",
+                "methodology": "本報告重查可用來源，快照保留原取得時間；僅以統編核對已發布實體。來源觀察、名稱候選與正式關係分開標示，不推論犯罪或違法。 Available sources and dated snapshots; published links require an exact company ID; no findings of wrongdoing.",
                 "coverage": {"live_source_truncated": truncated,
                              "source_partial": any(value.get("status") == "partial" for value in
                                                    (awards, related or {}, data.get("judicial_result") or {}))},
@@ -454,6 +478,68 @@ class ReportService:
                 "relationship_graph": {"nodes": list(nodes.values()), "edges": edges,
                                        "truncated": truncated},
                 "sources": list(sources.values())}
+        report['coverage']['published_context_status'] = ('unavailable' if published_unavailable
+                                                          else 'matched_exact_id' if published else 'not_indexed')
+        unavailable_sections = []
+        if awards.get('status') == 'partial':
+            unavailable_sections.append('government_contracts')
+        if (data.get('judicial_result') or {}).get('status') == 'partial':
+            unavailable_sections.append('judgments')
+        if (data.get('evidence_status') or {}).get('裁罰', {}).get('status') == 'partial':
+            unavailable_sections.append('penalties')
+        report['coverage']['unavailable_sections'] = unavailable_sections
+        if published_unavailable:
+            report['coverage']['source_partial'] = True
+            unavailable_sections.extend(['political_relationships', 'asset_records'])
+        if published:
+            entity = published['entity']
+            canonical_id = entity['id']
+            report['entity_profiles'][0].update(id=canonical_id,
+                evidence=[*entity.get('evidence', []), {'fact_type': 'IDENTITY', 'evidence': root_evidence}])
+            for node in report['relationship_graph']['nodes']:
+                if node['id'] == root_id:
+                    node['id'] = canonical_id
+            for edge in report['relationship_graph']['edges']:
+                for endpoint in ('source', 'target'):
+                    if edge.get(endpoint) == root_id:
+                        edge[endpoint] = canonical_id
+            for record in [*relationships, *(row for values in categories.values() for row in values)]:
+                for endpoint in ('source_entity', 'target_entity'):
+                    if record[endpoint].get('id') == root_id:
+                        record[endpoint]['id'] = canonical_id
+            canonical_graph = published.get('graph') or {'nodes': [entity], 'edges': []}
+            canonical_nodes = {row['id']: row for row in canonical_graph.get('nodes', [])}
+            canonical_nodes.setdefault(canonical_id, entity)
+            report['relationship_graph']['nodes'].extend(row for key, row in canonical_nodes.items()
+                                                        if key != canonical_id)
+            for edge in canonical_graph.get('edges', []):
+                record = _relation(edge, canonical_nodes)
+                if not record['evidence']:
+                    continue
+                report['relationship_graph']['edges'].append(record)
+                relationships.append(record)
+                kind = record['relationship'].get('relationship_type')
+                if kind in POLITICAL_RELATIONSHIPS:
+                    report['political_relationships'].append(record)
+                category = {'CONTRACT_WITH': 'government_contracts', 'RELATED_TO_JUDGMENT': 'judgments',
+                            'RELATED_TO_PENALTY': 'penalties'}.get(kind)
+                if category:
+                    report[category].append(record)
+            assets = published.get('assets') or {}
+            report['asset_records'] = [_asset(row) for row in assets.get('items', [])]
+            report['coverage']['relationship_truncated'] = bool(canonical_graph.get('has_more'))
+            report['coverage']['asset_truncated'] = bool(assets.get('has_more'))
+            if assets.get('schema_available') is False:
+                unavailable_sections.append('asset_records')
+            report['relationship_graph']['truncated'] |= bool(canonical_graph.get('has_more'))
+            versions = {}
+            for source in [*report['sources'], *_source_map(report).values()]:
+                locator = source.get('source_record_id') or source.get('source_locator')
+                key = (source.get('source_url'), json.dumps(locator, sort_keys=True, ensure_ascii=False),
+                       source.get('retrieved_at'), source.get('content_hash'))
+                versions[key] = {**versions.get(key, {}), **{k: v for k, v in source.items() if v is not None}}
+            report['sources'] = list(versions.values())
+        return report
 
     def workspace_report(self, workspace_id, access_token):
         workspace_id = uuid_string(workspace_id)

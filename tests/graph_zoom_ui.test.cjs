@@ -16,3 +16,20 @@ vm.runInContext('setZoom(.001);', context);
 assert.equal(context.zoom, .05, 'tiny zoom is bounded but not forced to readable expansion zoom');
 assert.match(html, /這家公司連結了什麼 \/ Relationship summary/);
 console.log('PASS related-company zoom and dashboard relationship summary');
+
+const focusCode = html.slice(html.indexOf('  function focusKnowledgeExpansion('), html.indexOf('  function focusLegacyExpansion('));
+const graphSub = {textContent: '12 nodes'};
+const focusContext = vm.createContext({
+  zoom: .35, panX: 0, panY: 0,
+  knowledgeGraph: {nodes: new Map([['bridge',{id:'bridge'}],['child',{id:'child'}]]), edges: new Map([['edge',{source:'bridge',target:'child'}]])},
+  fitGraphBounds() {this.zoom=.35;}, readableLegacyZoom:()=>1.6,
+  knowledgePositions:()=>new Map([['bridge',{x:500,y:350}],['child',{x:900,y:350}]]),
+  graphFitArea:()=>({x:50,y:70,width:900,height:560}),
+  setZoom(value) {focusContext.zoom=value;}, applyGraphTransform:()=>{}, $:()=>graphSub,
+});
+vm.runInContext(focusCode+'\nfocusKnowledgeExpansion("bridge");',focusContext);
+assert.equal(focusContext.zoom,2.08,'expansion retains readable labels rather than fitting 12 nodes into tiny text');
+assert(Number.isFinite(focusContext.panX)&&Number.isFinite(focusContext.panY));
+assert.match(graphSub.textContent,/Fit for the full graph/);
+assert.match(html,/if\(newIds.size\)focusKnowledgeExpansion\(entityId\)/);
+console.log('PASS expanded published graph keeps readable branch zoom; manual zoom remains unrestricted');

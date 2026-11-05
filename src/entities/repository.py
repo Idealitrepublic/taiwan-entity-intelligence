@@ -1,6 +1,5 @@
 """Public, bounded PostgREST reads. Never use service-role credentials here."""
 import json
-import os
 import re
 import time
 import urllib.error
@@ -17,7 +16,7 @@ from .contracts import (
 )
 from .models import stable_id, uuid_string
 from src.asset_timeline import MAX_TIMELINE_ROWS, build_asset_timeline
-from src.public_config import SUPABASE_PUBLISHABLE_KEY
+from src.runtime_config import public_supabase_config
 
 ENTITY_FIELDS = select_list(PUBLIC_ENTITY_FIELDS)
 EVIDENCE_FIELDS = select_list(PUBLIC_EVIDENCE_FIELDS)
@@ -59,11 +58,7 @@ class EntityFeatureUnavailable(EntityStoreUnavailable):
 
 class EntityRepository:
     def __init__(self, transport=None):
-        self.url = os.environ.get("TEI_ENTITY_SUPABASE_URL") or os.environ.get(
-            "SUPABASE_URL", "https://rztdbdurkjfrirsrrhtu.supabase.co")
-        self.key = os.environ.get("TEI_ENTITY_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY")
-        if not self.key and self.url.rstrip("/") == "https://rztdbdurkjfrirsrrhtu.supabase.co":
-            self.key = SUPABASE_PUBLISHABLE_KEY
+        self.url, self.key = public_supabase_config()
         self.transport = transport or self._get
 
     def _get(self, table, params):
@@ -195,6 +190,38 @@ class EntityRepository:
                     "$skip": "0", "$top": "1"}),
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
                 "data_status": "live_official_exact_id"}
+
+    def company_for_uniform(self, uniform):
+        """Resolve a public report's company by an official identifier, never name."""
+        if not isinstance(uniform, str) or not re.fullmatch(r'[0-9]{8}', uniform):
+            raise ValueError('Invalid company identifier')
+        rows = self.transport('entity_public_identifiers', {
+            'select': 'entity_id,value', 'namespace': 'eq.tw:uniform_number',
+            'value': f'eq.{uniform}', 'limit': 2})
+        ids = {row.get('entity_id') for row in rows if row.get('value') == uniform}
+        if len(ids) != 1 or not next(iter(ids)):
+            return None
+        entity = self.entity(next(iter(ids)))
+        return entity if (entity and entity.get('entity_type') == 'Company'
+                          and entity.get('identity_status') == 'EXACT') else None
+
+    def company_asset_declarations(self, company_id, *, limit=25):
+        """Bounded published asset rows already linked to this exact company UUID."""
+        company_id = uuid_string(company_id)
+        if not 1 <= limit <= 25:
+            raise ValueError('Asset report limit must be 1..25')
+        params = {
+            'select': (f'{ASSET_DECLARATION_FIELDS},'
+                       'primary_evidence:evidence_records!asset_declarations_primary_evidence_id_fkey!inner('
+                       f'{EVIDENCE_FIELDS})'),
+            'company_entity_id': f'eq.{company_id}', 'publication_status': 'eq.published',
+            'primary_evidence.publication_status': 'eq.published', 'primary_evidence.status': 'eq.active',
+            'order': 'declaration_year.desc,id.asc', 'limit': limit + 1}
+        try:
+            rows = self.transport('asset_declarations', params)
+        except EntityFeatureUnavailable:
+            return {'items': [], 'has_more': False, 'schema_available': False}
+        return {'items': rows[:limit], 'has_more': len(rows) > limit, 'schema_available': True}
 
     def evidence(self, evidence_id):
         rows = self.transport("evidence_records", {"select": EVIDENCE_FIELDS,

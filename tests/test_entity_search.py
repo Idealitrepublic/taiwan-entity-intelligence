@@ -67,7 +67,7 @@ class EntitySearchTests(unittest.TestCase):
         response.__enter__ = Mock(return_value=response)
         response.__exit__ = Mock(return_value=False)
         with patch.dict("os.environ", {"TEI_ENTITY_SUPABASE_URL": "https://example.supabase.co",
-                                    "TEI_ENTITY_ANON_KEY": "test-public-key"}), \
+                                    "TEI_ENTITY_ANON_KEY": "sb_publishable_test_fixture"}), \
                 patch("src.entities.repository.urllib.request.urlopen",
                       side_effect=[TimeoutError("temporary"), response]) as opened, \
                 patch("src.entities.repository.time.sleep") as backoff:
@@ -79,7 +79,7 @@ class EntitySearchTests(unittest.TestCase):
     def test_public_store_does_not_retry_permanent_client_error(self):
         from urllib.error import HTTPError
         with patch.dict("os.environ", {"TEI_ENTITY_SUPABASE_URL": "https://example.supabase.co",
-                                    "TEI_ENTITY_ANON_KEY": "test-public-key"}), \
+                                    "TEI_ENTITY_ANON_KEY": "sb_publishable_test_fixture"}), \
                 patch("src.entities.repository.urllib.request.urlopen",
                       side_effect=HTTPError("https://example.supabase.co", 400,
                                             "Bad Request", {}, None)) as opened, \

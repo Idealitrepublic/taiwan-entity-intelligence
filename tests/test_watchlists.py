@@ -58,7 +58,7 @@ class WatchlistTests(unittest.TestCase):
     def test_repository_forwards_user_jwt_and_never_service_role(self):
         with patch.dict(os.environ, {
                 "TEI_PRIVATE_SUPABASE_URL": "https://preview.example.supabase.co",
-                "TEI_PRIVATE_SUPABASE_ANON_KEY": "public-key",
+                "TEI_PRIVATE_SUPABASE_ANON_KEY": "sb_publishable_public_fixture",
                 "SUPABASE_SERVICE_ROLE_KEY": "do-not-use"}, clear=True):
             repository = WatchlistRepository(TOKEN)
             with patch("urllib.request.urlopen") as open_url:
@@ -66,7 +66,7 @@ class WatchlistTests(unittest.TestCase):
                 repository.list_entries()
                 request = open_url.call_args.args[0]
         self.assertEqual(request.get_header("Authorization"), f"Bearer {TOKEN}")
-        self.assertEqual(request.get_header("Apikey"), "public-key")
+        self.assertEqual(request.get_header("Apikey"), "sb_publishable_public_fixture")
         self.assertNotIn("do-not-use", str(request.headers))
         self.assertEqual(parse_qs(urlsplit(request.full_url).query)["limit"], ["51"])
 
@@ -91,7 +91,7 @@ class WatchlistTests(unittest.TestCase):
     def test_follow_transport_ignores_duplicates_without_update_privilege(self):
         with patch.dict(os.environ, {
                 "TEI_PRIVATE_SUPABASE_URL": "https://preview.example.supabase.co",
-                "TEI_PRIVATE_SUPABASE_ANON_KEY": "public-key"}, clear=True):
+                "TEI_PRIVATE_SUPABASE_ANON_KEY": "sb_publishable_public_fixture"}, clear=True):
             repository = WatchlistRepository(TOKEN)
             with patch("urllib.request.urlopen") as open_url:
                 open_url.return_value.__enter__.return_value.read.return_value = (

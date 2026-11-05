@@ -18,7 +18,7 @@ function get(url){return new Promise((resolve,reject)=>{
 async function ready(url){for(let i=0;i<60;i++){try{if((await get(url)).status===200)return;}catch{}await new Promise(r=>setTimeout(r,200));}throw Error('Verification server did not start');}
 (async()=>{try{
   child('node',['tests/serve_entity_store.mjs',input]);
-  child('python',['app.py'],{TEI_ENTITY_API_ENABLED:'1',TEI_ENTITY_SUPABASE_URL:'http://127.0.0.1:8766',TEI_ENTITY_ANON_KEY:'local-verification'});
+  child('python',['app.py'],{TEI_ENTITY_API_ENABLED:'1',TEI_ENTITY_SUPABASE_URL:'http://127.0.0.1:8766',TEI_ENTITY_ANON_KEY:'sb_publishable_local_verification'});
   await ready('http://127.0.0.1:8000/');
   await ready('http://127.0.0.1:8766/rest/v1/entities?select=id&limit=1');
   const bundle=JSON.parse(fs.readFileSync(input));

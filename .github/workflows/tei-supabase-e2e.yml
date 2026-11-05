@@ -1,18 +1,28 @@
 name: T.E.I. Supabase E2E
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type RUN_LEGACY_DIAGNOSTICS; legacy Production diagnostics may trigger writes; requires separate authorization'
+        required: true
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
   e2e:
+    if: ${{ inputs.confirmation == 'RUN_LEGACY_DIAGNOSTICS' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install runtime and test dependencies
+        run: python -m pip install -r requirements-dev.txt
       - name: Validate committed Python source
         run: python -m compileall -q src api tests
       - name: Check Supabase Edge Function health

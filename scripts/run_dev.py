@@ -8,6 +8,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -36,13 +37,14 @@ def read_local_env(path):
 def require_development_public_target(env):
     """Keep a missing local setting from falling back to Production reads."""
     from urllib.parse import urlsplit
+    from src.runtime_config import public_key_or_empty
 
     url = env.get("TEI_ENTITY_SUPABASE_URL") or env.get("SUPABASE_URL") or ""
     parsed = urlsplit(url)
     if (parsed.scheme != "https" or parsed.hostname != "canqjiokrtcxkwblhmml.supabase.co"
             or parsed.username or parsed.password or parsed.port or parsed.path not in ("", "/")
             or parsed.query or parsed.fragment
-            or not (env.get("TEI_ENTITY_ANON_KEY") or env.get("SUPABASE_ANON_KEY"))):
+            or not public_key_or_empty(env.get("TEI_ENTITY_ANON_KEY") or env.get("SUPABASE_ANON_KEY") or '')):
         raise RuntimeError("Local public reads require an explicit tei-development URL and anon key")
     private_url = env.get("TEI_PRIVATE_SUPABASE_URL")
     if private_url and private_url.rstrip("/") != url.rstrip("/"):

@@ -72,13 +72,13 @@ class EntityApiTests(unittest.TestCase):
         self.assertEqual(calls[0][1]["relationship_type"], "eq.DIRECTOR_OF")
 
     def test_read_key_never_uses_service_role(self):
-        with patch.dict(os.environ, {"SUPABASE_SERVICE_ROLE_KEY": "DO_NOT_USE", "TEI_ENTITY_ANON_KEY": "public-test"}, clear=True):
+        with patch.dict(os.environ, {"SUPABASE_SERVICE_ROLE_KEY": "DO_NOT_USE", "TEI_ENTITY_ANON_KEY": "sb_publishable_test_fixture"}, clear=True):
             repo = EntityRepository()
             with patch("urllib.request.urlopen") as open_url:
                 open_url.return_value.__enter__.return_value.read.return_value = b"[]"
                 repo.evidence(ID)
                 request = open_url.call_args.args[0]
-                self.assertEqual(request.get_header("Authorization"), "Bearer public-test")
+                self.assertEqual(request.get_header("Authorization"), "Bearer sb_publishable_test_fixture")
                 self.assertNotIn("DO_NOT_USE", str(request.headers))
                 params = parse_qs(urlsplit(request.full_url).query)
                 self.assertNotIn("raw", params["select"][0])

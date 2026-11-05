@@ -25,6 +25,7 @@ from src.sources.public_records import evidence_rows as public_rows  # noqa: E40
 from src.sources.judicial import evidence_rows as judicial_rows  # noqa: E402
 from src.sources.judicial import JudicialRequestError  # noqa: E402
 from src.sources.judicial_index import build_index  # noqa: E402
+from src.local_artifacts import atomic_json, atomic_text_file, source_write_lock  # noqa: E402
 
 OUT = ROOT / "data"
 OUT.mkdir(exist_ok=True)
@@ -40,8 +41,8 @@ def load_state() -> Dict[str, Any]:
         return {"evidence_ids": [], "last_sync": None}
     try:
         return json.loads(STATE.read_text(encoding="utf-8"))
-    except Exception:
-        return {"evidence_ids": [], "last_sync": None}
+    except (OSError, ValueError, UnicodeError):
+        raise RuntimeError('Saved sync state is unreadable; refusing to reset checkpoint') from None
 
 
 def consume(loader, existing, seen, counters, source_label):
@@ -81,6 +82,11 @@ def verified_upstream_document_error(previous, detail, jlist_metadata) -> bool:
 
 
 def main(argv=None, *, emit_status=True, retry_selection=None) -> int:
+    with source_write_lock(STATE.parent):
+        return _main(argv, emit_status=emit_status, retry_selection=retry_selection)
+
+
+def _main(argv=None, *, emit_status=True, retry_selection=None) -> int:
     started = time.monotonic()
     started_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     run_id = uuid.uuid4().hex
@@ -258,7 +264,7 @@ def main(argv=None, *, emit_status=True, retry_selection=None) -> int:
                        "empty_window" if not window.get("total", 0) else
                        "upstream_unavailable" if unavailable else "ok")
 
-    with EVIDENCE.open("w", encoding="utf-8") as fh:
+    with atomic_text_file(EVIDENCE) as fh:
         for eid in sorted(existing):
             fh.write(json.dumps(existing[eid], ensure_ascii=False, sort_keys=True) + "\n")
 
@@ -316,7 +322,7 @@ def main(argv=None, *, emit_status=True, retry_selection=None) -> int:
         "last_judicial_status": judicial_status,
         "source_errors": source_errors,
     }
-    STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_json(STATE, state)
 
     status = {
         "run": {"id": run_id, "environment": os.environ.get("TEI_ENVIRONMENT", "local"),
@@ -342,12 +348,9 @@ def main(argv=None, *, emit_status=True, retry_selection=None) -> int:
         "judicial_totals": judicial_totals,
         "judicial_window": window,
     }
-    STATUS.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_json(STATUS, status)
     if should_publish_judicial_index(judicial_status):
-        JUDICIAL_INDEX.write_text(
-            json.dumps(build_index(existing.values(), now), ensure_ascii=False, separators=(",", ":")),
-            encoding="utf-8",
-        )
+        atomic_json(JUDICIAL_INDEX, build_index(existing.values(), now), compact=True)
     if emit_status:
         print(json.dumps(status, ensure_ascii=False, indent=2))
     return 1 if all_errors or (args.source != "government" and

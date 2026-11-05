@@ -19,6 +19,8 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from src.local_artifacts import source_write_lock  # noqa: E402
 DEV_REF = "canqjiokrtcxkwblhmml"
 PROD_REF = "rztdbdurkjfrirsrrhtu"
 SYNC_FILES = (
@@ -210,12 +212,21 @@ def backup(destination, url, recipient, identity):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument('--local-env', action='store_true', help='Load owner-only .env.local inside this child process')
     args = parser.parse_args()
+    if args.local_env:
+        from scripts.run_dev import read_local_env
+        try:
+            os.environ.update(read_local_env(ROOT / '.env.local'))
+        except (OSError, RuntimeError, UnicodeError):
+            print('Backup not completed: local environment is unavailable or unsafe', file=sys.stderr)
+            return 1
     url = os.environ.get("TEI_DEV_DATABASE_URL") or ""
     recipient = os.environ.get("TEI_BACKUP_AGE_RECIPIENT") or ""
     identity = Path(os.environ.get("TEI_BACKUP_AGE_IDENTITY") or "/nonexistent")
     try:
-        output = backup(args.output_dir, url, recipient, identity)
+        with source_write_lock(ROOT / 'data'):
+            output = backup(args.output_dir, url, recipient, identity)
     except (ValueError, RuntimeError) as exc:
         print(f"Backup not completed: {exc}", file=sys.stderr)
         return 1

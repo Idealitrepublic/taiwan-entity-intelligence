@@ -6,7 +6,7 @@ from threading import Event, Lock
 from unittest.mock import patch
 from app import app
 from src import cloud_company
-from src.rate_limit import FixedWindowLimiter, client_identity
+from src.rate_limit import FixedWindowLimiter, client_identity, request_allowed
 
 class CloudAppTests(unittest.TestCase):
     def request(self,path):
@@ -176,6 +176,31 @@ class CloudAppTests(unittest.TestCase):
         self.assertTrue(limiter.allow('client',2,now=2))
         self.assertFalse(limiter.allow('client',2,now=3))
         self.assertTrue(limiter.allow('client',2,now=61))
+    def test_changing_company_ids_does_not_reset_the_client_limit(self):
+        limiter = FixedWindowLimiter()
+        with patch('src.rate_limit.LIMITER', limiter), patch('src.rate_limit.time.monotonic', return_value=1):
+            for index in range(60):
+                self.assertTrue(request_allowed(f'/api/company/{index:08d}', '192.0.2.1'))
+            self.assertFalse(request_allowed('/api/company/96979933', '192.0.2.1'))
+            self.assertTrue(request_allowed('/api/company/96979933', '192.0.2.2'))
+
+    def test_unknown_paths_share_a_bounded_bucket(self):
+        limiter = FixedWindowLimiter()
+        with patch('src.rate_limit.LIMITER', limiter), patch('src.rate_limit.time.monotonic', return_value=1):
+            for index in range(60):
+                self.assertTrue(request_allowed(f'/api/unknown-{index}/arbitrary', '192.0.2.1'))
+            self.assertFalse(request_allowed('/api/new-unknown/arbitrary', '192.0.2.1'))
+
+    def test_active_limiter_keys_cannot_grow_without_bound_or_evict_a_limited_client(self):
+        limiter = FixedWindowLimiter(max_entries=3)
+        self.assertTrue(limiter.allow('limited', 1, now=1))
+        self.assertTrue(limiter.allow('second', 1, now=1))
+        self.assertTrue(limiter.allow('third', 1, now=1))
+        for index in range(50):
+            self.assertFalse(limiter.allow(f'overflow-{index}', 1, now=1))
+        self.assertEqual(len(limiter._entries), 3)
+        self.assertFalse(limiter.allow('limited', 1, now=1))
+        self.assertTrue(limiter.allow('new-window', 1, now=61))
     def test_rate_limit_identity_ignores_spoofed_forwarded_for(self):
         environ = {'HTTP_X_FORWARDED_FOR': '1.2.3.4', 'REMOTE_ADDR': '192.0.2.10'}
         with patch.dict('os.environ', {'VERCEL': ''}):

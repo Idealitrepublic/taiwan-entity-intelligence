@@ -2,17 +2,28 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+import subprocess
+import sys
 
 from scripts.run_dev import read_local_env, require_development_public_target
 
 
 class LocalEnvLoaderTests(unittest.TestCase):
+    def test_standalone_launcher_can_import_its_configuration_guard(self):
+        script = Path(__file__).resolve().parents[1] / 'scripts/run_dev.py'
+        code = (f"import runpy; m=runpy.run_path({str(script)!r},run_name='guard_test'); "
+                "m['require_development_public_target']({'TEI_ENTITY_SUPABASE_URL':"
+                "'https://canqjiokrtcxkwblhmml.supabase.co','TEI_ENTITY_ANON_KEY':'sb_publishable_test_only'})")
+        result = subprocess.run([sys.executable, '-I', '-c', code], capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, 'standalone launcher cannot load its guard')
+
     def test_local_server_requires_explicit_development_public_database(self):
         valid = {"TEI_ENTITY_SUPABASE_URL": "https://canqjiokrtcxkwblhmml.supabase.co",
-                 "TEI_ENTITY_ANON_KEY": "public-test-only"}
+                 "TEI_ENTITY_ANON_KEY": "sb_publishable_test_only"}
         require_development_public_target(valid)
         for bad in ({}, {**valid, "TEI_ENTITY_SUPABASE_URL": "https://rztdbdurkjfrirsrrhtu.supabase.co"},
                     {**valid, "TEI_ENTITY_ANON_KEY": ""},
+                    {**valid, "TEI_ENTITY_ANON_KEY": "sb_secret_fixture"},
                     {**valid, "TEI_PRIVATE_SUPABASE_URL": "https://rztdbdurkjfrirsrrhtu.supabase.co"},
                     {**valid, "TEI_PRIVATE_SUPABASE_URL": valid["TEI_ENTITY_SUPABASE_URL"],
                      "TEI_PRIVATE_SUPABASE_ANON_KEY": "different-key"}):

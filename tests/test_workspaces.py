@@ -59,7 +59,7 @@ class WorkspaceTests(unittest.TestCase):
     def test_repository_forwards_user_jwt_and_never_service_role(self):
         with patch.dict(os.environ, {
                 "TEI_PRIVATE_SUPABASE_URL": "https://preview.example.supabase.co",
-                "TEI_PRIVATE_SUPABASE_ANON_KEY": "public-key",
+                "TEI_PRIVATE_SUPABASE_ANON_KEY": "sb_publishable_public_fixture",
                 "SUPABASE_SERVICE_ROLE_KEY": "do-not-use"}, clear=True):
             repository = WorkspaceRepository(TOKEN)
             with patch("urllib.request.urlopen") as open_url:
@@ -67,7 +67,7 @@ class WorkspaceTests(unittest.TestCase):
                 repository.list()
                 request = open_url.call_args.args[0]
         self.assertEqual(request.get_header("Authorization"), f"Bearer {TOKEN}")
-        self.assertEqual(request.get_header("Apikey"), "public-key")
+        self.assertEqual(request.get_header("Apikey"), "sb_publishable_public_fixture")
         self.assertNotIn("do-not-use", str(request.headers))
         self.assertEqual(parse_qs(urlsplit(request.full_url).query)["limit"], ["51"])
 
@@ -109,14 +109,14 @@ class WorkspaceTests(unittest.TestCase):
         status = []
         with patch.dict(os.environ, {
                 "TEI_PRIVATE_SUPABASE_URL": "https://preview.example.supabase.co",
-                "TEI_PRIVATE_SUPABASE_ANON_KEY": "browser-safe-key",
+                "TEI_PRIVATE_SUPABASE_ANON_KEY": "sb_publishable_browser_fixture",
                 "SUPABASE_SERVICE_ROLE_KEY": "do-not-expose"}, clear=True):
             body = b"".join(app({"REQUEST_METHOD": "GET",
                                  "PATH_INFO": "/api/v1/workspace-config"},
                                 lambda value, _headers: status.append(value)))
         result = json.loads(body)
         self.assertEqual(status, ["200 OK"])
-        self.assertEqual(result["publishable_key"], "browser-safe-key")
+        self.assertEqual(result["publishable_key"], "sb_publishable_browser_fixture")
         self.assertNotIn("do-not-expose", str(result))
 
     def test_auth_config_fails_closed_without_explicit_private_pair(self):

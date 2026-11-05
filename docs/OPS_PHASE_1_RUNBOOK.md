@@ -56,7 +56,7 @@ Create a dedicated 0700 directory **outside this repository and home root**,
 then run:
 
 ```sh
-.venv/bin/python scripts/ops_backup.py --output-dir /absolute/private/backup-directory
+.venv/bin/python scripts/ops_backup.py --local-env --output-dir /absolute/private/backup-directory
 ```
 
 The tool rejects a Production/mismatched database URL and broad or permissive
@@ -68,6 +68,58 @@ is published. The manifest stores SHA-256 hashes and project ref, never keys.
 Copy the verified encrypted directory to an access-restricted off-site target
 and record its retention period. This step requires an operator-selected
 destination; it is never automatic.
+
+`--local-env` reads the existing 0600 `.env.local` only inside this process;
+without it, settings come only from the shell environment. Values are never
+printed. Backup and source-sync CLIs share a nonblocking process lock: a second
+writer/backup stops instead of racing the checkpoint. Evidence, state, status
+and index files are atomically replaced; an unreadable existing checkpoint
+fails closed and is never silently reset.
+
+A repeatable application-scope rehearsal is available:
+
+```sh
+.venv/bin/python scripts/ops_restore_drill.py --local-env --backup-dir /absolute/private/encrypted-backup
+```
+
+It creates its own new PostgreSQL cluster under a private temporary directory,
+listens only on a 0700 Unix socket, and never accepts an existing restore URL.
+`initdb`, `pg_ctl`, `psql`, `pg_restore`, `pg_trgm`, `pgcrypto`, `uuid-ossp` and
+`age` must be locally available. It checks encrypted hashes, decrypts in a
+pipe, compares exact row counts, columns, constraints, indexes, functions,
+triggers, RLS/policies and migration versions against the Development source,
+then tests local anonymous visibility. Its local-only SELECT grants test RLS;
+original ownership/ACLs and managed Supabase services remain outside scope.
+The temporary cluster is stopped and removed after the rehearsal.
+
+PostgreSQL 17 and 18 render two numeric CHECK constraints with different,
+equivalent AND parentheses. The comparison accepts only these explicitly
+enumerated forms; changed limits, operators and other definitions still fail.
+Identifier lists are sorted locally to avoid source/local collation differences.
+Column nullability is compared directly (PG18 also represents NOT NULL as
+constraint objects). The rehearsal precreates the application schemas required
+by a filtered restore, without installing Supabase platform services.
+
+## Explicitly authorized Production read-only backup
+
+Production restoration/read-only verification was separately authorized on
+2026-11-05. This authorization does **not** cover migrations, environment changes,
+WAF publication or deployment. A separate command keeps the Development-only
+guard intact:
+
+```sh
+.venv/bin/python scripts/ops_production_backup.py --local-env --output-dir /absolute/private/backup-directory
+```
+
+It requires `TEI_PROD_DATABASE_URL` in the existing Git-ignored, owner-only local
+environment, and the same locally held age recipient/identity. It accepts only
+the original Production project and direct/session port 5432, discards ambient
+PG overrides, verifies read-only transactions and uses an encrypted pg_dump
+stream. It never bundles Development sync data into a Production archive.
+No connection value, password, key or source row belongs in this document or
+in a transcript. A missing setting blocks the backup; it never resets a password
+or substitutes Development credentials. Verification checks archive integrity,
+not a full Supabase platform restore.
 
 For an isolated restore drill, use a disposable **local** PostgreSQL database
 on an owner-only Unix socket (or a separately approved Development-only

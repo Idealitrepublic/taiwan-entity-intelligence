@@ -275,6 +275,10 @@ The politician page renders per-year type summaries, amount/quantity changes, an
 
 ## Phase 9 Investigation Workspace
 
+Public and authenticated data repositories share `src/runtime_config.py`. Recognizable service-role JWTs, user JWTs and `sb_secret_` credentials are rejected even if accidentally assigned to an anon-key variable; the browser config then fails closed without exposing the value. This is a credential-classification guard; Supabase still verifies JWT signatures and enforces RLS.
+
+The browser renews expiring Supabase sessions through one shared refresh request, retries a rejected authenticated request at most once, and checks the account epoch before applying response bodies. Logout/account switches cannot restore an old in-flight session. Private PDF downloads use the same guarded transport; refresh tokens remain in sessionStorage and never enter report URLs or logs.
+
 The private write path is `web/index.html -> /api/v1/workspaces -> Supabase Data API`. The browser signs in directly through Supabase Auth with the public publishable key and keeps the short-lived session in `sessionStorage`. The WSGI API forwards the user's bearer token with the publishable key; it never reads or falls back to a service-role secret. Existing public Entity APIs remain read-only and reject non-GET methods.
 
 `investigation_workspaces` and `workspace_items` are additive owner-scoped tables. Anonymous access is revoked. Authenticated CRUD is constrained by separate RLS policies using `(select auth.uid())`, indexed owner columns, a composite workspace/owner foreign key, and immutable single-user attribution. Entity, Relationship, Evidence, and Graph references use typed foreign keys; Source and Note values have protocol and size constraints. Workspace deletion cascades only within private workspace data.
@@ -526,3 +530,7 @@ truncation; absence in a bounded result is never proof of no relationship.
 The circular loader reflects actual in-flight path/neighbor requests and clears
 on success/error/cancellation, with aria-busy and reduced-motion support. It is
 indeterminate because the remote queries do not expose percentage completion.
+
+### Launch report reconciliation — 2026-11-05
+
+Company investigation reports join published context through the public uniform-number identifier view and an EXACT Company identity, never a display name. Existing published relationships and linked asset declarations are included alongside clearly marked live/source observations. The report graph aliases only the verified root to its canonical UUID; source snapshots are not mutated. Source versions retain locator, retrieval time and hash, while duplicate representations of the same citation are consolidated. Company and politician asset limits are disclosed. An unavailable index/asset schema is reported as unverified rather than an empty published-data finding; historical registry snapshots retain their original retrieval time and are not labelled live. No schema, Production data or identity matching policy changes are introduced.

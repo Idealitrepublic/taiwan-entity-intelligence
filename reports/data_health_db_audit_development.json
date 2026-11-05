@@ -1,15 +1,15 @@
 {
-  "scope": "Development aggregate read-only SQL, all publication states",
-  "audited_at": "2026-10-28T17:01:16.383294+00:00",
+  "audited_at": "2026-11-04T17:07:12.224663+00:00",
   "rls_tables": 30,
   "project_ref": "canqjiokrtcxkwblhmml",
   "public_tables": 30,
-  "database_bytes": 475188371,
+  "database_bytes": 475442323,
   "public_indexes": 119,
-  "migration_count": 29,
+  "migration_count": 30,
   "published_counts": {
     "politician_terms": 121,
     "asset_declarations": 63,
+    "politician_entities": 121,
     "political_contributions": 230
   },
   "all_states_counts": {
@@ -18,10 +18,15 @@
     "politician_entities": 123,
     "political_contributions": 230
   },
-  "production_data_mutated": false,
-  "approved_official_crosswalks": 293,
-  "verified_published_provenance": {
-    "political_contributions": "230/230 primary Evidence source URLs via public API",
-    "asset_declarations": "63/63 primary Evidence source URLs via public API"
+  "missing_migration_versions": [],
+  "published_evidence_provenance_gaps": 0,
+  "preview_supabase_override_configured": "deployment verified separately",
+  "published_edges_missing_primary_evidence": 0,
+  "remote_only_migration_versions": [],
+  "migration_version_alignment": {
+    "old_local": "20261102031706",
+    "remote_and_new_local": "20261102031905",
+    "sql_md5": "f2e72668a7c23b309e72877a9d8f4649",
+    "sql_bytes_unchanged": true
   }
 }
