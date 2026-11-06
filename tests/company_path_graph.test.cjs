@@ -63,7 +63,7 @@ function pointerHarness(targetClass, mode='legacy') {
 }
 
 test('legacy evidence and canonical edges never start background pointer capture',()=>{
-  for(const edge of ['legacy-evidence-edge','edge-group']) {
+  for(const edge of ['legacy-evidence-edge','edge-group','graph-connection-note']) {
     const result=pointerHarness(edge);
     assert.equal(result.context.dragState,null);
     assert.deepEqual(result.calls,[]);
@@ -133,7 +133,7 @@ test('path node positions honor actual segment count even when ordinary graph ho
   const context=vm.createContext({graphMode:'path',knowledgeGraph:{manualPositions:new Map()},
     graphDepthLimit:()=>1,num:Number,graphContext:null,entityTypeLabels:{Company:'公司 / Company'}});
   vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+
-    shipped('  function knowledgeMetrics(', '  function showKnowledgeNode('),context);
+    shipped('  const graphNoteWidth=', '  function showKnowledgeNode('),context);
   const positions=vm.runInContext('knowledgePositions(nodes)',Object.assign(context,
     {nodes:[{id:'a',depth:0,entity_type:'Company',display_name:'Company A'},
       {id:'shared',depth:1,entity_type:'GovernmentAgency',display_name:'Officially identified agency'},
@@ -327,7 +327,7 @@ test('loading ring tracks path and neighbor requests and clears on completion',(
 
 test('expanded graphs use uniform measured spacing and keep nodes, labels and routed lines apart',()=>{
  const context=vm.createContext({graphMode:'path',knowledgeGraph:{manualPositions:new Map(),edges:new Map()},graphDepthLimit:()=>3,num:Number,graphContext:null,relationshipLabels:{MEMBER_OF:'成員 / Member of'},entityTypeLabels:{Company:'公司 / Company'},connectionEdgeLabel:edge=>edge.label});
- vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  function knowledgeMetrics(', '  function showKnowledgeNode('),context);
+ vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  const graphNoteWidth=', '  function showKnowledgeNode('),context);
  for(const count of [3,12,23,60]){
   const nodes=[{...A,depth:0},{...shared,depth:1},{...B,depth:2}];
   for(let i=3;i<count;i++)nodes.push({id:'n'+i,depth:i<14?2:3,display_name:'很長的官方公司名稱及 English organization '+i,entity_type:i%2?'Company':'GovernmentAgency'});
@@ -349,22 +349,29 @@ test('expanding a shared person keeps the company path level and bundles repeate
  const data=path([segment(A,shared,'r1'),segment(shared,B,'r2',true)]);
  const state={pathData:data,rootId:A.id,manualPositions:new Map()};
  const context=vm.createContext({graphMode:'path',knowledgeGraph:state,num:Number,graphContext:null,
-   relationshipLabels:{CONTRACT_WITH:'標案 / Contract'},entityTypeLabels:{Company:'公司 / Company'},
+   relationshipLabels:{CONTRACT_WITH:'標案 / Contract',COMMITTEE_MEMBER:'委員會成員 / Committee member',POLITICAL_CONTRIBUTION_TO:'政治獻金 / Political contribution'},entityTypeLabels:{Company:'公司 / Company'},
    connectionEdgeLabel:edge=>edge.label||'政治獻金 / Political contribution\n2023-10-13'});
- vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  function knowledgeMetrics(', '  function showKnowledgeNode('),context);
+ vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  const graphNoteWidth=', '  function showKnowledgeNode('),context);
  const spine=[{...A,pathRole:'公司 A / Company A'},{...shared,pathRole:'連結節點 / Connecting node'},{...B,pathRole:'公司 B / Company B'}];
- const original=data.segments.map(({relationship:r})=>({...r,source:r.source_entity_id,target:r.target_entity_id}));
+ const original=data.segments.map(({relationship:r,evidence})=>({...r,source:r.source_entity_id,target:r.target_entity_id,primary_evidence:evidence}));
  const children=Array.from({length:9},(_,i)=>({id:'neighbor'+i,entity_type:i%2?'Company':'GovernmentAgency',
    display_name:'延伸關係及 English organization '+i,expandedFromId:shared.id}));
- const branchEdges=children.map((node,i)=>({id:'branch'+i,source:i%2?node.id:shared.id,target:i%2?shared.id:node.id}));
- const extraRecord={...branchEdges[0],id:'different-evidence',primary_evidence_id:'proof-2'};
+ const branchEdges=children.map((node,i)=>({id:'branch'+i,source:i%2?node.id:shared.id,target:i%2?shared.id:node.id,
+   relationship_type:i%2?'POLITICAL_CONTRIBUTION_TO':'COMMITTEE_MEMBER',primary_evidence:{id:'branch-proof'+i}}));
+ const extraRecord={...branchEdges[0],id:'different-evidence',primary_evidence:{id:'proof-2'}};
  const before=context.groupedGraphLayout(spine,original);
  const after=context.groupedGraphLayout([...spine,...children],[...original,...branchEdges,extraRecord]);
  for(const node of spine)assert.deepEqual(after.positions.get(node.id),before.positions.get(node.id));
  assert.equal(after.zones.length,6,'neighbors are split into compact groups by type');
  assert.equal(after.routes.size,11,'one visible line per pair');
  assert.deepEqual(Array.from(after.routes.get('branch0').records,record=>record.id),['branch0','different-evidence']);
- assert.equal(after.routes.get('branch0').lines.length,0,'details stay in evidence panel');
+ assert.equal(after.routes.get('branch0').lines.length,0,'branch lines remain uncluttered');
+ assert.equal(after.connectionNotes.get('neighbor0').reason,'委員會成員');
+ assert.equal(after.connectionNotes.get('neighbor1').reason,'政治獻金','reverse donation still retains its type');
+ assert.match(after.connectionNotes.get('neighbor0').title,/Officially identified agency/);
+ assert.deepEqual(Array.from(after.connectionNotes.get('neighbor0').records,record=>record.id),['branch0','different-evidence']);
+ assert.equal(after.connectionNotes.get(B.id).reason,'標案');
+ assert(!after.connectionNotes.has(A.id),'no unsupported reason is added to the root');
  assert(after.routes.get('branch0').hitRoute,'each branch has its own evidence hit area');
  assert(after.routes.get('r1').main&&after.routes.get('r2').main);
  assert(after.routes.get('r2').points[0][0]>after.routes.get('r2').points.at(-1)[0],'arrow retains source-to-target direction');
@@ -376,21 +383,22 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
  const state={pathData:data,rootId:A.id,manualPositions:new Map()};
  const context=vm.createContext({graphMode:'path',knowledgeGraph:state,num:Number,graphContext:null,
    relationshipLabels:{},entityTypeLabels:{},connectionEdgeLabel:()=> '政治獻金 / Political contribution\n2023-10-13'});
- vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  function knowledgeMetrics(', '  function showKnowledgeNode('),context);
+ vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  const graphNoteWidth=', '  function showKnowledgeNode('),context);
  const nodes=[{...A,pathRole:'公司 A'}, {...shared,entity_type:'Politician',pathRole:'中介'}, {...B,pathRole:'公司 B'}];
- const edges=data.segments.map(({relationship:r})=>({...r,source:r.source_entity_id,target:r.target_entity_id}));
+ const edges=data.segments.map(({relationship:r,evidence})=>({...r,source:r.source_entity_id,target:r.target_entity_id,primary_evidence:evidence}));
  for(const [type,amount,parent] of [['Company',4,shared.id],['GovernmentAgency',4,shared.id],['PoliticalParty',1,shared.id],['Politician',9,'GovernmentAgency0']]){
   for(let index=0;index<amount;index++){
    const id=type+index;
    nodes.push({id,display_name:'公開紀錄名稱及 English name '+index,entity_type:type,expandedFromId:parent});
-   edges.push({id:'rel-'+id,source:parent,target:id});
+   edges.push({id:'rel-'+id,source:parent,target:id,
+    relationship_type:'MEMBER_OF',primary_evidence:{id:'proof-'+id}});
   }
  }
  edges.push({id:'cross-evidence',source:'Politician0',target:'PoliticalParty0'});
  const firstBatch=nodes.filter(node=>node.expandedFromId!=='GovernmentAgency0');
  const firstIds=new Set(firstBatch.map(node=>node.id));
  const before=context.groupedGraphLayout(firstBatch,edges.filter(e=>firstIds.has(e.source)&&firstIds.has(e.target)));
- const {zones,positions,routes}=context.groupedGraphLayout(nodes,edges);
+ const {zones,positions,routes,connectionNotes}=context.groupedGraphLayout(nodes,edges);
  for(const node of firstBatch)assert.deepEqual(positions.get(node.id),before.positions.get(node.id),'later expansion keeps existing nodes fixed');
  for(const old of before.zones)assert.deepEqual(zones.find(zone=>zone.ids[0]===old.ids[0]),old,'later expansion keeps existing frames fixed');
  assert(zones.some(zone=>zone.type==='Company'&&zone.ids.length===4));
@@ -417,6 +425,7 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
   }
  }
  assert(routes.get('cross-evidence').secondary);
+ assert.deepEqual(Array.from(connectionNotes.get('PoliticalParty0').records,record=>record.id),['rel-PoliticalParty0']);
  assert(html.includes("arrow.setAttribute('fill','#80e4ff')"));
  assert(html.includes(':not(.show-cross-links) .path-cross-link:not(.focused-cross-link){display:none}'));
  const blocker={left:-90,right:90,top:-160,bottom:160};

@@ -7,6 +7,7 @@ const html = fs.readFileSync('web/index.html', 'utf8');
 const A = {id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',entity_type:'Company',display_name:'公司甲'};
 const B = {id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',entity_type:'Company',display_name:'公司乙'};
 const C = {id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',entity_type:'GovernmentAgency',display_name:'共同機關'};
+const D = {id:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',entity_type:'Company',display_name:'另一家有來源的公司'};
 const E1 = '11111111-1111-4111-8111-111111111111';
 const E2 = '22222222-2222-4222-8222-222222222222';
 function segment(from, to, id, evidenceId, reverse=false) {
@@ -36,6 +37,11 @@ function segment(from, to, id, evidenceId, reverse=false) {
           data:{items:item?[{entity_id:item.id,entity_type:item.entity_type,
             display_name:item.display_name,public_identifier:query==='公司甲'?'11111111':'22222222'}]:[]}})});
       }
+      if(path==='/api/v1/graph/'+C.id){
+        return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+          data:{nodes:[C,D],edges:[{id:'branch',source:D.id,target:C.id,relationship_type:'CONTRACT_WITH',
+            primary_evidence:{id:'branch-proof',source_name:'Company award notice',source_url:'https://example.gov.tw/award'}}]}})});
+      }
       if(path==='/api/v1/paths'){
         assert.equal(url.searchParams.get('company_only'),'1');
         assert.equal(url.searchParams.get('source'),A.id);
@@ -59,7 +65,7 @@ function segment(from, to, id, evidenceId, reverse=false) {
     await page.locator('#pathFind').click();
     await assert.doesNotReject(page.locator('#pathResult').getByText('未找到符合條件的關係路徑',{
       exact:false}).waitFor());
-    assert.equal(await page.locator('#svg .node').count(),0);
+    assert.equal(await page.locator('#svg .node').count(),2);
     await page.locator('#pathDepth').selectOption('2');
     await page.locator('#pathFind').click();
     await page.locator('#svg .edge-group').nth(1).waitFor();
@@ -69,13 +75,32 @@ function segment(from, to, id, evidenceId, reverse=false) {
     assert.equal(await page.locator('#svg').getAttribute('data-path-graph'),'true');
     await page.locator('#svg .edge-group').first().dispatchEvent('click');
     assert.match(await page.locator('#nodeInfoBody').textContent(),/Official public record/);
+    const mainNotes=page.locator('#svg .graph-connection-note');
+    assert.equal(await mainNotes.count(),2);
+    await page.locator('#closeNode').click();
+    await page.locator(`#svg .node[data-node-id="${C.id}"]`).dispatchEvent('click');
+    const branchNote=page.locator(`#svg .graph-node-frame:has([data-node-id="${D.id}"])`).getByRole('button',{name:/政府標案.*關聯：共同機關.*查看證據/});
+    await branchNote.waitFor();
+    assert.equal(await mainNotes.count(),3);
+    assert.match(await branchNote.textContent(),/政府標案.*關聯：共同機關/);
+    await branchNote.press('Enter');
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/Company award notice/);
+    const labelsStayInside=await page.locator('#svg').evaluate(svg=>{
+      const boxes=[...svg.querySelectorAll('.graph-type-zone rect')].map(rect=>rect.getBBox());
+      return [...svg.querySelectorAll('.graph-connection-note rect')].every(rect=>{
+        const b=rect.getBBox();
+        return boxes.some(box=>b.x>=box.x&&b.y>=box.y&&b.x+b.width<=box.x+box.width&&b.y+b.height<=box.y+box.height);
+      });
+    });
+    assert(labelsStayInside,'reasons stay inside their colored group frame');
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
       const graph=await page.locator('#svg').boundingBox();
       assert(graph && graph.width>200 && graph.height>200,
         `Graph vanished at ${width}px`);
-      assert.equal(await page.locator('#svg .node').count(),3);
-      assert.equal(await page.locator('#svg .edge-group').count(),2);
+      assert.equal(await page.locator('#svg .node').count(),4);
+      assert.equal(await page.locator('#svg .edge-group').count(),3);
+      assert.equal(await mainNotes.count(),3);
     }
     assert.deepEqual(consoleErrors,[]);
     console.log('Real browser: direct/no-path and shared-node/path graph, evidence, 1440/1280/1024/768px passed.');
