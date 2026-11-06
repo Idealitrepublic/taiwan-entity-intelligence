@@ -363,7 +363,14 @@ test('expanding a shared person keeps the company path level and bundles repeate
  const after=context.groupedGraphLayout([...spine,...children],[...original,...branchEdges,extraRecord]);
  for(const node of spine)assert.deepEqual(after.positions.get(node.id),before.positions.get(node.id));
  assert.equal(after.zones.length,6,'neighbors are split into compact groups by type');
- assert.equal(after.routes.size,11,'one visible line per pair');
+ assert.equal(after.routes.size,11,'each pair keeps a selectable relationship');
+ assert.equal(after.branchBuses.length,3,'nine neighbors share three group lines');
+ for(const bus of after.branchBuses){
+  const [x,y]=bus.dock,{left,right,top,bottom}=bus.zone;
+  assert((x===left||x===right)&&y>=top&&y<=bottom||
+    (y===top||y===bottom)&&x>=left&&x<=right,'line docks at the frame, outside the labels');
+  assert.equal(bus.parent,shared.id);
+ }
  assert.deepEqual(Array.from(after.routes.get('branch0').records,record=>record.id),['branch0','different-evidence']);
  assert.equal(after.routes.get('branch0').lines.length,0,'branch lines remain uncluttered');
  assert.equal(after.connectionNotes.get('neighbor0').reason,'委員會成員');
@@ -398,7 +405,13 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
  const firstBatch=nodes.filter(node=>node.expandedFromId!=='GovernmentAgency0');
  const firstIds=new Set(firstBatch.map(node=>node.id));
  const before=context.groupedGraphLayout(firstBatch,edges.filter(e=>firstIds.has(e.source)&&firstIds.has(e.target)));
- const {zones,positions,routes,connectionNotes}=context.groupedGraphLayout(nodes,edges);
+ state.focusedBranch='GovernmentAgency0';
+ const {zones,positions,routes,connectionNotes,branchBuses}=context.groupedGraphLayout(nodes,edges);
+ assert(routes.get('rel-Company0').context,'unrelated company links remain available in context');
+ assert(!routes.get('rel-GovernmentAgency0').context,'link to the parent remains visible');
+ assert(!routes.get('rel-Politician0').context,'the focused branch stays visible');
+ assert(branchBuses.some(bus=>bus.context&&bus.children.includes('Company0')));
+ assert(branchBuses.some(bus=>!bus.context&&bus.children.includes('GovernmentAgency0')));
  for(const node of firstBatch)assert.deepEqual(positions.get(node.id),before.positions.get(node.id),'later expansion keeps existing nodes fixed');
  for(const old of before.zones)assert.deepEqual(zones.find(zone=>zone.ids[0]===old.ids[0]),old,'later expansion keeps existing frames fixed');
  assert(zones.some(zone=>zone.type==='Company'&&zone.ids.length===4));
