@@ -2,6 +2,7 @@
 import os
 from .contracts import response
 from .models import stable_id, uuid_string
+from .path_demo import company_path_demo
 from .repository import EntityRepository, EntityStoreUnavailable
 from .search import parse_search_request
 from src.relationships.models import RELATIONSHIP_TYPES
@@ -24,6 +25,14 @@ def dispatch_entity_api(path, query, repository=None):
         except EntityStoreUnavailable:
             return 503, {"status": "unavailable", "error": "搜尋資料庫暫時無法使用 / Search store unavailable"}, None
         return 200, response(result), None
+    if path.rstrip("/") == "/api/v1/paths/demo":
+        try:
+            depth = int(query.get("exact_depth", ["3"])[0])
+            if depth not in (1, 2, 3):
+                raise ValueError("Invalid demo depth")
+        except (TypeError, ValueError):
+            return 400, {"error": "範例關係範圍須為 1–3 段 / Demo path depth must be 1–3"}, None
+        return 200, response(company_path_demo(depth)), None
     if path.rstrip("/") == "/api/v1/paths":
         try:
             source_id = uuid_string(query.get("source", [None])[0])

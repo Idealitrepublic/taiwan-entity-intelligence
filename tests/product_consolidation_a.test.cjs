@@ -14,19 +14,19 @@ function oneLine(name) {
   return line;
 }
 function pathHarness() {
-  const elements = Object.fromEntries(['pathFind','pathResult','pathDepth','pathSource','pathTarget','svg','nodeInfo','relationshipFilter','graphTitle','collapse'].map(id => [id, {value:'3',innerHTML:'',textContent:'',disabled:false,dataset:{}}]));
+  const elements = Object.fromEntries(['pathFind','pathResult','pathDepth','pathSource','pathTarget','pathSourceQuery','pathTargetQuery','svg','nodeInfo','relationshipFilter','graphTitle','collapse'].map(id => [id, {value:'3',innerHTML:'',textContent:'',disabled:false,dataset:{}}]));
   const requests = [], renders = [];
   const context = vm.createContext({AbortController,URLSearchParams,console,
     $:id=>elements[id],entityTypeLabels:{Company:'公司 / Company'},esc:String,
     updateGraphLoading:()=>{},renderPathEndpoints:()=>{},createKnowledgeGraph:()=>({nodes:new Map(),edges:new Map()}),renderKnowledgeGraph:()=>{},resetGraphView:()=>{},hopLimit:{hidden:false},graphMode:'legacy',knowledgeGraph:null,selectedNodeId:null,selectedEdgeId:null,clearPathGraph:()=>{},clearConnectionSummary:()=>{},connectionModel:null,
-    renderPathResult:data=>renders.push(data),setTimeout:()=>1,clearTimeout:()=>{},
+    renderPathResult:data=>renders.push(data),clearPathLookup:()=>{},setTimeout:()=>1,clearTimeout:()=>{},
     fetch:(url,options)=>new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}))});
   vm.runInContext(`let pathRequestSerial=0,pathRequestController=null,pathLoading=false;
     let pathSelection={source:{id:'A',display_name:'A',entity_type:'Company'},target:{id:'B',display_name:'B',entity_type:'Company'}};
     ${oneLine('invalidatePathRequest')}
     ${oneLine('renderPathSelection')}
-    ${oneLine('setPathEndpoint')}
-    ${shipped('  async function findRelationshipPath()', "  pathRange.addEventListener")}`,context);
+    ${shipped('  function clearDemoEndpoints(', '  const pathSearchState=')}
+    ${shipped('  async function findRelationshipPath(', "  pathRange.addEventListener")}`,context);
   return {context,elements,requests,renders};
 }
 function reportHarness({popup=null,status=200,mime='application/pdf',bytes='%PDF-1.7 valid',modal=true,picker=null}={}) {
@@ -80,6 +80,25 @@ test('each range uses its existing exact max_depth and renders response',async()
     h.requests[0].resolve({ok:true,json:async()=>({data:{found:true,depth}})});
     await pending;assert.equal(h.renders[0].depth,depth);assert.equal(h.elements.pathFind.disabled,false);
   }
+});
+test('demo defaults to two intermediaries and changing range stays in the demo',async()=>{
+  const h=pathHarness();
+  const result={source_entity:{id:'demo-a',display_name:'示範公司甲',entity_type:'Company',demo_only:true},
+    target_entity:{id:'demo-b',display_name:'示範公司乙',entity_type:'Company',demo_only:true}};
+  h.elements.pathDepth.value='2';
+  const first=vm.runInContext('findRelationshipPath({loadDemo:true})',h.context);
+  assert.equal(h.requests[0].url,'/api/v1/paths/demo?exact_depth=3');
+  h.requests[0].resolve({ok:true,json:async()=>({data:{...result,depth:3}})});
+  await first;
+  assert.equal(h.elements.pathSourceQuery.value,'示範公司甲');
+  h.elements.pathDepth.value='2';
+  const second=vm.runInContext('findRelationshipPath()',h.context);
+  assert.equal(h.requests[1].url,'/api/v1/paths/demo?exact_depth=2');
+  h.requests[1].resolve({ok:true,json:async()=>({data:{...result,depth:2}})});
+  await second;
+  vm.runInContext("setPathEndpoint('source',{id:'real',display_name:'Real company',entity_type:'Company'})",h.context);
+  assert.equal(h.elements.pathTargetQuery.value,'');
+  assert(h.elements.pathFind.disabled,'a real company cannot be paired with a fictional company');
 });
 test('empty/truncated path does not claim absence of relationships',()=>{
   const h=pathHarness();h.context.num=Number;h.context.pathRangeLabels={};

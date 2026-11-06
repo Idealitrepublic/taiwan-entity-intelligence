@@ -59,6 +59,28 @@ class ExactCompanyPathTests(unittest.TestCase):
         repo.company_path_at_depth.assert_called_once_with(A, B, depth=3)
         repo.company_relationship_path.assert_not_called()
 
+    def test_demo_exercises_exact_paths_without_using_the_real_repository(self):
+        real = Mock()
+        for depth in (1, 2, 3):
+            status, payload, _ = dispatch_entity_api(
+                "/api/v1/paths/demo", {"exact_depth": [str(depth)]}, real)
+            self.assertEqual(status, 200)
+            data = payload["data"]
+            self.assertTrue(data["demo_only"])
+            self.assertEqual(data["found"], depth > 1)
+            self.assertEqual(len(data["segments"]), depth if depth > 1 else 0)
+            if depth > 1:
+                ids = {data["source_entity"]["id"]}
+                for segment in data["segments"]:
+                    self.assertTrue(segment["to_entity"]["demo_only"])
+                    ids.add(segment["to_entity"]["id"])
+                    self.assertEqual(segment["relationship"]["primary_evidence_id"],
+                                     segment["evidence"]["id"])
+                self.assertEqual(len(ids), depth + 1)
+        self.assertEqual(real.mock_calls, [])
+        status, _, _ = dispatch_entity_api("/api/v1/paths/demo", {"exact_depth": ["4"]}, real)
+        self.assertEqual(status, 400)
+
     def test_truncation_reported_and_missing_endpoint_not_fabricated(self):
         repo = self.repo([])
         repo.graph_neighbors.return_value = None
