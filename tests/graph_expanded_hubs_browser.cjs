@@ -21,7 +21,11 @@ const nodes = [
 const awards = [
   { id: 'a', title: '臺北市採購案一', agency: '臺北市政府', date: '2025-01-01' },
   { id: 'b', title: '臺北市採購案二', agency: '臺北市政府', date: '2024-01-01' },
-  { id: 'c', title: '臺中市採購案', agency: '臺中市政府', date: '2025-01-01' }
+  { id: 'c', title: '臺中市採購案', agency: '臺中市政府', date: '2025-01-01' },
+  ...Array.from({length:8},(_,index)=>({
+    id:'taipei-'+(index+2),title:'臺北市決標公告 '+(index+2)+'／Public contract notice',agency:'臺北市政府',
+    date:'2025-01-0'+(index+2),job_number:'job-'+(index+2),source_url:'https://example.gov.tw/award/'+(index+2)
+  }))
 ];
 const body = { status: 'ok', uniform_number: '22099131', company_name: '測試公司', company: {}, people: [],
   graph: { nodes, edges: [{source:company,target:'website:example',relationship:'website'},
@@ -243,6 +247,23 @@ async function assertReadableBranch(page, childType, label) {
           const labels=await page.locator('#svg .node[data-type="procurement_year"]').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')));
           assert(labels.every(label=>!/(\d{4}).*\1/.test(label)),
             'Award year appears only once in each graph label');
+          const year=page.locator('#svg .node[data-type="procurement_year"][data-group-key="2025"]');
+          const records=page.locator('#svg .node[data-type="procurement"]');
+          await year.click();
+          assert.equal(await records.count(),8,'Award records are paged inside the selected city and year');
+          assert.equal(await records.first().getAttribute('data-node-id'),'procurement:taipei-9');
+          await assertLayout(page,'award year expanded',{focused:true});
+          await assertReadableBranch(page,'procurement','award year expanded');
+          await records.first().press('Enter');
+          assert.equal(await page.locator('#nodeInfoBody a[href="https://example.gov.tw/award/9"]').count(),1);
+          await page.locator('#graphNext').click();
+          assert.equal(await records.count(),1);
+          assert.equal(await records.first().getAttribute('data-node-id'),'procurement:a');
+          await year.press('Enter');
+          assert.equal(await records.count(),0,'The year node can collapse its individual records');
+          await year.press('Enter');
+          assert.equal(await records.first().getAttribute('data-node-id'),'procurement:taipei-9','Reopening resets pagination');
+          await year.press('Enter');
         }
       }
       if (await page.locator('#closeNode').isVisible()) await page.locator('#closeNode').click();
