@@ -4,8 +4,10 @@ const vm = require('node:vm');
 const html = fs.readFileSync('web/index.html', 'utf8');
 const ctx = vm.createContext({esc:String,num:Number,recordText:String,recordDate:r=>r.date||'',penaltyDate:r=>r['處分日期']||r.date||'',recordYear:()=> '2026',
   filterState:{},uniqueValues:()=>[],filterBox:()=>'',filterSelect:()=>'',countyRank:()=>0,
-  procurementCounty:()=> '未分類',rawGrid:()=>'',penaltyArticles:()=>[]});
+  procurementCounty:()=> '未分類',rawGrid:()=>'',penaltyArticles:()=>[],
+  URL,displayDate:String,nodeRows:rows=>Object.values(rows).join(' ')});
 vm.runInContext(html.split('\n').find(line=>line.includes('function penaltySignal(')),ctx);
+vm.runInContext(html.split('\n').find(line=>line.includes('function safeSourceUrl(')),ctx);
 assert(vm.runInContext("penaltySignal([],{status:'partial'})",ctx).includes('Count unknown, not zero'));
 assert(!vm.runInContext("penaltySignal([],{status:'ok'})",ctx).includes('source unavailable'));
 for (const [start,end] of [['penaltyRecord','penaltyCard'],['judicialCard','procurementCard'],['procurementCard','mergeProcurement']]) {

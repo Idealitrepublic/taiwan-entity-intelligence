@@ -119,7 +119,7 @@
   function displayValue(key,value){if(typeof value==='boolean')return value?'是 / Yes':'否 / No';const text=String(value??'—');if(/(?:source_locator|來源定位|Source locator)/i.test(key)&&!/^https?:\/\//i.test(text))return text.replace(/Business_Accounting_NO=(\d{8})/g,'統一編號 / Company ID：$1').replace(/(?:^|;)row=(\d+)/g,'；來源列 / Source row：$1');if(text==='exact_company_uniform;person_identity_source_scoped')return displayValueLabels.exact_company_uniform__person_source;if(displayValueLabels[text])return displayValueLabels[text];if(entityTypeLabels[text])return entityTypeLabels[text];if(relationshipLabels[text])return relationshipLabels[text];if(assetTypeLabels[text])return assetTypeLabels[text];if(/(?:date|_at$|日期|時間|Retrieved|Observed)/i.test(key))return displayDate(text);return text}
   function displayContext(value){return String(value??'').replace(/\b(term|session|co_chair):\s*([^;]+)/g,(_,key,item)=>`${displayFieldLabels[key]}：${key==='co_chair'?item.trim()==='Y'?'是 / Yes':item.trim()==='N'?'否 / No':item.trim():item.trim()}`)}
   const GRAPH_PAGE_SIZE=12,GRAPH_MAX_DEPTH=3,GRAPH_MAX_NODES=60,LEGACY_RECORD_PAGE_SIZE=8,RELATED_COMPANY_DETAIL_LIMIT=8;
-  let current=null,currentCheck=null,currentManual=false,zoom=1,panX=0,panY=0,selectedNodeId=null,selectedEdgeId=null,expandedHub=null,expandedProcurementCounty=null,expandedProcurementYear=null,procurementPage=0,expandedJudicialYear=null,expandedJudicialMonth=null,expandedPenaltyLaw=null,expandedPenaltyArticle=null,expandedPenaltyYear=null,expandedPenaltyCounty=null,judicialPage=0,penaltyPage=0,graphRoot=null,lastGraphView=null,legacyFocusId=null,dragState=null,nodeDragState=null,suppressNodeClick=false,searchItems=new Map(),graphMode='legacy',knowledgeGraph=null,pathSelection={source:null,target:null},companyRequestSerial=0,companySearchItem=null;
+  let current=null,currentCheck=null,currentManual=false,zoom=1,panX=0,panY=0,selectedNodeId=null,selectedEdgeId=null,expandedHub=null,expandedProcurementCounty=null,expandedProcurementYear=null,procurementPage=0,relatedProcurementUniform=null,expandedJudicialYear=null,expandedJudicialMonth=null,expandedPenaltyLaw=null,expandedPenaltyArticle=null,expandedPenaltyYear=null,expandedPenaltyCounty=null,judicialPage=0,penaltyPage=0,graphRoot=null,lastGraphView=null,legacyFocusId=null,dragState=null,nodeDragState=null,suppressNodeClick=false,searchItems=new Map(),graphMode='legacy',knowledgeGraph=null,pathSelection={source:null,target:null},companyRequestSerial=0,companySearchItem=null;
   const relatedCompanyBranches=new Map();
   const graphPager=document.createElement('div');graphPager.id='graphPager';graphPager.className='graph-pager';graphPager.hidden=true;graphPager.innerHTML='<button id="graphPrev" type="button">上一組 / Previous</button><span id="graphPageLabel" aria-live="polite"></span><button id="graphNext" type="button">下一組 / Next</button>';document.querySelector('.graphbar .tools').appendChild(graphPager);
   const graphFocus=document.createElement('button');graphFocus.id='graphFocus';graphFocus.type='button';graphFocus.className='toolbtn graph-focus';graphFocus.textContent='展開圖譜 / Expand graph';graphFocus.setAttribute('aria-pressed','false');document.querySelector('.graphbar>div:first-child').appendChild(graphFocus);
@@ -417,6 +417,31 @@
     for(const node of nodes){const row=node.properties||{};if(procurementCounty(row)!==county)continue;const year=recordYear(row);if(!groups.has(year))groups.set(year,[]);groups.get(year).push(node)}
     return [...groups.entries()].sort((a,b)=>b[0].localeCompare(a[0],'zh-Hant',{numeric:true})).map(([year,items])=>{const dates=items.map(node=>recordDate(node.properties)).filter(Boolean).sort().reverse();return{id:procurementYearId(county,year),isSubHub:true,groupKey:year,type:'procurement_year',colorType:'procurement',parentSubHub:`procurement-city:${county}`,label:year==='年度未標示 / Year unavailable'?year:`${year} 年 · ${items.length} 筆`,shortLabel:year==='年度未標示 / Year unavailable'?year:`${year} 年 · ${items.length}`,count:items.length,properties:{'縣市 / County or city':county,'年度 / Year':year,'決標公告 / Awards':items.length,'公告日期 / Dates':dates.join('\n')||'—','招標種類 / Notice types':[...new Set(items.map(node=>node.properties?.notice_type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant')).join('\n'),'招標單位 / Agencies':[...new Set(items.map(node=>node.properties?.agency).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant')).join('\n'),'標案名稱 / Award titles':items.map(node=>node.label).filter(Boolean).join('\n'),'操作 / Action':'點擊展開個別標案 / Click to show individual awards'}}})
   }
+  function resetProcurementSelection(){
+    expandedProcurementCounty=null;expandedProcurementYear=null;procurementPage=0;
+  }
+  function appendProcurementRecords(records,appendChildren,category=null,evidenceById=null){
+    const county=expandedProcurementCounty,year=expandedProcurementYear;
+    const scopedId=id=>category?`${category.id}:${id}`:id;
+    if(category){
+      const cities=groupedProcurementCityNodes(records).map(node=>({...node,id:scopedId(node.id),parentHub:null,parentSubHub:category.id}));
+      appendChildren(category.id,cities,'procurement_awards');
+    }
+    if(!county)return 0;
+    const cityId=scopedId(`procurement-city:${county}`);
+    const years=groupedProcurementYearNodes(records,county).map(node=>({...node,id:scopedId(node.id),parentSubHub:cityId}));
+    appendChildren(cityId,years,'award_year');
+    if(!year)return 0;
+    const selected=procurementYearRecords(records,county,year);
+    const parent=scopedId(procurementYearId(county,year));
+    procurementPage=Math.min(procurementPage,Math.max(0,Math.ceil(selected.length/LEGACY_RECORD_PAGE_SIZE)-1));
+    const start=procurementPage*LEGACY_RECORD_PAGE_SIZE;
+    const page=selected.slice(start,start+LEGACY_RECORD_PAGE_SIZE).map(node=>category
+      ?relatedDetailNode(node,category.uniform_number,parent,node.evidence||evidenceById?.get(node.id))
+      :{...node,parentSubHub:parent});
+    appendChildren(parent,page,'procurement_award');
+    return selected.length;
+  }
   function groupedJudicialYearNodes(nodes){
     const groups=new Map();
     for(const node of nodes){const year=recordYear(node.properties);if(!groups.has(year))groups.set(year,[]);groups.get(year).push(node)}
@@ -467,28 +492,22 @@
           if(!branch?.open||!branch.data)continue;
           const categories=relatedCategoryDefinitions.map(([type,label])=>{
             const records=relatedCompanyRecords(branch.data,type);
-            return records.length?{id:`related-category:${company.uniform_number}:${type}`,type:'related_category',colorType:type,parentSubHub:company.id,isSubHub:true,groupKey:type,uniform_number:company.uniform_number,label:`${label} · ${records.length} 筆${branch.openCategory===type&&records.length>RELATED_COMPANY_DETAIL_LIMIT?'（顯示前 '+RELATED_COMPANY_DETAIL_LIMIT+' 筆）':''}`,count:records.length,properties:{'公司 / Company':company.label,'統編 / Company ID':company.uniform_number,'來源紀錄 / Records':records.length,'顯示上限 / Display limit':RELATED_COMPANY_DETAIL_LIMIT}}:null;
+            return records.length?{id:`related-category:${company.uniform_number}:${type}`,type:'related_category',colorType:type,parentSubHub:company.id,isSubHub:true,groupKey:type,uniform_number:company.uniform_number,label:`${label} · ${records.length} 筆${type!=='procurement'&&branch.openCategory===type&&records.length>RELATED_COMPANY_DETAIL_LIMIT?'（顯示前 '+RELATED_COMPANY_DETAIL_LIMIT+' 筆）':''}`,count:records.length,properties:{'公司 / Company':company.label,'統編 / Company ID':company.uniform_number,'來源紀錄 / Records':records.length,...(type==='procurement'?{'操作 / Action':'依縣市、年度展開標案 / Browse awards by city and year'}:{'顯示上限 / Display limit':RELATED_COMPANY_DETAIL_LIMIT})}}:null;
           }).filter(Boolean);
           appendChildren(company.id,categories,'company_record_category');
           if(branch.openCategory)for(const category of categories.filter(node=>node.groupKey===branch.openCategory)){
             const evidenceById=new Map((branch.data.evidence||[]).map(item=>[item.id,item]));
-            const details=relatedCompanyRecords(branch.data,category.groupKey).slice(0,RELATED_COMPANY_DETAIL_LIMIT).map(node=>relatedDetailNode(node,company.uniform_number,category.id,evidenceById.get(node.id)));
-            appendChildren(category.id,details,'company_public_record');
+            const records=relatedCompanyRecords(branch.data,category.groupKey);
+            if(category.groupKey==='procurement'){
+              procurementTotal=appendProcurementRecords(records,appendChildren,category,evidenceById);
+            }else{
+              const details=records.slice(0,RELATED_COMPANY_DETAIL_LIMIT).map(node=>relatedDetailNode(node,company.uniform_number,category.id,evidenceById.get(node.id)));
+              appendChildren(category.id,details,'company_public_record');
+            }
           }
         }
       }
-      if(definition.group==='procurement'&&expandedProcurementCounty){
-        appendChildren(`procurement-city:${expandedProcurementCounty}`,
-          groupedProcurementYearNodes(grouped.procurement,expandedProcurementCounty),'award_year');
-        if(expandedProcurementYear){
-          const records=procurementYearRecords(grouped.procurement,expandedProcurementCounty,expandedProcurementYear);
-          const parent=procurementYearId(expandedProcurementCounty,expandedProcurementYear);
-          procurementTotal=records.length;
-          procurementPage=Math.min(procurementPage,Math.max(0,Math.ceil(procurementTotal/LEGACY_RECORD_PAGE_SIZE)-1));
-          const start=procurementPage*LEGACY_RECORD_PAGE_SIZE;
-          appendChildren(parent,records.slice(start,start+LEGACY_RECORD_PAGE_SIZE).map(node=>({...node,parentSubHub:parent})),'procurement_award');
-        }
-      }
+      if(definition.group==='procurement')procurementTotal=appendProcurementRecords(grouped.procurement,appendChildren);
       if(definition.group==='judicial'&&expandedJudicialYear){
         appendChildren(`judicial-year:${expandedJudicialYear}`,groupedJudicialMonthNodes(grouped.judicial,expandedJudicialYear),'judgment_month');
         if(expandedJudicialMonth){const records=grouped.judicial.filter(node=>recordYear(node.properties)===expandedJudicialYear&&recordMonth(node.properties)===expandedJudicialMonth),parent=`judicial-month:${expandedJudicialYear}:${expandedJudicialMonth}`;judicialPage=Math.min(judicialPage,Math.max(0,Math.ceil(records.length/LEGACY_RECORD_PAGE_SIZE)-1));appendChildren(parent,records.slice(judicialPage*LEGACY_RECORD_PAGE_SIZE,(judicialPage+1)*LEGACY_RECORD_PAGE_SIZE).map(node=>({...node,parentSubHub:parent})),'judicial_decision')}
@@ -590,7 +609,9 @@
     if(!$('graphSub').textContent.includes('拖曳查看其餘節點'))$('graphSub').textContent+=' · 拖曳查看其餘節點；置中可返回此分支 / Drag for more; Fit refocuses this branch';
   }
   function resetGraphView(){panX=0;panY=0;selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;document.querySelectorAll('#svg .node,.edge-group').forEach(item=>item.classList.remove('selected'));if(document.querySelector('.graph>.connection-summary:not([hidden])')){legacyFocusId=null;fitGraphBounds();return}if(graphMode==='legacy'&&expandedHub){focusLegacyExpansion(legacyFocusId||`hub:${expandedHub}`);return}legacyFocusId=null;fitGraphBounds()}
-  function resetLegacyDetails(){expandedProcurementCounty=null;expandedProcurementYear=null;procurementPage=0;expandedJudicialYear=null;expandedJudicialMonth=null;expandedPenaltyLaw=null;expandedPenaltyArticle=null;expandedPenaltyYear=null;expandedPenaltyCounty=null;judicialPage=0;penaltyPage=0}
+  function resetLegacyDetails(){
+    resetProcurementSelection();relatedProcurementUniform=null;
+    for(const branch of relatedCompanyBranches.values())if(branch.openCategory==='procurement')branch.openCategory=null;expandedJudicialYear=null;expandedJudicialMonth=null;expandedPenaltyLaw=null;expandedPenaltyArticle=null;expandedPenaltyYear=null;expandedPenaltyCounty=null;judicialPage=0;penaltyPage=0}
   function collapseGraph(){if(graphMode==='path'){const root=knowledgeGraph?.rootProfile;if(root?.is_live_fallback&&/^\d{8}$/.test(root.public_identifier||''))searchCompany(root.public_identifier);else if(root?.id)openEntityGraph(root.id);return}legacyFocusId=null;selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;panX=0;panY=0;zoom=1;if(graphMode==='knowledge'&&knowledgeGraph){const root=knowledgeGraph.nodes.get(knowledgeGraph.rootId);knowledgeGraph.nodes=new Map([[root.id,{...root,depth:0}]]);knowledgeGraph.edges.clear();knowledgeGraph.expanded.clear();knowledgeGraph.cursors.clear();knowledgeGraph.hasMore.clear();knowledgeGraph.manualPositions.clear();delete knowledgeGraph.groupedPlacement;delete knowledgeGraph.focusedBranch;delete knowledgeGraph.registryRolesChecked;delete knowledgeGraph.expansionNote;renderKnowledgeGraph();return}for(const branch of relatedCompanyBranches.values()){branch.open=false;branch.openCategory=null}expandedHub=null;resetLegacyDetails();graphPager.hidden=true;if(current?.graph)renderGraph(current.graph)}
   function nodeRows(properties){const entries=Object.entries(properties||{}).filter(([,value])=>value!==null&&value!==''&&typeof value!=='object').slice(0,20);return entries.length?`<div class="raw-grid">${entries.map(([key,value])=>`<div class="raw-row"><b>${esc(displayFieldLabel(key))}</b><span>${esc(displayValue(key,value))}</span></div>`).join('')}</div>`:'<p>此節點沒有額外欄位。 / No additional fields.</p>'}
   function legacyNodeProvenance(node){
@@ -606,13 +627,20 @@
     const relations=(edges||[]).filter(edge=>edge.source===node.id||edge.target===node.id).map(edge=>edge.relationship).filter(Boolean),branch=node.type==='related_company'?relatedCompanyBranches.get(node.uniform_number):null;
     $('nodeInfoTitle').textContent=node.label||node.id;$('nodeInfoKind').textContent=(typeNames[node.type]||node.type||'節點 / Node')+(relations.length?' · '+[...new Set(relations)].map(value=>displayValue('',value)).join('、'):'');
     const connected=['related_company','related_connection'].includes(node.type),hasBranchRecords=branch?.data&&relatedCategoryDefinitions.some(([type])=>relatedCompanyRecords(branch.data,type).length),status=node.type==='related_company'?`<div class="notice">${branch?.loading?'正在載入這家公司的公開節點 / Loading public records…':branch?.error?'載入失敗：'+esc(branch.error):branch?.open?(hasBranchRecords?'點擊公司節點可收合；點分類節點查看原始紀錄 / Click company to collapse; click a category for records':'目前來源未取得其他可展開紀錄 / No additional records in the available sources'):'點擊公司節點可在此圖展開其公開紀錄 / Click company to expand its public records here'}</div>`:'';
-    $('nodeInfoBody').innerHTML=nodeRows(node.properties)+legacyNodeProvenance(node)+(connected?`<div class="notice source-warning">公開紀錄中的連結不代表母子公司或持股控制。 / A source connection does not establish affiliation or control.</div>${status}${node.type==='related_company'?`<p><button class="toolbtn related-company-open" data-uniform="${esc(node.uniform_number)}">開啟完整公司調查 / Open full company investigation</button></p>`:''}`:'');$('nodeInfo').hidden=false;
+    const awards=branch?.data?.procurement_result;
+    const awardStatus=awards?nodeRows({'決標公告 / Awards':awards.status==='partial'
+      ?'來源暫時無法讀取 / Source unavailable'
+      :`${awards.records.length} 筆${awards.limited?'（限來源第一頁）':''} / ${awards.records.length} available`}):'';
+    $('nodeInfoBody').innerHTML=nodeRows(node.properties)+legacyNodeProvenance(node)+awardStatus+(connected?`<div class="notice source-warning">公開紀錄中的連結不代表母子公司或持股控制。 / A source connection does not establish affiliation or control.</div>${status}${node.type==='related_company'?`<p><button class="toolbtn related-company-open" data-uniform="${esc(node.uniform_number)}">開啟完整公司調查 / Open full company investigation</button></p>`:''}`:'');$('nodeInfo').hidden=false;
   }
   function expandedSubHubKey(node){return node.type==='judicial_year'?expandedJudicialYear:node.type==='judicial_month'?expandedJudicialMonth:node.type==='procurement_city'?expandedProcurementCounty:node.type==='procurement_year'?expandedProcurementYear:node.type==='penalty_law'?expandedPenaltyLaw:node.type==='penalty_article'?expandedPenaltyArticle:node.type==='penalty_year'?expandedPenaltyYear:node.type==='penalty_county'?expandedPenaltyCounty:null}
   async function toggleRelatedCompany(node,graph){
     const uniform=node.uniform_number,existing=relatedCompanyBranches.get(uniform),serial=companyRequestSerial;
     if(!/^\d{8}$/.test(uniform)||graphMode!=='legacy'||!current?.graph||existing?.loading)return;
-    if(existing?.data){existing.open=!existing.open;existing.openCategory=null;if(!existing.open)legacyFocusId='hub:related';renderGraph(graph);showNode(lastGraphView.nodes.find(item=>item.id===node.id),lastGraphView.edges);focusLegacyExpansion(existing.open?node.id:'hub:related');return}
+    if(existing?.data){
+      existing.open=!existing.open;existing.openCategory=null;
+      if(relatedProcurementUniform===uniform){relatedProcurementUniform=null;resetProcurementSelection()}
+      if(!existing.open)legacyFocusId='hub:related';renderGraph(graph);showNode(lastGraphView.nodes.find(item=>item.id===node.id),lastGraphView.edges);focusLegacyExpansion(existing.open?node.id:'hub:related');return}
     const branch={loading:true,open:false,openCategory:null,data:null,error:null};relatedCompanyBranches.set(uniform,branch);showNode(node,lastGraphView.edges);
     try{
       const [companyResponse,procurement]=await Promise.all([
@@ -628,7 +656,22 @@
   function activateNode(node,graph){
     if(node.isHub){const closing=expandedHub===node.hubGroup;expandedHub=closing?null:node.hubGroup;resetLegacyDetails();selectedNodeId=node.id;renderGraph(graph);const refreshed=lastGraphView.nodes.find(item=>item.id===node.id);showNode(refreshed,lastGraphView.edges);if(closing)legacyFocusId=null;else focusLegacyExpansion(node.id);return}
     if(node.type==='related_company'){connectionTargetId=node.id;connectionFocusOn=true;renderConnectionSummary();void toggleRelatedCompany(node,graph);return}
-    if(node.type==='related_category'){const branch=relatedCompanyBranches.get(node.uniform_number);if(!branch)return;const closing=branch.openCategory===node.groupKey;branch.openCategory=closing?null:node.groupKey;renderGraph(graph);const refreshed=lastGraphView.nodes.find(item=>item.id===node.id);showNode(refreshed,lastGraphView.edges);focusLegacyExpansion(closing?node.parentSubHub:node.id);return}
+    if(node.type==='related_category'){
+      const branch=relatedCompanyBranches.get(node.uniform_number);
+      if(!branch)return;
+      const closing=branch.openCategory===node.groupKey;
+      if(relatedProcurementUniform===node.uniform_number||node.groupKey==='procurement'){
+        const previous=relatedCompanyBranches.get(relatedProcurementUniform);
+        if(previous?.openCategory==='procurement')previous.openCategory=null;
+        relatedProcurementUniform=!closing&&node.groupKey==='procurement'?node.uniform_number:null;
+        resetProcurementSelection();
+      }
+      branch.openCategory=closing?null:node.groupKey;
+      renderGraph(graph);
+      showNode(lastGraphView.nodes.find(item=>item.id===node.id),lastGraphView.edges);
+      focusLegacyExpansion(closing?node.parentSubHub:node.id);
+      return;
+    }
     if(node.isSubHub){const closing=expandedSubHubKey(node)===node.groupKey,key=closing?null:node.groupKey;if(node.type==='judicial_year'){expandedJudicialYear=key;expandedJudicialMonth=null;judicialPage=0}else if(node.type==='judicial_month'){expandedJudicialMonth=key;judicialPage=0}else if(node.type==='procurement_city'){expandedProcurementCounty=key;expandedProcurementYear=null;procurementPage=0}else if(node.type==='procurement_year'){expandedProcurementYear=key;procurementPage=0}else if(node.type==='penalty_law'){expandedPenaltyLaw=key;expandedPenaltyArticle=null;expandedPenaltyYear=null;expandedPenaltyCounty=null;penaltyPage=0}else if(node.type==='penalty_article'){expandedPenaltyArticle=key;expandedPenaltyYear=null;expandedPenaltyCounty=null;penaltyPage=0}else if(node.type==='penalty_year'){expandedPenaltyYear=key;expandedPenaltyCounty=null;penaltyPage=0}else if(node.type==='penalty_county'){expandedPenaltyCounty=key;penaltyPage=0}selectedNodeId=node.id;renderGraph(graph);const refreshed=lastGraphView.nodes.find(item=>item.id===node.id);showNode(refreshed,lastGraphView.edges);focusLegacyExpansion(closing?(node.parentSubHub||`hub:${expandedHub}`):node.id);return}
     showNode(node,lastGraphView.edges);
   }
@@ -677,8 +720,8 @@
       else if(node.id===center.id||node.parentHub||node.parentSubHub||node.type==='website'||node.type==='anti_fraud'){const label=document.createElementNS('http://www.w3.org/2000/svg','text'),isCenter=node.id===center.id,labelX=isCenter?p.x:p.x+radius+13;label.setAttribute('class','child-label'+(node.type==='related_company'?' related-label':''));graphTextLines(label,metrics.lines,labelX,isCenter?p.y-radius-8-(metrics.lines.length-1)*metrics.lineHeight:p.y-(metrics.lines.length-1)*metrics.lineHeight/2+(node.type==='related_company'?-3:4),metrics.lineHeight,isCenter?'middle':'start');group.appendChild(label);if(node.type==='related_company'){const idLabel=document.createElementNS('http://www.w3.org/2000/svg','text');idLabel.setAttribute('x',labelX);idLabel.setAttribute('y',p.y+(metrics.lines.length-1)*metrics.lineHeight/2+17);idLabel.setAttribute('class','node-type related-meta');idLabel.textContent=`統編 ${node.uniform_number}`;group.appendChild(idLabel)}}
       const activate=event=>{event.stopPropagation();activateNode(node,graph)};group.addEventListener('click',activate);group.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event)}});root.appendChild(group)
     }
-    const expandedNames={related:'有來源連結的公司',person:'關係人',penalty:'違法紀錄',judicial:'司法院判決',procurement:'獲得標案'};$('graphSub').textContent=expandedHub?`已展開：${expandedNames[expandedHub]}${expandedPenaltyLaw?' → '+expandedPenaltyLaw:''}${expandedPenaltyArticle?' → '+expandedPenaltyArticle:''}${expandedPenaltyYear?' → '+expandedPenaltyYear:''}${expandedPenaltyCounty?' → '+expandedPenaltyCounty:''}${expandedProcurementCounty?' → '+expandedProcurementCounty+' → '+(expandedProcurementYear||'年度'):''}${expandedJudicialYear?' → '+expandedJudicialYear:''}${expandedJudicialMonth?' → '+expandedJudicialMonth+' 月':''} · ${expandedHub==='related'?'點連結公司展開其資料；金色外框標示有來源連結 / Click a linked company to expand; gold border marks a sourced connection':'點節點查看明細 / Click a node for details'}`:'點擊分類圓點展開資料 / Click a category to expand';$('fit').textContent=expandedHub?'置中分支 / Refocus':'置中 / Fit';if(view.relatedCount)$('graphSub').textContent+=' · 公開紀錄連結不等於企業隸屬';const pageTotal=expandedHub==='procurement'?view.procurementTotal:expandedHub==='penalty'&&expandedPenaltyCounty?view.penaltyTotal:expandedHub==='judicial'&&expandedJudicialMonth?view.judicialTotal:0;
-    const page=expandedHub==='procurement'?procurementPage:expandedHub==='penalty'?penaltyPage:judicialPage;graphPager.hidden=pageTotal<=LEGACY_RECORD_PAGE_SIZE;if(!graphPager.hidden){$('graphPageLabel').textContent=`${page+1} / ${Math.ceil(pageTotal/LEGACY_RECORD_PAGE_SIZE)} · ${pageTotal} 筆`;$('graphPrev').disabled=page===0;$('graphNext').disabled=pageTotal<=0||(page+1)*LEGACY_RECORD_PAGE_SIZE>=pageTotal}fitGraphBounds();if(legacyFocusId)focusLegacyExpansion(legacyFocusId);renderConnectionSummary();
+    const expandedNames={related:'有來源連結的公司',person:'關係人',penalty:'違法紀錄',judicial:'司法院判決',procurement:'獲得標案'};$('graphSub').textContent=expandedHub?`已展開：${expandedNames[expandedHub]}${expandedPenaltyLaw?' → '+expandedPenaltyLaw:''}${expandedPenaltyArticle?' → '+expandedPenaltyArticle:''}${expandedPenaltyYear?' → '+expandedPenaltyYear:''}${expandedPenaltyCounty?' → '+expandedPenaltyCounty:''}${expandedProcurementCounty?' → '+expandedProcurementCounty+' → '+(expandedProcurementYear||'年度'):''}${expandedJudicialYear?' → '+expandedJudicialYear:''}${expandedJudicialMonth?' → '+expandedJudicialMonth+' 月':''} · ${expandedHub==='related'?'點連結公司展開其資料；金色外框標示有來源連結 / Click a linked company to expand; gold border marks a sourced connection':'點節點查看明細 / Click a node for details'}`:'點擊分類圓點展開資料 / Click a category to expand';$('fit').textContent=expandedHub?'置中分支 / Refocus':'置中 / Fit';if(view.relatedCount)$('graphSub').textContent+=' · 公開紀錄連結不等於企業隸屬';const pageTotal=view.procurementTotal||(expandedHub==='penalty'&&expandedPenaltyCounty?view.penaltyTotal:expandedHub==='judicial'&&expandedJudicialMonth?view.judicialTotal:0);
+    const page=view.procurementTotal?procurementPage:expandedHub==='penalty'?penaltyPage:judicialPage;graphPager.hidden=pageTotal<=LEGACY_RECORD_PAGE_SIZE;if(!graphPager.hidden){$('graphPageLabel').textContent=`${page+1} / ${Math.ceil(pageTotal/LEGACY_RECORD_PAGE_SIZE)} · ${pageTotal} 筆`;$('graphPrev').disabled=page===0;$('graphNext').disabled=pageTotal<=0||(page+1)*LEGACY_RECORD_PAGE_SIZE>=pageTotal}fitGraphBounds();if(legacyFocusId)focusLegacyExpansion(legacyFocusId);renderConnectionSummary();
   }
   function safeSourceUrl(value){try{const url=new URL(String(value||''));return ['http:','https:'].includes(url.protocol)?url.href:''}catch{return''}}
   function politicalContributionCards(data){const rows=Array.isArray(data?.items)?data.items:[],focusType=data?.focus_entity?.entity_type;return`<div class="card"><div class="section-head"><h4>政治獻金 / Political contributions</h4><span class="count">${rows.length} 筆 / records</span></div><div class="notice">公司僅以統編精確比對；不以名稱推測連結。 / Companies are linked only by exact uniform number, never by name.</div>${rows.length?rows.map(row=>{const relationship=row.relationship||{},evidence=row.evidence||{},other=focusType==='Politician'?row.company:row.politician,url=safeSourceUrl(row.original_source_url||evidence.source_url),record=row.source_record||{},locator=record.locator||{},amount=row.amount!==null&&row.amount!==undefined?`${row.currency||''} ${row.amount}`.trim():'—';return`<details class="record"><summary><span>${esc(other?.display_name||other?.canonical_name||other?.id||'—')}</span><span>${esc(amount)}</span></summary><div class="record-body"><div class="kv"><div><span>日期 / Date</span><span>${esc(row.date||relationship.start_date||'—')}</span></div><div><span>類型 / Type</span><span>${esc(row.contribution_type||relationship.source_role||'—')}</span></div><div><span>來源紀錄 / Source record</span><span>${esc(record.id||evidence.source_record_id||'—')}</span></div><div><span>Evidence</span><span>${esc(evidence.title||evidence.id||'—')}</span></div><div><span>比對方式 / Match</span><span>${esc(locator.match_method||data.match_method||'exact_uniform_number')}</span></div></div>${evidence.summary?`<p>${esc(evidence.summary)}</p>`:''}${url?`<p><a href="${esc(url)}" target="_blank" rel="noreferrer">開啟原始資料 / Open source ↗</a></p>`:''}</div></details>`}).join(''):'<p>目前沒有已發布紀錄。 / No published records.</p>'}${data?.has_more?'<div class="notice">另有紀錄未列於本頁。 / More records are available.</div>':''}</div>`}
@@ -1232,7 +1275,7 @@
     });
     return{positions,routes,rowPitch,columnPitch,labelHeight}
   }
-  function showKnowledgeNode(node){if(graphMode==='knowledge'&&node.entity_type==='Company'&&node.id!==knowledgeGraph?.rootId){connectionTargetId=node.id;renderConnectionSummary()}selectedNodeId=node.id;selectedEdgeId=null;document.querySelectorAll('#svg .node').forEach(item=>item.classList.toggle('selected',item.dataset.nodeId===node.id));document.querySelectorAll('#svg .edge-group').forEach(item=>item.classList.remove('selected'));const depthLimit=graphDepthLimit(),atLimit=knowledgeGraph?.nodes.size>=GRAPH_MAX_NODES||(graphMode!=='path'&&node.depth>=depthLimit),finished=knowledgeGraph?.expanded.has(node.id)&&!knowledgeGraph?.hasMore.get(node.id);$('nodeInfoTitle').textContent=node.display_name||node.canonical_name||node.id;$('nodeInfoKind').textContent=`${entityTypeLabels[node.entity_type]||node.entity_type||'實體 / Entity'} · ${node.depth} hop`;if(node.observation_only){const edge=[...knowledgeGraph.edges.values()].find(row=>row.observation_only&&row.target===node.id);if(edge)showKnowledgeEdge(edge);return}$('nodeInfoBody').innerHTML=nodeRows({'Entity ID':node.id,'識別狀態 / Identity status':displayValue('identity_status',node.identity_status||'—'),'展開狀態 / Expansion':atLimit?(graphMode==='path'?'已達60節點上限，請返回公司圖譜繼續探索 / 60-node limit; open a company graph':`已達 ${depthLimit} 層上限 / Maximum depth reached`):finished?'已載入相鄰關係 / Neighbors loaded':knowledgeGraph?.hasMore.get(node.id)?'再次點擊載入下一批關係 / Click again for the next page':'點擊節點載入相鄰關係 / Click to load neighbors'})+pathEntityActions(node);$('nodeInfo').hidden=false}
+  function showKnowledgeNode(node){if(graphMode==='knowledge'&&node.entity_type==='Company'&&node.id!==knowledgeGraph?.rootId){connectionTargetId=node.id;renderConnectionSummary()}selectedNodeId=node.id;selectedEdgeId=null;document.querySelectorAll('#svg .node').forEach(item=>item.classList.toggle('selected',item.dataset.nodeId===node.id));document.querySelectorAll('#svg .edge-group').forEach(item=>item.classList.remove('selected'));const depthLimit=graphDepthLimit(),atLimit=knowledgeGraph?.nodes.size>=GRAPH_MAX_NODES||(graphMode!=='path'&&node.depth>=depthLimit),finished=knowledgeGraph?.expanded.has(node.id)&&!knowledgeGraph?.hasMore.get(node.id);$('nodeInfoTitle').textContent=node.display_name||node.canonical_name||node.id;$('nodeInfoKind').textContent=`${entityTypeLabels[node.entity_type]||node.entity_type||'實體 / Entity'} · ${node.depth} hop`;if(node.observation_only){const edge=[...knowledgeGraph.edges.values()].find(row=>row.observation_only&&row.target===node.id);if(edge)showKnowledgeEdge(edge);return}$('nodeInfoBody').innerHTML=nodeRows({'Entity ID':node.id,'識別狀態 / Identity status':displayValue('identity_status',node.identity_status||'—'),'展開狀態 / Expansion':atLimit?(graphMode==='path'?'已達60節點上限，請返回公司圖譜繼續探索 / 60-node limit; open a company graph':`已達 ${depthLimit} 層上限 / Maximum depth reached`):finished?'已載入相鄰關係 / Neighbors loaded':knowledgeGraph?.hasMore.get(node.id)?'再次點擊載入下一批關係 / Click again for the next page':'點擊節點載入相鄰關係 / Click to load neighbors'})+pathEntityActions(node)+(node.entity_type==='Company'?companyAwardsAction(node.id):'');$('nodeInfo').hidden=false}
   function showKnowledgeEdge(edge,records=[edge]){selectedNodeId=null;selectedEdgeId=records[0].id;document.querySelectorAll('#svg .node').forEach(item=>item.classList.remove('selected'));document.querySelectorAll('#svg .edge-group').forEach(item=>item.classList.toggle('selected',item.dataset.edgeId===selectedEdgeId));const source=knowledgeGraph.nodes.get(edge.source),target=knowledgeGraph.nodes.get(edge.target),evidence=edge.primary_evidence||{},sourceUrl=safeSourceUrl(evidence.source_url),officialUrl=safeSourceUrl(evidence.original_source_url);$('nodeInfoTitle').textContent=relationshipLabels[edge.relationship_type]||edge.relationship_type;$('nodeInfoKind').textContent=edge.observation_kind?pathObservationLabels[edge.observation_kind]:'關係證據 / Relationship evidence';$('nodeInfoBody').innerHTML=(edge.observation_kind?`<p class="notice">${esc(pathObservationNotes[edge.observation_kind])}</p>`:'')+nodeRows({'來源實體 / Source entity':source?.display_name||edge.source,'目標實體 / Target entity':target?.display_name||edge.target,'來源角色 / Source role':displayContext(edge.source_role||'未提供 / Not provided'),'起始日期 / Start date':edge.start_date||'—','結束日期 / End date':edge.end_date||'—','觀察日期 / Observed at':edge.observed_at||'—','金額 / Amount':edge.amount?`${edge.currency||''} ${edge.amount}`.trim():'—','比例 / Percentage':edge.percentage??'—','信心 / Confidence':edge.confidence||'—','資料來源 / Source':evidence.source_name||'—','來源紀錄 / Source record':evidence.source_record_id||'—','取得日期 / Retrieved at':evidence.retrieved_at||'—'})+`${evidence.title?`<p><b>${esc(evidence.title)}</b></p>`:''}${evidence.summary?`<p>${esc(evidence.summary)}</p>`:''}${sourceUrl?`<p><a href="${esc(sourceUrl)}" target="_blank" rel="noreferrer">開啟原始資料 / Open source ↗</a></p>`:'<div class="notice source-warning">來源未提供可公開開啟的永久網址。 / No public permanent source URL is available.</div>'}${officialUrl&&officialUrl!==sourceUrl?`<p><a href="${esc(officialUrl)}" target="_blank" rel="noreferrer">官方查詢入口 / Official search ↗</a></p>`:''}`;if(records.length>1){
       const selector=document.createElement('label'),options=document.createElement('select');
       selector.textContent='關係紀錄 / Records ('+records.length+') ';
@@ -1303,6 +1346,11 @@
   }
   function renderKnowledgeGraph(newIds=new Set()){
     if(nodeDragState?.moved)return;
+    if(graphMode==='knowledge'&&knowledgeGraph?.awardPanel&&!knowledgeGraph.nodes.has(knowledgeGraph.awardPanel.id)){
+      delete knowledgeGraph.awardPanel;
+      $('procurementPane').replaceChildren();
+      selectOverviewTab();
+    }
     updateSourceNotice();
     mobileGraphList.hidden=true;
     updateGraphLoading();
@@ -1503,7 +1551,7 @@
         if(source.limited)detail+=' · 涵蓋有限 / Limited coverage';
         else if(source.count>0&&source.status==='partial')detail+=' · 部分來源 / Partial coverage';
       }
-      return {label:source.label,graph,detail};
+      return {type:source.type,label:source.label,graph,detail};
     });
   }
   function renderPathCompanyCoverage(panel){
@@ -1513,7 +1561,8 @@
     const selector=state.showCrossLinks?'#svg .edge-group':'#svg .edge-group:not(.path-cross-link), #svg .focused-cross-link';
     const edges=[...document.querySelectorAll(selector)].map(element=>element.dataset);
     box.innerHTML='<dl class="path-coverage">'+pathCompanyCoverage(panel,state.nodes,edges).map(row=>
-      `<div><dt>${esc(row.label)}</dt><dd>${esc(row.graph)}<br>${esc(row.detail)}</dd></div>`).join('')+'</dl>';
+      `<div><dt>${esc(row.label)}</dt><dd>${esc(row.graph)}<br>${esc(row.detail)}
+        ${row.type==='Contract'?companyAwardsAction(panel.id):''}</dd></div>`).join('')+'</dl>';
   }
   function renderPathEntityPicker(){
     const picker=$('pathEntityPicker'),state=graphMode==='path'&&(knowledgeGraph?.pathData||knowledgeGraph?.pathEndpointIds)?knowledgeGraph:null;
@@ -1682,7 +1731,7 @@
       if(initial&&!state.focusedBranch)fitGraphBounds();
       else if(state.focusedBranch===entityId)focusKnowledgeExpansion(entityId,layout,newIds);
     }
-    if(!inPath&&selectedNodeId===entityId)showKnowledgeNode(node);
+    if(!inPath&&selectedNodeId===entityId&&!$('nodeInfo').hidden)showKnowledgeNode(node);
     if(initial&&graph.status==='fulfilled')void autoExpandPublishedCompanies(state);
     if(initial&&graph.status==='rejected')$('graphSub').textContent=graph.reason.message;
   }
@@ -1740,7 +1789,25 @@
     const all=(Array.isArray(result?.records)?result.records:[]).map(row=>({...row,county:row.county||procurementCounty(row),year:row.year||recordYear(row)})),types=uniqueValues(all,row=>row.notice_type),counties=uniqueValues(all,row=>row.county,(a,b)=>countyRank(a)-countyRank(b)||a.localeCompare(b,'zh-Hant')),agencies=uniqueValues(all,row=>row.agency),years=uniqueValues(all,row=>row.year,(a,b)=>b.localeCompare(a,'zh-Hant',{numeric:true}));
     const filtered=all.filter(row=>(!filterState.procurementType||row.notice_type===filterState.procurementType)&&(!filterState.procurementCounty||row.county===filterState.procurementCounty)&&(!filterState.procurementAgency||row.agency===filterState.procurementAgency)&&(!filterState.procurementYear||row.year===filterState.procurementYear)).sort((a,b)=>countyRank(a.county)-countyRank(b.county)||b.year.localeCompare(a.year,'zh-Hant',{numeric:true})||recordDate(b).localeCompare(recordDate(a))||String(a.agency||'').localeCompare(String(b.agency||''),'zh-Hant')),groups=new Map();
     for(const row of filtered){const key=JSON.stringify([row.county,row.year]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row)}
-    const content=[...groups.entries()].map(([key,records])=>{const[county,year]=JSON.parse(key);return`<section class="record-group"><div class="group-heading"><span>${esc(county)} · ${esc(year)} 年</span><span>${records.length} 筆 / awards</span></div>${records.map(row=>`<details class="record"><summary><span>${esc(row.title||'政府採購案件')}</span><span>${esc(recordDate(row))}</span></summary><div class="record-body"><div class="kv"><div><span>招標種類 / Type</span><span>${esc(row.notice_type||'')}</span></div><div><span>縣市 / County or city</span><span>${esc(row.county)}</span></div><div><span>招標單位 / Agency</span><span>${esc(row.agency||'')}</span></div><div><span>年度 / Year</span><span>${esc(row.year)}</span></div><div><span>案號 / Job no.</span><span>${esc(row.job_number||'')}</span></div><div><span>得標公司 / Awardee</span><span>${esc((row.awardee_names||[]).join('、')||'身分待核對 / Unverified')}</span></div></div>${row.source_url?`<p><a href="${esc(row.source_url)}" target="_blank" rel="noreferrer">查看結構化公告 / View structured notice ↗</a></p>`:''}${row.official_search_url?`<p><a href="${esc(row.official_search_url)}" target="_blank" rel="noreferrer">政府電子採購網查詢 / Official PCC search ↗</a></p>`:''}</div></details>`).join('')}</section>`}).join(''),empty=result?.status==='partial'?'決標資料來源暫時無法讀取。 / Procurement source is temporarily unavailable.':'目前篩選條件沒有決標公告。 / No award notice matches the selected filters.';
+    const content=[...groups.entries()].map(([key,records],index)=>{
+      const [county,year]=JSON.parse(key);
+      const heading=`${county} · ${/^\d{4}$/.test(year)?year+' 年':year}`;
+      const details=records.map(row=>{
+        const source=safeSourceUrl(row.source_url);
+        const official=safeSourceUrl(row.official_search_url||result?.official_search_url);
+        return `<details class="record"><summary><span>${esc(row.title||'政府採購案件')}</span><span>${esc(displayDate(recordDate(row)))}</span></summary>
+          <div class="record-body">${nodeRows({'招標種類 / Type':row.notice_type,'縣市 / County or city':county,
+            '招標單位 / Agency':row.agency,'年度 / Year':year,'案號 / Job no.':row.job_number,
+            '得標公司 / Awardee':(row.awardee_names||[]).join('、')||'身分待核對 / Unverified'})}
+          ${source?`<p><a href="${esc(source)}" target="_blank" rel="noreferrer">查看結構化公告 / View structured notice ↗</a></p>`:''}
+          ${official?`<p><a href="${esc(official)}" target="_blank" rel="noreferrer">政府電子採購網查詢入口 / Official PCC search ↗</a></p>`:''}
+          </div></details>`;
+      }).join('');
+      return `<details class="record-group" ${index===0?'open':''}><summary class="group-heading"><span>${esc(heading)}</span><span>${records.length} 筆 / awards</span></summary>${details}</details>`;
+    }).join('');
+    const empty=result?.status==='partial'?'決標資料來源暫時無法讀取。 / Procurement source is temporarily unavailable.':
+      all.length?'目前篩選條件沒有決標公告。 / No award notice matches the selected filters.':
+      '本次查詢未取得符合的決標公告。 / No matching award notices were returned.';
     return`<div class="card"><div class="section-head"><h4>政府決標公告<br>Government award notices</h4><span class="count">${result?.status==='partial'?'來源查詢中或不可用 / Loading or unavailable':`${filtered.length} 筆 / records`}</span></div><p>${esc(result?.source||'政府電子採購網公告')}</p>${filterBox('procurement',[filterSelect('procurementType','招標種類 / Tender type',types),filterSelect('procurementCounty','縣市 / County or city',counties),filterSelect('procurementAgency','招標單位 / Agency',agencies),filterSelect('procurementYear','年度 / Year',years)],filtered.length,all.length)}${result?.limited?'<div class="notice">目前顯示第一頁可取得的決標公告；總公告數可能更多。 / Showing award notices available on the first result page.</div>':''}${content||`<p>${empty}</p>`}</div>`
   }
   function mergeProcurement(data,result){
@@ -1789,7 +1856,43 @@
     const content=[...groups.entries()].map(([kind,rows])=>`<section class="result-group"><h3>${esc(entityTypeLabels[kind]||kind)} · ${rows.length}</h3>${kind==='CivilOrganization'?'<div class="notice source-warning">官方團體來源紀錄；須核對原始清冊，非現行登記證明，未依名稱與其他實體合併。 / Official roster observation; current registration and cross-source identity are unverified.</div>':''}${rows.map(item=>`<button class="search-result" data-search-id="${esc(item.entity_id)}"><b>${esc(item.display_name)}</b><span class="result-kind">${esc(entityTypeLabels[item.entity_type]||item.entity_type)}</span><small>${item.public_identifier?`<span class="identifier">${esc(item.public_identifier)}</span>${item.context_label?' · ':''}`:''}${esc(displayContext(item.context_label||'公開實體紀錄 / Published entity record'))} · ${item.match_type==='verified_alias'?'官方核對別名 / Verified alias':item.match_type==='identifier_exact'?'統編精確命中 / Exact ID':item.match_type==='name_exact'?'名稱精確命中 / Exact name':item.match_type==='name_prefix'?'名稱開頭命中 / Name prefix':'名稱部分命中 / Name contains'} · Entity ${esc(String(item.entity_id).slice(0,8))}</small></button>`).join('')}</section>`).join('');
     $('searchResults').innerHTML=`<div class="search-results-head"><div><b>${items.length?`找到 ${items.length} 個可查詢實體 / ${items.length} searchable entities`:'沒有搜尋結果 / No result'}</b><small>同名人物會分開顯示；未索引公司可由經濟部即時公司登記查詢。<br>Same-name people remain separate; unindexed companies may come from the live MOEA registry.</small></div><button class="close-results" aria-label="關閉搜尋結果 Close results">×</button></div>${content||'<div class="notice">可改用完整名稱，或用 8 碼統編執行既有公司即時查詢。<br>Try a full name, or use an 8-digit ID for the live company lookup.</div>'}`;$('searchResults').hidden=false
   }
-  function selectOverviewTab(){document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab==='overview'));for(const[id,pane]of Object.entries({overview:'overviewPane',judicial:'judicialPane',procurement:'procurementPane',penalty:'penaltyPane'}))$(pane).hidden=id!=='overview'}
+  function selectRecordTab(active){
+    document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab===active));
+    const panes={overview:'overviewPane',judicial:'judicialPane',procurement:'procurementPane',penalty:'penaltyPane'};
+    for(const [id,pane] of Object.entries(panes))$(pane).hidden=id!==active;
+  }
+  function selectOverviewTab(){selectRecordTab('overview')}
+  function companyAwardsAction(id,label='瀏覽本次標案 / Browse available awards'){
+    return `<button type="button" class="toolbtn graph-company-awards" data-entity-id="${esc(id)}">${label}</button>`;
+  }
+  function renderKnowledgeAwards(panel){
+    const pane=$('procurementPane');
+    const content=panel.awards?procurementCard(panel.awards):panel.error
+      ?`<div class="notice source-warning">${esc(panel.error)}</div>${companyAwardsAction(panel.id,'重試標案查詢 / Retry award lookup')}`
+      :'<div class="notice">正在讀取決標公告 / Loading award notices…</div>';
+    pane.innerHTML=`<div class="notice">公司 / Company：${esc(panel.name)}</div>${content}`;
+  }
+  async function openGraphCompanyAwards(id){
+    const state=knowledgeGraph,node=state?.nodes.get(id);
+    if(node?.entity_type!=='Company')return;
+    if(graphMode==='path'&&state.entityPanel?.id===id){
+      selectRecordTab('procurement');return;
+    }
+    if(graphMode!=='knowledge')return;
+    selectRecordTab('procurement');
+    $('nodeInfo').hidden=true;
+    const previous=state.awardPanel;
+    if(previous?.id===id&&!previous.error){renderKnowledgeAwards(previous);return}
+    if(previous?.id!==id)for(const key of Object.keys(filterState)){
+      if(key.startsWith('procurement'))filterState[key]='';
+    }
+    const panel={id,name:node.display_name||node.canonical_name||id};
+    state.awardPanel=panel;
+    renderKnowledgeAwards(panel);
+    try{panel.awards=await graphCompanySource(state,node,'awards')}
+    catch(error){panel.error=error.message}
+    if(graphMode==='knowledge'&&knowledgeGraph===state&&state.awardPanel===panel)renderKnowledgeAwards(panel);
+  }
   function politicianRelationshipCards(title,rows){return`<div class="card"><div class="section-head"><h4>${esc(title)}</h4><span class="count">${rows.length} 筆 / records</span></div>${rows.length?rows.map(row=>{const relationship=row.relationship||{},evidence=row.evidence||{},url=safeSourceUrl(evidence.source_url),dates=[relationship.start_date,relationship.end_date].filter(Boolean).join(' → ')||relationship.observed_at||'—';return`<details class="record"><summary><span>${esc(row.entity?.display_name||row.entity?.canonical_name||row.entity?.id||'—')}</span><span>${esc(relationshipLabels[relationship.relationship_type]||relationship.relationship_type||'')}</span></summary><div class="record-body"><div class="kv"><div><span>日期 / Date</span><span>${esc(dates)}</span></div><div><span>角色 / Role</span><span>${esc(displayContext(relationship.source_role||'—'))}</span></div><div><span>Evidence</span><span>${esc(evidence.title||evidence.id||'—')}</span></div><div><span>原始來源 / Original source</span><span>${esc(evidence.source_name||'—')}</span></div></div>${evidence.summary?`<p>${esc(evidence.summary)}</p>`:''}${url?`<p><a href="${esc(url)}" target="_blank" rel="noreferrer">開啟原始資料 / Open source ↗</a></p>`:''}</div></details>`}).join(''):'<p>目前沒有已發布紀錄。 / No published records.</p>'}</div>`}
   function politicianOverview(profile,data,contributions=null,assets=null,timeline=null){const terms=Array.isArray(data?.terms)?data.terms:[],committees=Array.isArray(data?.committees)?data.committees:[],proposed=Array.isArray(data?.proposed_bills)?data.proposed_bills:[],coSponsored=Array.isArray(data?.co_sponsored_bills)?data.co_sponsored_bills:[],affiliations=[...(data?.affiliations||[]),...(data?.legislatures||[])];const termCards=terms.length?terms.map(term=>{const evidence=term.primary_evidence||{},url=safeSourceUrl(evidence.source_url);return`<div class="card"><div class="section-head"><h4>第 ${esc(term.term_number)} 屆立法委員<br>Legislative term ${esc(term.term_number)}</h4><span class="count">${esc(term.start_date)} → ${esc(term.end_date||'現任 / current')}</span></div><div class="kv"><div><span>政黨 / Party</span><span>${esc(term.party?.display_name||'—')}</span></div><div><span>選區 / Constituency</span><span>${esc(term.constituency)}</span></div><div><span>選區類型 / Type</span><span>${esc(displayValue('constituency_type',term.constituency_type))}</span></div><div><span>Evidence</span><span>${esc(evidence.title||evidence.id||'—')}</span></div></div>${url?`<p><a href="${esc(url)}" target="_blank" rel="noreferrer">開啟原始資料 / Open source ↗</a></p>`:''}</div>`}).join(''):'<div class="notice">尚無已發布任期資料；仍可查看下方有 Evidence 的關係。<br>No published term profile yet; evidence-backed relationships remain available.</div>';return`<div class="detail"><h3>${esc(profile.display_name)}</h3><div class="tag">立法委員 / Legislator · Politician Entity</div><div class="notice">同名人物不會自動合併；任期、政黨、委員會與提案皆須保留原始證據。<br>Same-name records stay separate; every fact requires source Evidence.</div>${pathEntityActions(profile)}<div style="height:10px"></div>${termCards}${timeline?assetTimelineCards(timeline):''}${contributions?politicalContributionCards(contributions):''}${assets?assetDeclarationCards(assets):''}${politicianRelationshipCards('政黨／立法院關係 · Affiliations',affiliations)}${politicianRelationshipCards('委員會 · Committees',committees)}${politicianRelationshipCards('提案 · Proposed bills',proposed)}${politicianRelationshipCards('共同提案 · Co-sponsored bills',coSponsored)}${data?.relationship_has_more?'<div class="notice">另有關係未列於本頁；請用 Graph lazy loading 查看。 / More relationships are available in Graph.</div>':''}</div>`}
   function renderIndexedEntity(profile,item,politician=null,contributions=null,assets=null,timeline=null){
@@ -1833,16 +1936,25 @@
   async function search(){
     const term=$('q').value.normalize('NFKC').trim(),kind=$('entityTypeFilter').value;if(/^\d{8}$/.test(term)&&(!kind||kind==='Company')){hideSearchResults();await searchCompany(term);return}if(term.length<2||term.length>100){$('uniform').textContent='請輸入至少 2 個字 / Enter at least 2 characters';$('q').focus();return}$('search').disabled=true;$('search').textContent='搜尋中 / Searching…';try{const params=new URLSearchParams({q:term,limit:'20'});if(kind)params.set('entity_type',kind);const response=await fetch('/api/v1/search?'+params,{cache:'no-store'}),payload=await response.json();if(!response.ok)throw Error(payload.error||'搜尋失敗 / Search failed');renderSearchResults(payload.data)}catch(error){$('company').textContent='搜尋失敗 / Search failed';$('uniform').textContent=error.message;hideSearchResults()}finally{$('search').disabled=false;$('search').textContent='開始調查 / Search'}
   }
-  $('search').addEventListener('click',search);$('q').addEventListener('keydown',event=>{if(event.key==='Enter')search();if(event.key==='Escape')hideSearchResults()});$('domain').addEventListener('keydown',event=>{if(event.key==='Enter')search()});$('sample').addEventListener('click',loadRelationshipExample);$('searchResults').addEventListener('click',event=>{if(event.target.closest('.close-results')){hideSearchResults();return}const button=event.target.closest('[data-search-id]');if(button)openSearchResult(searchItems.get(button.dataset.searchId))});document.addEventListener('click',event=>{if(!event.target.closest('.search'))hideSearchResults();const button=event.target.closest('.path-select');if(button)setPathEndpoint(button.dataset.pathRole,{id:button.dataset.entityId,display_name:button.dataset.entityName,entity_type:button.dataset.entityType,public_identifier:button.dataset.pathUniform,is_live_fallback:button.dataset.pathLive==='1'})});$('pathFind').addEventListener('click',findRelationshipPath);$('pathClear').addEventListener('click',()=>{pathSelection={source:null,target:null};$('pathResult').innerHTML='';renderPathSelection()});$('clear').addEventListener('click',()=>location.reload());$('fit').addEventListener('click',resetGraphView);$('collapse').addEventListener('click',collapseGraph);$('plus').addEventListener('click',()=>setZoom(zoom+.1));$('minus').addEventListener('click',()=>setZoom(zoom-.1));document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab===button));const panes={overview:'overviewPane',judicial:'judicialPane',procurement:'procurementPane',penalty:'penaltyPane'};for(const[id,pane]of Object.entries(panes))$(pane).hidden=id!==button.dataset.tab}));
+  $('search').addEventListener('click',search);$('q').addEventListener('keydown',event=>{if(event.key==='Enter')search();if(event.key==='Escape')hideSearchResults()});$('domain').addEventListener('keydown',event=>{if(event.key==='Enter')search()});$('sample').addEventListener('click',loadRelationshipExample);$('searchResults').addEventListener('click',event=>{if(event.target.closest('.close-results')){hideSearchResults();return}const button=event.target.closest('[data-search-id]');if(button)openSearchResult(searchItems.get(button.dataset.searchId))});document.addEventListener('click',event=>{if(!event.target.closest('.search'))hideSearchResults();const button=event.target.closest('.path-select');if(button)setPathEndpoint(button.dataset.pathRole,{id:button.dataset.entityId,display_name:button.dataset.entityName,entity_type:button.dataset.entityType,public_identifier:button.dataset.pathUniform,is_live_fallback:button.dataset.pathLive==='1'})});$('pathFind').addEventListener('click',findRelationshipPath);$('pathClear').addEventListener('click',()=>{pathSelection={source:null,target:null};$('pathResult').innerHTML='';renderPathSelection()});$('clear').addEventListener('click',()=>location.reload());$('fit').addEventListener('click',resetGraphView);$('collapse').addEventListener('click',collapseGraph);$('plus').addEventListener('click',()=>setZoom(zoom+.1));$('minus').addEventListener('click',()=>setZoom(zoom-.1));document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{
+    const tab=button.dataset.tab;
+    selectRecordTab(tab);
+    if(tab==='procurement'&&graphMode==='knowledge'){
+      const selected=knowledgeGraph?.nodes.get(selectedNodeId);
+      const node=selected?.entity_type==='Company'?selected:
+        knowledgeGraph?.nodes.get(knowledgeGraph.awardPanel?.id)||knowledgeGraph?.rootProfile;
+      if(node?.entity_type==='Company')void openGraphCompanyAwards(node.id);
+    }
+  }));
   const graphSvg=$('svg');
   for(const [id,change] of [['graphPrev',-1],['graphNext',1]])$(id).addEventListener('click',()=>{
     if(!current?.graph||!lastGraphView)return;
-    const total=expandedHub==='procurement'?lastGraphView.procurementTotal:
-      expandedHub==='penalty'?lastGraphView.penaltyTotal:expandedHub==='judicial'?lastGraphView.judicialTotal:0;
+    const awards=lastGraphView.procurementTotal;
+    const total=awards||(expandedHub==='penalty'?lastGraphView.penaltyTotal:expandedHub==='judicial'?lastGraphView.judicialTotal:0);
     if(total<=LEGACY_RECORD_PAGE_SIZE)return;
     const lastPage=Math.ceil(total/LEGACY_RECORD_PAGE_SIZE)-1;
     const advance=page=>Math.max(0,Math.min(lastPage,page+change));
-    if(expandedHub==='procurement')procurementPage=advance(procurementPage);
+    if(awards)procurementPage=advance(procurementPage);
     else if(expandedHub==='penalty')penaltyPage=advance(penaltyPage);
     else judicialPage=advance(judicialPage);
     selectedNodeId=null;$('nodeInfo').hidden=true;renderGraph(current.graph);
@@ -1883,14 +1995,16 @@
   graphSvg.addEventListener('pointerup',stopDrag);graphSvg.addEventListener('pointercancel',stopDrag);
   graphSvg.addEventListener('wheel',event=>{event.preventDefault();setZoom(zoom+(event.deltaY<0?.15:-.15))},{passive:false});
   $('closeNode').addEventListener('click',()=>{selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;document.querySelectorAll('#svg .node,.edge-group').forEach(item=>item.classList.remove('selected'))});
-  $('nodeInfo').addEventListener('click',event=>{const button=event.target.closest('.related-company-open');if(button&&/^\d{8}$/.test(button.dataset.uniform||'')){$('q').value=button.dataset.uniform;$('entityTypeFilter').value='Company';searchCompany(button.dataset.uniform)}});
+  $('nodeInfo').addEventListener('click',event=>{const awards=event.target.closest('.graph-company-awards');if(awards){event.stopPropagation();void openGraphCompanyAwards(awards.dataset.entityId);return}const button=event.target.closest('.related-company-open');if(button&&/^\d{8}$/.test(button.dataset.uniform||'')){$('q').value=button.dataset.uniform;$('entityTypeFilter').value='Company';searchCompany(button.dataset.uniform)}});
   graphSvg.addEventListener('click',event=>{if(suppressNodeClick){event.preventDefault();event.stopPropagation();suppressNodeClick=false}},true);
-  function resetKnowledgeGraph(){if(graphMode!=='knowledge'||!knowledgeGraph)return;const profile=knowledgeGraph.rootProfile,item=knowledgeGraph.searchItem;knowledgeGraph=createKnowledgeGraph(profile,item);selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;renderKnowledgeGraph();expandKnowledgeNode(profile.id)}
+  function resetKnowledgeGraph(){if(graphMode!=='knowledge'||!knowledgeGraph)return;const profile=knowledgeGraph.rootProfile,item=knowledgeGraph.searchItem;
+    if(knowledgeGraph.awardPanel){$('procurementPane').replaceChildren();selectOverviewTab()}
+    knowledgeGraph=createKnowledgeGraph(profile,item);selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;renderKnowledgeGraph();expandKnowledgeNode(profile.id)}
   $('relationshipFilter').addEventListener('change',resetKnowledgeGraph);hopLimit.addEventListener('change',resetKnowledgeGraph);
   $('pathEntitySelect').addEventListener('change',event=>selectPathEntity(event.target.value));
   $('pathEntityRetry').addEventListener('click',()=>selectPathEntity($('pathEntitySelect').value,true));
-  $('rightPanel').addEventListener('change',event=>{const field=event.target.closest('[data-filter]');if(!field||!(field.dataset.filter in filterState))return;filterState[field.dataset.filter]=field.value;if(!$('pathEntityPicker').hidden)renderPathEntityDetails();else renderRecordPanes()});
-  $('rightPanel').addEventListener('click',async event=>{const published=event.target.closest('.open-published-graph');if(published){await openEntityGraph(published.dataset.entityId,companySearchItem||{});return}const companyButton=event.target.closest('.open-company-investigation');if(companyButton){$('q').value=companyButton.dataset.uniform;$('entityTypeFilter').value='Company';await searchCompany(companyButton.dataset.uniform);return}const reset=event.target.closest('.clear-filters');if(reset){const prefixes={judicial:'judicial',procurement:'procurement',penalty:'penalty'},prefix=prefixes[reset.dataset.filterScope];Object.keys(filterState).filter(key=>key.startsWith(prefix)&&key!=='penaltyView').forEach(key=>filterState[key]='');if(!$('pathEntityPicker').hidden)renderPathEntityDetails();else renderRecordPanes();return}const button=event.target.closest('.copy-query');if(!button)return;try{await navigator.clipboard.writeText(decodeURIComponent(button.dataset.copy||''));button.textContent='已複製 / Copied'}catch{button.textContent='請手動複製上方文字 / Copy manually'}});
+  $('rightPanel').addEventListener('change',event=>{const field=event.target.closest('[data-filter]');if(!field||!(field.dataset.filter in filterState))return;filterState[field.dataset.filter]=field.value;if(!$('pathEntityPicker').hidden)renderPathEntityDetails();else if(graphMode==='knowledge'&&knowledgeGraph?.awardPanel)renderKnowledgeAwards(knowledgeGraph.awardPanel);else renderRecordPanes()});
+  $('rightPanel').addEventListener('click',async event=>{const awards=event.target.closest('.graph-company-awards');if(awards){void openGraphCompanyAwards(awards.dataset.entityId);return}const published=event.target.closest('.open-published-graph');if(published){await openEntityGraph(published.dataset.entityId,companySearchItem||{});return}const companyButton=event.target.closest('.open-company-investigation');if(companyButton){$('q').value=companyButton.dataset.uniform;$('entityTypeFilter').value='Company';await searchCompany(companyButton.dataset.uniform);return}const reset=event.target.closest('.clear-filters');if(reset){const prefixes={judicial:'judicial',procurement:'procurement',penalty:'penalty'},prefix=prefixes[reset.dataset.filterScope];Object.keys(filterState).filter(key=>key.startsWith(prefix)&&key!=='penaltyView').forEach(key=>filterState[key]='');if(!$('pathEntityPicker').hidden)renderPathEntityDetails();else if(graphMode==='knowledge'&&knowledgeGraph?.awardPanel)renderKnowledgeAwards(knowledgeGraph.awardPanel);else renderRecordPanes();return}const button=event.target.closest('.copy-query');if(!button)return;try{await navigator.clipboard.writeText(decodeURIComponent(button.dataset.copy||''));button.textContent='已複製 / Copied'}catch{button.textContent='請手動複製上方文字 / Copy manually'}});
   async function loadCurrentRoute(){const match=location.pathname.match(/^\/(?:entity|graph|politician)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/);if(match)await openEntityGraph(match[1],{},false)}
   window.addEventListener('online',loadStatus);document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadStatus()});setInterval(()=>{if(!document.hidden)loadStatus()},60000);
   window.addEventListener('popstate',loadCurrentRoute);loadStatus();loadCurrentRoute();if(workspaceSession?.access_token)loadWatchlistDashboard().catch(()=>{});

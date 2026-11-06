@@ -52,6 +52,12 @@ function segment(from, to, id, evidenceId, reverse=false) {
           data:{nodes:[A,F],edges:[{id:'officer',source:F.id,target:A.id,relationship_type:'DIRECTOR_OF',
             primary_evidence:{id:'registry-proof',source_name:'Company registry',source_url:'https://example.gov.tw/registry'}}]}})});
       }
+      if(path==='/api/procurement/22222222'){
+        const records=Array.from({length:5},(_,index)=>({id:'path-award-'+index,title:'路徑公司標案 '+index,
+          date:'2025-01-0'+(index+1),agency:'新北市政府',uniform_number:'22222222',award_role:'winner',
+          source_url:'https://example.gov.tw/path-award/'+index}));
+        return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({status:'ok',records})});
+      }
       if(path==='/api/v1/paths'){
         assert.equal(url.searchParams.get('company_only'),'1');
         assert.equal(url.searchParams.get('source'),A.id);
@@ -129,6 +135,13 @@ function segment(from, to, id, evidenceId, reverse=false) {
       assert.equal(await page.locator('#svg .edge-group').count(),5);
       assert.equal(await mainNotes.count(),5);
     }
+    await page.locator('#closeNode').click();
+    await page.locator('#pathEntitySelect').selectOption(B.id);
+    await page.locator('#pathCompanyCoverage .graph-company-awards').click();
+    const pane=page.locator('#procurementPane');
+    assert.equal(await pane.locator('details.record').count(),5,'Path sidebar includes records beyond the graph preview');
+    await pane.getByText('路徑公司標案 0',{exact:true}).click();
+    assert.equal(await pane.locator('a[href="https://example.gov.tw/path-award/0"]').isVisible(),true);
     assert.deepEqual(consoleErrors,[]);
     console.log('Real browser: direct/no-path and shared-node path, group lines, focus toggle, evidence, 1440/1280/1024/768px passed.');
   } finally {

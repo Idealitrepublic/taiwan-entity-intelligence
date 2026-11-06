@@ -46,7 +46,13 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
       if(/^\/api\/company\/(12345678|22345678)$/.test(path)){
         const uniform=path.split('/').at(-1);linkedFetches.set(uniform,(linkedFetches.get(uniform)||0)+1);body=linkedCompany(uniform);
       }
-      if(/^\/api\/procurement\/(12345678|22345678)$/.test(path))body={status:'ok',matched:1,source:'政府電子採購網',records:[{id:'award-1',title:'公開決標公告',date:'2026-06-01',agency:'測試機關',source_url:'https://example.gov.tw/award'}]};
+      if(path.startsWith('/api/procurement/')&&path!=='/api/procurement/22099131'){
+        const uniform=path.split('/').at(-1);
+        const count=uniform==='12345678'?9:1;
+        const records=Array.from({length:count},(_,i)=>({id:'award-'+i,title:'公開決標公告 '+uniform+'-'+i,
+          date:'2026-06-0'+(i+1),agency:'新北市政府',source_url:'https://example.gov.tw/award/'+uniform+'/'+i}));
+        body={status:'ok',matched:records.length,source:'政府電子採購網',records};
+      }
       if(path==='/api/company-related/22099131')body={status:'ok',uniform_number:'22099131',
         items:[{uniform_number:'12345678',company_name:'法人甲股份有限公司',
           connection_type:'corporate_director',connection_label:'法人董監事所代表公司',
@@ -66,7 +72,7 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
           {uniform_number:'99999999',company_name:'無來源候選',
            connection_type:'corporate_director',evidence:{}}]};
       if(path===`/api/v1/entities/${root}`)body={data:{id:root,entity_type:'Company',
-        display_name:'公司甲',identity_status:'EXACT',evidence:[]}};
+        display_name:'公司甲',public_identifier:'22099131',identity_status:'EXACT',evidence:[]}};
       if(path===`/api/v1/graph/${root}`)body={data:{nodes:[
         {id:root,entity_type:'Company',display_name:'公司甲'},
         {id:bridge,entity_type:'GovernmentAgency',display_name:'共同機關'}],
@@ -74,7 +80,7 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
           relationship_type:'CONTRACT_WITH',primary_evidence:evidence}],has_more:false}};
       if(path===`/api/v1/graph/${bridge}`)body={data:{nodes:[
         {id:bridge,entity_type:'GovernmentAgency',display_name:'共同機關'},
-        {id:other,entity_type:'Company',display_name:'公司乙'}],
+        {id:other,entity_type:'Company',display_name:'公司乙',public_identifier:'22345678'}],
         edges:[{id:'66666666-6666-4666-8666-666666666666',source:other,target:bridge,
           relationship_type:'CONTRACT_WITH',primary_evidence:evidence}],has_more:false}};
       return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
@@ -174,6 +180,24 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     const categoryLanes=await page.evaluate(()=>Object.fromEntries(['12345678','22345678'].map(uniform=>[uniform,[...document.querySelectorAll(`#svg .node[data-node-id^="related-category:${uniform}:"] circle:not(.hit)`)].map(circle=>Number(circle.getAttribute('cy')))])));
     assert(Math.max(...categoryLanes['12345678'])+40<Math.min(...categoryLanes['22345678']),
       'Two expanded companies receive non-overlapping vertical category lanes');
+    const openAwards=async uniform=>{
+      const branch=page.locator('#svg .node[data-node-id="related-category:'+uniform+':procurement"]');
+      await branch.press('Enter');
+      await page.locator('#svg .node[data-type="procurement_city"][data-group-key="新北市"]').press('Enter');
+      await page.locator('#svg .node[data-type="procurement_year"][data-group-key="2026"]').press('Enter');
+    };
+    const awards=page.locator('#svg .node[data-node-id*="procurement%3Aaward-"]');
+    await openAwards('12345678');
+    assert.equal(await awards.count(),8);
+    await page.locator('#graphNext').click();
+    assert.equal(await awards.count(),1);
+    assert.match(await awards.first().textContent(),/12345678-0/);
+    await awards.first().press('Enter');
+    assert.equal(await page.locator('#nodeInfoBody a[href="https://example.gov.tw/award/12345678/0"]').count(),1);
+    await openAwards('22345678');
+    assert.equal(await awards.count(),1);
+    assert.match(await awards.first().textContent(),/22345678-0/);
+    assert.equal(await page.locator('#graphPager').isVisible(),false);
     await page.locator('#svg .node[data-node-id="related-company:12345678"]').focus();
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('#svg .node[data-type="related_category"]').count(),4,'Collapsing one linked company retains the other');
@@ -190,8 +214,16 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     await page.locator(`#svg .node[data-node-id="${other}"]`).waitFor();
     assert.equal(await page.locator('#svg .node').count(),3);
     assert.equal(await page.locator('#svg .edge-group').count(),2);
-    await page.locator('#svg .edge-group').last().click();
+    await page.locator('#svg .graph-node-frame:has([data-node-id="'+other+'"]) .graph-connection-note').click();
     assert.match(await page.locator('#nodeInfoBody').textContent(),/official-1/);
+    await page.locator('#closeNode').click();
+    await page.locator('#svg .node[data-node-id="'+other+'"]').press('Enter');
+    await page.locator('#nodeInfo .graph-company-awards').click();
+    const awardPane=page.locator('#procurementPane');
+    const awardSummary=awardPane.getByText('公開決標公告 22345678-0');
+    await awardSummary.click();
+    assert.equal(await awardPane.locator('a[href="https://example.gov.tw/award/22345678/0"]').isVisible(),true);
+    assert.match(await awardPane.textContent(),/公司乙/);
     assert.deepEqual(errors,[]);
     console.log('Automatic company graph: live exact-ID source and published two-hop evidence passed.');
   } finally {
