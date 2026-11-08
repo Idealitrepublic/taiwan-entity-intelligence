@@ -41,6 +41,25 @@ def asset_row(**updates):
 
 
 class AssetDeclarationTests(unittest.TestCase):
+    def test_conflicting_normalized_company_keys_never_overwrite_issuer(self):
+        politician, company = entities()
+        for lookup in ({"12345678": company, "１２３４５６７８": {**company, "id": CURSOR}},
+                       {"12345678": [company, {**company, "id": CURSOR}]}):
+            bundle, report = build_asset_declaration_bundle(
+                [asset_row()], politicians_by_source_id={"legislator-001": politician},
+                companies_by_uniform=lookup, retrieved_at="2026-11-08T00:00:00+00:00")
+            self.assertEqual(bundle["relationships"], [])
+            self.assertEqual(bundle["asset_declarations"], [])
+            self.assertEqual(report["skipped"][0]["reason"], "ambiguous_company_uniform_number")
+
+    def test_duplicate_observations_of_same_exact_issuer_remain_resolvable(self):
+        politician, company = entities()
+        bundle, _ = build_asset_declaration_bundle(
+            [asset_row()], politicians_by_source_id={"legislator-001": politician},
+            companies_by_uniform={"12345678": [company, company]},
+            retrieved_at="2026-11-08T00:00:00+00:00")
+        self.assertEqual(bundle["asset_declarations"][0]["company_entity_id"], COMPANY)
+
     def test_adapter_supports_every_required_asset_type(self):
         politician, _ = entities()
         labels = ("不動產", "現金", "存款", "股票", "債券", "基金", "有價證券", "債權",

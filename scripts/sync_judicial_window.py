@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import uuid
 import sys
@@ -17,6 +18,7 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -158,6 +160,7 @@ def inspect_checkpoint():
     unavailable = state.get("judicial_source_unavailable") or {}
     if set(pending) & set(unavailable) or not (set(pending) | set(unavailable)) <= set(jids):
         raise RuntimeError("Pending and upstream-unavailable JIDs overlap or lie outside snapshot")
+    verify_unavailable_receipts(unavailable, snapshot)
     known = verify_completed(snapshot, batch_size)
     pending_types = Counter(item.get("error_type") or "unknown" for item in pending.values())
     return {"jlist_jids": len(jids), "total_batches": total,
@@ -173,6 +176,40 @@ def inspect_checkpoint():
                 "rate_limit": pending_types.get("rate_limit", 0),
                 "timeout": pending_types.get("timeout", 0),
                 "service_closed": pending_types.get("service_closed", 0)}}
+
+
+def verify_unavailable_receipts(unavailable, snapshot):
+    """A completed count cannot hide unproven source failures or fake zeroes.
+
+    This is an offline provenance check, not a claim that a document remains
+    unavailable now. Existing retry/recheck commands retain that distinction.
+    """
+    for jid, item in unavailable.items():
+        try:
+            metadata = item.get("jlist_metadata") or {}
+            provenance = item.get("provenance") or {}
+            request = item.get("request") or {}
+            first = datetime.fromisoformat(item["first_seen"])
+            last = datetime.fromisoformat(item["last_seen"])
+            valid = (
+                item.get("jid") == jid and item.get("source") == "judicial" and
+                item.get("classification") == "permanent-source-error" and
+                item.get("error_type") == "upstream_document_error" and
+                item.get("http_status") == 200 and item.get("failure_runs", 0) >= 2 and
+                bool(re.fullmatch(r"[0-9a-f]{64}", item.get("response_error_hash", ""))) and
+                first.tzinfo is not None and last.tzinfo is not None and first <= last and
+                metadata == snapshot.get("metadata", {}).get(jid) and
+                urlsplit(metadata.get("source_url", "")).hostname in
+                {"data.judicial.gov.tw", "opendata.judicial.gov.tw"} and
+                provenance.get("source_url") == metadata.get("source_url") and
+                provenance.get("retrieved_at") == item["last_seen"] and
+                bool(provenance.get("source_name")) and
+                request == {"method": "POST", "endpoint": "/JDoc"})
+        except (KeyError, TypeError, ValueError):
+            valid = False
+        if not valid:
+            raise RuntimeError("Upstream-unavailable receipt lacks verified JList/error provenance")
+    return len(unavailable)
 
 
 def verify_completed(snapshot, batch_size):

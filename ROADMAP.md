@@ -352,3 +352,10 @@ Production 未修改；真人Pilot與另行正式發布授權仍為後續閘門�
 兩家公司的合作、控制或不法。未查核圖中公司不顯示為已確認路徑。
 此為本機／Development Preview呈現改善，沒有新增資料源或Production發布。
 詳見`docs/COMPANY_CONNECTION_UX.md`。
+
+## 身分／資產／司法補缺（2026-11-08，未完成）
+
+- 已修正候選 ID 大小寫、自我列假歧義、缺 Evidence／無效期間的 HIGH、資產 lookup 歧義。
+- 已實作唯讀 Development 完整性核對與司法缺件凍結名單續跑。
+- 尚待：原件可核對的資產 issuer identifiers、690 筆 JDoc 服務時段實際重查。
+- 安全驗收 PASS 不代表資料補齊；不得標記整項 COMPLETE 或啟動 Production release。

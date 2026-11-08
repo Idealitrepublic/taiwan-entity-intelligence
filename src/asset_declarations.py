@@ -135,8 +135,14 @@ def build_asset_declaration_bundle(rows, *, politicians_by_official_id=None,
     """Create versioned draft items; resolve people/companies by exact IDs only."""
     retrieved = timestamp(retrieved_at)
     politicians = politicians_by_official_id or politicians_by_source_id or {}
-    companies = {_uniform_number(key): value for key, value in companies_by_uniform.items()
-                 if _uniform_number(key)}
+    companies = {}
+    for key, value in companies_by_uniform.items():
+        uniform = _uniform_number(key)
+        if not uniform:
+            continue
+        # Keep all candidates after normalization; never let a full-width key
+        # silently overwrite another issuer with the same normalized number.
+        companies.setdefault(uniform, []).extend(value if isinstance(value, (list, tuple)) else [value])
     bundle = _empty_bundle()
     report = {"skipped": [], "unresolved_companies": [], "quality_issues": [],
               "publication_status": "draft", "input_count": len(rows)}
@@ -174,7 +180,10 @@ def build_asset_declaration_bundle(rows, *, politicians_by_official_id=None,
             uniform = _uniform_number(raw_uniform)
             if raw_uniform is not None and not uniform:
                 raise ValueError("invalid_company_uniform_number")
-            company = companies.get(uniform) if uniform else None
+            matches = {_entity_value(item, "id"): item for item in companies.get(uniform, [])}
+            if len(matches) > 1:
+                raise LookupError("ambiguous_company_uniform_number")
+            company = next(iter(matches.values()), None)
             if company is not None and _entity_value(company, "entity_type") != "Company":
                 raise ValueError("resolved_issuer_not_company")
             publication = _text(_field(row, "publication")) or "廉政專刊"

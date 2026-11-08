@@ -534,3 +534,15 @@ indeterminate because the remote queries do not expose percentage completion.
 ### Launch report reconciliation — 2026-11-05
 
 Company investigation reports join published context through the public uniform-number identifier view and an EXACT Company identity, never a display name. Existing published relationships and linked asset declarations are included alongside clearly marked live/source observations. The report graph aliases only the verified root to its canonical UUID; source snapshots are not mutated. Source versions retain locator, retrieval time and hash, while duplicate representations of the same citation are consolidated. Company and politician asset limits are disclosed. An unavailable index/asset schema is reported as unverified rather than an empty published-data finding; historical registry snapshots retain their original retrieval time and are not labelled live. No schema, Production data or identity matching policy changes are introduced.
+
+## 身分／資產／司法缺件覆核（2026-11-08）
+
+身分候選引擎升為 `tei-resolution-v2`，不回寫／覆蓋 v1 候選、既有實體或 FK。
+`scripts/audit_identity_asset_judicial_dev.py` 以既有 Development URL 防護及唯讀交易
+核對正式發布的 Entity、Relationship、Evidence、資產及 identifier 完整性；
+輸出 integrity 與 task_completion 分開，資料安全通過不等於缺口補齊。
+`scripts/recheck_judicial_unavailable.py` 凍結當次缺件 JID 名單，以既有同步器分批重查；
+獨立的 ignored journal 保存逐筆完成進度，持續出錯的前段案件不再阻塞後段。
+僅官方服務時段可連 API；`--check-only` 不連 API、不修改 snapshot/checkpoint。
+所有 unavailable receipts 必須具有重複錯誤指紋、對應 JList metadata、時間及來源，
+否則離線驗收拒絕以 upstream issue 清關。Production、RLS 與 schema 未變更。

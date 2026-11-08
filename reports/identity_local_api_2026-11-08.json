@@ -1,0 +1,30 @@
+{
+  "checks": [
+    {
+      "path": "/api/v1/entities/f2fce34c-03fb-500b-bb5a-2964abb97c3f",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/politicians/f2fce34c-03fb-500b-bb5a-2964abb97c3f/asset-declarations?limit=25",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/politicians/f2fce34c-03fb-500b-bb5a-2964abb97c3f/asset-declarations?limit=25&after=5b0699e9-589f-5177-bbe5-8b33494a5bf5",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/politicians/f2fce34c-03fb-500b-bb5a-2964abb97c3f/asset-declarations?limit=25&after=c847a937-70ae-5aa5-968a-3465ed6c5b08",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/evidence/9b4ad714-673e-5cc2-b94f-c8e1a7fbf6ef",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/graph/f2fce34c-03fb-500b-bb5a-2964abb97c3f?limit=25",
+      "status": 200
+    }
+  ],
+  "asset_rows": 63,
+  "complete_evidence": true
+}

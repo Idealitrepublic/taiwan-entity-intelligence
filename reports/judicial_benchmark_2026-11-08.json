@@ -1,0 +1,34 @@
+{
+  "index_generated_at": "2026-11-04T18:17:12+00:00",
+  "indexed_records": 8507,
+  "unique_jids": 8507,
+  "duplicate_jids": 0,
+  "historical_before_2025": 40,
+  "verified_case_recall": 1.0,
+  "official_verification_rate": 1.0,
+  "benchmark_date": "2026-11-08",
+  "cases": [
+    {
+      "jid": "KLDM,111,訴,328,20230428,1",
+      "company": "御首服務事業有限公司",
+      "indexed": true,
+      "official_verified": true,
+      "person_resolution": "unresolved_name_only"
+    },
+    {
+      "jid": "KLDV,112,訴,364,20231003,1",
+      "company": "御首服務事業有限公司",
+      "indexed": true,
+      "official_verified": true,
+      "person_resolution": "unresolved_name_only"
+    },
+    {
+      "jid": "TPDM,115,審簡,1644,20260907,1",
+      "company": "中華郵政股份有限公司",
+      "indexed": true,
+      "official_verified": true,
+      "person_resolution": "unresolved_name_only"
+    }
+  ],
+  "coverage_scope": "sampled known cases; not nationwide historical recall"
+}

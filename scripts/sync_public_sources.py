@@ -81,12 +81,13 @@ def verified_upstream_document_error(previous, detail, jlist_metadata) -> bool:
                 int(previous.get("failure_runs") or 0) >= 1)
 
 
-def main(argv=None, *, emit_status=True, retry_selection=None) -> int:
+def main(argv=None, *, emit_status=True, retry_selection=None, unavailable_selection=None) -> int:
     with source_write_lock(STATE.parent):
-        return _main(argv, emit_status=emit_status, retry_selection=retry_selection)
+        return _main(argv, emit_status=emit_status, retry_selection=retry_selection,
+                     unavailable_selection=unavailable_selection)
 
 
-def _main(argv=None, *, emit_status=True, retry_selection=None) -> int:
+def _main(argv=None, *, emit_status=True, retry_selection=None, unavailable_selection=None) -> int:
     started = time.monotonic()
     started_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     run_id = uuid.uuid4().hex
@@ -108,6 +109,8 @@ def _main(argv=None, *, emit_status=True, retry_selection=None) -> int:
         parser.error("--judicial-snapshot requires ordinary judicial batch mode")
     if retry_selection is not None and not args.judicial_retry_failed:
         parser.error("retry_selection requires --judicial-retry-failed")
+    if unavailable_selection is not None and not args.judicial_recheck_unavailable:
+        parser.error("unavailable_selection requires --judicial-recheck-unavailable")
     state = load_state()
     snapshot_jids = None
     snapshot_window = None
@@ -156,7 +159,12 @@ def _main(argv=None, *, emit_status=True, retry_selection=None) -> int:
                                         "request": {"method": "POST", "endpoint": "/JDoc"},
                                         "attempts": None,
                                         "batch_index": 0}
-    if retry_selection is not None:
+    if unavailable_selection is not None:
+        retry_jids = list(unavailable_selection)
+        if len(retry_jids) != len(set(retry_jids)) or len(retry_jids) > args.judicial_batch_size or \
+                any(jid not in unavailable for jid in retry_jids):
+            parser.error("unavailable_selection must be a unique bounded subset of unavailable JIDs")
+    elif retry_selection is not None:
         retry_jids = list(retry_selection)
         if len(retry_jids) != len(set(retry_jids)) or len(retry_jids) > args.judicial_batch_size or \
                 any(jid not in pending for jid in retry_jids):

@@ -32,6 +32,46 @@ def candidate(**updates):
 
 
 class EntityResolutionTests(unittest.TestCase):
+    def test_actual_registry_vacancy_label_is_not_a_person_identity(self):
+        source = observation(name="暫缺", company_entity_ids=["company-1"], roles=["董事"],
+                             start_date="2022-01-01", end_date="2024-12-31")
+        other = candidate(name="暫缺", company_entity_ids=["company-1"], roles=["董事"],
+                          start_date="2023-01-01", end_date="2025-12-31")
+        result = resolve_entity_candidates(source, [other])[0]
+        self.assertEqual((result.confidence, result.reason),
+                         ("UNRESOLVED", "vacant_position_not_person"))
+
+    def test_case_sensitive_official_ids_do_not_merge(self):
+        source = observation(identifiers=[{"namespace": "official:id", "value": "AbC"}])
+        other = candidate(identifiers=[{"namespace": "official:id", "value": "abc"}])
+        self.assertEqual(resolve_entity_candidates(source, [other])[0].confidence, "UNRESOLVED")
+
+    def test_self_and_duplicate_candidate_rows_do_not_make_exact_ambiguous(self):
+        identifier = {"namespace": "official:id", "value": "A"}
+        source = observation(identifiers=[identifier])
+        other = candidate(identifiers=[identifier])
+        results = resolve_entity_candidates(source, [source, other, other])
+        self.assertTrue(all(item.confidence == "EXACT" for item in results))
+
+    def test_same_post_and_period_with_different_names_is_not_high(self):
+        source = observation(company_entity_ids=["company-1"], roles=["董事"],
+                             start_date="2022-01-01", end_date="2024-12-31")
+        other = candidate(name="另一人", company_entity_ids=["company-1"], roles=["董事"],
+                          start_date="2023-01-01", end_date="2025-12-31")
+        self.assertEqual(resolve_entity_candidates(source, [other])[0].confidence, "MEDIUM")
+
+    def test_inverted_period_and_missing_candidate_proof_cannot_be_high(self):
+        source = observation(company_entity_ids=["company-1"], roles=["董事"],
+                             start_date="2024-01-01", end_date="2022-12-31")
+        other = candidate(company_entity_ids=["company-1"], roles=["董事"],
+                          start_date="2023-01-01", end_date="2025-12-31")
+        result = resolve_entity_candidates(source, [other])[0]
+        self.assertFalse(result.signals["time_overlap"])
+        self.assertNotEqual(result.confidence, "HIGH")
+        source["start_date"] = "2022-01-01"
+        other["evidence_ids"] = []
+        self.assertNotEqual(resolve_entity_candidates(source, [other])[0].confidence, "HIGH")
+
     def test_exact_official_identifier_is_traceable(self):
         identifier = {"namespace": "tw:uniform_number", "value": "12345678",
                       "confidence": "EXACT"}

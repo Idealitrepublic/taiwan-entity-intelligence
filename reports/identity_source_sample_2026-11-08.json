@@ -1,0 +1,203 @@
+{
+  "核對方式": "唯讀既有官方快照／來源列，不建立人物合併或新關係",
+  "董監事觀察列數": 1500899,
+  "來源快照": [
+    {
+      "sha256": "eb922d975623fce64f93d6a7e65b6e60b1e6ad2261cd6d7514e1dbe7d78791cd",
+      "source_url": "https://data.gcis.nat.gov.tw/od/file?oid=7E5201D9-CAD2-494E-8920-5319D66F66A1",
+      "retrieved_at": "2026-10-30T15:44:47.220239+00:00",
+      "source_kind": "officers"
+    },
+    {
+      "sha256": "08e0623e8de9e18659afafe42e452cc25db8e7835c8f40434f830b0ae44a03e8",
+      "source_url": "https://ardata.cy.gov.tw/api/v1/Search/download?AccountNumber=&DownloadType=3&ElectionArea=%E6%96%B0%E5%8C%97%E5%B8%82&ElectionName=113%E5%B9%B4%E7%AB%8B%E6%B3%95%E5%A7%94%E5%93%A1%E9%81%B8%E8%88%89&SearchType=2&Version=&YearOrSerial=1",
+      "retrieved_at": "2026-10-30T15:44:48.194694+00:00",
+      "source_kind": "corporate_contribution_observations"
+    },
+    {
+      "sha256": "8a9eecde731b3771d31411a0b19b627ef8f40f18912b017a3085b10224c16b92",
+      "source_url": "https://ardata.cy.gov.tw/api/v1/Search/download?AccountNumber=&DownloadType=3&ElectionArea=%E8%87%BA%E5%8C%97%E5%B8%82&ElectionName=113%E5%B9%B4%E7%AB%8B%E6%B3%95%E5%A7%94%E5%93%A1%E9%81%B8%E8%88%89&SearchType=2&Version=&YearOrSerial=1",
+      "retrieved_at": "2026-10-30T15:24:31.496726+00:00",
+      "source_kind": "corporate_contribution_observations"
+    }
+  ],
+  "同名抽樣": [
+    {
+      "姓名": "陳建宏",
+      "出現公司數": 411,
+      "判定": "保留來源範圍，不視為同一人物",
+      "原件列樣本": [
+        {
+          "統編": "00013022",
+          "公司名稱": "澤宏工程有限公司",
+          "職位": "董事",
+          "來源列號": 969,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00033786",
+          "公司名稱": "勇宏能源工程有限公司",
+          "職位": "董事",
+          "來源列號": 2652,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00037360",
+          "公司名稱": "晨欣建設股份有限公司",
+          "職位": "董事長",
+          "來源列號": 2935,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00078880",
+          "公司名稱": "立映建設股份有限公司",
+          "職位": "董事",
+          "來源列號": 6662,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        }
+      ]
+    },
+    {
+      "姓名": "陳怡君",
+      "出現公司數": 351,
+      "判定": "保留來源範圍，不視為同一人物",
+      "原件列樣本": [
+        {
+          "統編": "00000201",
+          "公司名稱": "栢詮股份有限公司",
+          "職位": "董事長",
+          "來源列號": 12,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00045848",
+          "公司名稱": "弘曜科技股份有限公司",
+          "職位": "監察人",
+          "來源列號": 3763,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00055893",
+          "公司名稱": "特伲樂國際有限公司",
+          "職位": "董事",
+          "來源列號": 4644,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00063943",
+          "公司名稱": "垣禎投資有限公司",
+          "職位": "董事",
+          "來源列號": 5302,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        }
+      ]
+    },
+    {
+      "姓名": "陳俊宏",
+      "出現公司數": 321,
+      "判定": "保留來源範圍，不視為同一人物",
+      "原件列樣本": [
+        {
+          "統編": "00008626",
+          "公司名稱": "新璽建設有限公司",
+          "職位": "董事",
+          "來源列號": 616,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00112521",
+          "公司名稱": "友輪有限公司",
+          "職位": "董事",
+          "來源列號": 10132,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00211254",
+          "公司名稱": "權興有限公司",
+          "職位": "董事",
+          "來源列號": 20588,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00231456",
+          "公司名稱": "台灣銀座仁志川股份有限公司",
+          "職位": "董事",
+          "來源列號": 22709,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        }
+      ]
+    },
+    {
+      "姓名": "林怡君",
+      "出現公司數": 265,
+      "判定": "保留來源範圍，不視為同一人物",
+      "原件列樣本": [
+        {
+          "統編": "00042390",
+          "公司名稱": "九果華美室內設計工程股份有限公司",
+          "職位": "董事長",
+          "來源列號": 3441,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00046213",
+          "公司名稱": "澤泰國際股份有限公司",
+          "職位": "監察人",
+          "來源列號": 3804,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00047108",
+          "公司名稱": "宇勝冷鏈有限公司",
+          "職位": "董事",
+          "來源列號": 3894,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00049886",
+          "公司名稱": "愛宜莊行銷策略廣告股份有限公司",
+          "職位": "董事長",
+          "來源列號": 4141,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        }
+      ]
+    },
+    {
+      "姓名": "陳淑芬",
+      "出現公司數": 248,
+      "判定": "保留來源範圍，不視為同一人物",
+      "原件列樣本": [
+        {
+          "統編": "00023669",
+          "公司名稱": "五穀設計有限公司",
+          "職位": "董事",
+          "來源列號": 1797,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00085496",
+          "公司名稱": "薩摩亞商享妙國際有限公司",
+          "職位": "在中華民國境內負責人/代表人",
+          "來源列號": 7272,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "00108821",
+          "公司名稱": "呈益事業有限公司",
+          "職位": "董事",
+          "來源列號": 9762,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        },
+        {
+          "統編": "04445223",
+          "公司名稱": "天隆實業股份有限公司",
+          "職位": "董事",
+          "來源列號": 37638,
+          "身分範圍": "company_source_observation_not_resolved_person"
+        }
+      ]
+    }
+  ],
+  "限制": "同名跨公司不等於同一自然人；非全臺人物身分核驗完成。",
+  "空缺職位來源列數": 4140
+}

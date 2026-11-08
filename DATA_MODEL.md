@@ -250,3 +250,13 @@ source URL and retrieval time are retained. Public RLS returns only published
 rows; public writes are denied. Roster-based `CivilOrganization` observations
 from MOI/MOL each have one Evidence link and `SOURCE_SCOPED` identity. No tax
 row or same-name roster row is automatically merged or linked.
+
+## 身分與資產連結防護覆核（2026-11-08）
+
+`tei-resolution-v2` 保留官方 identifier 的大小寫；自我觀察與重複來源列不再製造假歧義。
+無官方 ID 的 HIGH 候選須同時有相同姓名、有效重疊期間與候選 Evidence；
+仍只產生 pending review，不合併人物、不修改既有 Entity／Relationship／收藏 ID。
+不同姓名但相同公司、職位、時間只留 MEDIUM；倒置日期不可視為時間相符。
+資產統編 lookup 保留正規化後的全部候選；同一八碼號對應多個 Entity 時拒絕配對。
+沒有原件識別碼的股票、保險仍保留原文；保險不代表持有保險公司股權。
+本輪沒有 migration、公司身分補值或資料發布。驗收見 docs/IDENTITY_ASSET_JUDICIAL_ACCEPTANCE_2026-11-08.md。

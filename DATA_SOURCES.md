@@ -358,3 +358,15 @@ See [civil-organization coverage](docs/CIVIL_ORGANIZATION_COVERAGE.md) for the
 source-by-source denominator, known gaps and repeatable checks. Retain all CSV
 snapshots securely outside the repository; a hash alone cannot recreate
 later-changed upstream bytes.
+
+## 2026-11-08 來源缺口覆核
+
+Development 的 63 筆公開資產來自同一黃珊珊申報，不是全國資料。
+12 筆附公司名稱（6 股票、6 保險），原件未提供統編／股票代號／外國發行人 ID；
+官方證交所資訊可提供聯嘉投控的發行人候選，但不能把原件缺的代號當成原本存在。
+未將名稱候選補作 exact identifier，未將保單變成公司股權。
+原件 PDF SHA-256 f5889dacf9f6d0b855c91c372bb77856d93ecc342e0af986701e22485339596e，
+與既有 Evidence 相同；需取得可回溯到申報列的識別資料才能發布連結。
+司法當前快照 5,786 JID、5,096 成功、690 官方文件異常、0 pending。
+這是舊快照的處理狀態；本輪不在 API 開放時段，沒有重新驗證 690 份文件目前可取得性。
+缺件重查命令及驗收狀態見 docs/IDENTITY_ASSET_JUDICIAL_ACCEPTANCE_2026-11-08.md。

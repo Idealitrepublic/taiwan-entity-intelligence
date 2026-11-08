@@ -11,8 +11,9 @@ import unicodedata
 from .models import Entity, stable_id, uuid_string
 
 CONFIDENCE_LEVELS = ("EXACT", "HIGH", "MEDIUM", "LOW", "UNRESOLVED")
-ENGINE_VERSION = "tei-resolution-v1"
+ENGINE_VERSION = "tei-resolution-v2"
 PUBLISHABLE_CONFIDENCE = {"EXACT", "HIGH"}
+VACANT_NAMES = {"暫缺", "缺額", "待補", "出缺", "空缺", "無"}
 
 
 @dataclass(frozen=True)
@@ -72,7 +73,10 @@ def _identifier_pairs(observation):
     for item in _values(observation, "identifiers"):
         if not isinstance(item, dict) or item.get("confidence", "EXACT") != "EXACT":
             continue
-        namespace, value = _text(item.get("namespace")), _text(item.get("value"))
+        # Opaque official IDs can be case-sensitive; name normalization must
+        # never collapse two distinct identifiers (including term-scoped IDs).
+        namespace = str(item.get("namespace") or "").strip()
+        value = str(item.get("value") or "").strip()
         if namespace and value:
             pairs.add((namespace, value))
     return pairs
@@ -92,7 +96,8 @@ def _time_overlap(source, candidate):
         candidate_start, candidate_end = interval(candidate)
     except (TypeError, ValueError):
         return False
-    return max(source_start, candidate_start) <= min(source_end, candidate_end)
+    return (source_start <= source_end and candidate_start <= candidate_end and
+            max(source_start, candidate_start) <= min(source_end, candidate_end))
 
 
 def resolve_identifier(namespace: str, value: str, identifiers: list[dict]) -> Resolution:
@@ -112,8 +117,10 @@ def resolve_entity_candidates(source: dict, candidates: list[dict]):
     source_identifiers = _identifier_pairs(source)
     exact_counts = {}
     for candidate in candidates:
+        if uuid_string(candidate["entity_id"]) == source_id:
+            continue
         for identifier in source_identifiers & _identifier_pairs(candidate):
-            exact_counts[identifier] = exact_counts.get(identifier, 0) + 1
+            exact_counts.setdefault(identifier, set()).add(candidate["entity_id"])
 
     results = []
     for candidate in candidates:
@@ -144,8 +151,12 @@ def resolve_entity_candidates(source: dict, candidates: list[dict]):
                                         _text(candidate.get("source")) and
                                         _text(source.get("source")) != _text(candidate.get("source"))),
         }
-        ambiguous_exact = any(exact_counts[item] > 1 for item in shared_identifiers)
-        if not signals["entity_type_match"] or conflicting_namespaces or ambiguous_exact:
+        ambiguous_exact = any(len(exact_counts[item]) > 1 for item in shared_identifiers)
+        vacant_person = source.get("entity_type") in {"Person", "Politician", "GovernmentOfficial"} and (
+            _text(source.get("name")) in VACANT_NAMES or _text(candidate.get("name")) in VACANT_NAMES)
+        if vacant_person:
+            score, confidence, reason = 0.0, "UNRESOLVED", "vacant_position_not_person"
+        elif not signals["entity_type_match"] or conflicting_namespaces or ambiguous_exact:
             score, confidence = 0.0, "UNRESOLVED"
             reason = ("entity_type_mismatch" if not signals["entity_type_match"] else
                       "conflicting_official_identifiers" if conflicting_namespaces else
@@ -161,6 +172,12 @@ def resolve_entity_candidates(source: dict, candidates: list[dict]):
             score += 0.10 if signals["independent_sources"] else 0
             confidence = ("HIGH" if score >= 0.75 else "MEDIUM" if score >= 0.50
                           else "LOW" if score >= 0.25 else "UNRESOLVED")
+            if confidence == "HIGH" and (not signals["normalized_name_match"] or
+                                         not signals["time_overlap"] or
+                                         not candidate.get("evidence_ids")):
+                # Company/role/time describe a post, not necessarily its holder.
+                # A HIGH proposal also needs corroborating candidate Evidence.
+                score, confidence = 0.70, "MEDIUM"
             reason = "multi_signal_context" if confidence != "UNRESOLVED" else "insufficient_signals"
         result_id = stable_id("resolution_candidate", ENGINE_VERSION,
                               f"{source_id}:{candidate_id}:{primary_evidence}")
