@@ -1,0 +1,182 @@
+{
+  "review_scope": "Control Yuan Gazette 319, Huang Shan-shan 2026-02-01; twelve existing rows only",
+  "filing_sha256": "f5889dacf9f6d0b855c91c372bb77856d93ecc342e0af986701e22485339596e",
+  "reviewed_on": "2026-11-08",
+  "issuers": [
+    {
+      "source_label": "聯嘉投控",
+      "official_name": "聯嘉光電投資控股股份有限公司",
+      "namespace": "tw:uniform_number",
+      "value": "60654582",
+      "source_url": "https://findbiz.nat.gov.tw/fts/company/60654582",
+      "jurisdiction": "tw",
+      "role": "stock_issuer",
+      "source_access": "downloaded_moea_json",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding",
+      "alias_source_url": "https://wwwc.twse.com.tw/staticFiles/news/news/tsecnews/8a8216d697fc438f01989dc23d80029a.pdf"
+    },
+    {
+      "source_label": "南山人壽保險股份有限公司",
+      "official_name": "南山人壽保險股份有限公司",
+      "namespace": "tw:uniform_number",
+      "value": "11456006",
+      "source_url": "https://findbiz.nat.gov.tw/fts/company/11456006",
+      "jurisdiction": "tw",
+      "role": "insurance_provider",
+      "source_access": "downloaded_moea_json",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding"
+    },
+    {
+      "source_label": "國泰人壽保險股份有限公司",
+      "official_name": "國泰人壽保險股份有限公司",
+      "namespace": "tw:uniform_number",
+      "value": "03374707",
+      "source_url": "https://findbiz.nat.gov.tw/fts/company/03374707",
+      "jurisdiction": "tw",
+      "role": "insurance_provider",
+      "source_access": "downloaded_moea_json",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding"
+    },
+    {
+      "source_label": "富邦人壽保險股份有限公司",
+      "official_name": "富邦人壽保險股份有限公司",
+      "namespace": "tw:uniform_number",
+      "value": "27935073",
+      "source_url": "https://findbiz.nat.gov.tw/fts/company/27935073",
+      "jurisdiction": "tw",
+      "role": "insurance_provider",
+      "source_access": "downloaded_moea_json",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding"
+    },
+    {
+      "source_label": "Berkshire Hathaway Inc",
+      "official_name": "BERKSHIRE HATHAWAY INC",
+      "namespace": "us:sec:cik",
+      "value": "0001067983",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1067983/000119312526083899/0001193125-26-083899-index-headers.html",
+      "jurisdiction": "us",
+      "role": "stock_issuer",
+      "source_access": "official_page_identity_fields_via_web",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding"
+    },
+    {
+      "source_label": "Figma Inc",
+      "official_name": "Figma, Inc.",
+      "namespace": "us:sec:cik",
+      "value": "0001579878",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1579878/999999999525002410/xslEFFECTX01/primary_doc.xml",
+      "jurisdiction": "us",
+      "role": "stock_issuer",
+      "source_access": "official_page_identity_fields_via_web",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding"
+    },
+    {
+      "source_label": "NVIDIA Corp",
+      "official_name": "NVIDIA CORP",
+      "namespace": "us:sec:cik",
+      "value": "0001045810",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581025000023/0001045810-25-000023-index-headers.html",
+      "jurisdiction": "us",
+      "role": "stock_issuer",
+      "source_access": "official_page_identity_fields_via_web",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding"
+    },
+    {
+      "source_label": "Palantir Technologies",
+      "official_name": "Palantir Technologies Inc.",
+      "namespace": "us:sec:cik",
+      "value": "0001321655",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000011/R1.htm",
+      "jurisdiction": "us",
+      "role": "stock_issuer",
+      "source_access": "official_page_identity_fields_via_web",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding"
+    },
+    {
+      "source_label": "Tesla Inc",
+      "official_name": "Tesla, Inc.",
+      "namespace": "us:sec:cik",
+      "value": "0001318605",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000195004725000663/0001950047-25-000663-index-headers.html",
+      "jurisdiction": "us",
+      "role": "stock_issuer",
+      "source_access": "official_page_identity_fields_via_web",
+      "identity_scope": "registered_legal_entity_only_not_security_class_or_current_holding"
+    }
+  ],
+  "rows": [
+    {
+      "asset_id": "0f4d9a7d-1b5a-5fe3-99d9-5d7b1d512986",
+      "asset_type": "STOCK",
+      "company_name": "聯嘉投控",
+      "declaration_evidence_id": "c2c4bcbb-f78a-51ea-a138-584b13671b2f"
+    },
+    {
+      "asset_id": "2ab7a63b-19d4-54e4-813d-5ac7e35a2d18",
+      "asset_type": "INSURANCE",
+      "company_name": "國泰人壽保險股份有限公司",
+      "declaration_evidence_id": "eb7d7f75-4727-516f-973a-d7b77e406da0"
+    },
+    {
+      "asset_id": "3782d7d0-5fe3-53d4-91b3-947d730741fb",
+      "asset_type": "STOCK",
+      "company_name": "NVIDIA Corp",
+      "declaration_evidence_id": "c2ebddc0-1e44-504c-9bbc-c7049e3bda9a"
+    },
+    {
+      "asset_id": "5838e800-26b1-5181-9ba3-288292bec6f8",
+      "asset_type": "INSURANCE",
+      "company_name": "富邦人壽保險股份有限公司",
+      "declaration_evidence_id": "6392a5dd-0d59-5e90-847e-d3c7eabefd16"
+    },
+    {
+      "asset_id": "6581803c-a18f-5251-9411-c4459131f8d9",
+      "asset_type": "STOCK",
+      "company_name": "Palantir Technologies",
+      "declaration_evidence_id": "928115b4-a2cf-53ce-bfa6-456c3f08b94b"
+    },
+    {
+      "asset_id": "88ed272c-4539-5fc1-a024-3435c61b3d45",
+      "asset_type": "STOCK",
+      "company_name": "Berkshire Hathaway Inc",
+      "declaration_evidence_id": "af2c04ba-93e7-57b4-ad33-99c04f3e77c1"
+    },
+    {
+      "asset_id": "a9438981-f653-5cca-a40d-0e90d8262feb",
+      "asset_type": "INSURANCE",
+      "company_name": "南山人壽保險股份有限公司",
+      "declaration_evidence_id": "e9f88069-3d3b-5f3a-9157-b084c78a1df7"
+    },
+    {
+      "asset_id": "b941a23b-956a-5ff0-bd6b-5fa760617e40",
+      "asset_type": "INSURANCE",
+      "company_name": "富邦人壽保險股份有限公司",
+      "declaration_evidence_id": "bbf975da-3abc-5886-acd5-bfc254839fda"
+    },
+    {
+      "asset_id": "c180a212-8669-57fc-a0a5-630ddb2d088a",
+      "asset_type": "STOCK",
+      "company_name": "Tesla Inc",
+      "declaration_evidence_id": "81106596-7240-50b8-86c6-bac94acb8559"
+    },
+    {
+      "asset_id": "c374a7ee-cc5d-538d-8481-3e42317d351c",
+      "asset_type": "INSURANCE",
+      "company_name": "國泰人壽保險股份有限公司",
+      "declaration_evidence_id": "5ca9e838-d898-5017-ac5e-43a7b1e19af5"
+    },
+    {
+      "asset_id": "c847a937-70ae-5aa5-968a-3465ed6c5b08",
+      "asset_type": "STOCK",
+      "company_name": "Figma Inc",
+      "declaration_evidence_id": "7606fd63-eff4-5d3e-9944-50c793a12f91"
+    },
+    {
+      "asset_id": "e5e60b42-6a87-5ab1-8007-839603e8e747",
+      "asset_type": "INSURANCE",
+      "company_name": "富邦人壽保險股份有限公司",
+      "declaration_evidence_id": "87ce8ad0-e8d0-5836-a440-09bfd2121253"
+    }
+  ],
+  "publication_scope": "identity Evidence only; no canonical merge, asset FK update or ownership Relationship"
+}

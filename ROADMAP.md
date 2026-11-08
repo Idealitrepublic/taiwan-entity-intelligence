@@ -359,3 +359,7 @@ Production 未修改；真人Pilot與另行正式發布授權仍為後續閘門�
 - 已實作唯讀 Development 完整性核對與司法缺件凍結名單續跑。
 - 尚待：原件可核對的資產 issuer identifiers、690 筆 JDoc 服務時段實際重查。
 - 安全驗收 PASS 不代表資料補齊；不得標記整項 COMPLETE 或啟動 Production release。
+
+## 12 筆申報對象識別（2026-11-08）
+
+7 筆臺灣統編、5 筆 SEC CIK 已逐列記錄登記識別；新增 21 份 Development Evidence。此為身份覆核，12 筆正式資產公司 FK／股權連結仍未核准，保單不可當持股；不據此標記整體補缺 COMPLETE。

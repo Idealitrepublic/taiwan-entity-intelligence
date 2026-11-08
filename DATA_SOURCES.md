@@ -370,3 +370,7 @@ Development 的 63 筆公開資產來自同一黃珊珊申報，不是全國資�
 司法當前快照 5,786 JID、5,096 成功、690 官方文件異常、0 pending。
 這是舊快照的處理狀態；本輪不在 API 開放時段，沒有重新驗證 690 份文件目前可取得性。
 缺件重查命令及驗收狀態見 docs/IDENTITY_ASSET_JUDICIAL_ACCEPTANCE_2026-11-08.md。
+
+## 12 筆公司識別覆核（2026-11-08）
+
+已核對 4 個臺灣統編／5 個 SEC CIK，涵蓋 12 個既有股票或保單列。原件仍未列對應 ID，只有逐列識別 Evidence，沒有正式持股邊。MOEA 原 JSON 有私有快照／SHA；SEC bulk 403 明記，使用官方靜態申報頁或通知的欄位覆核，不宣稱原始 JSON 下載成功。詳見 docs/ASSET_ISSUER_IDENTIFICATION_2026-11-08.md。

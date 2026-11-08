@@ -546,3 +546,7 @@ Company investigation reports join published context through the public uniform-
 僅官方服務時段可連 API；`--check-only` 不連 API、不修改 snapshot/checkpoint。
 所有 unavailable receipts 必須具有重複錯誤指紋、對應 JList metadata、時間及來源，
 否則離線驗收拒絕以 upstream issue 清關。Production、RLS 與 schema 未變更。
+
+## 申報對象識別 Evidence（2026-11-08）
+
+`src/asset_issuer_review.py` 與固定 12 列 manifest 只生成身份覆核／登記 Evidence；不包含 Entity、identifier、Relationship 或資產更新。Development-only operator 經備份／容量保護、固定原件 hash、唯讀前後比較，才新增 Evidence。無 migration、API 或 UI 改動；既有資產 FK 精確配對限制不變。
