@@ -211,7 +211,8 @@ class AssetDeclarationTests(unittest.TestCase):
                 return [politician]
             return [{"id": CURSOR, "politician_id": POLITICIAN, "asset_type": "STOCK",
                      "company": company, "relationship": {"id": CURSOR},
-                     "primary_evidence": {"id": CURSOR}},
+                     "primary_evidence": {"id": CURSOR},
+                     "company_identity_evidence": {"id": "55555555-5555-4555-8555-555555555555"}},
                     {"id": "44444444-4444-4444-8444-444444444444"}]
 
         page = EntityRepository(transport=get).asset_declarations(
@@ -224,6 +225,8 @@ class AssetDeclarationTests(unittest.TestCase):
         self.assertEqual(calls[-1][1]["declaration_year"], "eq.2026")
         self.assertEqual(calls[-1][1]["asset_type"], "eq.STOCK")
         self.assertIn("primary_evidence:evidence_records", calls[-1][1]["select"])
+        self.assertIn("company_identity_evidence:evidence_records", calls[-1][1]["select"])
+        self.assertIn("company_identity_evidence_id", calls[-1][1]["select"])
 
     def test_missing_table_is_backward_compatible(self):
         politician, _ = entities()

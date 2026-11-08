@@ -75,6 +75,7 @@ ASSET_DECLARATION_FIELDS = (
     "quantity_unit",
     "company_name",
     "company_entity_id",
+    "company_identity_evidence_id",
     "relationship_id",
     "primary_evidence_id",
     "created_at",

@@ -213,6 +213,8 @@ class EntityRepository:
         params = {
             'select': (f'{ASSET_DECLARATION_FIELDS},'
                        'primary_evidence:evidence_records!asset_declarations_primary_evidence_id_fkey!inner('
+                       f'{EVIDENCE_FIELDS}),'
+                       'company_identity_evidence:evidence_records!asset_declarations_company_identity_evidence_id_fkey('
                        f'{EVIDENCE_FIELDS})'),
             'company_entity_id': f'eq.{company_id}', 'publication_status': 'eq.published',
             'primary_evidence.publication_status': 'eq.published', 'primary_evidence.status': 'eq.active',
@@ -493,6 +495,8 @@ class EntityRepository:
                 f"company:entities!asset_declarations_company_entity_id_fkey({ENTITY_FIELDS}),"
                 f"relationship:relationships!asset_declarations_relationship_id_fkey({RELATIONSHIP_FIELDS}),"
                 "primary_evidence:evidence_records!asset_declarations_primary_evidence_id_fkey("
+                f"{EVIDENCE_FIELDS}),"
+                "company_identity_evidence:evidence_records!asset_declarations_company_identity_evidence_id_fkey("
                 f"{EVIDENCE_FIELDS})"),
             "politician_id": f"eq.{politician_id}", "publication_status": "eq.published",
             "order": "id.asc", "limit": limit + 1,
@@ -529,6 +533,8 @@ class EntityRepository:
                 f"{ASSET_DECLARATION_FIELDS},"
                 f"company:entities!asset_declarations_company_entity_id_fkey({ENTITY_FIELDS}),"
                 "primary_evidence:evidence_records!asset_declarations_primary_evidence_id_fkey("
+                f"{EVIDENCE_FIELDS}),"
+                "company_identity_evidence:evidence_records!asset_declarations_company_identity_evidence_id_fkey("
                 f"{EVIDENCE_FIELDS})"),
             "politician_id": f"eq.{politician_id}", "publication_status": "eq.published",
             "order": "declaration_year.desc,id.asc", "limit": MAX_TIMELINE_ROWS + 1,

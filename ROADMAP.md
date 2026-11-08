@@ -195,11 +195,22 @@ Status: implemented on `phase-7/asset-declaration`; Preview acceptance and Produ
 
 - Store evidence-backed legislator declarations across all thirteen required asset categories.
 - Preserve year, type, name, amount, quantity, source company text, Evidence, and original source.
-- Resolve a Company only by an exact normalized eight-digit identifier; never by fuzzy company or person name.
+- Resolve a Company by an identifier in the declaration or by a separately reviewed, row-scoped official-identifier crosswalk; never by fuzzy name alone.
 - Create `ASSET_OWNERSHIP` or `BUSINESS_INVESTMENT` only for eligible, exactly resolved declarations.
 - Add bounded politician-page reads with year/type filters and backward-compatible old-schema behavior.
 
 Exit gate: targeted tests, PostgreSQL checks, full build, GitHub push, and protected Preview runtime checks pass without a Production mutation.
+
+### Asset issuer identity follow-up — 2026-11-08
+
+The previous 12-row Development pass published only counterparty-identification
+Evidence because the Phase 7 validator required a Taiwan uniform number inside
+the original Evidence locator. The additive reviewed identity field now permits
+separate official registry Evidence without rewriting that original locator.
+The bounded pilot may link six declared stock rows as `HIGH` issuer-level
+ownership; the other six are insurance-provider identity only, with no ownership
+edge. No share class/current holding is inferred and no Production migration is
+authorized. See `docs/ASSET_ISSUER_IDENTIFICATION_2026-11-08.md`.
 
 ## Phase 8 — Asset Timeline
 

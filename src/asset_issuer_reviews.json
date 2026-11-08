@@ -178,5 +178,5 @@
       "declaration_evidence_id": "87ce8ad0-e8d0-5836-a440-09bfd2121253"
     }
   ],
-  "publication_scope": "identity Evidence only; no canonical merge, asset FK update or ownership Relationship"
+  "publication_scope": "row-scoped official issuer identity; STOCK rows link to issuer and publish ASSET_OWNERSHIP; INSURANCE rows link only to provider"
 }

@@ -1,6 +1,6 @@
 # 12 筆財產申報公司識別覆核（2026-11-08）
 
-**識別資料查核已執行；不等於 12 筆正式持股連結已完成。**
+**初次識別覆核結果（後續已由文末修正紀錄更新）：**當時只新增識別 Evidence，尚未建立申報列 FK／持股 Relationship。
 範圍限廉政專刊 319 期、黃珊珊 2026-02-01 申報中既有 12 列。
 本輪在 tei-development 新增 21 份 Evidence（9 份登記識別＋12 份逐列覆核），沒有新建公司、改動原申報、填入公司 FK 或發布股權線；Production 未修改。
 
@@ -64,3 +64,31 @@
 - 未改 UI、API、schema／RLS 或 Production；本輪只交付逐筆識別證據與操作驗證。
 - Preview 分支驗收入口：https://taiwan-entity-intelligence-git-fix-764717-coldlight871029-9944.vercel.app/
   部署狀態及實際 source commit 另由 Vercel 回應核對。
+
+## 持股連結阻塞修正（2026-11-08，已完成）
+
+**根因**：Phase 7 的 DB validator 只認原始申報 Evidence locator 中的
+`company_match_method=exact_uniform_number` 與八碼臺灣統編。這 12 列原件只有名稱，
+美國發行人使用 SEC CIK；前一輪新增的身分 Evidence 沒有 FK 欄位可掛到申報列，
+所以即使已有官方登記與逐列覆核，6 筆股票仍無法發布公司 FK／Relationship。
+
+修正加入 nullable `company_identity_evidence_id`：原財產 Evidence 和原始欄位保持不變；
+僅以行內核准 Evidence→逐列覆核→官方登記 Evidence→公司精確 identifier 的鏈路
+允許 `HIGH` 身分配對。6 筆股票可建立 HIGH 發行人層級 `ASSET_OWNERSHIP`，不推測股別，
+也不宣稱已重新驗證目前持有；6 筆保險只標記保險提供者，沒有持股／投資線。
+Evidence 失效會撤回資產與相關關係。原始名稱不會做全域 alias 或模糊合併。
+
+修正已套用至 **tei-development**（migration `20261108070814`）。執行前已建立並驗證
+age 加密備份；核准對照預演通過後，以單一交易建立／精確重用 9 家發行人 Entity，
+逐列連結 12 筆申報，為 6 筆股票建立 `HIGH` 信心 `ASSET_OWNERSHIP`，6 筆保險僅連到保險提供者。
+申報金額、數量、日期、原 Evidence 與來源內容不變；沒有將保單改成持股，也不推斷股票類別或當前仍持有。
+
+### 修復驗收
+
+- Development：63 筆已發布資產；12/12 目標列可見公司連結；其中 6 筆股票有 6 條持股關係，6 筆保險沒有持股關係。總已發布 Relationship 為 1,397（新增 6 條）。
+- 12 筆均有 active/published 的身分核准 Evidence；精確官方識別碼存在；缺失證據或識別碼的連結為 0。
+- 實際以 PostgreSQL `anon` role 驗證 RLS：公開讀取 12 筆連結資產、6 條持股線、12 份核准 Evidence 與 24 個人物／公司 Evidence 關聯。
+- 資料庫大小約 475.7 MB，仍低於本次執行工具設定的 480 MB 保護上限。
+- 30 個 targeted Python tests、189 個 PGlite migration／RLS checks 通過；完整 Python 與 UI 測試、lint、build check 通過。
+- 本機沒有 `npm` 命令；使用專案指定的 Python build checker 與已安裝 Node runtime 執行 package.json 所列測試。
+- Production 未修改。Preview 部署需以本次 commit 核對後另列 URL／狀態。

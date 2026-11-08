@@ -446,6 +446,11 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
       'asset_declaration_supersedes_idx')`);
   assert.equal(assetIndexes.rows.length, 8);
   checks++;
+  const identityColumn = await db.query(`select count(*)::int n from information_schema.columns
+    where table_schema='public' and table_name='asset_declarations'
+      and column_name='company_identity_evidence_id'`);
+  assert.equal(identityColumn.rows[0].n, 1, 'row-scoped reviewed identity is a separate Evidence FK');
+  checks++;
   await rejects(`insert into public.asset_declarations
     (politician_id,declaration_year,asset_type,asset_name,primary_evidence_id)
     values ('33333333-3333-4333-8333-333333333333',2025,'CASH','篡改',$1)`,
@@ -453,6 +458,127 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   await rejects('select public.tei_ingest_asset_declaration_bundle($1::jsonb)',
     'public asset ingestion denied', [JSON.stringify({asset_declarations: []})]);
   await db.exec('reset role; set role service_role;');
+  const registryEvidenceId = '30303030-3030-4030-8030-303030303030';
+  const priorReviewEvidenceId = '31313131-3131-4131-8131-313131313131';
+  const approvedEvidenceId = '32323232-3232-4232-8232-323232323232';
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'申報對象官方登記識別 / Official counterparty register',
+      'tw:uniform_number:12345678','Official Registry','https://findbiz.nat.gov.tw/fts/company/12345678',
+      jsonb_build_object('identifier_namespace','tw:uniform_number','identifier_value','12345678',
+        'official_name','測試公司','jurisdiction','tw'),
+      '官方公司識別','登記名稱與統編','2025-11-01T00:00:00Z','2026-09-16T03:00:00Z',
+      $2,'active','published')`, [registryEvidenceId,'8'.repeat(64)]);
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'財產申報公司識別覆核 / Asset issuer identity review',
+      $2,'Derived Data','https://sunshine.cy.gov.tw/',jsonb_build_object(
+        'asset_declaration_id',$3::text,'declaration_evidence_id',$4::text,
+        'register_evidence_id',$5::text,'official_name','測試公司',
+        'source_company_name','測試公司','identifier_namespace','tw:uniform_number',
+        'identifier_value','12345678','role','stock_issuer',
+        'matching_method','manual_row_scoped_official_registry_review'),
+      '來源列識別覆核','逐列官方登記對照','2025-11-01T00:00:00Z','2026-09-16T03:00:00Z',
+      $6,'active','published')`, [priorReviewEvidenceId,
+      `asset:${linkedAssetId}:issuer-review`,linkedAssetId,assetEvidenceId,registryEvidenceId,
+      '9'.repeat(64)]);
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'財產申報公司識別核准 / Asset issuer resolution approval',
+      $2,'Derived Data','https://sunshine.cy.gov.tw/',jsonb_build_object(
+        'asset_declaration_id',$3::text,'declaration_evidence_id',$4::text,
+        'company_entity_id',$5::text,'source_company_name','測試公司',
+        'identifier_namespace','tw:uniform_number','identifier_value','12345678',
+        'register_evidence_id',$6::text,'prior_review_evidence_id',$7::text,
+        'role','stock_issuer','matching_method','manual_row_scoped_official_registry_review',
+        'decision','approved','identity_confidence','HIGH'),
+      '逐列核准識別','原始申報列與官方公司識別逐列覆核','2025-11-01T00:00:00Z',
+      '2026-09-16T03:00:00Z',$8,'active','published')`, [approvedEvidenceId,
+      `asset:${linkedAssetId}:issuer-approval:v1`,linkedAssetId,assetEvidenceId,
+      company.id,registryEvidenceId,priorReviewEvidenceId,'a'.repeat(64)]);
+  await db.query(`insert into public.entity_evidence(entity_id,evidence_id,fact_type)
+    values ($1,$2,'company_registration_identity'),($1,$3,'asset_counterparty_identity_approval')`,
+    [company.id,registryEvidenceId,approvedEvidenceId]);
+  await db.query(`insert into public.relationship_evidence(relationship_id,evidence_id,support_type)
+    values ($1,$2,'supports'),($1,$3,'supports'),($1,$4,'context')`,
+    [assetRelationshipId,assetEvidenceId,approvedEvidenceId,registryEvidenceId]);
+  await db.query(`update public.asset_declarations set company_identity_evidence_id=$2
+    where id=$1`, [linkedAssetId,approvedEvidenceId]);
+  await db.exec('set constraints all immediate;');
+  assert.equal((await db.query('select company_identity_evidence_id from public.asset_declarations where id=$1',
+    [linkedAssetId])).rows[0].company_identity_evidence_id, approvedEvidenceId);
+  checks++;
+  await rejects(`update public.asset_declarations set company_identity_evidence_id=$2
+    where id=$1`, 'review Evidence cannot be reused for another declaration',
+    [unresolvedAssetId,approvedEvidenceId]);
+  const insurerIdentityEvidenceId = '36363636-3636-4636-8636-363636363636';
+  const insurerPriorReviewEvidenceId = '34343434-3434-4434-8434-343434343434';
+  const insurerApprovalEvidenceId = '35353535-3535-4535-8535-353535353535';
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'申報對象官方登記識別 / Official counterparty register',
+      'tw:uniform_number:12345678','Official Registry','https://findbiz.nat.gov.tw/fts/company/12345678',
+      jsonb_build_object('identifier_namespace','tw:uniform_number','identifier_value','12345678',
+        'official_name','測試公司','jurisdiction','tw'),
+      '官方公司識別','登記名稱與統編','2025-11-01T00:00:00Z','2026-09-16T03:00:00Z',
+      $2,'active','published') on conflict(id) do nothing`,
+    [insurerIdentityEvidenceId,'b'.repeat(64)]);
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'財產申報公司識別覆核 / Asset issuer identity review',
+      $2,'Derived Data','https://sunshine.cy.gov.tw/',jsonb_build_object(
+        'asset_declaration_id',$3::text,'declaration_evidence_id',$4::text,
+        'register_evidence_id',$5::text,'official_name','測試公司',
+        'source_company_name','同名但未識別公司','identifier_namespace','tw:uniform_number',
+        'identifier_value','12345678','role','insurance_provider',
+        'matching_method','manual_row_scoped_official_registry_review'),
+      '來源列識別覆核','逐列保險提供者對照','2025-11-01T00:00:00Z','2026-09-16T03:00:00Z',
+      $6,'active','published')`, [insurerPriorReviewEvidenceId,
+      `asset:${unresolvedAssetId}:issuer-review`,unresolvedAssetId,unresolvedAssetEvidenceId,
+      insurerIdentityEvidenceId,'c'.repeat(64)]);
+  await db.query(`insert into public.evidence_records
+    (id,source_name,source_record_id,source_class,source_url,source_locator,title,summary,
+     observed_at,retrieved_at,content_hash,status,publication_status)
+    values ($1,'財產申報公司識別核准 / Asset issuer resolution approval',
+      $2,'Derived Data','https://sunshine.cy.gov.tw/',jsonb_build_object(
+        'asset_declaration_id',$3::text,'declaration_evidence_id',$4::text,
+        'company_entity_id',$5::text,'source_company_name','同名但未識別公司',
+        'identifier_namespace','tw:uniform_number','identifier_value','12345678',
+        'register_evidence_id',$6::text,'prior_review_evidence_id',$7::text,
+        'role','insurance_provider','matching_method','manual_row_scoped_official_registry_review',
+        'decision','approved','identity_confidence','HIGH'),
+      '逐列核准識別','僅識別保險提供者，不建立持股關係','2025-11-01T00:00:00Z',
+      '2026-09-16T03:00:00Z',$8,'active','published')`, [insurerApprovalEvidenceId,
+      `asset:${unresolvedAssetId}:issuer-approval:v1`,unresolvedAssetId,unresolvedAssetEvidenceId,
+      company.id,insurerIdentityEvidenceId,insurerPriorReviewEvidenceId,'d'.repeat(64)]);
+  await db.query(`insert into public.entity_evidence(entity_id,evidence_id,fact_type)
+    values ($1,$2,'company_registration_identity'),($1,$3,'asset_counterparty_identity_approval')
+    on conflict do nothing`, [company.id,insurerIdentityEvidenceId,insurerApprovalEvidenceId]);
+  await db.query(`update public.asset_declarations set company_entity_id=$2,
+    company_identity_evidence_id=$3 where id=$1`,
+    [unresolvedAssetId,company.id,insurerApprovalEvidenceId]);
+  await db.exec('set constraints all immediate;');
+  const insurerLink = await db.query('select company_entity_id,relationship_id from public.asset_declarations where id=$1',
+    [unresolvedAssetId]);
+  assert.equal(insurerLink.rows[0].company_entity_id, company.id);
+  assert.equal(insurerLink.rows[0].relationship_id, null,
+    'insurance provider identity never becomes an ownership edge');
+  checks += 2;
+  await db.exec('reset role; set role anon;');
+  await rejects(`update public.evidence_records set status='retracted' where id=$1`,
+    'anon cannot withdraw identity Evidence', [approvedEvidenceId]);
+  await db.exec('reset role; set role service_role;');
+  await db.query("update public.evidence_records set status='retracted' where id=$1", [approvedEvidenceId]);
+  assert.equal((await db.query('select publication_status from public.asset_declarations where id=$1',
+    [linkedAssetId])).rows[0].publication_status, 'withdrawn');
+  assert.equal((await db.query('select status from public.relationships where id=$1',
+    [assetRelationshipId])).rows[0].status, 'retracted');
+  checks += 2;
   const badAssetId = '16161616-1616-4616-8616-161616161616';
   await rejects(`insert into public.asset_declarations
     (id,politician_id,declaration_year,asset_type,asset_name,company_name,

@@ -164,8 +164,11 @@ address, contact, spouse, and minor-child fields are excluded from ingestion.
 ### Identity, versioning, and quality rules
 
 - Politicians resolve only through an exact official identifier crosswalk.
-- Companies resolve only through an exact normalized eight-digit uniform number;
-  a company name remains source text and never forces a merge.
+- Companies resolve through an exact normalized eight-digit uniform number in
+  the original source, or through a separately published row-scoped `HIGH`
+  review backed by an official identifier and matching registry Evidence.
+  A company name alone never forces a merge; reviewed links retain both the
+  original filing and the separate identity-review provenance.
 - A deterministic declaration key identifies the same filing line across
   corrections. Versions are append-only; a later version references the older,
   withdrawn version, and only one version may be published for a key.
@@ -174,6 +177,19 @@ address, contact, spouse, and minor-child fields are excluded from ingestion.
 - Draft-only batches contain at most 200 declaration lines/Relationships, 400
   Evidence records, and 1 MB. Zero-row loads and source-record conflicts require
   review. Rollback removes the draft batch; published corrections are superseded.
+
+### Reviewed issuer-resolution pilot (2026-11-08)
+
+For the twelve existing 2026 Gazette 319 rows in Development, four Taiwan
+issuers use MOEA/GCI uniform numbers and five US issuers use SEC CIKs. The
+issuer register proves the legal entity identifier, while a separate row-level
+review records why that identifier corresponds to the named declaration row.
+The original Gazette Evidence, values, and retrieval time are unchanged. Six
+`STOCK` rows may publish `HIGH` issuer-level `ASSET_OWNERSHIP` relationships
+with primary filing Evidence plus supporting review and registry Evidence.
+Share class and current holding status are not inferred. Six insurance rows may
+point to their insurer entity as provider but cannot create ownership edges.
+This pilot is not a national asset-declaration coverage claim.
 
 ## DATA Phase 4 — Cross-source entity resolution
 

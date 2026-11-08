@@ -50,6 +50,8 @@ class CompanyReportContextTests(unittest.TestCase):
         self.assertEqual(table, 'asset_declarations')
         self.assertEqual(params['company_entity_id'], 'eq.' + COMPANY)
         self.assertIn('!inner(', params['select'])
+        self.assertIn('company_identity_evidence:evidence_records', params['select'])
+        self.assertIn('company_identity_evidence_id', params['select'])
         self.assertEqual(params['primary_evidence.publication_status'], 'eq.published')
         self.assertEqual(params['primary_evidence.status'], 'eq.active')
 

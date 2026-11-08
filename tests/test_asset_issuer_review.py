@@ -2,7 +2,8 @@ import copy
 import json
 import unittest
 
-from src.asset_issuer_review import MANIFEST, build_review_bundle
+from src.asset_issuer_review import (APPROVED_SCOPE, MANIFEST, build_approved_link_bundle,
+                                     build_review_bundle)
 from src.entities.models import stable_id
 from scripts.review_asset_issuers_dev import publication_sql
 
@@ -16,6 +17,12 @@ class AssetIssuerReviewTests(unittest.TestCase):
             'publication_status': 'published', 'asset_type': row['asset_type'],
             'company_name': row['company_name'], 'primary_evidence_id': row['declaration_evidence_id'],
             'pdf_sha256': self.manifest['filing_sha256'], 'source_url': 'https://www-ws.cy.gov.tw/Download.ashx',
+            'source_locator': {'declaration_date': '2026-02-01'},
+            'observed_at': '2026-01-31T16:00:00+00:00',
+            'amount': '1000' if row['asset_type'] == 'STOCK' else None,
+            'currency': 'TWD' if row['asset_type'] == 'STOCK' else None,
+            'quantity': '10' if row['asset_type'] == 'STOCK' else None,
+            'quantity_unit': '股' if row['asset_type'] == 'STOCK' else None,
         } for row in self.manifest['rows']}
         self.snapshots = {issuer['value']: {'row': {
             'Business_Accounting_NO': issuer['value'], 'Company_Name': issuer['official_name']},
@@ -43,10 +50,60 @@ class AssetIssuerReviewTests(unittest.TestCase):
         for key in ('entities', 'identifiers', 'relationships', 'relationship_evidence'):
             self.assertEqual(bundle[key], [])
         self.assertEqual(self.assets, before)
+
+    def test_approved_scope_creates_nine_identifier_entities_six_stock_edges_and_no_insurance_edges(self):
+        self.manifest['publication_scope'] = APPROVED_SCOPE
+        before = copy.deepcopy(self.assets)
+        bundle = build_approved_link_bundle(self.manifest, self.assets,
+            politician_id=self.politician, retrieved_at='2026-11-08T05:00:00+00:00',
+            registry_snapshots=self.snapshots, existing_companies={})
+        self.assertEqual(len(bundle['entities']), 9)
+        self.assertEqual(len(bundle['identifiers']), 9)
+        self.assertEqual(len(bundle['asset_links']), 12)
+        self.assertEqual(len(bundle['relationships']), 6)
+        self.assertEqual(len(bundle['relationship_evidence']), 18)
+        by_asset = {item['asset_id']: item for item in bundle['asset_links']}
+        for row in self.manifest['rows']:
+            link = by_asset[row['asset_id']]
+            if row['asset_type'] == 'INSURANCE':
+                self.assertIsNone(link['relationship_id'])
+            else:
+                self.assertEqual(row['asset_type'], 'STOCK')
+                self.assertIsNotNone(link['relationship_id'])
+        edge = bundle['relationships'][0]
+        self.assertEqual(edge['relationship_type'], 'ASSET_OWNERSHIP')
+        self.assertEqual(edge['confidence'], 'HIGH')
+        self.assertIsNone(edge['percentage'])
+        self.assertEqual(edge['primary_evidence_id'],
+                         next(row['declaration_evidence_id'] for row in self.manifest['rows']
+                              if row['asset_type'] == 'STOCK'))
+        approvals = [item for item in bundle['evidence']
+                     if item['source_name'].startswith('財產申報公司識別核准')]
+        self.assertEqual(len(approvals), 12)
+        self.assertTrue(all(item['source_locator']['decision'] == 'approved' for item in approvals))
+        self.assertTrue(all(item['source_locator']['security_class'] is None for item in approvals))
+        self.assertTrue(all(item['source_locator']['current_holding_reverified'] is False for item in approvals))
+        self.assertEqual(self.assets, before, 'building the approved bundle cannot mutate source rows')
         sql = publication_sql(bundle, self.assets).lower()
-        self.assertNotIn('update public.asset_declarations', sql)
-        self.assertNotIn('update public.relationships', sql)
-        self.assertNotIn('insert into public.entities', sql)
+        self.assertIn('update public.asset_declarations set company_entity_id', sql)
+        self.assertIn('company_identity_evidence_id', sql)
+        self.assertIn('set constraints all immediate', sql)
+        self.assertNotIn('delete from public.asset_declarations', sql)
+
+    def test_approved_resolution_fails_closed_on_changed_target_or_unapproved_scope(self):
+        self.manifest['publication_scope'] = APPROVED_SCOPE
+        with self.assertRaisesRegex(ValueError, 'different or unpublished Company'):
+            build_approved_link_bundle(self.manifest, self.assets,
+                politician_id=self.politician, retrieved_at='2026-11-08T05:00:00+00:00',
+                registry_snapshots=self.snapshots, existing_companies={
+                    ('tw:uniform_number', '60654582'): {'id': self.politician,
+                        'entity_type': 'Person', 'canonical_name': '錯誤目標',
+                        'publication_status': 'published'}})
+        self.manifest['publication_scope'] = 'identity Evidence only'
+        with self.assertRaisesRegex(ValueError, 'manifest'):
+            build_approved_link_bundle(self.manifest, self.assets,
+                politician_id=self.politician, retrieved_at='2026-11-08T05:00:00+00:00',
+                registry_snapshots=self.snapshots, existing_companies={})
 
     def test_missing_changed_withdrawn_or_different_declarant_fails_closed(self):
         row = next(iter(self.assets.values()))
