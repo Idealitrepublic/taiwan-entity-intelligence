@@ -89,6 +89,6 @@ age 加密備份；核准對照預演通過後，以單一交易建立／精確�
 - 12 筆均有 active/published 的身分核准 Evidence；精確官方識別碼存在；缺失證據或識別碼的連結為 0。
 - 實際以 PostgreSQL `anon` role 驗證 RLS：公開讀取 12 筆連結資產、6 條持股線、12 份核准 Evidence 與 24 個人物／公司 Evidence 關聯。
 - 資料庫大小約 475.7 MB，仍低於本次執行工具設定的 480 MB 保護上限。
-- 30 個 targeted Python tests、189 個 PGlite migration／RLS checks 通過；完整 Python 與 UI 測試、lint、build check 通過。
+- 30 個 targeted Python tests、189 個 PGlite migration／RLS checks 通過；完整 528 個 Python tests、所有 package.json UI/JS 測試、lint、build check 通過。
 - 本機沒有 `npm` 命令；使用專案指定的 Python build checker 與已安裝 Node runtime 執行 package.json 所列測試。
-- Production 未修改。Preview 部署需以本次 commit 核對後另列 URL／狀態。
+- Production 未修改。Commit `c7186f5952a2d335ef914dedaae704b8fb5859c6` 的 Vercel Preview 為 READY：<https://taiwan-entity-intelligence-njq6nhhyq-coldlight871029-9944.vercel.app/>；Deployment build 成功，該部署目前沒有 runtime error log。
