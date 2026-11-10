@@ -205,7 +205,7 @@ Each report carries a generation timestamp and explicit coverage limits. Relatio
 - `/api/v1/reports/{entity|politician|workspace}/{id}`: deterministic JSON by default or readable HTML with `format=html`; Workspace scope requires the owner's bearer token. Entity reads are capped at 25 relationships/assets and Workspace expansion at five distinct saved roots.
 - Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
-- Browser expansion is user-selectable from one to three hops and bounded to 60 nodes. Each click lazily requests one bounded neighbor page; relationship filters are sent to the RPC and filter changes rebuild from the root.
+- Manual expansion defaults to any depth and keeps one-, two-, and three-hop filters as options. Each click lazily requests one bounded neighbor page. The browser deduplicates by entity and relationship ID, and filter changes rebuild the graph from the root.
 - Graph edges preserve `source_entity_id -> relationship_type -> target_entity_id` direction and expose the edge's active primary Evidence without duplicating it into Entity state.
 - Path segments preserve the stored edge direction, identify forward/reverse traversal, and carry dates, amounts, primary Evidence, source record IDs, and source URLs in one bounded RPC response.
 

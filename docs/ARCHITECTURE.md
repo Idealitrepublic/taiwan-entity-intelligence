@@ -191,7 +191,7 @@ Migration `20260915173315_phase_2_global_entity_search.sql` keeps `search_entiti
 
 Graph 2.0 keeps the existing `/api/v1/graph/{entity_id}` envelope and the one-hop `graph_entity_neighbors` RPC. The browser composes those bounded pages into an Entity→Relationship→Entity view: every edge retains its direction, relationship type, and active primary Evidence record. Expansion remains lazy and uses one RPC call per clicked node, with keyset cursors for additional pages rather than offsets or per-edge lookups.
 
-The Entity graph now exposes a selectable one-, two-, or three-hop ceiling, relationship-type filtering, labeled nodes, evidence inspection, expansion animation, and direct node repositioning. It preserves the legacy eight-digit company graph and its pan/zoom/collapse behavior. Browser state is capped at 60 nodes; changing hop or relationship filters rebuilds the bounded view from the root so stale out-of-scope edges cannot remain visible.
+The Entity graph defaults to manual exploration at any depth and retains optional one-, two-, and three-hop filters. Changing depth or relationship type rebuilds the view from the root. Users can expand published entities one page at a time without a depth or total node ceiling. Node and edge IDs deduplicate repeated results and cycles. The initial automatic related-company preview and Workspace bookmark metadata retain their separate size budgets. The legacy eight-digit company graph keeps its own evidence categories and navigation.
 
 No Phase 3 schema change is required: endpoint compatibility, publication state, active primary Evidence, RLS, grants, source/target indexes, and cursor ordering are already enforced by the Phase 1–2 migrations and the existing graph RPC. Phase 3 adds PGlite regression coverage for filter and cursor behavior. Production migrations and the known judicial zero-record issue remain outside this phase.
 
@@ -512,10 +512,10 @@ are seeds, not already-expanded neighborhood pages. Clicking any published node
 loads one existing public Graph API page (12 relationships); further clicks follow
 that node's cursor. Original node IDs, path roles, positions by level, and Evidence
 remain intact, and expanded branches are not dimmed as unrelated to the path.
-The path query still has max_depth 1–3. Manual click exploration is independent
-of that query depth, with a hard 60-node canvas limit, no recursive auto-crawl,
-and no new API, schema, inference, or Production changes. Live-only observations
-without a published neighborhood can return unavailable; no edges are invented.
+The path query still has max_depth 1–3. Manual exploration on the resulting graph
+can follow published neighbors at any depth, one page per click. A failed page
+leaves the previous cursor available for retry. Source observations remain
+evidence details and do not provide their own published neighborhoods.
 
 ### Explicit intermediary count and loading state (2026-11-03)
 

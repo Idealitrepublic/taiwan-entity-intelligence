@@ -181,7 +181,7 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
 
 (async()=>{
  const h=harness(),requests=[];
- Object.assign(h.context,{URLSearchParams,encodeURIComponent,GRAPH_PAGE_SIZE:20,GRAPH_MAX_NODES:60,
+ Object.assign(h.context,{URLSearchParams,encodeURIComponent,GRAPH_PAGE_SIZE:12,
    graphDepthLimit:()=>1,fitGraphBounds:()=>{},focusKnowledgeExpansion:()=>{},showKnowledgeNode:()=>{},autoExpandPublishedCompanies:()=>{},
    fetch:async(url)=>{requests.push(url);return{ok:true,json:async()=>({data:h.context.reply})}}});
  Object.assign(h.context,{data:path([segment(A,shared,'r1'),segment(shared,B,'r2',true)])});
@@ -196,18 +196,33 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  assert.equal(h.context.knowledgeGraph.nodes.get('b').depth,2);
  assert.equal(h.context.knowledgeGraph.nodes.get('a').depth,0);
  assert.equal(h.context.knowledgeGraph.pathData,original);assert.equal(h.context.knowledgeGraph.pathExplored,true);
+ h.context.reply={nodes:[extra,shared],edges:[],has_more:true,next_cursor:'page-two'};
+ await vm.runInContext("expandKnowledgeNode('shared')",h.context);
+ assert.match(h.context.knowledgeGraph.expansionNote,/pagination did not advance/);
+ assert.equal(h.context.knowledgeGraph.cursors.get('shared'),'page-two');
  h.context.reply={nodes:[extra,shared],edges:[],has_more:false};
  await vm.runInContext("expandKnowledgeNode('shared')",h.context);
- assert(requests[1].includes('after=page-two'));assert.equal(h.context.knowledgeGraph.nodes.size,4);
- await vm.runInContext("expandKnowledgeNode('shared')",h.context);assert.equal(requests.length,2);
+ assert.equal(requests[1],requests[2]);assert(requests[2].includes('after=page-two'));
+ assert.equal(h.context.knowledgeGraph.nodes.size,4);
+ await vm.runInContext("expandKnowledgeNode('shared')",h.context);assert.equal(requests.length,3);
  h.context.knowledgeGraph.manualPositions=new Map([['b',{x:700,y:360}]]);
  h.context.reply={nodes:[extra,{id:'deeper',entity_type:'GovernmentAgency'}],edges:[{id:'deep-edge',source:'extra',target:'deeper',primary_evidence:{id:'deep-proof'}}]};
  await vm.runInContext("expandKnowledgeNode('extra')",h.context);
  assert(h.context.knowledgeGraph.nodes.has('deeper'));assert.equal(h.context.knowledgeGraph.nodes.get('deeper').depth,3);
  assert.deepEqual(h.context.knowledgeGraph.manualPositions.get('b'),{x:700,y:360},'new branch preserves a manually moved node');
- for(let i=h.context.knowledgeGraph.nodes.size;i<60;i++)h.context.knowledgeGraph.nodes.set('cap-'+i,{id:'cap-'+i,depth:4});
- const before=requests.length;await vm.runInContext("expandKnowledgeNode('deeper')",h.context);assert.equal(requests.length,before);
- console.log('PASS path nodes and newly added nodes expand, paginate, deduplicate, preserve anchors and obey 60-node cap');
+ const state=h.context.knowledgeGraph;
+ for(let i=0;i<70;i++){
+   const from=i===0?'deeper':`branch-${i-1}`,to=`branch-${i}`;
+   h.context.reply={nodes:[A,{id:to,entity_type:'GovernmentAgency'}],
+     edges:[{id:`link-${i}`,source:from,target:to,primary_evidence:{id:`proof-${i}`}}]};
+   await vm.runInContext(`expandKnowledgeNode('${from}')`,h.context);
+ }
+ assert.equal(state.nodes.size,75);
+ assert.equal(state.nodes.get('branch-69').depth,73);
+ assert.equal(state.nodes.get('a').depth,0);
+ assert.equal(state.pathData,original);
+ assert.equal(state.edges.size,74);
+ console.log('PASS path graph expands past 60 nodes and 70 hops, paginates, deduplicates and preserves the original path');
 })().catch(error=>{console.error(error);process.exitCode=1});
 
 (async()=>{

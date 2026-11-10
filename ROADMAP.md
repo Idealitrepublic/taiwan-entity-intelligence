@@ -146,11 +146,11 @@ Status: implemented on `phase-3/graph-2`; Preview acceptance remains gated.
 
 - Enforce relationship endpoint type compatibility.
 - Preserve mandatory active primary evidence for every published edge.
-- Validate keyset pagination, filters, three-hop/60-node browser limits, and retraction behavior at scale.
+- Validate keyset pagination, filters, continuous manual expansion, and retraction behavior at scale.
 - Add query-plan checks for source/target composite indexes and eliminate any remaining N+1 paths.
-- Render the canonical directed Entity→Relationship→Entity graph with node labels, lazy animated expansion, node dragging, selectable one-to-three-hop depth, relationship filtering, and edge-level Evidence inspection while retaining the legacy company graph.
+- Render the canonical directed Entity→Relationship→Entity graph with node labels, lazy animated expansion, node dragging, optional depth limits, relationship filtering, and edge-level Evidence inspection while retaining the legacy company graph.
 
-Exit gate: bounded graph expansion remains correct and performant on representative data.
+Exit gate: paginated graph expansion remains correct and performant on representative data.
 
 ## Phase 4 — Relationship Path Finder
 

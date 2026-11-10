@@ -88,9 +88,9 @@ class GraphV2Tests(unittest.TestCase):
             self.assertIn("Taiwan Entity Intelligence", body)
         self.assertEqual(dispatch("/graph/not-a-uuid", {})[0], 404)
 
-    def test_graph_ui_has_lazy_limits_filters_and_edge_evidence(self):
+    def test_graph_ui_has_lazy_expansion_filters_and_edge_evidence(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
-        for token in ("GRAPH_PAGE_SIZE=12", "GRAPH_MAX_DEPTH=3", "GRAPH_MAX_NODES=60",
+        for token in ("GRAPH_PAGE_SIZE=12", "不限層數 / Any depth",
                       "expandKnowledgeNode", "showKnowledgeEdge", "relationshipFilter",
                       "hopLimit", "graphDepthLimit", "manualPositions", "nodeDragState", "marker-end",
                       "關係證據 / Relationship evidence", "/api/v1/graph/"):

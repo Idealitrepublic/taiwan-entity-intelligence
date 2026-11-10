@@ -106,6 +106,7 @@ function segment(from, to, id, evidenceId, reverse=false) {
     assert.match(await page.locator('#nodeInfoBody').textContent(),/Company award notice/);
     await page.locator('#closeNode').click();
     await page.locator(`#svg .node[data-node-id="${A.id}"]`).dispatchEvent('click');
+    await page.waitForFunction(()=>document.querySelector('#svg').getAttribute('aria-busy')==='false');
     const branchLines=page.locator('#graphBranchLines');
     await branchLines.waitFor();
     assert.equal(await firstBus.isVisible(),false);
