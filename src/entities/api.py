@@ -7,9 +7,29 @@ from .search import parse_search_request
 from src.relationships.models import RELATIONSHIP_TYPES
 from src.asset_declarations import ASSET_TYPES
 from src.live_company_path import CompanyRegistryUnavailable, live_company_path
+from src.election_2026 import search_key, search_registrations, EXPECTED_COUNT
 
 
 def dispatch_entity_api(path, query, repository=None):
+    if path.rstrip("/") == "/api/v1/elections/2026/registrations":
+        try:
+            term = search_key(query.get("q", [""])[0])
+            limit = int(query.get("limit", ["20"])[0])
+            offset = int(query.get("offset", ["0"])[0])
+            if not 2 <= len(term) <= 100 or not 1 <= limit <= 25 or not 0 <= offset < EXPECTED_COUNT:
+                raise ValueError("Invalid election search")
+        except (TypeError, ValueError):
+            return 400, {"error": "請輸入 2–100 個字，並使用有效的分頁參數。 / Invalid registration search."}, None
+        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
+            return 503, {"error": "選舉登記資料暫未啟用 / Election catalog is not enabled"}, None
+        repository = repository or EntityRepository()
+        try:
+            result = search_registrations(repository.transport, term, limit, offset)
+        except EntityStoreUnavailable:
+            result = None
+        if result is None:
+            return 503, {"error": "選舉登記資料尚未載入或暫不可用 / Election catalog unavailable"}, None
+        return 200, response(result), None
     if path.rstrip("/") == "/api/v1/search":
         try:
             request = parse_search_request(query)

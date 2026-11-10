@@ -64,7 +64,7 @@ def request_allowed(path, client):
     parts = path.split('/')
     if len(parts) > 3 and parts[2] == 'v1':
         family = parts[3]
-        known = {'search', 'paths', 'graph', 'entities', 'relationships', 'evidence',
+        known = {'search', 'paths', 'graph', 'entities', 'relationships', 'evidence', 'elections',
                  'politicians', 'reports', 'workspaces', 'watchlist', 'alerts'}
         route_group = '/api/v1/' + (family if family in known else 'other')
     else:

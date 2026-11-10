@@ -1,5 +1,9 @@
 # T.E.I. data model
 
+## 2026 local election registration catalog
+
+An immutable CEC snapshot is stored as one `source_files` record and 22 county shards in `source_records`. Each registration is scoped by document, page and row. Its public projection keeps office, constituency, registration date, source name, recommending party, and a PDF locator. An image-only name stays null. Reviewed context attaches explicit professional roles or public events to the registration row. Existing graph links require an independently checked identity.
+
 ## Reviewed court announcements — 2026-11-01
 
 Nine selected historical case announcements reuse `Judgment` with

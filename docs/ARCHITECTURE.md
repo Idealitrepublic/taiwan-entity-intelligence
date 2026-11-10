@@ -1,5 +1,9 @@
 # T.E.I. architecture and Phase 0 repository audit
 
+## 2026 local election registration catalog
+
+The existing public source-record store holds 22 compressed county shards. `GET /api/v1/elections/2026/registrations` serves bounded result pages and reads only one shard when the query is a county name. Select **2026 九合一登記** in the search type filter to search names, districts, offices and recommending parties. The importer accepts the pinned official ZIP, reconciles all nine office counts and uses the Development capacity guard. Reviewed context is a dated source observation and may link to a separately verified existing Entity graph.
+
 ## Reviewed court-notice pilot — 2026-11-01
 
 The offline `court_notices` adapter exports only nine reviewed case-level

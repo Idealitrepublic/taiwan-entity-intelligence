@@ -1,0 +1,64 @@
+[
+  {
+    "name": "張善政", "district": "桃園市", "office": 0, "party": "中國國民黨",
+    "identity_url": "https://knowledge.kmt.org.tw/articles/17434e09-e380-4b24-bba1-bfa6df889e6b/",
+    "groups": [
+      {
+        "source_url": "https://www.tycg.gov.tw/cp.aspx?n=20",
+        "facts": [
+          {"type": "公司", "target": "宏碁股份有限公司", "role": "曾任電子化事業群副總經理（2000–2010）", "registry_url": "https://findbiz.nat.gov.tw/fts/company/20828393"},
+          {"type": "公司", "target": "Google", "role": "市府簡介記載曾任亞洲硬體營運總監（2010–2012）"}
+        ]
+      },
+      {
+        "source_url": "https://news.tycg.gov.tw/News_Content.aspx?n=5016&s=1597207",
+        "facts": [{"type": "團體", "target": "國家生技醫療產業策進會", "role": "曾任會長"}]
+      },
+      {
+        "source_url": "https://knowledge.kmt.org.tw/articles/6debdb58-d510-4575-bf4d-12f158dfec8c/",
+        "facts": [{"type": "人物", "target": "邱奕勝", "role": "2026-10-17 共同舉行競選總部成立活動"}]
+      }
+    ]
+  },
+  {
+    "name": "沈伯洋", "district": "臺北市", "office": 0, "party": "民主進步黨",
+    "identity_url": "https://www.dpp.org.tw/content_print/media/11579",
+    "entity_id": "7351506f-d534-564a-84e8-254c15f00434",
+    "groups": [
+      {
+        "source_url": "https://www.ly.gov.tw/Pages/List.aspx?nodeid=46775",
+        "facts": [
+          {"type": "團體", "target": "台灣民主實驗室", "role": "立法院委員經歷列為理事長"},
+          {"type": "團體", "target": "黑熊學院", "role": "立法院委員經歷列為院長"},
+          {"type": "團體", "target": "台灣人權促進會", "role": "立法院委員經歷列為執行委員"}
+        ]
+      },
+      {
+        "source_url": "https://www.dpp.org.tw/content_print/media/11813",
+        "type": "人物", "role": "2026 年共同參與地方候選人推薦記者會及簽署宣言",
+        "targets": ["韓瑩", "沈夙崢", "黃柏瑜", "梁育慈", "呂慧瑜", "張媛婷", "巫宛萍", "翁雲", "邱佳娟", "葉俊緯"]
+      }
+    ]
+  },
+  {
+    "name": "蘇巧慧", "district": "新北市", "office": 0, "party": "民主進步黨",
+    "identity_url": "https://www.dpp.org.tw/content_print/media/11384",
+    "entity_id": "22494e76-2b12-56f7-8699-eeafe98bc439",
+    "groups": [{
+      "source_url": "https://www.ly.gov.tw/Pages/List.aspx?nodeid=1917",
+      "facts": [{"type": "團體", "target": "超越基金會", "role": "立法院委員經歷列為執行長"}]
+    }]
+  },
+  {
+    "name": "蔣萬安", "district": "臺北市", "office": 0, "party": "中國國民黨",
+    "identity_url": "https://knowledge.kmt.org.tw/articles/17434e09-e380-4b24-bba1-bfa6df889e6b/",
+    "groups": [{
+      "source_url": "https://www.gov.taipei/News_Content_Leader.aspx?n=5A0C91ADEE6E7C46&s=5C77853F1AB78232&sms=7CAF6BD4D3E48630",
+      "facts": [
+        {"type": "機關", "target": "臺北市政府", "role": "市府首長介紹列為市長"},
+        {"type": "團體", "target": "萬澤外國法事務律師事務所", "role": "市府簡介記載曾任主持律師"},
+        {"type": "團體", "target": "美國 WSGR 律師事務所", "role": "市府簡介記載曾任執業律師"}
+      ]
+    }]
+  }
+]

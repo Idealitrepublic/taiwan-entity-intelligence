@@ -2,6 +2,10 @@
 
 All phases use: **Local -> Test -> Git -> Vercel Preview -> Acceptance -> Production**.
 
+## 2026 local elections
+
+The September registration catalog covers all 22 counties and nine offices in Development. Extend coverage from subsequent CEC eligibility, ballot and bulletin publications as each becomes available. Continue verifying image-only names and adding sourced roles and public events with explicit identity checks.
+
 ## Reviewed court-notice pilot — 2026-11-01
 
 Nine historical official case-announcement groups are imported to Development
