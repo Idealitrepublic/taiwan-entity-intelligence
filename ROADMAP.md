@@ -218,7 +218,7 @@ authorized. See `docs/ASSET_ISSUER_IDENTIFICATION_2026-11-08.md`.
 
 ## Phase 8 — Asset Timeline
 
-Status: implemented on `phase-8/asset-timeline`; Preview acceptance remains gated.
+Status: implementation retained. Public access is withdrawn alongside asset declarations.
 
 - Build a bounded annual sequence from published legislator asset declarations.
 - Summarize every year by asset type, currency, and quantity unit without mixing unlike measures.

@@ -1,8 +1,14 @@
 # T.E.I. architecture and Phase 0 repository audit
 
-## 2026 local election registration catalog
+## Public release scope — candidate registration and asset declarations
 
-The existing public source-record store holds 22 compressed county shards. `GET /api/v1/elections/2026/registrations` serves bounded result pages and reads only one shard when the query is a county name. Select **2026 九合一登記** in the search type filter to search names, districts, offices and recommending parties. The importer accepts the pinned official ZIP, reconciles all nine office counts and uses the Development capacity guard. Reviewed context is a dated source observation and may link to a separately verified existing Entity graph.
+The 2026 CEC registration catalog and asset declarations are withdrawn from
+public search, direct reads, graph traversal, alerts and report exports.
+Development retains historical source rows and identifiers. Restrictive
+Supabase policies apply to both anonymous and signed-in access, including direct
+Data API requests. The archived importer and pre-withdrawal history below document
+the original pipelines. Official legislator profiles and political contributions
+remain independently sourced.
 
 ## Reviewed court-notice pilot — 2026-11-01
 
@@ -265,13 +271,13 @@ The ingestion boundary is `src/asset_declarations.py -> tei_ingest_asset_declara
 
 Company resolution supports two auditable paths. An ID present in the declaration may resolve exactly as before; alternatively, a row-scoped, immutable review Evidence may connect the exact declared company label to an official `tw:uniform_number` or `us:sec:cik`. `company_identity_evidence_id` records the review separately from the original declaration Evidence. A name alone remains insufficient. Eligible stock/security rows create a `HIGH` `ASSET_OWNERSHIP` edge using the original Gazette Evidence plus the review and registry Evidence. The identity match does not infer share class or re-verify present holdings. Insurance may link to its verified provider on the declaration only; it never creates an ownership edge.
 
-The read path is `web/index.html -> /api/v1/politicians/{uuid}/asset-declarations -> asset_declarations`. It is limited to 25 keyset-cursor rows and supports declaration-year and asset-type filters. One embedded read returns the linked Company, Relationship, primary Evidence, and (when present) the separate identity-review Evidence without N+1 queries. Missing additive schema yields an explicit empty compatibility response so existing politician, Graph, search, and legacy company views continue to work.
+Before withdrawal, the read path was `web/index.html -> /api/v1/politicians/{uuid}/asset-declarations -> asset_declarations`. It is limited to 25 keyset-cursor rows and supports declaration-year and asset-type filters. One embedded read returns the linked Company, Relationship, primary Evidence, and (when present) the separate identity-review Evidence without N+1 queries. Missing additive schema yields an explicit empty compatibility response so existing politician, Graph, search, and legacy company views continue to work.
 
 The migrations add RLS, explicit read grants, service-role-only ingestion, indexed politician/year/type and company access paths, and a deferred publication validator. Migration `20261108070814_asset_company_reviewed_identity.sql` adds the nullable reviewed-identity Evidence FK and preserves original-source exact matching for existing rows. For reviewed rows it requires an active row approval, its prior row review, an active official registry record, the exact identifier attached to the published Company, and matching asset/Company IDs. Every ownership Relationship must match endpoints, type, original Evidence, declared values and source role; review and registry Evidence are linked to the edge. Withdrawal of any cited Evidence retracts dependent edges and hides the linked declaration. The operator uses only Development and requires a fresh encrypted backup. Production remains unchanged until acceptance.
 
 ## Phase 8 Asset Timeline
 
-The read path is `web/index.html -> /api/v1/politicians/{uuid}/asset-timeline -> asset_declarations`. It reuses the Phase 7 RLS policy and `(politician_id, declaration_year, id)` index; no new table, migration, write path, or Production change is required. The repository performs one embedded read capped at 501 probe rows, returns at most 500, and limits output to the latest 2–20 requested declaration years.
+Before withdrawal, the read path was `web/index.html -> /api/v1/politicians/{uuid}/asset-timeline -> asset_declarations`. It reuses the Phase 7 RLS policy and `(politician_id, declaration_year, id)` index; no new table, migration, write path, or Production change is required. The repository performs one embedded read capped at 501 probe rows, returns at most 500, and limits output to the latest 2–20 requested declaration years.
 
 `src/asset_timeline.py` is the deterministic comparison boundary. It groups amounts by currency and quantities by unit, so unlike measures are never combined. Adjacent years match only exact NFKC-normalized asset identity and exact resolved Company IDs. Missing dimensions, mixed movement, or differing units are reported as `CHANGED`, not coerced into an increase or decrease. A line absent in the next declaration is labeled `NO_LONGER_DECLARED`, never sold or disposed.
 

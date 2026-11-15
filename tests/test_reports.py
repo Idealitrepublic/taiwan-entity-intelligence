@@ -54,7 +54,7 @@ class ReportTests(unittest.TestCase):
         repository.graph_neighbors.return_value = graph()
         report = ReportService(repository, clock=lambda: "2026-09-17T00:00:00Z").entity_report(ENTITY)
         for key in ("entity_profiles", "key_relationships", "political_relationships",
-                    "government_contracts", "judgments", "penalties", "asset_records",
+                    "government_contracts", "judgments", "penalties",
                     "relationship_graph", "sources"):
             self.assertIn(key, report)
         self.assertEqual(len(report["government_contracts"]), 1)
@@ -63,7 +63,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(report["sources"][0]["retrieved_at"], "2026-09-01T00:00:00Z")
         repository.graph_neighbors.assert_called_once_with(ENTITY, limit=25)
 
-    def test_politician_report_includes_assets_and_rejects_other_types(self):
+    def test_politician_report_excludes_assets_and_rejects_other_types(self):
         repository = Mock()
         repository.entity.return_value = entity("Politician")
         politician_graph = graph("POLITICAL_CONTRIBUTION_TO")
@@ -75,7 +75,8 @@ class ReportTests(unittest.TestCase):
             "primary_evidence": evidence("Asset declaration")}]}
         report = ReportService(repository).politician_report(ENTITY)
         self.assertEqual(len(report["political_relationships"]), 1)
-        self.assertEqual(report["asset_records"][0]["source"], "Official source")
+        self.assertNotIn("asset_records", report)
+        repository.asset_declarations.assert_not_called()
         repository.entity.return_value = entity("Company")
         with self.assertRaises(ReportNotFound):
             ReportService(repository).politician_report(ENTITY)
@@ -183,7 +184,7 @@ class ReportTests(unittest.TestCase):
         report = {"title": "<unsafe>", "methodology": "Facts only", "report_type": "ENTITY",
                   "generated_at": "now", "coverage": {}, **{key: [] for key in (
                       "entity_profiles", "key_relationships", "political_relationships",
-                      "government_contracts", "judgments", "penalties", "asset_records",
+                      "government_contracts", "judgments", "penalties",
                       "sources")}, "relationship_graph": {}}
         html = render_report_html(report)
         self.assertIn("實體概況 / Entity Profile", html)

@@ -55,7 +55,7 @@ class CompanyReportContextTests(unittest.TestCase):
         self.assertEqual(params['primary_evidence.publication_status'], 'eq.published')
         self.assertEqual(params['primary_evidence.status'], 'eq.active')
 
-    def test_company_entity_report_retains_asset_records_and_limit_warning(self):
+    def test_company_entity_report_omits_asset_records(self):
         from unittest.mock import Mock
         from src.reports import ReportService
         repository = Mock()
@@ -65,5 +65,6 @@ class CompanyReportContextTests(unittest.TestCase):
         repository.company_asset_declarations.return_value = {'items': [
             {'asset_name': '已發布投資', 'company_entity_id': COMPANY}], 'has_more': True}
         report = ReportService(repository).entity_report(COMPANY)
-        self.assertEqual(report['asset_records'][0]['asset_name'], '已發布投資')
-        self.assertTrue(report['coverage']['asset_truncated'])
+        self.assertNotIn('asset_records', report)
+        self.assertNotIn('asset_truncated', report['coverage'])
+        repository.company_asset_declarations.assert_not_called()

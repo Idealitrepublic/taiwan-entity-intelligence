@@ -1,7 +1,8 @@
 import unittest
+from pathlib import Path
 from unittest.mock import Mock
 
-from src.election_2026 import DATASET, EXPECTED_BY_OFFICE, EXPECTED_COUNT, parse_page
+from src.election_2026 import EXPECTED_BY_OFFICE, EXPECTED_COUNT, parse_page
 from src.entities.api import dispatch_entity_api
 
 
@@ -27,27 +28,11 @@ class Election2026Tests(unittest.TestCase):
         self.assertNotEqual(first.id, second.id)
         self.assertEqual(sum(EXPECTED_BY_OFFICE), EXPECTED_COUNT)
 
-    def test_election_api_paginates_without_merging_same_name(self):
+    def test_registration_endpoint_and_search_option_are_withdrawn(self):
         repo = Mock()
-        base = {"name": "林明明", "district": "臺北市", "office": 0,
-                "registered_on": "2026-09-02", "recommending_party": None, "page": 1}
-        repo.transport.return_value = [{"raw": {"snapshot_date": "2026-09-07",
-            "rows": [{**base, "row": 1}, {**base, "row": 2, "district": "新北市"}]}}]
-        route = "/api/v1/elections/2026/registrations"
-        status, body, _ = dispatch_entity_api(route, {"q": ["林明明"], "limit": ["1"]}, repo)
-        self.assertEqual(status, 200)
-        self.assertEqual((body["data"]["total"], body["data"]["next_offset"]), (2, 1))
-        first = body["data"]["items"][0]
-        self.assertEqual((first["status"], first["source_page"], first["source_row"]),
-                         ("registered_snapshot", 1, 1))
-        _, body, _ = dispatch_entity_api(route, {"q": ["林明明"], "limit": ["1"], "offset": ["1"]}, repo)
-        self.assertEqual(body["data"]["items"][0]["source_row"], 2)
-        self.assertIsNone(body["data"]["next_offset"])
-        self.assertEqual(repo.transport.call_args.args[1]["dataset"], f"eq.{DATASET}")
-        self.assertEqual(dispatch_entity_api(route, {"q": ["林"], "limit": ["1000"]}, repo)[0], 400)
-
-    def test_missing_catalog_reports_unavailable(self):
-        repo = Mock()
-        repo.transport.return_value = []
         self.assertEqual(dispatch_entity_api("/api/v1/elections/2026/registrations",
-                                             {"q": ["臺北市"]}, repo)[0], 503)
+                                             {"q": ["臺北市"]}, repo)[0], 404)
+        self.assertEqual(repo.mock_calls, [])
+        page = (Path(__file__).parents[1] / "web" / "index.html").read_text()
+        self.assertNotIn('value="Election2026"', page)
+        self.assertNotIn("/api/v1/elections/2026/registrations", page)

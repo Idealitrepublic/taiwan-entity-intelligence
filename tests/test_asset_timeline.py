@@ -140,21 +140,16 @@ class AssetTimelineTests(unittest.TestCase):
         self.assertFalse(result["schema_available"])
         self.assertEqual(result["years"], [])
 
-    def test_api_is_bounded_and_keeps_v1_envelope(self):
+    def test_public_endpoint_is_withdrawn(self):
         repo = Mock()
-        repo.asset_timeline.return_value = {"years": [], "truncated": False}
         path = f"/api/v1/politicians/{POLITICIAN}/asset-timeline"
-        code, body, _ = dispatch_entity_api(path, {"years": ["8"]}, repo)
-        self.assertEqual((code, body["api_version"]), (200, "1"))
-        repo.asset_timeline.assert_called_once_with(POLITICIAN, max_years=8)
-        for value in ("1", "21", "bad"):
-            self.assertEqual(dispatch_entity_api(path, {"years": [value]}, repo)[0], 400)
+        self.assertEqual(dispatch_entity_api(path, {}, repo)[0], 404)
+        self.assertEqual(repo.mock_calls, [])
 
-    def test_ui_exposes_timeline_changes_and_sources(self):
+    def test_politician_page_omits_withdrawn_data(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
-        for token in ("/asset-timeline", "assetTimelineCards", "年度財產時間序列",
-                      "NO_LONGER_DECLARED", "客觀差異", "原始來源 / Original source"):
-            self.assertIn(token, html)
+        self.assertNotIn("/asset-timeline", html)
+        self.assertNotIn('value="AssetTimeline"', html)
 
 
 if __name__ == "__main__":

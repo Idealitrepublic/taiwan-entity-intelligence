@@ -38,7 +38,6 @@ SECTION_TITLES = (
     ("government_contracts", "政府標案 / Government Contracts"),
     ("judgments", "司法裁判 / Judgments"),
     ("penalties", "裁罰 / Penalties"),
-    ("asset_records", "財產申報 / Asset Records"),
     ("relationship_graph", "關係圖 / Relationship Graph"),
     ("sources", "來源 / Sources"),
 )
@@ -81,17 +80,6 @@ def _relation(edge, nodes):
         "relationship": relationship,
         "source_entity": nodes.get(source_id, {"id": source_id}),
         "target_entity": nodes.get(target_id, {"id": target_id}),
-        "evidence": evidence,
-        "source": evidence.get("source") if evidence else None,
-        "source_url": evidence.get("source_url") if evidence else None,
-        "retrieved_at": evidence.get("retrieved_at") if evidence else None,
-    }
-
-
-def _asset(row):
-    evidence = _evidence(row.get("primary_evidence"))
-    return {
-        **{key: value for key, value in row.items() if key != "primary_evidence"},
         "evidence": evidence,
         "source": evidence.get("source") if evidence else None,
         "source_url": evidence.get("source_url") if evidence else None,
@@ -195,19 +183,10 @@ class ReportService:
         nodes = {node["id"]: node for node in graph.get("nodes", []) if node.get("id")}
         nodes.setdefault(entity_id, entity)
         relationships = [_relation(edge, nodes) for edge in graph.get("edges", [])]
-        asset_records = []
-        assets = None
         politician = None
         if entity.get("entity_type") == "Politician":
             politician = self.entities.politician_profile(
                 entity_id, relationship_limit=MAX_GRAPH_RELATIONSHIPS)
-            assets = self.entities.asset_declarations(
-                entity_id, limit=MAX_GRAPH_RELATIONSHIPS)
-            asset_records = [_asset(row) for row in (assets or {}).get("items", [])]
-        elif entity.get('entity_type') == 'Company':
-            assets = self.entities.company_asset_declarations(entity_id, limit=MAX_GRAPH_RELATIONSHIPS)
-            if isinstance(assets, dict):
-                asset_records = [_asset(row) for row in assets.get('items', [])]
 
         entity_evidence = []
         for link in entity.get("evidence", []):
@@ -232,10 +211,6 @@ class ReportService:
             "coverage": {
                 "relationship_limit": MAX_REPORT_GRAPH_EDGES,
                 "relationship_truncated": bool(graph.get("has_more")),
-                "asset_limit": MAX_GRAPH_RELATIONSHIPS,
-                "asset_truncated": bool(isinstance(assets, dict) and assets.get('has_more')),
-                "unavailable_sections": ['asset_records'] if isinstance(assets, dict)
-                    and assets.get('schema_available') is False else [],
             },
             "entity_profiles": [profile],
             "company_registry": [registry] if isinstance(registry, dict) else [],
@@ -249,7 +224,6 @@ class ReportService:
                           row["relationship"].get("relationship_type") == "RELATED_TO_JUDGMENT"],
             "penalties": [row for row in relationships if
                           row["relationship"].get("relationship_type") == "RELATED_TO_PENALTY"],
-            "asset_records": asset_records,
             "relationship_graph": {
                 "focus_entity_id": entity_id,
                 "nodes": list(nodes.values()),
@@ -276,8 +250,7 @@ class ReportService:
         entity = self.entities.company_for_uniform(uniform)
         if not entity:
             return None
-        return {'entity': entity, 'graph': self._report_graph(entity['id']),
-                'assets': self.entities.company_asset_declarations(entity['id'], limit=MAX_GRAPH_RELATIONSHIPS)}
+        return {'entity': entity, 'graph': self._report_graph(entity['id'])}
 
     def company_report(self, uniform, *, company_loader=None, award_loader=None, related_loader=None,
                        published_loader=None):
@@ -474,7 +447,7 @@ class ReportService:
                                        "source_url": check.get("source_url"),
                                        "retrieved_at": check.get("indexed_at")}]
                 if check.get("domain") else [],
-                "political_relationships": [], "asset_records": [], **categories,
+                "political_relationships": [], **categories,
                 "relationship_graph": {"nodes": list(nodes.values()), "edges": edges,
                                        "truncated": truncated},
                 "sources": list(sources.values())}
@@ -490,7 +463,7 @@ class ReportService:
         report['coverage']['unavailable_sections'] = unavailable_sections
         if published_unavailable:
             report['coverage']['source_partial'] = True
-            unavailable_sections.extend(['political_relationships', 'asset_records'])
+            unavailable_sections.append('political_relationships')
         if published:
             entity = published['entity']
             canonical_id = entity['id']
@@ -525,12 +498,7 @@ class ReportService:
                             'RELATED_TO_PENALTY': 'penalties'}.get(kind)
                 if category:
                     report[category].append(record)
-            assets = published.get('assets') or {}
-            report['asset_records'] = [_asset(row) for row in assets.get('items', [])]
             report['coverage']['relationship_truncated'] = bool(canonical_graph.get('has_more'))
-            report['coverage']['asset_truncated'] = bool(assets.get('has_more'))
-            if assets.get('schema_available') is False:
-                unavailable_sections.append('asset_records')
             report['relationship_graph']['truncated'] |= bool(canonical_graph.get('has_more'))
             versions = {}
             for source in [*report['sources'], *_source_map(report).values()]:
@@ -589,7 +557,7 @@ class ReportService:
             "saved_evidence": [],
             "entity_profiles": [], "company_registry": [], "key_relationships": [],
             "political_relationships": [], "government_contracts": [],
-            "judgments": [], "penalties": [], "asset_records": [],
+            "judgments": [], "penalties": [],
             "relationship_graph": {"nodes": [], "edges": [], "truncated": False},
             "sources": [],
         }
@@ -597,7 +565,7 @@ class ReportService:
         saved_sources = []
         for child in child_reports:
             for key in ("entity_profiles", "company_registry", "key_relationships", "political_relationships",
-                        "government_contracts", "judgments", "penalties", "asset_records"):
+                        "government_contracts", "judgments", "penalties"):
                 report[key].extend(child[key])
             graph = child["relationship_graph"]
             for node in graph["nodes"]:
@@ -656,7 +624,7 @@ class ReportService:
         sources.update({source["id"]: source for source in saved_sources})
         report["sources"] = list(sources.values())
         for key in ("entity_profiles", "company_registry", "key_relationships", "political_relationships",
-                    "government_contracts", "judgments", "penalties", "asset_records"):
+                    "government_contracts", "judgments", "penalties"):
             unique = {}
             for row in report[key]:
                 row_id = row.get("relationship", {}).get("id") or row.get("id") or row.get("uniform_number")

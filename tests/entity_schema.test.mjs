@@ -23,7 +23,8 @@ try {
   // that PGlite cannot reproduce (for example pg_trgm and storage schemas).
   // Exercise the application-owned Entity model and all later phases here.
   const files = fs.readdirSync('supabase/migrations')
-    .filter(x => x.endsWith('.sql') && x >= '20260909143820')
+    .filter(x => x.endsWith('.sql') && x >= '20260909143820' &&
+      !x.endsWith('_withhold_candidate_and_asset_publication.sql'))
     .sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
   // The count optimization is additive and safely repeatable; all existing
@@ -867,6 +868,45 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   assert.equal((await db.query('select count(*)::int n from public.nonprofit_tax_observations')).rows[0].n, 1);
   checks++;
   await db.exec('reset role;');
+  // Apply the withdrawal to existing published fixtures, as Development will.
+  await db.exec(`create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean)`);
+  for (const file of ['20260831164723_create_tei_core_schema.sql',
+                      '20260908060212_create_searchable_source_records.sql']) {
+    await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
+  }
+  await db.exec(`insert into public.source_files (dataset, object_path, file_name)
+    values ('cec-2026-local-election-registration','cec.zip','cec.zip'),
+           ('labor','labor.csv','labor.csv');
+    insert into public.source_records (id, source_file_id, dataset, raw)
+    select dataset, id, dataset, '{}' from public.source_files`);
+  const withdrawal = fs.readdirSync('supabase/migrations')
+    .find(file => file.endsWith('_withhold_candidate_and_asset_publication.sql'));
+  await db.exec(fs.readFileSync(`supabase/migrations/${withdrawal}`, 'utf8'));
+  for (const role of ['anon', 'authenticated']) {
+    await db.exec(`set role ${role}`);
+    for (const table of ['source_files', 'source_records']) {
+      assert.deepEqual((await db.query(`select dataset from public.${table}`)).rows,
+        [{dataset: 'labor'}]);
+    }
+    assert.equal((await db.query('select count(*)::int n from public.asset_declarations')).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from public.relationships where id=$1',
+      [assetRelationshipId])).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1',
+      [assetEvidenceId])).rows[0].n, 0);
+    assert.equal((await db.query("select count(*)::int n from public.entities where entity_type='Politician'")).rows[0].n > 0, true);
+    await db.exec('reset role');
+    checks += 6;
+  }
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [workspaceOwner]);
+  await db.exec('set role authenticated');
+  assert.equal((await db.query("select count(*)::int n from public.watchlist_events where event_type='ASSET_DECLARATION'")).rows[0].n, 0);
+  assert.equal((await db.query('select public.sync_watchlist_events(25) result')).rows[0].result.watched > 0, true);
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int n from public.asset_declarations where id=$1',
+    [linkedAssetId])).rows[0].n, 1);
+  assert.equal((await db.query("select count(*)::int n from public.source_records where dataset='cec-2026-local-election-registration'")).rows[0].n, 1);
+  checks += 4;
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;

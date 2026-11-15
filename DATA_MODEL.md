@@ -185,11 +185,14 @@ Both tables repeat `owner_user_id`, use a composite owner foreign key, revoke an
 
 ### Investigation report projection
 
-Phase 11 adds no persistence model. A report is a generated, read-only projection over the canonical Entity, Relationship, Evidence, politician, asset, and Workspace records. Entity and Politician reports use published public rows; Workspace reports first authenticate the owner JWT and rely on existing owner-only RLS before resolving saved public records.
+Phase 11 adds no persistence model. A report is a generated, read-only projection over the canonical Entity, Relationship, Evidence, politician, and Workspace records. Entity and Politician reports use published public rows; Workspace reports first authenticate the owner JWT and rely on existing owner-only RLS before resolving saved public records.
 
-Each report carries a generation timestamp and explicit coverage limits. Relationship and asset entries retain normalized Evidence plus `source`, `source_url`, and `retrieved_at`; the Sources section deduplicates those Evidence records by stable ID. Workspace Source bookmarks retain their owner-provided URL and creation time without being promoted to canonical Evidence. Reports contain objective records only and do not persist or generate findings, risk scores, legal judgments, or conflict-of-interest conclusions.
+Each report carries a generation timestamp and explicit coverage limits. Relationship entries retain normalized Evidence plus `source`, `source_url`, and `retrieved_at`; the Sources section deduplicates those Evidence records by stable ID. Workspace Source bookmarks retain their owner-provided URL and creation time without being promoted to canonical Evidence. Reports contain objective records only and do not persist or generate findings, risk scores, legal judgments, or conflict-of-interest conclusions.
 
 ## Read projections and APIs
+
+Candidate registration and asset declarations are withheld from public reads.
+The original tables, evidence, and foreign keys remain available for authorized archival use.
 
 - `src/entities/contracts.py` is the canonical public field allowlist for Entity, Relationship, and Evidence. The API envelope remains `{"api_version":"1","data":...}` for backward compatibility.
 - `search_entities`: NFKC-normalized and bounded to 20 published results across all Entity types; exact public company identifier, exact name/alias, prefix, then contains ranking.
@@ -199,14 +202,12 @@ Each report carries a generation timestamp and explicit coverage limits. Relatio
 - Live company-to-company observations are response projections, not persisted or published Relationship rows. Both company IDs must match the official registry exactly; shared procurement notices/agencies require a source notice and exact bidder identifier for each company, while a shared court document requires both complete official company names in one JID. Each displayed edge carries source ID, URL, retrieval time, and matching provenance. Shared agencies and co-mentions do not establish a direct corporate relationship, and incomplete source coverage is explicit.
 - `/api/v1/politicians/{entity_id}`: bounded profile projection with at most 20 terms and 25 evidence-backed legislative relationships; it falls back to the existing Graph projection while the additive term table awaits deployment.
 - `political_contributions_for_entity` and `/api/v1/entities/{entity_id}/political-contributions`: bidirectional Company/Politician projection, bounded to 25, cursor ordered, and restricted to published exact-uniform-number matches.
-- `/api/v1/politicians/{entity_id}/asset-declarations`: bounded, cursor-ordered declaration projection with optional year/type filters, resolved Company, derived Relationship, Evidence, and an old-schema fallback.
-- `/api/v1/politicians/{entity_id}/asset-timeline`: latest 2–20 declaration years, capped at 500 rows, with per-type totals and evidence-backed adjacent-year comparisons.
 - `/api/v1/workspaces`: authenticated owner-scoped list/create API; `/api/v1/workspaces/{id}` reads, edits, or deletes one owned workspace.
 - `/api/v1/workspaces/{id}/items`: adds a typed bookmark; `/api/v1/workspaces/{id}/items/{item_id}` edits Note/title metadata or deletes an owned item.
 - `/api/v1/watchlist`: owner-scoped list/add; `/api/v1/watchlist/{id}` removes one subscription and its private alerts.
-- `/api/v1/watchlist/sync`: bounded, idempotent detection against published Relationships and asset declarations.
+- `/api/v1/watchlist/sync`: bounded, idempotent detection against published Relationships.
 - `/api/v1/alerts`: bounded all/read/unread dashboard feed; `/api/v1/alerts/{id}` changes one read state and `/api/v1/alerts/read-all` marks current unread rows read.
-- `/api/v1/reports/{entity|politician|workspace}/{id}`: deterministic JSON by default or readable HTML with `format=html`; Workspace scope requires the owner's bearer token. Entity reads are capped at 25 relationships/assets and Workspace expansion at five distinct saved roots.
+- `/api/v1/reports/{entity|politician|workspace}/{id}`: deterministic JSON by default or readable HTML with `format=html`; Workspace scope requires the owner's bearer token. Entity reads are capped at 25 relationships and Workspace expansion at five distinct saved roots.
 - Until that additive RPC is accepted, the read repository can use a 12-edge/30-entity Graph 2.0 breadth-first fallback and reports `truncated` when a high-degree page is incomplete.
 - Public APIs expose only published entities, active/published evidence, and published relationships.
 - Manual expansion defaults to any depth and keeps one-, two-, and three-hop filters as options. Each click lazily requests one bounded neighbor page. The browser deduplicates by entity and relationship ID, and filter changes rebuild the graph from the root.

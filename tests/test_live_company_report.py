@@ -47,7 +47,7 @@ class LiveCompanyReportTests(unittest.TestCase):
         section = next(row for row in present_report(report)['sections'] if row['key'] == 'company_registry')
         self.assertIn(('資料狀態 / Data status', '官方歷史快照 / Dated official snapshot'), section['items'][0]['facts'])
 
-    def test_published_political_assets_evidence_and_graph_survive_company_export(self):
+    def test_company_pdf_retains_political_evidence_and_graph_but_omits_assets(self):
         from copy import deepcopy
         company_id = '11111111-1111-4111-8111-111111111111'
         person_id = '22222222-2222-4222-8222-222222222222'
@@ -70,9 +70,9 @@ class LiveCompanyReportTests(unittest.TestCase):
             award_loader=lambda _: {'status': 'ok', 'records': []},
             related_loader=lambda _: {'status': 'ok', 'items': []}, published_loader=lambda _: context)
         self.assertEqual(len(report['political_relationships']), 1)
-        self.assertEqual(len(report['asset_records']), 1)
+        self.assertNotIn('asset_records', report)
         self.assertTrue(report['coverage']['relationship_truncated'])
-        self.assertTrue(report['coverage']['asset_truncated'])
+        self.assertNotIn('asset_truncated', report['coverage'])
         self.assertTrue(any(row.get('id') == proof['id'] for row in report['sources']))
         import json
         source_versions = [(row.get('source_url'), json.dumps(row.get('source_record_id') or row.get('source_locator'),
@@ -90,7 +90,8 @@ class LiveCompanyReportTests(unittest.TestCase):
         self.assertEqual(value, before, 'report assembly must not mutate source snapshots')
         text = ''.join(page.extract_text() for page in PdfReader(BytesIO(render_report_pdf(report))).pages)
         self.assertIn('公開政治獻金', text)
-        self.assertIn('測試持有', text)
+        self.assertNotIn('測試持有', text)
+        self.assertNotIn('Asset Records', text)
 
     def test_unavailable_published_index_is_unknown_not_zero_political_records(self):
         from src.entities.repository import EntityStoreUnavailable

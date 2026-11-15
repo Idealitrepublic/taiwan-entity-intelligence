@@ -240,26 +240,16 @@ class AssetDeclarationTests(unittest.TestCase):
         self.assertFalse(page["schema_available"])
         self.assertEqual(page["items"], [])
 
-    def test_api_validates_filters_and_keeps_v1_envelope(self):
+    def test_public_endpoint_is_withdrawn(self):
         repo = Mock()
-        repo.asset_declarations.return_value = {"items": [], "has_more": False}
         path = f"/api/v1/politicians/{POLITICIAN}/asset-declarations"
-        query = {"limit": ["25"], "declaration_year": ["2026"],
-                 "asset_type": ["STOCK"]}
-        code, body, _ = dispatch_entity_api(path, query, repo)
-        self.assertEqual((code, body["api_version"]), (200, "1"))
-        repo.asset_declarations.assert_called_once_with(
-            POLITICIAN, limit=25, after=None, declaration_year=2026, asset_type="STOCK")
-        for bad in ({"limit": ["26"]}, {"after": ["bad"]},
-                    {"declaration_year": ["1900"]}, {"asset_type": ["NAME_MATCH"]}):
-            self.assertEqual(dispatch_entity_api(path, bad, repo)[0], 400)
+        self.assertEqual(dispatch_entity_api(path, {}, repo)[0], 404)
+        self.assertEqual(repo.mock_calls, [])
 
-    def test_politician_page_renders_asset_fields_and_source(self):
+    def test_politician_page_omits_withdrawn_data(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
-        for token in ("/asset-declarations", "assetDeclarationCards",
-                      "財產申報 / Asset declarations", "declaration_year",
-                      "company_entity_id", "原始來源 / Original source"):
-            self.assertIn(token, html)
+        self.assertNotIn("/asset-declarations", html)
+        self.assertNotIn('value="AssetDeclaration"', html)
 
 
 if __name__ == "__main__":

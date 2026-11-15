@@ -1,35 +1,16 @@
 """Read-only Entity API with bounded search and lazy graph expansion."""
 import os
+from src.live_company_path import CompanyRegistryUnavailable, live_company_path
 from .contracts import response
 from .models import stable_id, uuid_string
 from .repository import EntityRepository, EntityStoreUnavailable
 from .search import parse_search_request
 from src.relationships.models import RELATIONSHIP_TYPES
-from src.asset_declarations import ASSET_TYPES
-from src.live_company_path import CompanyRegistryUnavailable, live_company_path
-from src.election_2026 import search_key, search_registrations, EXPECTED_COUNT
+
+PUBLIC_RELATIONSHIP_TYPES = frozenset(RELATIONSHIP_TYPES) - {"ASSET_OWNERSHIP", "BUSINESS_INVESTMENT"}
 
 
 def dispatch_entity_api(path, query, repository=None):
-    if path.rstrip("/") == "/api/v1/elections/2026/registrations":
-        try:
-            term = search_key(query.get("q", [""])[0])
-            limit = int(query.get("limit", ["20"])[0])
-            offset = int(query.get("offset", ["0"])[0])
-            if not 2 <= len(term) <= 100 or not 1 <= limit <= 25 or not 0 <= offset < EXPECTED_COUNT:
-                raise ValueError("Invalid election search")
-        except (TypeError, ValueError):
-            return 400, {"error": "請輸入 2–100 個字，並使用有效的分頁參數。 / Invalid registration search."}, None
-        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
-            return 503, {"error": "選舉登記資料暫未啟用 / Election catalog is not enabled"}, None
-        repository = repository or EntityRepository()
-        try:
-            result = search_registrations(repository.transport, term, limit, offset)
-        except EntityStoreUnavailable:
-            result = None
-        if result is None:
-            return 503, {"error": "選舉登記資料尚未載入或暫不可用 / Election catalog unavailable"}, None
-        return 200, response(result), None
     if path.rstrip("/") == "/api/v1/search":
         try:
             request = parse_search_request(query)
@@ -134,7 +115,7 @@ def dispatch_entity_api(path, query, repository=None):
             if after:
                 uuid_string(after)
             relationship_type = query.get("relationship_type", [None])[0]
-            if relationship_type and relationship_type not in RELATIONSHIP_TYPES:
+            if relationship_type and relationship_type not in PUBLIC_RELATIONSHIP_TYPES:
                 raise ValueError("Unknown relationship type")
         except (TypeError, ValueError):
             return 400, {"error": "Graph UUID、limit（1–25）或關係類型錯誤 / Invalid graph parameters"}, None
@@ -148,54 +129,6 @@ def dispatch_entity_api(path, query, repository=None):
             return 503, {"status": "unavailable", "error": "關係圖資料暫時無法使用 / Graph store unavailable"}, None
         if result is None:
             return 404, {"error": "找不到已公開實體 / Published entity not found"}, None
-        return 200, response(result), None
-    if len(parts) == 5 and parts[2] == "politicians" and parts[4] == "asset-declarations":
-        try:
-            politician_id = uuid_string(parts[3])
-            limit = int(query.get("limit", ["25"])[0])
-            if not 1 <= limit <= 25:
-                raise ValueError("Invalid asset declaration limit")
-            after = query.get("after", [None])[0]
-            if after:
-                uuid_string(after)
-            year_value = query.get("declaration_year", [None])[0]
-            declaration_year = int(year_value) if year_value else None
-            if declaration_year is not None and not 1912 <= declaration_year <= 2200:
-                raise ValueError("Invalid declaration year")
-            asset_type = query.get("asset_type", [None])[0]
-            if asset_type and asset_type not in ASSET_TYPES:
-                raise ValueError("Invalid asset type")
-        except (TypeError, ValueError):
-            return 400, {"error": "財產申報查詢參數錯誤 / Invalid asset parameters"}, None
-        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
-            return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
-        repository = repository or EntityRepository()
-        try:
-            result = repository.asset_declarations(
-                politician_id, limit=limit, after=after,
-                declaration_year=declaration_year, asset_type=asset_type)
-        except EntityStoreUnavailable:
-            return 503, {"status": "unavailable", "error": "財產申報資料暫時無法使用 / Asset data unavailable"}, None
-        if result is None:
-            return 404, {"error": "找不到已公開立委實體 / Published politician not found"}, None
-        return 200, response(result), None
-    if len(parts) == 5 and parts[2] == "politicians" and parts[4] == "asset-timeline":
-        try:
-            politician_id = uuid_string(parts[3])
-            max_years = int(query.get("years", ["10"])[0])
-            if not 2 <= max_years <= 20:
-                raise ValueError("Invalid asset timeline year limit")
-        except (TypeError, ValueError):
-            return 400, {"error": "財產時間序列參數錯誤 / Invalid timeline parameters"}, None
-        if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
-            return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
-        repository = repository or EntityRepository()
-        try:
-            result = repository.asset_timeline(politician_id, max_years=max_years)
-        except EntityStoreUnavailable:
-            return 503, {"status": "unavailable", "error": "財產時間序列暫時無法使用 / Timeline unavailable"}, None
-        if result is None:
-            return 404, {"error": "找不到已公開立委實體 / Published politician not found"}, None
         return 200, response(result), None
     if len(parts) == 5 and parts[2] == "entities" and parts[4] == "political-contributions":
         try:
@@ -231,7 +164,7 @@ def dispatch_entity_api(path, query, repository=None):
         if after:
             uuid_string(after)
         relationship_type = query.get("relationship_type", [None])[0]
-        if relationship_type and relationship_type not in RELATIONSHIP_TYPES:
+        if relationship_type and relationship_type not in PUBLIC_RELATIONSHIP_TYPES:
             raise ValueError("Unknown relationship type")
     except (ValueError, TypeError):
         return 400, {"error": "Invalid UUID, limit (1–50) or relationship type / 查詢參數錯誤"}, None

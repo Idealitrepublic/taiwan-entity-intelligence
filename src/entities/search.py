@@ -4,6 +4,8 @@ from unicodedata import normalize
 
 from .models import ENTITY_TYPES
 
+PUBLIC_ENTITY_TYPES = frozenset(ENTITY_TYPES) - {"AssetDeclaration"}
+
 
 @dataclass(frozen=True)
 class SearchRequest:
@@ -24,7 +26,7 @@ def parse_search_request(query: dict) -> SearchRequest:
         raise ValueError("Invalid search limit") from exc
     if not 2 <= len(term) <= 100 or any(ord(character) < 32 for character in term):
         raise ValueError("Search term must contain 2 to 100 printable characters")
-    if entity_type is not None and entity_type not in ENTITY_TYPES:
+    if entity_type is not None and entity_type not in PUBLIC_ENTITY_TYPES:
         raise ValueError("Unknown entity type")
     if not 1 <= limit <= 20:
         raise ValueError("Search limit must be between 1 and 20")
