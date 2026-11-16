@@ -185,7 +185,7 @@ def _direct_corporate_connection(source, target, lookup):
 
 def live_company_path(source_uniform, target_uniform, *, max_depth=3,
                       company_lookup=None, award_lookup=None, index_loader=None,
-                      corporate_lookup=None):
+                      corporate_lookup=None, public_graph_only=False):
     """Compare two exact MOEA IDs; return only evidenced shared-record paths."""
     if not all(re.fullmatch(r"[0-9]{8}", str(u or "")) for u in (source_uniform, target_uniform)):
         raise ValueError("Both company IDs must contain eight digits")
@@ -194,6 +194,12 @@ def live_company_path(source_uniform, target_uniform, *, max_depth=3,
     company_lookup = company_lookup or get_company
     award_lookup = award_lookup or lookup_awards
     index_loader = index_loader or load_index
+    if public_graph_only:
+        from src.sources.procurement import lookup_reviewed_awards
+        award_lookup = lookup_reviewed_awards
+        if corporate_lookup is None:
+            def corporate_lookup(uniform, target):
+                return corporate_director_connection(uniform, target, require_official_uniform=True)
     corporate_lookup = corporate_lookup or corporate_director_connection
     retrieved_at = datetime.now(timezone.utc).isoformat()
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -217,17 +223,19 @@ def live_company_path(source_uniform, target_uniform, *, max_depth=3,
         return None
     source, target = companies
     direct = _direct_corporate_connection(source, target, corporate_lookup)
-    index = index_loader() if max_depth >= 2 else {"records": [], "generated_at": None}
+    index = index_loader() if max_depth >= 2 and not public_graph_only else {"records": [], "generated_at": None}
     shared = direct
     if max_depth >= 2 and shared is None:
         if all(result.get("status") == "ok" for result in awards):
             shared = _shared_award(source, target, *awards, retrieved_at)
-        if shared is None:
+        if shared is None and not public_graph_only:
             shared = _shared_judgment(source, target, index)
     limited = any(result.get("status") != "ok" or result.get("limited") for result in awards)
     coverage = ("直接關係僅查可核對的官方法人董監事；未命中不代表沒有其他關係。 / Direct comparison checks verified corporate-director observations only."
                 if max_depth == 1 else
                 "法人董監事依官方來源核對；採購僅查可取得的第一頁得標公告；司法為部分 JList/JDoc 索引。未找到不代表兩家公司沒有關係。 / Official corporate directors, first-page procurement and partial court index only. No match is not proof of no relationship.")
+    if public_graph_only and max_depth > 1:
+        coverage = "比對官方法人董監事及已覆核決標公告。 / Official corporate directors and reviewed awards."
     return {"found": shared is not None, "depth": len(shared["segments"]) if shared else None,
             "source_entity": source, "target_entity": target,
             "max_depth": max_depth, "segments": shared["segments"] if shared else [],

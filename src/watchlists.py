@@ -62,10 +62,12 @@ def _first(query, name, default=None):
 class WatchlistRepository:
     """PostgREST client forwarding only the signed-in user's JWT."""
 
-    def __init__(self, access_token, transport=None):
+    def __init__(self, access_token, transport=None, *, require_launch_scope=False):
         self.url, self.key = private_supabase_config()
         self.access_token = access_token
         self.transport = transport or self._request
+        if require_launch_scope and self.transport("GET", "rpc/public_graph_scope_version") != [{"version": 1}]:
+            raise WatchlistFeatureUnavailable("Public relationship scope is not installed")
 
     def _request(self, method, resource, params=None, body=None):
         if not self.key:
@@ -156,11 +158,11 @@ class WatchlistRepository:
         return {"updated": len(rows)}
 
 
-def dispatch_watchlist_api(method, path, query, payload, authorization, repository=None):
+def dispatch_watchlist_api(method, path, query, payload, authorization, repository=None, *, public_graph_only=False):
     """Dispatch bounded Watchlist/Alert operations; RLS remains authoritative."""
     try:
         token = access_token_from_header(authorization)
-        repository = repository or WatchlistRepository(token)
+        repository = repository or WatchlistRepository(token, require_launch_scope=public_graph_only)
         parts = path.strip("/").split("/")
         result = None
         if parts == ["api", "v1", "watchlist"]:

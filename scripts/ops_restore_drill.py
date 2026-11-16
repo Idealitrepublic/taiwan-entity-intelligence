@@ -211,18 +211,19 @@ def drill(folder, source_url, identity):
                 raise RuntimeError('Source changed or restored metadata/count mismatch: ' + ','.join(differences) + '; ' + '; '.join(details))
             query(local, 'grant usage on schema public,auth to anon; grant select on all tables in schema public to anon;',
                   read_only=False)
-            anonymous = query(local, """set role anon; select json_build_object(
+            anonymous_visibility = """set role anon; select json_build_object(
                 'entities',(select count(*) from public.entities),
                 'relationships',(select count(*) from public.relationships),
-                'evidence',(select count(*) from public.evidence_records),
-                'workspaces',(select count(*) from public.investigation_workspaces),
-                'saved_items',(select count(*) from public.workspace_items));""")
-            expected = query(source, """select json_build_object(
-                'entities',(select count(*) from public.entities where publication_status='published'),
-                'relationships',(select count(*) from public.relationships where status='published'),
-                'evidence',(select count(*) from public.evidence_records where publication_status='published' and status='active'),
-                'workspaces',0,'saved_items',0);""")
-            if anonymous != expected:
+                'evidence',(select count(*) from public.evidence_records));"""
+            anonymous = query(local, anonymous_visibility)
+            expected = query(source, anonymous_visibility)
+            private_tables = {"workspaces": "investigation_workspaces", "saved_items": "workspace_items"}
+            for metric, table in private_tables.items():
+                sql = f"set role anon; select to_json(count(*)) from public.{table};"
+                anonymous[metric] = query(local, sql)
+                has_grant = query(source, f"select to_json(has_table_privilege('anon','public.{table}','SELECT'));")
+                expected[metric] = query(source, sql) if has_grant else 0
+            if (anonymous != expected or anonymous['workspaces'] or anonymous['saved_items']):
                 raise RuntimeError('Restored anonymous visibility or private RLS boundary mismatch')
             return {'result': 'PASS', 'project_ref': 'canqjiokrtcxkwblhmml',
                     'target': 'disposable local PostgreSQL, Unix socket only',

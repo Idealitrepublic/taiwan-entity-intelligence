@@ -192,7 +192,8 @@ class EntitySearchTests(unittest.TestCase):
         self.assertIn("經濟部即時公司登記", html)
         self.assertIn("官方核對別名 / Verified alias", html)
         self.assertIn('value="GovernmentAgency"', html)
-        self.assertIn('value="LobbyingRecord"', html)
+        self.assertIn('value="CivilOrganization"', html)
+        self.assertNotIn('value="LobbyingRecord"', html)
         self.assertNotIn('maxlength="8" inputmode="numeric"', html)
 
 

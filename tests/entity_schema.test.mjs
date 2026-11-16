@@ -24,7 +24,8 @@ try {
   // Exercise the application-owned Entity model and all later phases here.
   const files = fs.readdirSync('supabase/migrations')
     .filter(x => x.endsWith('.sql') && x >= '20260909143820' &&
-      !x.endsWith('_withhold_candidate_and_asset_publication.sql'))
+      !x.endsWith('_withhold_candidate_and_asset_publication.sql') &&
+      !x.endsWith('_public_relationship_launch_scope.sql'))
     .sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
   // The count optimization is additive and safely repeatable; all existing
@@ -907,6 +908,57 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     [linkedAssetId])).rows[0].n, 1);
   assert.equal((await db.query("select count(*)::int n from public.source_records where dataset='cec-2026-local-election-registration'")).rows[0].n, 1);
   checks += 4;
+  const scope = fs.readdirSync('supabase/migrations')
+    .find(file => file.endsWith('_public_relationship_launch_scope.sql'));
+  const publicProof = 'b0000000-0000-4000-8000-000000000001';
+  const courtProof = 'b0000000-0000-4000-8000-000000000002';
+  const courtId = 'b0000000-0000-4000-8000-000000000003';
+  const courtLink = 'b0000000-0000-4000-8000-000000000004';
+  await db.exec(`insert into public.entities (id,entity_type,canonical_name,display_name,source,source_id,publication_status)
+    values ('${courtId}','Judgment','測試裁判','測試裁判','official court','launch:filtered','published');`);
+  await db.exec(`insert into public.evidence_records (id,source_name,source_record_id,source_class,
+    source_url,source_locator,title,summary,observed_at,retrieved_at,content_hash,publication_status)
+    values ('${publicProof}','MOEA registry','launch:approved','Official Registry','https://data.gcis.nat.gov.tw/query',
+      '{"uniform_number":"12345678"}','Approved','Reviewed registry lookup',now(),now(), repeat('c',64),'published'),
+      ('${courtProof}','Official Court','launch:filtered','Court Record','https://judgment.judicial.gov.tw/query',
+       '{"case_id":"fixture"}','Court fixture','Filtered',now(),now(),repeat('d',64),'published');`);
+  await db.query(`insert into public.relationships (id,source_entity_id,target_entity_id,relationship_type,
+    primary_evidence_id,observed_at,status,confidence,source_role)
+    values ('${courtLink}',$1,'${courtId}','RELATED_TO_JUDGMENT','${courtProof}',now(),'published','HIGH','債權人')`, [company.id]);
+  await db.exec(fs.readFileSync(`supabase/migrations/${scope}`, 'utf8'));
+  for (const role of ['anon','authenticated']) {
+    await db.exec(`set role ${role}`);
+    assert.equal((await db.query("select version from public.public_graph_scope_version()")).rows[0].version, 1);
+    assert.equal((await db.query('select count(*)::int n from public.source_records')).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from public.entities where id=$1',[courtId])).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1',[courtProof])).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1',[publicProof])).rows[0].n, 1);
+    assert.equal((await db.query('select count(*)::int n from public.relationships where id=$1',[courtLink])).rows[0].n, 0);
+    assert.equal((await db.query("select count(*)::int n from public.search_entities('測試裁判','Judgment',20)")).rows[0].n, 0);
+    await db.exec('reset role');
+    checks += 7;
+  }
+  await db.query("update public.evidence_records set status='retracted' where id=$1",[publicProof]);
+  await db.exec('set role anon');
+  assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1',[publicProof])).rows[0].n, 0);
+  await db.exec('reset role');
+  // The source retry keeps immutable versions and cannot resurrect a withdrawal.
+  await db.query(`select public.tei_ingest_bundle(jsonb_build_object('evidence',
+    jsonb_build_array(to_jsonb(proof) || '{"status":"active"}'::jsonb)))
+    from public.evidence_records proof where proof.id=$1`, [publicProof]);
+  assert.equal((await db.query('select status from public.evidence_records where id=$1',[publicProof])).rows[0].status, 'retracted');
+  await db.query(`insert into public.evidence_records (id,source_name,source_record_id,source_class,
+     source_url,source_locator,title,summary,observed_at,retrieved_at,content_hash,publication_status)
+    select 'b0000000-0000-4000-8000-000000000005',source_name,source_record_id,source_class,
+      source_url,source_locator,'Corrected','Corrected source version',observed_at,now(),repeat('e',64),'draft'
+    from public.evidence_records where id=$1`,[publicProof]);
+  await db.exec('set role anon');
+  assert.equal((await db.query("select count(*)::int n from public.evidence_records where source_record_id='launch:approved'")).rows[0].n, 0);
+  await db.exec('reset role');
+  checks += 2;
+  assert.equal((await db.query('select count(*)::int n from public.source_records')).rows[0].n, 2);
+  assert.equal((await db.query('select count(*)::int n from public.relationships where id=$1',[courtLink])).rows[0].n, 1);
+  checks += 3;
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;

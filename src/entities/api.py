@@ -8,17 +8,28 @@ from .search import parse_search_request
 from src.relationships.models import RELATIONSHIP_TYPES
 
 PUBLIC_RELATIONSHIP_TYPES = frozenset(RELATIONSHIP_TYPES) - {"ASSET_OWNERSHIP", "BUSINESS_INVESTMENT"}
+LAUNCH_RELATIONSHIP_TYPES = frozenset({
+    "DIRECTOR_OF", "OFFICER_OF", "EMPLOYED_BY", "MEMBER_OF", "LEGISLATOR_OF",
+    "COMMITTEE_MEMBER", "PROPOSED_BILL", "CO_SPONSORED_BILL", "GOVERNMENT_POSITION", "CONTRACT_WITH",
+})
+WITHHELD_ENTITY_TYPES = frozenset({"Judgment", "Penalty", "PoliticalContribution", "LobbyingRecord"})
 
 
-def dispatch_entity_api(path, query, repository=None):
+def dispatch_entity_api(path, query, repository=None, *, public_graph_only=False):
+    relationship_types = LAUNCH_RELATIONSHIP_TYPES if public_graph_only else PUBLIC_RELATIONSHIP_TYPES
+    def make_repository():
+        return repository or EntityRepository(require_launch_scope=public_graph_only)
+
     if path.rstrip("/") == "/api/v1/search":
         try:
             request = parse_search_request(query)
+            if public_graph_only and request.entity_type in WITHHELD_ENTITY_TYPES:
+                raise ValueError("Entity type is outside the public relationship scope")
         except (TypeError, ValueError):
             return 400, {"error": "請輸入 2–100 個字並使用有效的類型與筆數 / Invalid search query, type or limit"}, None
         if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
             return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
-        repository = repository or EntityRepository()
+        repository = make_repository()
         try:
             result = repository.search(request.term, entity_type=request.entity_type,
                                        limit=request.limit)
@@ -53,13 +64,14 @@ def dispatch_entity_api(path, query, repository=None):
             return 400, {"error": "請提供不同的 Entity UUID，max depth 須為 1–3 / Invalid path parameters"}, None
         if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
             return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
-        repository = repository or EntityRepository()
+        repository = make_repository()
         try:
+            live_scope = {"public_graph_only": True} if public_graph_only else {}
             if exact_depth:
                 result = repository.company_path_at_depth(source_id, target_id, depth=exact_depth)
             elif live_requested == "1":
                 result = live_company_path(source_uniform, target_uniform,
-                                           max_depth=max_depth)
+                                           max_depth=max_depth, **live_scope)
             elif company_only == "1":
                 result = repository.company_relationship_path(
                     source_id, target_id, max_depth=max_depth)
@@ -67,7 +79,7 @@ def dispatch_entity_api(path, query, repository=None):
                         result is None or not result.get("found")
                         or (isinstance(result.get("depth"), int) and result["depth"] > 2)):
                     live_result = live_company_path(source_uniform, target_uniform,
-                                                    max_depth=max_depth)
+                                                    max_depth=max_depth, **live_scope)
                     if live_result and (result is None or not result.get("found")
                                         or (live_result.get("found") and
                                             isinstance(result.get("depth"), int) and
@@ -97,7 +109,7 @@ def dispatch_entity_api(path, query, repository=None):
             return 400, {"error": "Politician UUID 或 limit（1–25）錯誤 / Invalid parameters"}, None
         if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
             return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
-        repository = repository or EntityRepository()
+        repository = make_repository()
         try:
             result = repository.politician_profile(entity_id, relationship_limit=limit)
         except EntityStoreUnavailable:
@@ -115,13 +127,13 @@ def dispatch_entity_api(path, query, repository=None):
             if after:
                 uuid_string(after)
             relationship_type = query.get("relationship_type", [None])[0]
-            if relationship_type and relationship_type not in PUBLIC_RELATIONSHIP_TYPES:
+            if relationship_type and relationship_type not in relationship_types:
                 raise ValueError("Unknown relationship type")
         except (TypeError, ValueError):
             return 400, {"error": "Graph UUID、limit（1–25）或關係類型錯誤 / Invalid graph parameters"}, None
         if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
             return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
-        repository = repository or EntityRepository()
+        repository = make_repository()
         try:
             result = repository.graph_neighbors(entity_id, limit=limit, after=after,
                                                 relationship_type=relationship_type)
@@ -131,6 +143,8 @@ def dispatch_entity_api(path, query, repository=None):
             return 404, {"error": "找不到已公開實體 / Published entity not found"}, None
         return 200, response(result), None
     if len(parts) == 5 and parts[2] == "entities" and parts[4] == "political-contributions":
+        if public_graph_only:
+            return 404, {"error": "找不到端點 / Not found"}, None
         try:
             entity_id = uuid_string(parts[3])
             limit = int(query.get("limit", ["25"])[0])
@@ -143,7 +157,7 @@ def dispatch_entity_api(path, query, repository=None):
             return 400, {"error": "Entity UUID 或 limit（1–25）錯誤 / Invalid parameters"}, None
         if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
             return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
-        repository = repository or EntityRepository()
+        repository = make_repository()
         try:
             result = repository.political_contributions(entity_id, limit=limit, after=after)
         except EntityStoreUnavailable:
@@ -164,7 +178,7 @@ def dispatch_entity_api(path, query, repository=None):
         if after:
             uuid_string(after)
         relationship_type = query.get("relationship_type", [None])[0]
-        if relationship_type and relationship_type not in PUBLIC_RELATIONSHIP_TYPES:
+        if relationship_type and relationship_type not in relationship_types:
             raise ValueError("Unknown relationship type")
     except (ValueError, TypeError):
         return 400, {"error": "Invalid UUID, limit (1–50) or relationship type / 查詢參數錯誤"}, None
@@ -172,7 +186,7 @@ def dispatch_entity_api(path, query, repository=None):
     # switch instead of requiring an environment mutation for every deployment.
     if os.environ.get("TEI_ENTITY_API_ENABLED") == "0":
         return 503, {"status": "not_enabled", "error": "Entity API 尚未啟用 / Entity API not enabled"}, None
-    repository = repository or EntityRepository()
+    repository = make_repository()
     try:
         if len(parts) == 5:
             if not repository.entity(record_id):

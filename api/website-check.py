@@ -106,14 +106,5 @@ def main(company_name: str, uniform: str) -> dict[str, Any]:
 
 
 def handler(request):
-    try:
-        raw = request.get("queryStringParameters") or {}
-        uniform = str(raw.get("uniform") or "").strip()
-        if not (uniform.isdigit() and len(uniform) == 8):
-            return {"statusCode": 400, "body": json.dumps({"error": "uniform must be 8 digits"}, ensure_ascii=False)}
-        from src.v2server import build_company
-        data = build_company(uniform)
-        payload = main(str(data.get("company_name") or uniform), uniform)
-        return {"statusCode": 200, "headers": {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store"}, "body": json.dumps(payload, ensure_ascii=False)}
-    except Exception as exc:
-        return {"statusCode": 502, "headers": {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store"}, "body": json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False)}
+    return {"statusCode": 404, "headers": {"Cache-Control": "no-store"},
+            "body": json.dumps({"error": "Not found"})}

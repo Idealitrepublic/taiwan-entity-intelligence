@@ -346,7 +346,9 @@ def _records(key, values, detail_sections=None):
 def present_report(report):
     """Return display-only sections; never change the source report or its JSON API."""
     order = list(SECTION_TITLES)
-    if report.get("report_type") == "LIVE_COMPANY":
+    if report.get("public_graph_scope"):
+        order = [(key, title) for key, title in order if key not in ("judgments", "penalties")]
+    elif report.get("report_type") == "LIVE_COMPANY":
         order.insert(2, ("anti_fraud_checks", "165 網域比對 / Official Domain Check"))
     if report.get("report_type") == "WORKSPACE":
         order += [("saved_evidence", "已收藏證據 / Saved evidence"),
@@ -382,7 +384,8 @@ def present_report(report):
         row for key in ("key_relationships", "political_relationships", "government_contracts",
                         "judgments", "penalties") for row in report.get(key) or []]))
     relationship_label = ("關係紀錄（含候選） / Links & observations"
-                          if report.get("report_type") == "LIVE_COMPANY" else "關係 / Relationships")
+                          if report.get("report_type") == "LIVE_COMPANY" and not report.get("public_graph_scope")
+                          else "關係 / Relationships")
     return {"sections": sections, "empty": empty, "warnings": warnings,
             "generated_at": format_date(report.get("generated_at")),
             "report_type": LABELS.get(report.get("report_type"), report.get("report_type")),

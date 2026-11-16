@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 
 from src.runtime_config import public_supabase_config
+from src.cloud_company import build_company as scoped_company
 
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
@@ -164,13 +165,13 @@ def handler(request):
             uniform = str(query.get("uniform") or "").strip()
             if not uniform.isdigit() or len(uniform) != 8:
                 return _response(400, {"status": "error", "error": "uniform must be 8 digits"})
-            data = _company(uniform)
+            data = scoped_company(uniform, public_graph_only=True)
             return _response(200, {"status": data.get("status"), "uniform_number": uniform, "company_name": data.get("company_name"), "sources": data.get("evidence_status", {})})
         if path.startswith("/api/company/"):
             uniform = unquote(path.split("/api/company/", 1)[1]).strip()
             if not uniform.isdigit() or len(uniform) != 8:
                 return _response(400, {"status": "error", "error": "統編必須是 8 碼數字。"})
-            return _response(200, _company(uniform))
+            return _response(200, scoped_company(uniform, public_graph_only=True))
         return _response(404, {"status": "error", "error": "Not found"})
     except urllib.error.HTTPError as exc:
         return _response(502, {"status": "error", "error": f"上游資料來源 HTTP {exc.code}"})

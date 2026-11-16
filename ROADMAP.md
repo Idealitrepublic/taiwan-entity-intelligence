@@ -378,3 +378,9 @@ Production 未修改；真人Pilot與另行正式發布授權仍為後續閘門�
 ## 12 筆申報對象識別（2026-11-08）
 
 7 筆臺灣統編、5 筆 SEC CIK 已逐列記錄登記識別；新增 21 份 Development Evidence。此為身份覆核，12 筆正式資產公司 FK／股權連結仍未核准，保單不可當持股；不據此標記整體補缺 COMPLETE。
+
+### Public relationship release
+
+The first public release focuses on companies, public-role holders, organizations
+and reviewed awards. Court and labor panels lead to the government lookup portals.
+Production release follows the recorded backup, migration, WAF and rollout checks.

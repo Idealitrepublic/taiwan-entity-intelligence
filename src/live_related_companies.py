@@ -50,8 +50,13 @@ def _juristic_company(name, search_lookup):
     return {"uniform_number": uniforms.pop(), "company_name": exact[0]["Company_Name"]}
 
 
+def _director_uniform(row):
+    value = str(row.get("Juristic_Person_Accounting_NO") or "")
+    return value if re.fullmatch(r"[0-9]{8}", value) else None
+
+
 def corporate_director_connection(source_uniform, target_company, *, director_lookup=None,
-                                  name_lookup=_exact_name_rows):
+                                  name_lookup=_exact_name_rows, require_official_uniform=False):
     """Find one directed, source-scoped corporate-director link to an exact-ID target.
 
     This is a live observation, not a canonical ownership or affiliation edge.
@@ -67,6 +72,8 @@ def corporate_director_connection(source_uniform, target_company, *, director_lo
     rows = director_lookup(source_uniform)
     matches = [row for row in rows[:100] if isinstance(row, dict)
                and _normalized(row.get("Juristic_Person_Name")) == _normalized(target_name)]
+    if require_official_uniform:
+        matches = [row for row in matches if _director_uniform(row) == target_uniform]
     if not matches:
         return None
     resolved = _juristic_company(target_name, name_lookup)
@@ -91,7 +98,8 @@ def corporate_director_connection(source_uniform, target_company, *, director_lo
 
 
 def related_companies(uniform, *, company_lookup=get_company, director_lookup=None,
-                      name_lookup=_exact_name_rows, coaward_lookup=lookup_co_awardees):
+                      name_lookup=_exact_name_rows, coaward_lookup=lookup_co_awardees,
+                      public_graph_only=False):
     """Return at most six exact-ID company nodes with source evidence."""
     if not re.fullmatch(r"[0-9]{8}", str(uniform or "")):
         raise ValueError("Company uniform number must contain eight digits")
@@ -99,7 +107,8 @@ def related_companies(uniform, *, company_lookup=get_company, director_lookup=No
     with ThreadPoolExecutor(max_workers=3) as pool:
         root_job = pool.submit(company_lookup, uniform, timeout=6)
         director_job = pool.submit(director_lookup, uniform)
-        award_job = pool.submit(coaward_lookup, uniform, limit=MAX_CONNECTIONS, timeout=6)
+        award_job = (pool.submit(coaward_lookup, uniform, limit=MAX_CONNECTIONS, timeout=6)
+                     if not public_graph_only else None)
         try:
             root = root_job.result()
         except Exception as exc:
@@ -112,7 +121,7 @@ def related_companies(uniform, *, company_lookup=get_company, director_lookup=No
         except Exception:
             directors, director_status = [], "partial"
         try:
-            awards = award_job.result()
+            awards = award_job.result() if award_job else {"status": "ok", "items": [], "limited": False}
         except Exception:
             awards = {"status": "partial", "items": [], "limited": True}
 
@@ -122,7 +131,7 @@ def related_companies(uniform, *, company_lookup=get_company, director_lookup=No
         if not isinstance(row, dict):
             continue
         name = str(row.get("Juristic_Person_Name") or "").strip()
-        if name and name not in candidates:
+        if name and name not in candidates and (not public_graph_only or _director_uniform(row)):
             candidates[name] = row
 
     items = []
@@ -136,7 +145,8 @@ def related_companies(uniform, *, company_lookup=get_company, director_lookup=No
                 except Exception:
                     director_status = "partial"
                     continue
-                if not company or company["uniform_number"] == uniform:
+                if (not company or company["uniform_number"] == uniform
+                        or (public_graph_only and company["uniform_number"] != _director_uniform(candidates[name]))):
                     continue
                 row = candidates[name]
                 items.append({**company, "connection_type": "corporate_director",

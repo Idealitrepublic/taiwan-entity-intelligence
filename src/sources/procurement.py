@@ -236,3 +236,46 @@ def lookup_co_awardees(uniform: str, limit: int = 6, timeout: int = 8) -> dict[s
                 or len(items) > limit}
     except Exception:
         return {"status": "partial", "items": [], "limited": True}
+
+
+def lookup_reviewed_awards(uniform: str, limit: int = 25, timeout: int = 12) -> dict[str, Any]:
+    """Return only exact bidder records already compared with the official notice."""
+    from src.entities.repository import EntityRepository, EntityStoreUnavailable
+
+    if not re.fullmatch(r"[0-9]{8}", uniform):
+        raise ValueError("Company ID must be eight digits")
+    result = {"status": "ok", "records": [], "matched": 0, "limited": False,
+              "source": "政府電子採購網 / Government e-Procurement",
+              "official_search_url": OFFICIAL_SEARCH,
+              "verification_scope": "reviewed_official_notices_only"}
+    repository = EntityRepository(require_launch_scope=True)
+    try:
+        company = repository.company_for_uniform(uniform)
+        graph = (repository.graph_neighbors(company["id"], limit=min(limit, 25),
+                                            relationship_type="CONTRACT_WITH") if company else None)
+    except EntityStoreUnavailable:
+        return {**result, "status": "partial"}
+    if not graph:
+        return result
+    records = []
+    for edge in graph.get("edges", []):
+        evidence = edge.get("primary_evidence") or {}
+        source = evidence.get("source_locator") or {}
+        if (edge.get("source_entity_id") != company["id"]
+                or edge.get("relationship_type") != "CONTRACT_WITH"
+                or source.get("review_method") != "official_row_compared_with_exact_bidder_id_and_award_role"
+                or source.get("bidder_uniform_number") != uniform or source.get("winner") is not True
+                or urllib.parse.urlsplit(evidence.get("source_url") or "").hostname != "web.pcc.gov.tw"
+                or not all(source.get(key) for key in ("unit_id", "job_number", "notice_filename", "award_date"))):
+            continue
+        records.append({**{key: source.get(key) for key in ("title", "agency", "unit_id", "job_number", "amount")},
+                        "id": f"{source['unit_id']}:{source['job_number']}:{source['notice_filename']}",
+                        "date": source["award_date"], "notice_type": "決標公告", "award_role": "winner",
+                        "uniform_number": uniform, "source_url": evidence["source_url"],
+                        "official_search_url": OFFICIAL_SEARCH, "retrieved_at": evidence.get("retrieved_at"),
+                        "publication_status": "published", "identity_status": "verified_identifier",
+                        "verification_scope": "reviewed_official_notice"})
+    records.sort(key=lambda row: row["date"], reverse=True)
+    return {**result, "records": records, "matched": len(records),
+            "retrieved_at": max((r["retrieved_at"] for r in records if r["retrieved_at"]), default=None),
+            "limited": bool(graph.get("has_more"))}

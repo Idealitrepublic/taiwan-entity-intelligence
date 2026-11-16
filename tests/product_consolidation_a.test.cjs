@@ -83,23 +83,12 @@ test('each range uses its existing exact max_depth and renders response',async()
     await pending;assert.equal(h.renders[0].depth,depth);assert.equal(h.elements.pathFind.disabled,false);
   }
 });
-test('real path example replaces a pending search and queries the published one-intermediary route',async()=>{
-  const h=pathHarness(),previous=vm.runInContext('findRelationshipPath()',h.context);
-  assert(html.includes("$('sample').addEventListener('click',loadRelationshipExample)"));
-  const example=vm.runInContext('loadRelationshipExample()',h.context);
-  assert(h.requests[0].options.signal.aborted);
-  assert.deepEqual(h.cleared,['source','target']);
-  assert.equal(h.elements.pathSourceQuery.value,'聯上開發股份有限公司');
-  assert.equal(h.elements.pathTargetQuery.value,'敦峰汽車工業股份有限公司');
-  const request=new URL(h.requests[1].url,'https://test.invalid');
-  assert.equal(request.pathname,'/api/v1/paths');
-  assert.equal(request.searchParams.get('source_uniform'),'22659295');
-  assert.equal(request.searchParams.get('target_uniform'),'54690903');
-  assert.equal(request.searchParams.get('exact_depth'),'2');
-  h.requests[0].resolve({ok:true,json:async()=>({data:{found:true,stale:true}})});
-  h.requests[1].resolve({ok:true,json:async()=>({data:{found:true,depth:2}})});
-  await Promise.all([previous,example]);
-  assert.deepEqual(h.renders,[{found:true,depth:2}]);
+test('public example opens a real company by official identifier',async()=>{
+  assert(html.includes("$('sample').addEventListener('click',loadCompanyExample)"));
+  const values={q:{value:''},entityTypeFilter:{value:''}};
+  const result=vm.runInNewContext(shipped('  function loadCompanyExample(', '  pathRange.addEventListener')+
+    '\nloadCompanyExample()', {$:id=>values[id],search:()=>[values.q.value,values.entityTypeFilter.value].join(':')});
+  assert.equal(result,'96979933:Company');
 });
 test('empty/truncated path does not claim absence of relationships',()=>{
   const h=pathHarness();h.context.num=Number;h.context.pathRangeLabels={};

@@ -20,7 +20,7 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
 
     def test_procurement_route_validates_and_returns_lookup(self):
         expected = {"status": "ok", "matched": 2, "records": []}
-        with patch("app.lookup_awards", return_value=expected):
+        with patch("app.lookup_reviewed_awards", return_value=expected):
             status, payload, _ = dispatch("/api/procurement/96979933", {})
         self.assertEqual(status, 200)
         self.assertEqual(payload, expected)
@@ -96,7 +96,7 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
 
     def test_left_panel_identifies_public_data_providers(self):
         _, html, _ = dispatch("/", {})
-        for provider in ("經濟部商業發展署", "勞動部及各地方主管機關", "司法院", "行政院公共工程委員會", "刑事警察局 165"):
+        for provider in ("經濟部商業發展署", "勞動部及各地方主管機關", "司法院", "行政院公共工程委員會"):
             with self.subTest(provider=provider):
                 self.assertIn(provider, html)
         self.assertIn("T.E.I. 為民間整合工具，不代表任何政府機關", html)

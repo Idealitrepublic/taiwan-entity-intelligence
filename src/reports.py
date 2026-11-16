@@ -144,8 +144,9 @@ def _source_map(report):
 
 
 class ReportService:
-    def __init__(self, entity_repository=None, workspace_factory=None, clock=None):
-        self.entities = entity_repository or EntityRepository()
+    def __init__(self, entity_repository=None, workspace_factory=None, clock=None, *, public_graph_only=False):
+        self.public_graph_only = public_graph_only
+        self.entities = entity_repository or EntityRepository(require_launch_scope=public_graph_only)
         self.workspace_factory = workspace_factory or WorkspaceRepository
         self.clock = clock or _now
 
@@ -259,14 +260,19 @@ class ReportService:
             raise ReportValidationError("Invalid company identifier")
         if company_loader is None:
             from src.cloud_company import build_company
-            company_loader = build_company
+            def company_loader(value):
+                return build_company(value, public_graph_only=True) if self.public_graph_only else build_company(value)
         if award_loader is None:
             from src.sources.procurement import lookup_awards
             def award_loader(value):
-                return lookup_awards(value, timeout=12)
+                # The public report reads awards from the same reviewed graph
+                # as its canonical context. Do not add a duplicate notice.
+                return {"status": "ok", "records": []} if self.public_graph_only else lookup_awards(value, timeout=12)
         if related_loader is None:
             from src.live_related_companies import related_companies
-            related_loader = related_companies
+            def related_loader(value):
+                return (related_companies(value, public_graph_only=True) if self.public_graph_only
+                        else related_companies(value))
         with ThreadPoolExecutor(max_workers=3) as pool:
             company_job = pool.submit(company_loader, uniform)
             award_job = pool.submit(award_loader, uniform)
@@ -464,6 +470,8 @@ class ReportService:
         if published_unavailable:
             report['coverage']['source_partial'] = True
             unavailable_sections.append('political_relationships')
+            if self.public_graph_only:
+                unavailable_sections.append('government_contracts')
         if published:
             entity = published['entity']
             canonical_id = entity['id']
@@ -531,10 +539,11 @@ class ReportService:
                     for endpoint in ("source_entity_id", "target_entity_id"):
                         if relationship.get(endpoint) and relationship[endpoint] not in roots:
                             roots.append(relationship[endpoint])
-        child_reports = []
+        child_reports, public_roots, public_evidence = [], set(), set()
         for root in roots[:MAX_WORKSPACE_ROOTS]:
             try:
                 child_reports.append(self._entity_report(root))
+                public_roots.add(root)
             except ReportNotFound:
                 unavailable.append({"entity_id": root, "reason": "not_publicly_available"})
         report = {
@@ -585,6 +594,7 @@ class ReportService:
                 if evidence:
                     saved_sources.append(evidence)
                     report["saved_evidence"].append(evidence)
+                    public_evidence.add(item["evidence_id"])
                 else:
                     unavailable.append({"workspace_item_id": item.get("id"),
                                         "evidence_id": item["evidence_id"], "reason": "not_publicly_available"})
@@ -620,6 +630,15 @@ class ReportService:
                     "retrieved_at": item.get("created_at"),
                     "workspace_item_id": item.get("id"),
                 })
+        if self.public_graph_only:
+            report["workspace_items"] = [
+                item for item in items if (
+                    (not item.get("entity_id") or item["entity_id"] in public_roots)
+                    and (not item.get("graph_root_entity_id") or item["graph_root_entity_id"] in public_roots)
+                    and (not item.get("relationship_id") or saved_relationships.get(item["relationship_id"]))
+                    and (not item.get("evidence_id") or item["evidence_id"] in public_evidence)
+                )
+            ]
         sources = _source_map(report)
         sources.update({source["id"]: source for source in saved_sources})
         report["sources"] = list(sources.values())
@@ -705,6 +724,10 @@ def dispatch_report_api(path, query, authorization=None, service=None):
         return 404, {"error": "找不到可發布的報告資料 / Report source not found"}, None
     except (EntityStoreUnavailable, WorkspaceStoreUnavailable):
         return 503, {"status": "unavailable", "error": "報告資料暫時無法使用 / Report data unavailable"}, None
+    if getattr(service, "public_graph_only", False) is True:
+        report["public_graph_scope"] = True
+        for key in ("judgments", "penalties", "anti_fraud_checks"):
+            report.pop(key, None)
     if output_format == "html":
         return 200, render_report_html(report), "text/html; charset=utf-8"
     if output_format == "pdf":

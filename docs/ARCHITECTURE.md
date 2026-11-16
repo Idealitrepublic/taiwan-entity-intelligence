@@ -560,3 +560,13 @@ Company investigation reports join published context through the public uniform-
 ## 申報對象識別 Evidence（2026-11-08）
 
 `src/asset_issuer_review.py` 與固定 12 列 manifest 只生成身份覆核／登記 Evidence；不包含 Entity、identifier、Relationship 或資產更新。Development-only operator 經備份／容量保護、固定原件 hash、唯讀前後比較，才新增 Evidence。無 migration、API 或 UI 改動；既有資產 FK 精確配對限制不變。
+
+### First public relationship release
+
+The WSGI public company view serves exact-ID registry facts and company-scoped
+officer observations. Officially reviewed award rows come from the canonical
+relationship store. Judicial and labor tabs link to the official search portals.
+The Entity, path, Evidence and report readers require the database's launch scope
+version before reading canonical data. Restrictive RLS applies the same scope to
+direct Data API reads and invoker RPCs. Authenticated users keep owner-only
+workspaces and see alerts only for visible relationships.

@@ -6,6 +6,7 @@ import urllib.parse
 import urllib.request
 
 from src.runtime_config import public_supabase_config
+from src.cloud_company import build_company as scoped_company
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import unquote, urlparse
 
@@ -160,7 +161,7 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "統編必須是 8 碼數字。"})
             return
         try:
-            payload = build_company(uniform)
+            payload = scoped_company(uniform, public_graph_only=True)
             self._send_json(404 if payload.get("status") == "not_found" else 200, payload)
         except urllib.error.HTTPError as exc:
             self._send_json(502, {"status": "error", "error": f"上游資料來源 HTTP {exc.code}"})

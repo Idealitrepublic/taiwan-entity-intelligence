@@ -99,7 +99,7 @@ class AutoRelatedCompanyTests(unittest.TestCase):
             status, payload, _ = dispatch("/api/company-related/22099131", {})
         self.assertEqual(status, 200)
         self.assertEqual(payload["items"], [])
-        finder.assert_called_once_with("22099131")
+        finder.assert_called_once_with("22099131", public_graph_only=True)
 
 
 if __name__ == "__main__":

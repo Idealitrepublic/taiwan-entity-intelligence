@@ -13,11 +13,11 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 import urllib.request
 from src import cloud_company as core
-from src.sources.procurement import lookup_awards
+from src.sources.procurement import lookup_reviewed_awards
 from src.live_related_companies import related_companies
 from src.entities.api import dispatch_entity_api
 from src.runtime_config import private_supabase_config
-from src.reports import dispatch_report_api
+from src.reports import ReportService, dispatch_report_api
 from src.workspaces import dispatch_workspace_api
 from src.watchlists import dispatch_watchlist_api
 from src.rate_limit import client_identity, request_allowed
@@ -124,18 +124,19 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None
         return dispatch_report_api(
-            path, query, authorization=authorization)
+            path, query, authorization=authorization, service=ReportService(public_graph_only=True))
     if path.rstrip('/').startswith('/api/v1/workspaces'):
         return dispatch_workspace_api(
             'GET' if method == 'HEAD' else method, path, payload, authorization)
     if (path.rstrip('/').startswith('/api/v1/watchlist')
             or path.rstrip('/').startswith('/api/v1/alerts')):
         return dispatch_watchlist_api(
-            'GET' if method == 'HEAD' else method, path, query, payload, authorization)
+            'GET' if method == 'HEAD' else method, path, query, payload, authorization,
+            public_graph_only=True)
     if path.startswith('/api/v1/'):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None
-        return dispatch_entity_api(path, query)
+        return dispatch_entity_api(path, query, public_graph_only=True)
     entity_uuid = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
     page_route = path == '/' or bool(re.fullmatch(rf'/(?:entity|graph|politician)/{entity_uuid}/?', path))
     if page_route or path in ('/app.js', '/tei-enhancements.js'):
@@ -143,16 +144,13 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
         return 200, (WEB / name).read_text(), 'text/html; charset=utf-8' if page_route else 'application/javascript; charset=utf-8'
     if path == '/api/status':
         return database_status()
-    if path == '/api/domain-check':
-        try:
-            return 200, core.check_domain(query.get('domain',[''])[0]), None
-        except ValueError as exc:
-            return 400, {'error':str(exc)}, None
     if path.startswith('/api/procurement/'):
+        if method not in ('GET', 'HEAD'):
+            return 405, {'error': 'Method not allowed'}, None
         uniform = path[len('/api/procurement/'):]
         if not re.fullmatch(r'[0-9]{8}', uniform):
             return 400, {'status': 'error', 'error': '統編必須是 8 碼數字。'}, None
-        return 200, lookup_awards(uniform), None
+        return 200, lookup_reviewed_awards(uniform), None
     if path.startswith('/api/company-related/'):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None
@@ -160,15 +158,17 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
         if not re.fullmatch(r'[0-9]{8}', uniform):
             return 400, {'error': '統編必須是 8 碼數字。'}, None
         try:
-            result = related_companies(uniform)
+            result = related_companies(uniform, public_graph_only=True)
         except RuntimeError:
             return 503, {'status': 'unavailable', 'error': '官方公司登記暫時無法查詢。'}, None
         return (200 if result else 404), result or {'status': 'not_found', 'items': []}, None
     if path.startswith('/api/company/') or path == '/api/company-sources':
+        if method not in ('GET', 'HEAD'):
+            return 405, {'error': 'Method not allowed'}, None
         uniform = path[len('/api/company/'):] if path.startswith('/api/company/') else query.get('uniform', [''])[0]
         if not re.fullmatch(r'[0-9]{8}', uniform):
             return 400, {'status': 'error', 'error': '統編必須是 8 碼數字。'}, None
-        data = core.build_company(uniform)
+        data = core.build_company(uniform, public_graph_only=True)
         return (404 if data.get('status') == 'not_found' else 200), data if path != '/api/company-sources' else {'status':data['status'],'sources':data['evidence_status']}, None
     return 404, {'status': 'error', 'error': 'Not found'}, None
 

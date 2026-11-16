@@ -57,11 +57,22 @@ class EntityFeatureUnavailable(EntityStoreUnavailable):
 
 
 class EntityRepository:
-    def __init__(self, transport=None):
+    def __init__(self, transport=None, *, require_launch_scope=False):
         self.url, self.key = public_supabase_config()
         self.transport = transport or self._get
+        self._scope_verified = not require_launch_scope
+
+    def _verify_launch_scope(self):
+        self._scope_verified = self._request("rpc/public_graph_scope_version", {}) == [{"version": 1}]
+        if not self._scope_verified:
+            raise EntityStoreUnavailable("Public relationship scope is not installed")
 
     def _get(self, table, params):
+        if not self._scope_verified:
+            self._verify_launch_scope()
+        return self._request(table, params)
+
+    def _request(self, table, params):
         if not self.key:
             raise EntityStoreUnavailable("Public read credential is not configured")
         request = urllib.request.Request(

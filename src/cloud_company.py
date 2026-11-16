@@ -187,13 +187,15 @@ def _published_officer_snapshot(uniform: str):
         return [], None
 
 
-def build_company(uniform: str):
+def build_company(uniform: str, *, public_graph_only=False):
     registry_error = None
     try:
         company_rows = _moea_rows(COMPANY_API, uniform, 1)
     except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
         registry_error = exc
         company_rows = []
+    if public_graph_only:
+        company_rows = [row for row in company_rows if str(row.get("Business_Accounting_NO")) == uniform]
     snapshot = _published_registry_snapshot(uniform) if not company_rows else None
     if snapshot:
         company_rows = [snapshot["company"]]
@@ -246,6 +248,9 @@ def build_company(uniform: str):
                                                 "identity_status": "verified_identifier"},
                                  "evidence": company_evidence}], []
     for idx, row in enumerate(director_rows[:50], 1):
+        registered_id = row.get("Business_Accounting_NO") or row.get("統一編號")
+        if public_graph_only and registered_id is not None and str(registered_id).strip() != uniform:
+            continue
         person = row.get("Person_Name") or row.get("person_name") or row.get("Name") or row.get("姓名")
         if not person:
             continue
@@ -253,7 +258,7 @@ def build_company(uniform: str):
         shares = row.get("Person_Shareholding") or row.get("shares") or row.get("持有股份數")
         representative = row.get("Representative") or row.get("representative") or row.get("所代表法人")
         people.append({"uniform_number": uniform, "company_name": name, "person_name": person, "position": position, "shares": shares, "representative": representative})
-        pid = f"person:{person}:{idx}"
+        pid = f"person:{uniform}:{idx}" if public_graph_only else f"person:{person}:{idx}"
         director_evidence = {"source_name": "經濟部公司登記董監事資料",
                              "source_url": (officer_snapshot or {}).get("source_url") or director_url,
                              "retrieved_at": (officer_snapshot or {}).get("downloaded_at") or retrieved_at,
@@ -272,7 +277,7 @@ def build_company(uniform: str):
                       "properties": {"source": "MOEA_OFFICER_CSV" if officer_snapshot else "MOEA_DIRECTOR_API", "live": not bool(officer_snapshot)},
                       "evidence": director_evidence})
 
-    evidence, db_ok = _supabase_evidence(uniform)
+    evidence, db_ok = ([], False) if public_graph_only else _supabase_evidence(uniform)
     if snapshot:
         source = snapshot["evidence"]
         evidence.append({"id": source.get("id"), "title": source.get("title"),
@@ -284,7 +289,7 @@ def build_company(uniform: str):
                          "retrieved_at": source.get("retrieved_at"),
                          "match_rule": "published_exact_id_snapshot",
                          "identity_status": "verified_identifier"})
-    local_company = _supabase_company(uniform) if SUPABASE_KEY else None
+    local_company = _supabase_company(uniform) if SUPABASE_KEY and not public_graph_only else None
 
     website_url = None
     website_host = None
@@ -405,8 +410,9 @@ def penalty_source_info(row):
     }
 
 
-def build_company(uniform):
-    data = _base_company(uniform)
+def build_company(uniform, *, public_graph_only=False):
+    data = (_base_company(uniform, public_graph_only=True) if public_graph_only
+            else _base_company(uniform))
     if data.get('status') != 'ok':
         return data
     data.setdefault('evidence', [])
@@ -441,6 +447,19 @@ def build_company(uniform):
     else:
         data['website_source'] = None
         data['website_verification'] = 'not_available'
+    if public_graph_only:
+        data["judicial_search_url"] = "https://judgment.judicial.gov.tw/"
+        data["labor_search_url"] = "https://announcement.mol.gov.tw/"
+        data["evidence_status"]["司法院"] = {"status": "link", "url": data["judicial_search_url"]}
+        data["evidence_status"]["裁罰"] = {"status": "link", "url": data["labor_search_url"]}
+        data["evidence_status"].pop("165", None)
+        data["evidence_status"].pop("我的資料", None)
+        data["evidence_status"].pop("標案", None)
+        data["evidence_note"] = "公司職務依官方登記或有日期的快照顯示。同名人士各自保留。 / Officer roles use official records or dated snapshots."
+        data["public_graph_scope"] = True
+        data.pop("website_crosscheck", None)
+        data.pop("published_case_status", None)
+        return data
     data['evidence_status']['165'] = {'status':'not_checked','matched':0,
         'message': ('官方網址資料衝突，須人工核對後才能比對 165。' if data['website_verification'] == 'conflict_requires_review'
                     else '尚無可核對的公司官網；有網址時才自動比對 165，也可輸入待查網域。')}

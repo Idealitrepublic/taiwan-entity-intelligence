@@ -269,3 +269,12 @@ row or same-name roster row is automatically merged or linked.
 ## 12 筆申報對象識別補充（2026-11-08）
 
 `asset_counterparty_identity_review`／`asset_counterparty_register_context` 只使用既有 entity_evidence fact_type 保存覆核脈絡。9 份登記識別與 12 份逐列 Derived Data，不建立 Entity／Relationship、不填 asset FK。原件缺 ID 的狀態及既有精確配對發布條件保留。CIK 只存公司登記覆核 Evidence，不能冒稱原申報 ID 或臺灣統編。詳見 docs/ASSET_ISSUER_IDENTIFICATION_2026-11-08.md。
+
+### First public relationship scope
+
+The public graph uses official company, person, government and organization records
+and reviewed official procurement links. Committee participation keeps its
+official term and session, without substituting the retrieval date for appointment.
+Court and labor records, political donations and unpublished candidates remain
+outside the release projection. A change to publication scope uses restrictive RLS,
+which keeps stored provenance and IDs available to authorized review workflows.
