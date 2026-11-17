@@ -35,12 +35,12 @@ jobs:
           python - <<'PY'
           import json, urllib.error, urllib.request
           cases = {
-              '23060248': ('全家便利商店股份有限公司', True),
-              '22099131': ('台灣積體電路製造股份有限公司', False),
-              '22555003': ('統一超商股份有限公司', False),
+              '23060248': '全家便利商店股份有限公司',
+              '22099131': '台灣積體電路製造股份有限公司',
+              '22555003': '統一超商股份有限公司',
           }
           base = 'https://rztdbdurkjfrirsrrhtu.supabase.co/functions/v1/tei-web/?api=company&uniform='
-          for uniform, (expected_name, require_labor) in cases.items():
+          for uniform, expected_name in cases.items():
               with urllib.request.urlopen(base + uniform, timeout=120) as r:
                   assert r.status == 200, (uniform, r.status)
                   data = json.load(r)
@@ -51,12 +51,9 @@ jobs:
               assert data.get('evidence_status', {}).get('公司登記', {}).get('status') == 'ok', uniform
               assert data.get('evidence_status', {}).get('董監事', {}).get('status') == 'ok', uniform
               assert data.get('local_context', {}).get('configured') is True, (uniform, 'supabase evidence query unavailable')
-              if require_labor:
-                  labor = data.get('labor', {})
-                  assert labor.get('status') == 'ok', (uniform, labor)
-                  assert int(labor.get('matched', 0)) > 0, (uniform, labor)
-                  assert data.get('website', {}).get('host') == 'family.com.tw', (uniform, data.get('website'))
-                  assert data.get('anti_fraud', {}).get('status') in ('ok', 'partial'), (uniform, data.get('anti_fraud'))
+              assert 'labor' not in data, (uniform, 'labor records are public')
+              assert 'judicial' not in data, (uniform, 'judicial records are public')
+              assert '勞動裁罰' not in data.get('evidence_status', {})
               print(uniform, expected_name, 'PASS', 'people=', len(data['people']), 'edges=', len(data['graph']['edges']), 'supabase_evidence=', data['local_context']['evidence_count'])
           # Validation path: malformed input must return structured error, not 500.
           try:

@@ -116,12 +116,9 @@ def _company(uniform: str):
         "evidence_status": {
             "公司登記": {"status": "ok", "matched": 1},
             "董監事": {"status": "ok" if directors else ("partial" if director_error else "ok"), "matched": len(people), **({"message": director_error} if director_error else {})},
-            "裁罰": {"status": "not_available_in_public_runtime", "matched": 0, "message": "Supabase T.E.I. console"},
             "165": {"status": "not_available_in_public_runtime", "matched": 0, "message": "Supabase T.E.I. console"},
             "標案": {"status": "not_available_in_public_runtime", "matched": 0, "message": "Supabase T.E.I. console"},
-            "裁判書": {"status": "link", "matched": 0, "message": "官方裁判書查詢入口"},
         },
-        "judicial_search_url": "https://judgment.judicial.gov.tw/FJUD/qryresult.aspx?kw=" + __import__("urllib.parse", fromlist=["quote_plus"]).quote_plus(name) + "&judtype=JUDBOOK",
         "data_mode": "live_moea_core",
         "evidence_note": "來源讀取成功與是否命中是兩個不同指標；公開紀錄不直接等於法律結論。",
     }

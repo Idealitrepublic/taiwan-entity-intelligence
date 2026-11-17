@@ -25,7 +25,8 @@ try {
   const files = fs.readdirSync('supabase/migrations')
     .filter(x => x.endsWith('.sql') && x >= '20260909143820' &&
       !x.endsWith('_withhold_candidate_and_asset_publication.sql') &&
-      !x.endsWith('_public_relationship_launch_scope.sql'))
+      !x.endsWith('_public_relationship_launch_scope.sql') &&
+      !x.endsWith('_hide_public_judgments_and_penalties.sql'))
     .sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
   // The count optimization is additive and safely repeatable; all existing
@@ -925,6 +926,10 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   await db.query(`insert into public.relationships (id,source_entity_id,target_entity_id,relationship_type,
     primary_evidence_id,observed_at,status,confidence,source_role)
     values ('${courtLink}',$1,'${courtId}','RELATED_TO_JUDGMENT','${courtProof}',now(),'published','HIGH','債權人')`, [company.id]);
+  const caseWithdrawal = fs.readdirSync('supabase/migrations')
+    .find(file => file.endsWith('_hide_public_judgments_and_penalties.sql'));
+  // Production already applied the case-only withdrawal before this launch scope.
+  await db.exec(fs.readFileSync(`supabase/migrations/${caseWithdrawal}`, 'utf8'));
   await db.exec(fs.readFileSync(`supabase/migrations/${scope}`, 'utf8'));
   for (const role of ['anon','authenticated']) {
     await db.exec(`set role ${role}`);
