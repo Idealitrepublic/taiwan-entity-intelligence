@@ -23,7 +23,7 @@ try {
   // that PGlite cannot reproduce (for example pg_trgm and storage schemas).
   // Exercise the application-owned Entity model and all later phases here.
   const files = fs.readdirSync('supabase/migrations')
-    .filter(x => x.endsWith('.sql') && x >= '20260909143820')
+    .filter(x => x.endsWith('.sql') && x >= '20260909143820' && !x.endsWith('_hide_public_judgments_and_penalties.sql'))
     .sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
   const bundle = JSON.parse(execFileSync(process.env.TEI_TEST_PYTHON || 'python', ['-c', `
@@ -512,6 +512,39 @@ print(json.dumps(build_legacy_bundle(snapshot)[0]))
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;
+  // Reproduce the historical public policies on the source tables and apply the hotfix last.
+  await db.exec(`reset role;
+    create table public.source_files (dataset text not null);
+    create table public.source_records (dataset text not null);
+    create table public.evidence (source_type text not null);
+    alter table public.source_files enable row level security;
+    alter table public.source_records enable row level security;
+    alter table public.evidence enable row level security;
+    grant select on public.source_files, public.source_records, public.evidence to anon, authenticated;
+    create policy prior_reads on public.source_files using (true);
+    create policy prior_reads on public.source_records using (true);
+    create policy prior_reads on public.evidence using (true);
+    insert into public.source_files values ('penalties'), ('anti_fraud');
+    insert into public.source_records values ('penalties'), ('anti_fraud');
+    insert into public.evidence values ('administrative_penalty'), ('moea_company');`);
+  const hotfix = fs.readdirSync('supabase/migrations')
+    .find(name => name.endsWith('_hide_public_judgments_and_penalties.sql'));
+  await db.exec(fs.readFileSync(`supabase/migrations/${hotfix}`, 'utf8'));
+  for (const role of ['anon', 'authenticated']) {
+    await db.exec(`reset role; set role ${role};`);
+    for (const table of ['source_files', 'source_records']) {
+      assert.deepEqual((await db.query(`select dataset from public.${table}`)).rows, [{dataset: 'anti_fraud'}]);
+    }
+    assert.deepEqual((await db.query('select source_type from public.evidence')).rows, [{source_type: 'moea_company'}]);
+    assert.equal((await db.query("select id from public.entities where entity_type in ('Judgment', 'Penalty')")).rows.length, 0);
+    assert.equal((await db.query("select id from public.relationships where relationship_type in ('RELATED_TO_JUDGMENT', 'RELATED_TO_PENALTY')")).rows.length, 0);
+    assert.equal((await db.query("select id from public.relationships where relationship_type = 'DIRECTOR_OF'")).rows.length > 0, true);
+    checks += 6;
+  }
+  await db.exec('reset role;');
+  assert.equal((await db.query("select id from public.entities where entity_type in ('Judgment', 'Penalty')")).rows.length, 2);
+  assert.equal((await db.query("select dataset from public.source_records where dataset = 'penalties'")).rows.length, 1);
+  checks += 2;
   console.log(`PostgreSQL integration: ${checks} checks passed; migration, idempotency, constraints, retraction and RLS verified.`);
 } finally {
   await db.close();

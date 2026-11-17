@@ -26,8 +26,6 @@ SECTION_TITLES = (
     ("key_relationships", "Key Relationships / 關鍵關係"),
     ("political_relationships", "Political Relationships / 政治關係"),
     ("government_contracts", "Government Contracts / 政府標案"),
-    ("judgments", "Judgments / 判決"),
-    ("penalties", "Penalties / 裁罰"),
     ("asset_records", "Asset Records / 財產申報"),
     ("relationship_graph", "Relationship Graph / 關係圖"),
     ("sources", "Sources / 來源"),
@@ -199,10 +197,6 @@ class ReportService:
                                         in POLITICAL_RELATIONSHIPS],
             "government_contracts": [row for row in relationships if
                                      row["relationship"].get("relationship_type") == "CONTRACT_WITH"],
-            "judgments": [row for row in relationships if
-                          row["relationship"].get("relationship_type") == "RELATED_TO_JUDGMENT"],
-            "penalties": [row for row in relationships if
-                          row["relationship"].get("relationship_type") == "RELATED_TO_PENALTY"],
             "asset_records": asset_records,
             "relationship_graph": {
                 "focus_entity_id": entity_id,
@@ -251,14 +245,14 @@ class ReportService:
             "workspace_items": items,
             "entity_profiles": [], "key_relationships": [],
             "political_relationships": [], "government_contracts": [],
-            "judgments": [], "penalties": [], "asset_records": [],
+            "asset_records": [],
             "relationship_graph": {"nodes": [], "edges": [], "truncated": False},
             "sources": [],
         }
         node_map, edge_map = {}, {}
         for child in child_reports:
             for key in ("entity_profiles", "key_relationships", "political_relationships",
-                        "government_contracts", "judgments", "penalties", "asset_records"):
+                        "government_contracts", "asset_records"):
                 report[key].extend(child[key])
             graph = child["relationship_graph"]
             for node in graph["nodes"]:
@@ -291,11 +285,8 @@ class ReportService:
                         relationship_type = saved["relationship"].get("relationship_type")
                         if relationship_type in POLITICAL_RELATIONSHIPS:
                             report["political_relationships"].append(saved)
-                        category = {"CONTRACT_WITH": "government_contracts",
-                                    "RELATED_TO_JUDGMENT": "judgments",
-                                    "RELATED_TO_PENALTY": "penalties"}.get(relationship_type)
-                        if category:
-                            report[category].append(saved)
+                        if relationship_type == "CONTRACT_WITH":
+                            report["government_contracts"].append(saved)
             elif item.get("item_type") == "SOURCE":
                 saved_sources.append({
                     "id": f"workspace-source:{item.get('id')}",

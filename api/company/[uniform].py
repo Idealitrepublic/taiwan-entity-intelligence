@@ -12,7 +12,6 @@ from urllib.parse import unquote, urlparse
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
 SUPABASE, SUPABASE_KEY = public_supabase_config()
-JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/FJUD/qryresult.aspx?kw={}&judtype=JUDBOOK"
 
 
 def _json_get(url: str, timeout: int = 25):
@@ -115,10 +114,8 @@ def build_company(uniform: str):
         "公司登記": {"status": "ok", "matched": 1},
         "董監事": {"status": "ok" if director_rows else ("partial" if director_error else "ok"), "matched": len(people), **({"message": f"董監事來源暫時不可用：{director_error}"} if director_error else {})},
         "我的資料": {"status": "ok" if db_ok else ("not_configured" if not SUPABASE_KEY else "partial"), "matched": len(evidence)},
-        "裁罰": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時裁罰來源由 Supabase evidence layer 分流。"},
         "165": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時反詐來源由 Supabase evidence layer 分流。"},
         "標案": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時標案來源由 Supabase evidence layer 分流。"},
-        "司法院": {"status": "link", "matched": 0, "url": JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name))},
     }
 
     return {
@@ -128,7 +125,6 @@ def build_company(uniform: str):
         "local_context": {"configured": bool(SUPABASE_KEY), "company": local_company, "evidence": evidence, "evidence_count": len(evidence)},
         "evidence_status": statuses,
         "website_crosscheck": {"status": "not_available_in_public_runtime", "matched": 0, "website_url": website_url, "website_host": website_host, "records": [], "message": "網址×165 交叉比對不在 Vercel 核心路由執行。"},
-        "judicial_search_url": JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name)),
         "data_mode": "live_moea_core_plus_supabase",
         "evidence_note": "來源讀取成功與是否命中是兩個不同指標；公開紀錄不直接等於法律結論。",
     }

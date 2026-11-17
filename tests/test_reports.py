@@ -41,7 +41,7 @@ class ReportTests(unittest.TestCase):
         repository.graph_neighbors.return_value = graph()
         report = ReportService(repository, clock=lambda: "2026-09-17T00:00:00Z").entity_report(ENTITY)
         for key in ("entity_profiles", "key_relationships", "political_relationships",
-                    "government_contracts", "judgments", "penalties", "asset_records",
+                    "government_contracts", "asset_records",
                     "relationship_graph", "sources"):
             self.assertIn(key, report)
         self.assertEqual(len(report["government_contracts"]), 1)
@@ -72,7 +72,7 @@ class ReportTests(unittest.TestCase):
         repository.evidence.return_value = evidence("Saved evidence")
         repository.relationship.return_value = {
             "id": REL, "source_entity_id": ENTITY, "target_entity_id": OTHER,
-            "relationship_type": "RELATED_TO_JUDGMENT", "primary_evidence_id": EVIDENCE,
+            "relationship_type": "CONTRACT_WITH", "primary_evidence_id": EVIDENCE,
             "evidence": [{"support_type": "supports", "evidence": evidence()}]}
         captured = []
 
@@ -95,7 +95,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(report["workspace"]["owner_user_id"], OTHER)
         self.assertEqual({row["source"] for row in report["sources"]},
                          {"Official source", "人工來源"})
-        self.assertEqual(report["judgments"][0]["relationship"]["id"], REL)
+        self.assertEqual(report["government_contracts"][0]["relationship"]["id"], REL)
 
     def test_dispatch_validates_scope_format_and_workspace_auth(self):
         service = Mock()
@@ -114,11 +114,13 @@ class ReportTests(unittest.TestCase):
         report = {"title": "<unsafe>", "methodology": "Facts only", "report_type": "ENTITY",
                   "generated_at": "now", "coverage": {}, **{key: [] for key in (
                       "entity_profiles", "key_relationships", "political_relationships",
-                      "government_contracts", "judgments", "penalties", "asset_records",
+                      "government_contracts", "asset_records",
                       "sources")}, "relationship_graph": {}}
         html = render_report_html(report)
         self.assertIn("Entity Profile / 實體概況", html)
         self.assertIn("Relationship Graph / 關係圖", html)
+        self.assertNotIn("Judgments / 判決", html)
+        self.assertNotIn("Penalties / 裁罰", html)
         self.assertIn("&lt;unsafe&gt;", html)
         self.assertNotIn("<unsafe>", html)
 

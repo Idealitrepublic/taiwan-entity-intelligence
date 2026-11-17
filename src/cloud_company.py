@@ -6,12 +6,10 @@ import urllib.parse
 import urllib.request
 
 from .runtime_config import public_supabase_config
-from .sources.judicial_index import records_for_company
 
 COMPANY_API = "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6"
 DIRECTOR_API = "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396"
 SUPABASE, SUPABASE_KEY = public_supabase_config()
-JUDICIAL_SEARCH = "https://judgment.judicial.gov.tw/FJUD/qryresult.aspx?kw={}&judtype=JUDBOOK"
 
 WEBSITE_OVERRIDES = {
     "96979933": {"url": "https://www.cht.com.tw/", "source": "中華電信官方網站 / Chunghwa Telecom official website"},
@@ -122,10 +120,8 @@ def build_company(uniform: str):
         "公司登記": {"status": "ok", "matched": 1},
         "董監事": {"status": "ok" if director_rows else ("partial" if director_error else "ok"), "matched": len(people), **({"message": f"董監事來源暫時不可用：{director_error}"} if director_error else {})},
         "我的資料": {"status": "ok" if db_ok else ("not_configured" if not SUPABASE_KEY else "partial"), "matched": len(evidence)},
-        "裁罰": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時裁罰來源由 Supabase evidence layer 分流。"},
         "165": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時反詐來源由 Supabase evidence layer 分流。"},
         "標案": {"status": "not_available_in_public_runtime", "matched": 0, "message": "即時標案來源由 Supabase evidence layer 分流。"},
-        "司法院": {"status": "link", "matched": 0, "url": JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name))},
     }
 
     return {
@@ -135,38 +131,12 @@ def build_company(uniform: str):
         "local_context": {"configured": bool(SUPABASE_KEY), "company": local_company, "evidence": evidence, "evidence_count": len(evidence)},
         "evidence_status": statuses,
         "website_crosscheck": {"status": "not_available_in_public_runtime", "matched": 0, "website_url": website_url, "website_host": website_host, "records": [], "message": "網址×165 交叉比對不在 Vercel 核心路由執行。"},
-        "judicial_search_url": JUDICIAL_SEARCH.format(urllib.parse.quote_plus(name)),
         "data_mode": "live_moea_core_plus_supabase",
         "evidence_note": "來源讀取成功與是否命中是兩個不同指標；公開紀錄不直接等於法律結論。",
     }
 
 
-def indexed_records(uniform, company_name):
-    def fetch(field, value):
-        params = urllib.parse.urlencode({'select': '*', field: 'eq.' + value, 'limit': '100', 'order': 'id'})
-        req = urllib.request.Request(f'{SUPABASE}/rest/v1/source_records?{params}', headers={'apikey': SUPABASE_KEY, 'Authorization': f'Bearer {SUPABASE_KEY}'})
-        with urllib.request.urlopen(req, timeout=8) as response:
-            return json.load(response)
-    records = fetch('uniform_number', uniform) + fetch('company_name', company_name)
-    return list({json.dumps(row['raw'], sort_keys=True, ensure_ascii=False): row for row in records}.values())
-
-
 _base_company = build_company
-
-
-def penalty_source_info(row):
-    """Describe source availability without pretending a dataset page is a record URL."""
-    url = str(row.get('source_url') or '').strip()
-    raw = row.get('raw') or {}
-    legal_text = ' '.join(str(raw.get(key, '')) for key in ('違法法規法條', '違反法規內容', '法規名稱'))
-    is_labor = '勞動' in legal_text or '勞基法' in legal_text or 'labor' in str(row.get('title') or '').lower()
-    portal = 'https://announcement.mol.gov.tw/' if is_labor else 'https://www.moenv.gov.tw/'
-    return {
-        'record_url': None,
-        'dataset_url': url or portal,
-        'link_status': 'dataset_only',
-        'message': '政府來源未提供永久的單筆網址，因此無法直接定位此筆裁罰；下方連結僅為資料集／查詢入口。',
-    }
 
 
 def build_company(uniform):
@@ -177,7 +147,6 @@ def build_company(uniform):
     data.setdefault('graph', {'nodes': [], 'edges': []})
     data['graph'].setdefault('nodes', [])
     data['graph'].setdefault('edges', [])
-    data.setdefault('judicial_search_url', JUDICIAL_SEARCH.format(urllib.parse.quote_plus(data.get('company_name') or uniform)))
     override = WEBSITE_OVERRIDES.get(uniform)
     if not data.get('website_url') and override:
         data['website_url'] = override['url']
@@ -191,46 +160,6 @@ def build_company(uniform):
         data['website_source'] = None
         data['website_verification'] = 'not_available'
     data['evidence_status']['165'] = {'status':'not_checked','matched':0,'message':'反詐索引已就緒；有公司網址時自動比對，也可輸入待查網域。'}
-    try:
-        rows = indexed_records(uniform, data['company_name'])
-        penalty = [r for r in rows if r['dataset'] == 'penalties']
-        data['labor_penalties'] = []
-        for row in penalty:
-            source = penalty_source_info(row)
-            data['labor_penalties'].append(dict(
-                row['raw'],
-                _id=row.get('id'),
-                _source_name=row.get('title'),
-                _record_url=source['record_url'],
-                _dataset_url=source['dataset_url'],
-                _source_link_status=source['link_status'],
-                _source_message=source['message'],
-            ))
-        data['evidence_status']['裁罰'] = {'status': 'ok', 'matched': len(penalty), 'message': '已匯入公開裁罰資料；公司名稱精確比對，仍須核對原文。'}
-        for row in rows:
-            source = penalty_source_info(row) if row['dataset'] == 'penalties' else {'record_url': row.get('source_url')}
-            data['evidence'].append({'id':row['id'], 'title':row['title'], 'summary':row['summary'], 'source_type':row['dataset'], 'source_url':source.get('record_url'), 'event_date':row['raw'].get('處分日期') or row['raw'].get('date'), 'match_rule':'exact_company_name_or_uniform', 'raw':row['raw']})
-        data['evidence_count'] = len(data['evidence'])
-    except Exception:
-        data['evidence_status']['裁罰'] = {'status':'partial','matched':0,'message':'裁罰索引暫時無法讀取。'}
-        data['labor_penalties'] = []
-    judicial = records_for_company(data['company_name'])
-    data['judicial_records'] = judicial['records']
-    data['judicial_result'] = judicial
-    data['evidence_status']['司法院'] = {'status': judicial['status'], 'matched': judicial['matched'], 'message': judicial['interpretation'], 'url': data['judicial_search_url']}
-    for row in judicial['records']:
-        data['evidence'].append({'id':'judicial:'+row['jid'], 'title':row['title'], 'summary':row['summary'], 'source_type':'judicial', 'source_url':row['source_url'], 'event_date':row.get('date'), 'match_rule':judicial['match_rule'], 'raw':row})
-    company_node = f"company:{uniform}"
-    for idx, row in enumerate(data['labor_penalties']):
-        node_id = 'penalty:' + str(row.get('_id') or idx)
-        title = row.get('違法法規法條') or row.get('法規名稱') or row.get('_source_name') or '裁罰紀錄'
-        data['graph']['nodes'].append({'id':node_id, 'type':'penalty', 'label':str(title), 'properties':{'date':row.get('處分日期') or row.get('date'), 'agency':row.get('主管機關'), 'fine':row.get('罰鍰金額'), 'disposition':row.get('處分字號'), 'fact':row.get('違反法規內容')}})
-        data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'labor_penalty', 'properties':{'source':row.get('_source_name'), 'evidence_id':row.get('_id')}})
-    for row in judicial['records']:
-        node_id = 'judicial:' + row['jid']
-        data['graph']['nodes'].append({'id':node_id, 'type':'judicial', 'label':str(row.get('title') or '裁判書'), 'properties':{'date':row.get('date'), 'jid':row['jid'], 'source_url':row['source_url']}})
-        data['graph']['edges'].append({'source':company_node, 'target':node_id, 'relationship':'mentioned_in_judgment', 'properties':{'source':'司法院 JDoc API', 'legal_conclusion':False}})
-    data['evidence_count'] = len(data['evidence'])
     if data.get('website_host'):
         try:
             website_check = check_domain(data['website_host'])

@@ -2,19 +2,20 @@ import unittest
 from unittest.mock import patch
 
 from app import dispatch
-from src.cloud_company import penalty_source_info
 
 
 class InteractiveGraphAndSourceTests(unittest.TestCase):
-    def test_penalty_dataset_page_is_not_claimed_as_direct_record(self):
-        info = penalty_source_info({
-            "source_url": "https://announcement.mol.gov.tw/",
-            "title": "違反勞動法令事業單位",
-            "raw": {"違法法規法條": "勞動基準法第24條"},
-        })
-        self.assertIsNone(info["record_url"])
-        self.assertEqual(info["link_status"], "dataset_only")
-        self.assertIn("無法直接定位", info["message"])
+    def test_public_company_response_omits_case_datasets(self):
+        with patch("src.cloud_company._moea_rows", side_effect=[
+            [{"Company_Name": "測試公司"}], [{"Person_Name": "測試董事"}],
+        ]), patch("src.cloud_company.SUPABASE_KEY", ""):
+            status, payload, _ = dispatch("/api/company/12345678", {})
+        self.assertEqual(status, 200)
+        self.assertEqual(len(payload["people"]), 1)
+        self.assertNotIn("judicial_records", payload)
+        self.assertNotIn("labor_penalties", payload)
+        self.assertNotIn("司法院", payload["evidence_status"])
+        self.assertNotIn("裁罰", payload["evidence_status"])
 
     def test_procurement_route_validates_and_returns_lookup(self):
         expected = {"status": "ok", "matched": 2, "records": []}
@@ -31,19 +32,15 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
         self.assertIn("addEventListener('pointerdown'", html)
         self.assertIn("Math.min(3", html)
         self.assertIn("nodeInfoTitle", html)
-        self.assertIn("政府網站無法直接連到此筆紀錄", html)
-        self.assertIn("開啟政府查詢入口（不會定位本筆）", html)
 
     def test_ui_uses_progressive_category_graph(self):
         _, html, _ = dispatch("/", {})
         self.assertIn("hubDefinitions", html)
-        self.assertIn("groupedLawNodes", html)
         self.assertIn("groupedProcurementCityNodes", html)
         self.assertIn("groupedProcurementYearNodes", html)
         self.assertIn("expandedProcurementCounty", html)
         self.assertIn("dataset.hub", html)
         self.assertIn("全部收合 / Collapse", html)
-        self.assertIn("同一筆紀錄涉及多條法規時", html)
         self.assertIn("由左向右分層", html)
         self.assertIn("x:620", html)
         self.assertIn("x:860", html)
@@ -52,23 +49,26 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
     def test_right_panel_has_requested_filters_and_grouping(self):
         _, html, _ = dispatch("/", {})
         for key in (
-            "judicialType", "judicialDate", "procurementType",
+            "procurementType",
             "procurementCounty", "procurementAgency", "procurementYear",
-            "penaltyLaw", "penaltyYear",
         ):
             with self.subTest(key=key):
                 self.assertIn(f"filterSelect('{key}'", html)
-        for label in ("案件種類 / Case type", "招標單位 / Agency", "法條 / Article"):
+        for label in ("招標單位 / Agency",):
             with self.subTest(label=label):
                 self.assertIn(label, html)
         self.assertIn("record-group", html)
-        self.assertIn("相同法條集中顯示", html)
 
     def test_right_panel_has_requested_sections_without_evidence_tab(self):
         _, html, _ = dispatch("/", {})
-        for label in ("企業總覽", "司法院判決", "獲得標案", "違反勞基法"):
+        for label in ("企業總覽", "獲得標案"):
             with self.subTest(label=label):
                 self.assertIn(label, html)
+        for kind in ("judicial", "penalty"):
+            self.assertNotIn(f'data-tab="{kind}"', html)
+            self.assertNotIn(f'id="{kind}Count"', html)
+        for kind in ("Judgment", "Penalty", "RELATED_TO_JUDGMENT", "RELATED_TO_PENALTY"):
+            self.assertNotIn(f'<option value="{kind}">', html)
         self.assertNotIn('data-tab="evidence"', html)
         self.assertNotIn('id="evidencePane"', html)
 

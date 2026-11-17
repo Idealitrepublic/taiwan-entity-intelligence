@@ -33,10 +33,8 @@ class handler(BaseHTTPRequestHandler):
             "sources": {
                 "公司登記": {"status": "live", "matched": 1},
                 "董監事": {"status": "live", "matched": 0},
-                "裁罰": {"status": "deferred", "matched": 0, "message": "由 Supabase evidence layer 提供。"},
                 "165": {"status": "deferred", "matched": 0, "message": "由 Supabase evidence layer 提供。"},
                 "標案": {"status": "deferred", "matched": 0, "message": "由 Supabase evidence layer 提供。"},
-                "裁判書": {"status": "link", "matched": 0, "message": "官方裁判書查詢入口。"},
             },
         })
 

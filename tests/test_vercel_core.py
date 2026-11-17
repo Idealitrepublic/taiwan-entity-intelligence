@@ -5,11 +5,6 @@ from src import cloud_company as api_index
 
 
 class VercelCoreTests(unittest.TestCase):
-    def setUp(self):
-        patcher = patch.object(api_index, "indexed_records", return_value=[])
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
     def test_core_company_uses_dict_rows_and_fails_open_on_director_error(self):
         def fake_filter(api, value, top):
             if api == api_index.COMPANY_API:
