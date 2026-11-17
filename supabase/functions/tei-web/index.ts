@@ -1,16 +1,64 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-const COMPANY_API='https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6';
-const DIRECTOR_API='https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396';
-const SUPABASE_URL=Deno.env.get('SUPABASE_URL')||'https://rztdbdurkjfrirsrrhtu.supabase.co';
-const SERVICE_KEY=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
-const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'content-type,authorization,apikey','Access-Control-Allow-Methods':'GET,OPTIONS','Cache-Control':'no-store'};
-const json=(x:unknown,status=200)=>new Response(JSON.stringify(x),{status,headers:{...CORS,'Content-Type':'application/json; charset=utf-8'}});
-function pick(o:Record<string,unknown>,keys:string[]){for(const k of keys){const v=o[k];if(v!==undefined&&v!==null&&String(v).trim())return String(v).trim()}return ''}
-function host(v:string){try{return new URL(v.includes('://')?v:`https://${v}`).hostname.toLowerCase().replace(/^www\./,'').replace(/\.$/,'')}catch{return ''}}
-async function getJson(url:string,timeoutMs=9000){const c=new AbortController(),t=setTimeout(()=>c.abort(),timeoutMs);try{const r=await fetch(url,{signal:c.signal,headers:{Accept:'application/json','User-Agent':'T.E.I./6.1'}}),text=await r.text();if(!r.ok)throw new Error(`HTTP ${r.status}: ${text.slice(0,180)}`);return JSON.parse(text) as unknown}finally{clearTimeout(t)}}
-async function moea(api:string,u:string,top:number){const q=new URL(api);q.searchParams.set('$format','json');q.searchParams.set('$filter',`Business_Accounting_NO eq ${u}`);q.searchParams.set('$skip','0');q.searchParams.set('$top',String(top));const x=await getJson(q.toString());if(Array.isArray(x))return x.filter(v=>v&&typeof v==='object') as Record<string,unknown>[];if(x&&typeof x==='object'){const o=x as Record<string,unknown>;for(const k of ['data','records','items','result','value','rows']){const v=o[k];if(Array.isArray(v))return v.filter(z=>z&&typeof z==='object') as Record<string,unknown>[]}}return []}
-async function dbGet(path:string){if(!SERVICE_KEY)return [];const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,Accept:'application/json'}});return r.ok?await r.json():[]}
-async function dbPost(path:string,row:unknown,conflict?:string){if(!SERVICE_KEY)return{ok:false,error:'service key not configured'};const u=new URL(`${SUPABASE_URL}/rest/v1/${path}`);if(conflict)u.searchParams.set('on_conflict',conflict);const r=await fetch(u.toString(),{method:'POST',headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,Accept:'application/json','Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(row)});const text=await r.text();return{ok:r.ok,error:r.ok?undefined:text.slice(0,600)}}
-async function persist(u:string,c:Record<string,unknown>,people:{person_name:string,position:string}[]){if(!SERVICE_KEY)return{status:'not_configured'};const now=new Date().toISOString(),name=pick(c,['Company_Name','Juristic_Person_Name','Business_Name'])||u,co={uniform_number:u,name,status:pick(c,['Company_Status','Status','Company_Status_Desc']),representative_name:pick(c,['Responsible_Name','Representative_Name','President_Name']),address:pick(c,['Company_Location','Company_Address','Address']),capital_amount:c.Capital_Amount??c.Capital_Stock_Amount??null,established_date:pick(c,['Company_Setup_Date','Establishment_Date']),source:'MOEA/GCI',source_url:COMPANY_API,fetched_at:now,raw_ref:`moea:${u}`};let ex=await dbGet(`companies?select=id&uniform_number=eq.${u}&limit=1`);if(Array.isArray(ex)&&ex[0]?.id){const r=await fetch(`${SUPABASE_URL}/rest/v1/companies?id=eq.${ex[0].id}`,{method:'PATCH',headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(co)});if(!r.ok)return{status:'error',stage:'companies',error:(await r.text()).slice(0,500)}}else{const r=await dbPost('companies',[co]);if(!r.ok)return{status:'error',stage:'companies',error:r.error};ex=await dbGet(`companies?select=id&uniform_number=eq.${u}&limit=1`)}const companyId=Array.isArray(ex)?ex[0]?.id:null;if(!companyId)return{status:'error',stage:'company_id'};let peopleWrites=0,edgeWrites=0,evidenceWrites=0,failures:string[]=[];for(let i=0;i<people.length;i++){const p=people[i];let pr=await dbGet(`people?select=id&name=eq.${encodeURIComponent(p.person_name)}&limit=1`),pid=Array.isArray(pr)?pr[0]?.id:null;if(!pid){const r=await dbPost('people',[{name:p.person_name,source:'MOEA/GCI',fetched_at:now}]);if(!r.ok){failures.push(`people:${i}:${r.error}`);continue}pr=await dbGet(`people?select=id&name=eq.${encodeURIComponent(p.person_name)}&limit=1`);pid=Array.isArray(pr)?pr[0]?.id:null}if(pid)peopleWrites++;else{failures.push(`person_id:${i}`);continue}const er=await dbPost('company_people',[{company_id:companyId,person_id:pid,role:p.position,source:'MOEA/GCI',source_url:DIRECTOR_API,fetched_at:now}],'company_id,person_id,role');if(er.ok)edgeWrites++;else failures.push(`edge:${i}:${er.error}`);const vr=await dbPost('evidence',[{entity_type:'company',entity_key:u,source_type:'moea_director',title:`${p.position}：${p.person_name}`,summary:'官方公司登記董監事資料中的職務關係。',source_url:DIRECTOR_API,external_id:`${u}:director:${i}:${p.person_name}`,fact_type:'director_relationship',observed_at:now,matched_terms:[p.person_name,p.position],confidence:1,raw_ref:`moea:director:${u}:${i}`}],'entity_type,entity_key,source_type,external_id');if(vr.ok)evidenceWrites++;else failures.push(`evidence:${i}:${vr.error}`)}const ce=await dbPost('evidence',[{entity_type:'company',entity_key:u,source_type:'moea_company',title:name,summary:'官方公司登記基本資料快照。',source_url:COMPANY_API,external_id:`${u}:company`,event_date:co.established_date||null,fact_type:'company_registration',observed_at:now,matched_terms:[name,u],confidence:1,raw_ref:`moea:company:${u}`}],'entity_type,entity_key,source_type,external_id');if(ce.ok)evidenceWrites++;else failures.push(`company_evidence:${ce.error}`);return failures.length?{status:'partial',people_writes:peopleWrites,edge_writes:edgeWrites,evidence_writes:evidenceWrites,failures}:{status:'ok',people_writes:peopleWrites,edge_writes:edgeWrites,evidence_writes:evidenceWrites}}
-async function local(u:string){const e=await dbGet(`evidence?select=*&source_type=not.in.(judicial,administrative_penalty,labor_penalty,penalties)&entity_type=eq.company&entity_key=eq.${encodeURIComponent(u)}&limit=150`);return{configured:!!SERVICE_KEY,evidence_count:Array.isArray(e)?e.length:0,evidence:Array.isArray(e)?e:[]}}
-Deno.serve(async(req)=>{if(req.method==='OPTIONS')return new Response(null,{status:204,headers:CORS});const u=new URL(req.url);try{if(u.pathname.endsWith('/health'))return json({status:'ok',service:'tei-web',version:'6.1',persist:true});if(u.searchParams.get('api')!=='company')return Response.redirect('https://taiwan-entity-intelligence.vercel.app/',302);const id=u.searchParams.get('uniform')||'';if(!/^\d{8}$/.test(id))return json({status:'error',error:'統編必須為 8 碼數字'},400);const [cr,dr]=await Promise.all([moea(COMPANY_API,id,1),moea(DIRECTOR_API,id,1000)]);if(!cr.length)return json({status:'not_found',uniform_number:id});const c=cr[0],name=pick(c,['Company_Name','Juristic_Person_Name','Business_Name'])||id,people=dr.map(r=>({person_name:pick(r,['Person_Name','person_name','Name']),position:pick(r,['Person_Position_Name','position','Position'])||'董監事'})).filter(p=>p.person_name),site=pick(c,['Company_Website','Website','website','WebSite','網址','網站'])||({'23060248':'https://www.family.com.tw'} as Record<string,string>)[id]||'',before=await local(id),persistence=await persist(id,c,people),after=await local(id);const domain=host(site),hits=domain?[...after.evidence].filter((x:Record<string,unknown>)=>[x.source_url,x.title,x.summary].some(v=>{const h=host(String(v??''));return !!h&&(h===domain||h.endsWith('.'+domain)||domain.endsWith('.'+h))})):[];const nodes=[{id:'company',type:'company',label:name},...people.slice(0,80).map((p,i)=>({id:`p${i}`,type:'person',label:p.person_name}))],edges=people.slice(0,80).map((p,i)=>({source:'company',target:`p${i}`,relationship:p.position}));return json({status:'ok',uniform_number:id,company:c,company_name:name,people,graph:{nodes,edges},website:site?{url:site,host:domain}:null,domain,anti_fraud:{status:domain?'ok':'no_website',matched:hits.length,records:hits.slice(0,20),match_rule:'cached evidence only; exact domain/subdomain'},local_context:after,persistence:{...persistence,before_evidence_count:before.evidence_count,after_evidence_count:after.evidence_count},evidence_status:{'公司登記':{status:'ok',matched:1},'董監事':{status:'ok',matched:people.length},'公司網址×165':{status:domain?'ok':'no_website',matched:hits.length},'我的資料':{status:'ok',matched:after.evidence_count}}})}catch(e){return json({status:'error',error:String(e)},500)}});
+
+const site = "https://taiwan-entity-intelligence.vercel.app";
+const headers = {
+  "Access-Control-Allow-Origin": "*",
+  "Cache-Control": "no-store",
+};
+const json = (body: unknown, status = 200) => Response.json(body, { status, headers });
+
+Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
+  if (request.method !== "GET") return json({ status: "error", error: "Method not allowed" }, 405);
+  const url = new URL(request.url);
+  if (url.pathname.endsWith("/health")) {
+    return json({ status: "ok", service: "tei-web", persist: false });
+  }
+  if (url.searchParams.get("api") !== "company") return Response.redirect(site, 302);
+  const uniform = url.searchParams.get("uniform") ?? "";
+  if (!/^\d{8}$/.test(uniform)) {
+    return json({ status: "error", error: "統編必須為 8 碼數字" }, 400);
+  }
+
+  try {
+    const response = await fetch(`${site}/api/company/${uniform}`, {
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!response.ok) return json({ status: "error", error: "公司資料暫時無法讀取" }, response.status);
+    const result = await response.json();
+    const { company, company_name, people, graph, website_url, website_host, local_context, evidence_status } = result;
+    const publicGraph = (graph?.nodes ?? []).filter(
+      (node: { type: string }) => ["company", "person"].includes(node.type)
+    );
+    const visibleIds = new Set(publicGraph.map((node: { id: string }) => node.id));
+    const edges = (graph?.edges ?? []).filter(
+      (edge: { source: string; target: string }) => visibleIds.has(edge.source) && visibleIds.has(edge.target)
+    );
+    const context = {
+      configured: Boolean(local_context?.configured),
+      evidence_count: Array.isArray(local_context?.evidence) ?
+        local_context.evidence.filter((record: { source_type: string }) =>
+          ["moea_company", "moea_director"].includes(record.source_type)
+        ).length : 0,
+    };
+    return json({
+      status: "ok",
+      uniform_number: uniform,
+      company,
+      company_name,
+      people,
+      graph: { nodes: publicGraph, edges },
+      website: website_url ? { url: website_url, host: website_host } : null,
+      domain: website_host,
+      local_context: context,
+      persistence: { status: "disabled" },
+      evidence_status: {
+        "公司登記": evidence_status?.["公司登記"],
+        "董監事": evidence_status?.["董監事"],
+        "165": evidence_status?.["165"],
+      },
+    });
+  } catch {
+    return json({ status: "error", error: "公司資料暫時無法讀取" }, 502);
+  }
+});
