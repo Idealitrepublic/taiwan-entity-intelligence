@@ -348,7 +348,7 @@ def present_report(report):
     order = list(SECTION_TITLES)
     if report.get("public_graph_scope"):
         order = [(key, title) for key, title in order if key not in ("judgments", "penalties")]
-    elif report.get("report_type") == "LIVE_COMPANY":
+    if report.get("report_type") == "LIVE_COMPANY":
         order.insert(2, ("anti_fraud_checks", "165 網域比對 / Official Domain Check"))
     if report.get("report_type") == "WORKSPACE":
         order += [("saved_evidence", "已收藏證據 / Saved evidence"),

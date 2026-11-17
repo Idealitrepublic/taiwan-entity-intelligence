@@ -26,6 +26,7 @@ try {
     .filter(x => x.endsWith('.sql') && x >= '20260909143820' &&
       !x.endsWith('_withhold_candidate_and_asset_publication.sql') &&
       !x.endsWith('_public_relationship_launch_scope.sql') &&
+      !x.endsWith('_restore_public_preview_features.sql') &&
       !x.endsWith('_hide_public_judgments_and_penalties.sql'))
     .sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
@@ -931,6 +932,13 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   // Production already applied the case-only withdrawal before this launch scope.
   await db.exec(fs.readFileSync(`supabase/migrations/${caseWithdrawal}`, 'utf8'));
   await db.exec(fs.readFileSync(`supabase/migrations/${scope}`, 'utf8'));
+  await db.exec(`insert into public.source_files (dataset, object_path, file_name, source_url, status, indexed_at, metadata)
+    values ('anti_fraud','test.csv','test.csv','https://data.gov.tw/dataset/176455','indexed',now(),'{"row_count":1}');
+    insert into public.source_records (id,source_file_id,dataset,domain,raw)
+    select 'domain-test',id,dataset,'fixture.example','{"網站性質":"測試","unexpected":"private"}'
+    from public.source_files where dataset='anti_fraud';`);
+  const parity = fs.readdirSync('supabase/migrations').find(file => file.endsWith('_restore_public_preview_features.sql'));
+  await db.exec(fs.readFileSync(`supabase/migrations/${parity}`, 'utf8'));
   for (const role of ['anon','authenticated']) {
     await db.exec(`set role ${role}`);
     assert.equal((await db.query("select version from public.public_graph_scope_version()")).rows[0].version, 1);
@@ -940,8 +948,15 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1',[publicProof])).rows[0].n, 1);
     assert.equal((await db.query('select count(*)::int n from public.relationships where id=$1',[courtLink])).rows[0].n, 0);
     assert.equal((await db.query("select count(*)::int n from public.search_entities('測試裁判','Judgment',20)")).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from public.asset_declarations')).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from public.relationships where id=$1',[contributionId])).rows[0].n, 1);
+    const match = (await db.query("select public.public_domain_snapshot('fixture.example') snapshot")).rows[0].snapshot;
+    assert.equal(match.records[0]['網站性質'], '測試');
+    assert.equal(Object.hasOwn(match.records[0],'unexpected'), false);
+    assert.equal((await db.query("select public.public_domain_snapshot('example') snapshot")).rows[0].snapshot, null);
+    assert.deepEqual((await db.query("select public.public_domain_snapshot('other.example') snapshot")).rows[0].snapshot.records, []);
     await db.exec('reset role');
-    checks += 7;
+    checks += 13;
   }
   await db.query("update public.evidence_records set status='retracted' where id=$1",[publicProof]);
   await db.exec('set role anon');
@@ -961,7 +976,7 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   assert.equal((await db.query("select count(*)::int n from public.evidence_records where source_record_id='launch:approved'")).rows[0].n, 0);
   await db.exec('reset role');
   checks += 2;
-  assert.equal((await db.query('select count(*)::int n from public.source_records')).rows[0].n, 2);
+  assert.equal((await db.query('select count(*)::int n from public.source_records')).rows[0].n, 3);
   assert.equal((await db.query('select count(*)::int n from public.relationships where id=$1',[courtLink])).rows[0].n, 1);
   checks += 3;
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");

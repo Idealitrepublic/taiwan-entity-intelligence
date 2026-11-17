@@ -83,12 +83,16 @@ test('each range uses its existing exact max_depth and renders response',async()
     await pending;assert.equal(h.renders[0].depth,depth);assert.equal(h.elements.pathFind.disabled,false);
   }
 });
-test('public example opens a real company by official identifier',async()=>{
-  assert(html.includes("$('sample').addEventListener('click',loadCompanyExample)"));
-  const values={q:{value:''},entityTypeFilter:{value:''}};
-  const result=vm.runInNewContext(shipped('  function loadCompanyExample(', '  pathRange.addEventListener')+
-    '\nloadCompanyExample()', {$:id=>values[id],search:()=>[values.q.value,values.entityTypeFilter.value].join(':')});
-  assert.equal(result,'96979933:Company');
+test('public example loads two real companies and runs the one-intermediary query',()=>{
+  assert(html.includes("$('sample').addEventListener('click',loadRelationshipExample)"));
+  const values={pathSourceQuery:{value:''},pathTargetQuery:{value:''}};
+  const pathRange={},pathSelection={};
+  const result=vm.runInNewContext(shipped('  function loadRelationshipExample(', '  pathRange.addEventListener')+
+    '\nloadRelationshipExample()', {$:id=>values[id],pathRange,pathSelection,
+      invalidatePathRequest:()=>{},hideSearchResults:()=>{},clearPathLookup:()=>{},
+      renderPathSelection:()=>{},findRelationshipPath:()=>[pathSelection.source.public_identifier,
+        pathSelection.target.public_identifier,pathRange.value].join(':')});
+  assert.equal(result,'22659295:54690903:2');
 });
 test('empty/truncated path does not claim absence of relationships',()=>{
   const h=pathHarness();h.context.num=Number;h.context.pathRangeLabels={};

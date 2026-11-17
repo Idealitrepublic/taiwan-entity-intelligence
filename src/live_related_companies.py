@@ -107,8 +107,7 @@ def related_companies(uniform, *, company_lookup=get_company, director_lookup=No
     with ThreadPoolExecutor(max_workers=3) as pool:
         root_job = pool.submit(company_lookup, uniform, timeout=6)
         director_job = pool.submit(director_lookup, uniform)
-        award_job = (pool.submit(coaward_lookup, uniform, limit=MAX_CONNECTIONS, timeout=6)
-                     if not public_graph_only else None)
+        award_job = pool.submit(coaward_lookup, uniform, limit=MAX_CONNECTIONS, timeout=6)
         try:
             root = root_job.result()
         except Exception as exc:
@@ -121,7 +120,7 @@ def related_companies(uniform, *, company_lookup=get_company, director_lookup=No
         except Exception:
             directors, director_status = [], "partial"
         try:
-            awards = award_job.result() if award_job else {"status": "ok", "items": [], "limited": False}
+            awards = award_job.result()
         except Exception:
             awards = {"status": "partial", "items": [], "limited": True}
 

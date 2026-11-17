@@ -381,6 +381,7 @@ Production 未修改；真人Pilot與另行正式發布授權仍為後續閘門�
 
 ### Public relationship release
 
-The first public release focuses on companies, public-role holders, organizations
-and reviewed awards. Court and labor panels lead to the government lookup portals.
+The public release covers companies, public-role holders, organizations, official
+lobbying records, exact-ID political contributions, awards, and 165 domain checks.
+Court and labor panels lead to the government lookup portals.
 Production release follows the recorded backup, migration, WAF and rollout checks.

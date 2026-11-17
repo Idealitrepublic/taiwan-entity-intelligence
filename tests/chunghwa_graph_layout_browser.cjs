@@ -53,11 +53,12 @@ function inspectGraph() {
   const browser=await chromium.launch({headless:true,executablePath:process.env.TEI_BROWSER_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
   try{
     const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
+    let publicGraphScope=false;
     page.on('pageerror',error=>errors.push(error.message));
     await page.route('https://tei.local/**',route=>{
       const path=new URL(route.request().url()).pathname;
       if(path==='/')return route.fulfill({status:200,contentType:'text/html',body:html});
-      const response=path==='/api/company/96979933'?companyResponse:path==='/api/procurement/96979933'?procurementResponse:path==='/api/company-related/96979933'?{status:'ok',items:[]}:{status:'ok'};
+      const response=path==='/api/company/96979933'?{...companyResponse,public_graph_scope:publicGraphScope}:path==='/api/procurement/96979933'?procurementResponse:path==='/api/company-related/96979933'?{status:'ok',items:[]}:{status:'ok'};
       return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(response)});
     });
     await page.goto('https://tei.local/');
@@ -188,7 +189,15 @@ function inspectGraph() {
       if(width===1440&&process.env.TEI_CHUNGHWA_AWARDS_SCREENSHOT)
         await page.locator('.graph').screenshot({path:process.env.TEI_CHUNGHWA_AWARDS_SCREENSHOT});
     }
+    publicGraphScope=true;
+    await page.reload();
+    await page.locator('#q').fill('96979933');
+    await page.locator('#search').click();
+    await page.locator('#svg .node[data-hub="person"]').waitFor();
+    assert.equal(await page.locator('#svg .node[data-hub="judicial"], #svg .node[data-hub="penalty"]').count(),0);
+    await page.locator('#svg .node[data-hub="procurement"]').click();
+    assert.equal(await page.locator('#svg .node[data-type="procurement_city"]').count(),4);
     assert.deepEqual(errors,[]);
-    console.log('Chunghwa-shaped graph: judicial spacing, shared company rail, expansion and 1440/1280/1024/768px passed.');
+    console.log('Chunghwa-shaped graph: public scope, judicial spacing, shared company rail, expansion and 1440/1280/1024/768px passed.');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

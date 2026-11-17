@@ -66,16 +66,17 @@ def _segment(company, shared, relationship_type, evidence, *, reverse=False, dat
 
 def _award_evidence(row, retrieved_at):
     record_id = str(row["id"])
+    reviewed = row.get("publication_status") == "published"
     return {"id": stable_id("evidence", "pcc:notice", record_id),
-            "source_name": "政府電子採購網公告（OpenFun 結構化介接）",
-            "source_class": "Derived Data", "source_record_id": record_id,
+            "source_name": row.get("source_name") or "政府電子採購網公告（OpenFun 結構化介接）",
+            "source_class": "Primary Source" if reviewed else "Derived Data", "source_record_id": record_id,
             "title": str(row.get("title") or "政府採購決標公告"),
             "summary": f"得標廠商統編 {row['uniform_number']}；機關代碼 {row.get('unit_id') or '未提供'}；案號 {row.get('job_number') or '未提供'}。",
             "source_url": row.get("source_url"),
             "original_source_url": row.get("official_search_url"),
-            "retrieved_at": retrieved_at,
+            "retrieved_at": row.get("retrieved_at") or retrieved_at,
             "provenance": {"match_method": "exact_bidder_uniform_number_and_winner_role",
-                           "source_api": "OpenFun PCC structured mirror",
+                           "source_api": "Reviewed official PCC notice" if reviewed else "OpenFun PCC structured mirror",
                            "unit_id": row.get("unit_id"),
                            "job_number": row.get("job_number")}}
 
@@ -192,15 +193,15 @@ def live_company_path(source_uniform, target_uniform, *, max_depth=3,
     if source_uniform == target_uniform or max_depth not in (1, 2, 3):
         raise ValueError("Company IDs must differ and range must be 1–3")
     company_lookup = company_lookup or get_company
-    award_lookup = award_lookup or lookup_awards
     index_loader = index_loader or load_index
     if public_graph_only:
-        from src.sources.procurement import lookup_reviewed_awards
-        award_lookup = lookup_reviewed_awards
+        from src.sources.procurement import lookup_company_awards
+        award_lookup = award_lookup or lookup_company_awards
         if corporate_lookup is None:
             def corporate_lookup(uniform, target):
                 return corporate_director_connection(uniform, target, require_official_uniform=True)
     corporate_lookup = corporate_lookup or corporate_director_connection
+    award_lookup = award_lookup or lookup_awards
     retrieved_at = datetime.now(timezone.utc).isoformat()
     with ThreadPoolExecutor(max_workers=4) as pool:
         company_jobs = [pool.submit(company_lookup, uniform, timeout=12)
@@ -235,7 +236,7 @@ def live_company_path(source_uniform, target_uniform, *, max_depth=3,
                 if max_depth == 1 else
                 "法人董監事依官方來源核對；採購僅查可取得的第一頁得標公告；司法為部分 JList/JDoc 索引。未找到不代表兩家公司沒有關係。 / Official corporate directors, first-page procurement and partial court index only. No match is not proof of no relationship.")
     if public_graph_only and max_depth > 1:
-        coverage = "比對官方法人董監事及已覆核決標公告。 / Official corporate directors and reviewed awards."
+        coverage = "比對官方法人董監事及有統編與得標欄位的決標公告。 / Corporate directors and exact-ID award notices."
     return {"found": shared is not None, "depth": len(shared["segments"]) if shared else None,
             "source_entity": source, "target_entity": target,
             "max_depth": max_depth, "segments": shared["segments"] if shared else [],

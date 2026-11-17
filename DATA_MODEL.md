@@ -273,8 +273,10 @@ row or same-name roster row is automatically merged or linked.
 ### First public relationship scope
 
 The public graph uses official company, person, government and organization records
-and reviewed official procurement links. Committee participation keeps its
+and reviewed official procurement links. Read-only OpenFun notices carry their
+separate source and winner-role provenance. Political contribution edges
+require evidence linking the exact company and legislator identifiers. Committee participation keeps its
 official term and session, without substituting the retrieval date for appointment.
-Court and labor records, political donations and unpublished candidates remain
+Court and labor records, asset declarations and local election candidates remain
 outside the release projection. A change to publication scope uses restrictive RLS,
 which keeps stored provenance and IDs available to authorized review workflows.

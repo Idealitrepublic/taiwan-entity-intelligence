@@ -265,9 +265,7 @@ class ReportService:
         if award_loader is None:
             from src.sources.procurement import lookup_awards
             def award_loader(value):
-                # The public report reads awards from the same reviewed graph
-                # as its canonical context. Do not add a duplicate notice.
-                return {"status": "ok", "records": []} if self.public_graph_only else lookup_awards(value, timeout=12)
+                return lookup_awards(value, timeout=8)
         if related_loader is None:
             from src.live_related_companies import related_companies
             def related_loader(value):
@@ -341,7 +339,16 @@ class ReportService:
                     "data_status": ('published_registry_snapshot_exact_id'
                                     if data.get('data_mode') == 'published_registry_snapshot_plus_supabase'
                                     else "live_official_exact_id")}
+        published_edges = ((published or {}).get("graph") or {}).get("edges", [])
+        published_notices = {
+            (locator.get("unit_id"), locator.get("job_number"))
+            for edge in published_edges if edge.get("relationship_type") == "CONTRACT_WITH"
+            for locator in [(edge.get("primary_evidence") or {}).get("source_locator") or {}]
+            if isinstance(locator, dict) and locator.get("unit_id") and locator.get("job_number")
+        }
         for row in awards.get("records") or []:
+            if (row.get("unit_id"), row.get("job_number")) in published_notices:
+                continue
             record_id = "procurement:" + str(row.get("id"))
             evidence = {"title": row.get("title"), "source_name": awards.get("source"),
                         "source_url": row.get("source_url"),
@@ -726,7 +733,7 @@ def dispatch_report_api(path, query, authorization=None, service=None):
         return 503, {"status": "unavailable", "error": "報告資料暫時無法使用 / Report data unavailable"}, None
     if getattr(service, "public_graph_only", False) is True:
         report["public_graph_scope"] = True
-        for key in ("judgments", "penalties", "anti_fraud_checks"):
+        for key in ("judgments", "penalties"):
             report.pop(key, None)
     if output_format == "html":
         return 200, render_report_html(report), "text/html; charset=utf-8"

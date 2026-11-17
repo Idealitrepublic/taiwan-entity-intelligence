@@ -9,6 +9,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any
 
@@ -279,3 +280,30 @@ def lookup_reviewed_awards(uniform: str, limit: int = 25, timeout: int = 12) -> 
     return {**result, "records": records, "matched": len(records),
             "retrieved_at": max((r["retrieved_at"] for r in records if r["retrieved_at"]), default=None),
             "limited": bool(graph.get("has_more"))}
+
+
+def lookup_company_awards(uniform: str, limit: int = 100, timeout: int = 8) -> dict[str, Any]:
+    """Include exact-ID OpenFun observations and prefer independently reviewed notices."""
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        reviewed_job = pool.submit(lookup_reviewed_awards, uniform, limit=limit, timeout=timeout)
+        mirror = lookup_awards(uniform, limit=limit, timeout=timeout)
+        reviewed = reviewed_job.result()
+    official_rows = reviewed["records"]
+    official_keys = {(row["unit_id"], row["job_number"]) for row in official_rows}
+    mirror_rows = [
+        row for row in mirror["records"]
+        if row.get("unit_id") and row.get("job_number") and row.get("source_url")
+        and (row["unit_id"], row["job_number"]) not in official_keys
+    ]
+    records = [
+        {**row, "source_name": source["source"],
+         "retrieved_at": row.get("retrieved_at") or source.get("retrieved_at")}
+        for source, rows in ((reviewed, official_rows), (mirror, mirror_rows)) for row in rows
+    ]
+    records.sort(key=lambda row: row["date"], reverse=True)
+    partial = mirror["status"] != "ok" or reviewed["status"] != "ok"
+    return {**mirror, "records": records[:limit], "matched": min(len(records), limit),
+            "status": "partial" if partial and not records else "ok",
+            "limited": partial or mirror["limited"] or reviewed["limited"] or len(records) > limit,
+            "source": "政府電子採購網及 OpenFun 公告介接 / Government e-Procurement and OpenFun",
+            "verification_scope": "per_record"}

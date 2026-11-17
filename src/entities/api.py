@@ -11,8 +11,9 @@ PUBLIC_RELATIONSHIP_TYPES = frozenset(RELATIONSHIP_TYPES) - {"ASSET_OWNERSHIP", 
 LAUNCH_RELATIONSHIP_TYPES = frozenset({
     "DIRECTOR_OF", "OFFICER_OF", "EMPLOYED_BY", "MEMBER_OF", "LEGISLATOR_OF",
     "COMMITTEE_MEMBER", "PROPOSED_BILL", "CO_SPONSORED_BILL", "GOVERNMENT_POSITION", "CONTRACT_WITH",
+    "POLITICAL_CONTRIBUTION_TO",
 })
-WITHHELD_ENTITY_TYPES = frozenset({"Judgment", "Penalty", "PoliticalContribution", "LobbyingRecord"})
+WITHHELD_ENTITY_TYPES = frozenset({"Judgment", "Penalty"})
 
 
 def dispatch_entity_api(path, query, repository=None, *, public_graph_only=False):
@@ -69,6 +70,12 @@ def dispatch_entity_api(path, query, repository=None, *, public_graph_only=False
             live_scope = {"public_graph_only": True} if public_graph_only else {}
             if exact_depth:
                 result = repository.company_path_at_depth(source_id, target_id, depth=exact_depth)
+                if (source_uniform and exact_depth <= 2 and
+                        (result is None or not result.get("found"))):
+                    live_result = live_company_path(source_uniform, target_uniform,
+                                                    max_depth=exact_depth, **live_scope)
+                    if live_result and live_result.get("depth") == exact_depth:
+                        result = live_result
             elif live_requested == "1":
                 result = live_company_path(source_uniform, target_uniform,
                                            max_depth=max_depth, **live_scope)
@@ -143,8 +150,6 @@ def dispatch_entity_api(path, query, repository=None, *, public_graph_only=False
             return 404, {"error": "找不到已公開實體 / Published entity not found"}, None
         return 200, response(result), None
     if len(parts) == 5 and parts[2] == "entities" and parts[4] == "political-contributions":
-        if public_graph_only:
-            return 404, {"error": "找不到端點 / Not found"}, None
         try:
             entity_id = uuid_string(parts[3])
             limit = int(query.get("limit", ["25"])[0])

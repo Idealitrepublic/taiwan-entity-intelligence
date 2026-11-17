@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 import urllib.request
 from src import cloud_company as core
-from src.sources.procurement import lookup_reviewed_awards
+from src.sources.procurement import lookup_company_awards
 from src.live_related_companies import related_companies
 from src.entities.api import dispatch_entity_api
 from src.runtime_config import private_supabase_config
@@ -144,13 +144,20 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
         return 200, (WEB / name).read_text(), 'text/html; charset=utf-8' if page_route else 'application/javascript; charset=utf-8'
     if path == '/api/status':
         return database_status()
+    if path == '/api/domain-check':
+        if method not in ('GET', 'HEAD'):
+            return 405, {'error': 'Method not allowed'}, None
+        try:
+            return 200, core.check_domain(query.get('domain', [''])[0], public_graph_only=True), None
+        except ValueError as exc:
+            return 400, {'error': str(exc)}, None
     if path.startswith('/api/procurement/'):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None
         uniform = path[len('/api/procurement/'):]
         if not re.fullmatch(r'[0-9]{8}', uniform):
             return 400, {'status': 'error', 'error': '統編必須是 8 碼數字。'}, None
-        return 200, lookup_reviewed_awards(uniform), None
+        return 200, lookup_company_awards(uniform), None
     if path.startswith('/api/company-related/'):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None

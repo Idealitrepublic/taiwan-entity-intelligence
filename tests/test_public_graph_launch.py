@@ -50,8 +50,26 @@ class PublicGraphLaunchTests(unittest.TestCase):
     def test_public_forbidden_filters_are_disabled(self):
         self.assertEqual(dispatch("/api/v1/search", {"q": ["台灣"], "entity_type": ["Judgment"]})[0], 400)
         self.assertEqual(dispatch(f"/api/v1/graph/{ID}", {"relationship_type": ["RELATED_TO_PENALTY"]})[0], 400)
-        self.assertEqual(dispatch(f"/api/v1/entities/{ID}/political-contributions", {})[0], 404)
-        self.assertEqual(dispatch("/api/domain-check", {"domain": ["example.com"]})[0], 404)
+        self.assertEqual(dispatch("/api/v1/search", {"q": ["台灣"], "entity_type": ["Penalty"]})[0], 400)
+        self.assertEqual(dispatch("/api/v1/search", {"q": ["台灣"], "entity_type": ["AssetDeclaration"]})[0], 400)
+
+    def test_public_official_domain_lookup_uses_projected_snapshot(self):
+        response = Mock()
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.read.return_value = b'{"indexed_records":86644,"records":[]}'
+        with (patch.object(cloud_company, "SUPABASE_KEY", "anon"),
+              patch("src.cloud_company.urllib.request.urlopen", return_value=response) as opened):
+            status, result, _ = dispatch("/api/domain-check", {"domain": ["https://www.example.com/a"]})
+        self.assertEqual((status, result["domain"], result["indexed_records"]), (200, "example.com", 86644))
+        self.assertEqual(result["anti_fraud"]["matched"], 0)
+        self.assertIn("/rpc/public_domain_snapshot?snapshot_domain=example.com", opened.call_args.args[0].full_url)
+
+    def test_public_contributions_endpoint_uses_scoped_repository(self):
+        with patch("src.entities.api.EntityRepository") as factory:
+            factory.return_value.political_contributions.return_value = {"items": []}
+            self.assertEqual(dispatch(f"/api/v1/entities/{ID}/political-contributions", {})[0], 200)
+        factory.assert_called_once_with(require_launch_scope=True)
 
     def test_award_requires_official_notice_role_exact_uniform_and_identifier(self):
         source = {"bidder_uniform_number": UNIFORM, "winner": True,

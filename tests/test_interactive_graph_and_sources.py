@@ -20,7 +20,7 @@ class InteractiveGraphAndSourceTests(unittest.TestCase):
 
     def test_procurement_route_validates_and_returns_lookup(self):
         expected = {"status": "ok", "matched": 2, "records": []}
-        with patch("app.lookup_reviewed_awards", return_value=expected):
+        with patch("app.lookup_company_awards", return_value=expected):
             status, payload, _ = dispatch("/api/procurement/96979933", {})
         self.assertEqual(status, 200)
         self.assertEqual(payload, expected)

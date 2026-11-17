@@ -458,6 +458,7 @@ def build_company(uniform, *, public_graph_only=False):
         data["evidence_note"] = "公司職務依官方登記或有日期的快照顯示。同名人士各自保留。 / Officer roles use official records or dated snapshots."
         data["public_graph_scope"] = True
         data.pop("website_crosscheck", None)
+        _attach_domain_check(data, public_graph_only=True)
         data.pop("published_case_status", None)
         return data
     data['evidence_status']['165'] = {'status':'not_checked','matched':0,
@@ -582,9 +583,15 @@ def build_company(uniform, *, public_graph_only=False):
                                                     'legal_conclusion':False},
                                       'evidence':source_evidence})
     data['evidence_count'] = len(data['evidence'])
+    _attach_domain_check(data)
+    return data
+
+
+def _attach_domain_check(data, *, public_graph_only=False):
     if data.get('website_host'):
         try:
-            website_check = check_domain(data['website_host'])
+            website_check = (check_domain(data['website_host'], public_graph_only=True)
+                             if public_graph_only else check_domain(data['website_host']))
             website_check['website_url'] = data.get('website_url')
             website_check['website_source'] = data.get('website_source')
             website_check['website_source_url'] = data.get('website_source_url')
@@ -599,16 +606,37 @@ def build_company(uniform, *, public_graph_only=False):
                                              'matched':hits, 'message':'以完整網域精確比對已索引的 165 公開資料；未命中不等於網站安全。' if website_check['status'] == 'ok' else '165 公開資料尚未建立可用索引，不能判定未命中。'}
         except Exception:
             data['website_crosscheck'] = {'status':'partial', 'domain':data.get('website_host'), 'website_url':data.get('website_url'), 'anti_fraud':{'matched':0,'records':[]}, 'message':'反詐網域索引暫時無法讀取。'}
-    return data
 
 
-def check_domain(value):
-    host = urllib.parse.urlparse(value if '://' in value else 'https://' + value).hostname
-    if not host or '.' not in host or len(host) > 253:
+def check_domain(value, *, public_graph_only=False):
+    try:
+        host = urllib.parse.urlparse(value if '://' in value else 'https://' + value).hostname
+        host = (host or '').encode('idna').decode('ascii').lower().removeprefix('www.').rstrip('.')
+    except (UnicodeError, ValueError):
+        host = ''
+    if len(host) > 253 or not re.fullmatch(r'[a-z0-9-]+(?:\.[a-z0-9-]+)+', host):
         raise ValueError('請輸入有效網站網域。')
-    host = host.lower().removeprefix('www.').rstrip('.')
+    unavailable = {'status':'unavailable','domain':host,
+                   'anti_fraud':{'status':'unavailable','matched':0,'records':[]}}
     if not SUPABASE_KEY:
-        return {'status':'unavailable','domain':host,'anti_fraud':{'status':'unavailable','matched':0,'records':[]}}
+        return unavailable
+    if public_graph_only:
+        params = urllib.parse.urlencode({'snapshot_domain': host})
+        request = urllib.request.Request(
+            f'{SUPABASE}/rest/v1/rpc/public_domain_snapshot?{params}',
+            headers={'apikey':SUPABASE_KEY,'Authorization':f'Bearer {SUPABASE_KEY}'})
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response:
+                snapshot = json.load(response)
+        except (OSError, ValueError):
+            return unavailable
+        if not isinstance(snapshot, dict) or not isinstance(snapshot.get('records'), list):
+            return unavailable
+        rows = snapshot['records']
+        return {'status':'ok','domain':host,
+                **{key: snapshot.get(key) for key in ('source_url','indexed_at','indexed_records')},
+                'anti_fraud':{'status':'ok','matched':len(rows),'records':rows,
+                              'rule':'exact_domain','limited':len(rows)==100}}
     index_params = urllib.parse.urlencode({'select':'id,indexed_at,metadata,source_url','dataset':'eq.anti_fraud',
                                           'status':'eq.indexed','order':'indexed_at.desc','limit':'1'})
     index_req = urllib.request.Request(f'{SUPABASE}/rest/v1/source_files?{index_params}',
