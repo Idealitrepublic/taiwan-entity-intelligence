@@ -23,8 +23,6 @@ def main():
     body = b"".join(app({"REQUEST_METHOD": "GET", "PATH_INFO": "/"},
                        lambda status, headers: statuses.append(status)))
     assert statuses == ["200 OK"] and b"Taiwan Entity Intelligence" in body
-    assert (ROOT / "data/judicial_company_index.json").is_file()
-    assert (ROOT / "data/judicial_verified_cases.json").is_file()
     from src.company_website_crosswalk import reviewed_websites
     assert len(reviewed_websites()) >= 500
     # Verify the actual PDF runtime and deployed font, not just Python syntax.

@@ -1,0 +1,4 @@
+# Keep judicial archives and synchronization receipts on the internal side.
+/data/judicial_*.json
+/data/public_sync_status.json
+/reports/
