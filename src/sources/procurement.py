@@ -409,7 +409,10 @@ def normalize_notice_detail(row):
         ('結算金額 / Final settlement', '決標資料:結算金額'),
     ])
     official = str(detail.get('url') or '')
-    parts = urllib.parse.urlsplit(official)
+    try:
+        parts = urllib.parse.urlsplit(official)
+    except ValueError:
+        parts = urllib.parse.urlsplit('')
     official = official if parts.scheme == 'https' and parts.hostname == 'web.pcc.gov.tw' and not parts.username else None
     return {'summary': summary, 'bidders': [b for b in bidders if b], 'items': items,
             'lifecycle': lifecycle, 'official_notice_url': official,

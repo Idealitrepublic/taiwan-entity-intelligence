@@ -11,37 +11,37 @@
           "cases": 5000,
           "unique_inputs": 4058,
           "failure_classes": 0,
-          "seconds": 0.135
+          "seconds": 0.136
         },
         "procurement": {
           "cases": 5000,
           "unique_inputs": 272,
           "failure_classes": 0,
-          "seconds": 0.451
+          "seconds": 0.46
         },
         "notice_detail": {
           "cases": 5000,
           "unique_inputs": 132,
           "failure_classes": 0,
-          "seconds": 0.235
+          "seconds": 0.24
         },
         "exact_path": {
           "cases": 5000,
           "unique_inputs": 3718,
           "failure_classes": 0,
-          "seconds": 0.148
+          "seconds": 0.151
         },
         "pdf": {
           "cases": 100,
           "unique_inputs": 100,
           "failure_classes": 0,
-          "seconds": 0.984
+          "seconds": 1.001
         },
         "report_html": {
           "cases": 5000,
           "unique_inputs": 5000,
           "failure_classes": 0,
-          "seconds": 1.365
+          "seconds": 1.551
         }
       },
       "network": "denied",
@@ -55,37 +55,37 @@
           "cases": 5000,
           "unique_inputs": 4039,
           "failure_classes": 0,
-          "seconds": 0.136
+          "seconds": 0.143
         },
         "procurement": {
           "cases": 5000,
           "unique_inputs": 272,
           "failure_classes": 0,
-          "seconds": 0.471
+          "seconds": 0.58
         },
         "notice_detail": {
           "cases": 5000,
           "unique_inputs": 132,
           "failure_classes": 0,
-          "seconds": 0.244
+          "seconds": 0.294
         },
         "exact_path": {
           "cases": 5000,
           "unique_inputs": 3734,
           "failure_classes": 0,
-          "seconds": 0.156
+          "seconds": 0.154
         },
         "pdf": {
           "cases": 100,
           "unique_inputs": 100,
           "failure_classes": 0,
-          "seconds": 0.995
+          "seconds": 1.202
         },
         "report_html": {
           "cases": 5000,
           "unique_inputs": 5000,
           "failure_classes": 0,
-          "seconds": 1.446
+          "seconds": 1.428
         }
       },
       "network": "denied",
@@ -99,37 +99,37 @@
           "cases": 5000,
           "unique_inputs": 4043,
           "failure_classes": 0,
-          "seconds": 0.137
+          "seconds": 0.157
         },
         "procurement": {
           "cases": 5000,
           "unique_inputs": 272,
           "failure_classes": 0,
-          "seconds": 0.468
+          "seconds": 0.48
         },
         "notice_detail": {
           "cases": 5000,
           "unique_inputs": 132,
           "failure_classes": 0,
-          "seconds": 0.244
+          "seconds": 0.248
         },
         "exact_path": {
           "cases": 5000,
           "unique_inputs": 3748,
           "failure_classes": 0,
-          "seconds": 0.154
+          "seconds": 0.178
         },
         "pdf": {
           "cases": 100,
           "unique_inputs": 100,
           "failure_classes": 0,
-          "seconds": 1.069
+          "seconds": 1.084
         },
         "report_html": {
           "cases": 5000,
           "unique_inputs": 5000,
           "failure_classes": 0,
-          "seconds": 1.44
+          "seconds": 1.733
         }
       },
       "network": "denied",
@@ -141,6 +141,7 @@
       "result": "PASS",
       "seed": 20261118,
       "steps": 150,
+      "executed_steps": 139,
       "requests": 81,
       "errors": [],
       "blocked_outbound": []
@@ -149,6 +150,7 @@
       "result": "PASS",
       "seed": 20261119,
       "steps": 150,
+      "executed_steps": 136,
       "requests": 80,
       "errors": [],
       "blocked_outbound": []
@@ -157,6 +159,7 @@
       "result": "PASS",
       "seed": 73013,
       "steps": 150,
+      "executed_steps": 141,
       "requests": 100,
       "errors": [],
       "blocked_outbound": []
@@ -169,5 +172,6 @@
     "Deferred graph focus reset erased a later node selection."
   ],
   "production_modified": false,
-  "database_writes": false
+  "database_writes": false,
+  "ui_executed_steps": 416
 }

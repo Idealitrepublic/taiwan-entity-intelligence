@@ -231,7 +231,9 @@ def make_procurement(rng, index):
 def detail_property(case):
     with patch("src.sources.procurement._json_get", return_value={"records": [case]}):
         result = lookup_notice_detail("3.1", "0630800011", "BDM-1", timeout=1)
-    assert result["status"] in ("ok", "unavailable")
+    assert result["status"] == "ok", (
+        "An invalid optional link discarded a valid exact-version notice"
+    )
     if result["status"] == "ok":
         for section in ("summary", "bidders", "items", "lifecycle"):
             assert isinstance(result[section], list)

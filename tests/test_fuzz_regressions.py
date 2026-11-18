@@ -9,7 +9,7 @@ from unittest.mock import patch
 from pypdf import PdfReader
 from src.reports import render_report_html
 from src.report_pdf import render_report_pdf
-from src.sources.procurement import lookup_awards
+from src.sources.procurement import lookup_awards, normalize_notice_detail
 
 CORPUS = json.loads((Path(__file__).parent / "fuzz/repros.json").read_text())
 
@@ -76,3 +76,15 @@ class FuzzRegressions(unittest.TestCase):
                 )
                 for page in reader.pages:
                     self.assertFalse(page.get("/Annots"))
+
+    def test_invalid_optional_link_does_not_discard_notice_fields(self):
+        detail = normalize_notice_detail(
+            {
+                "detail": {
+                    "url": "https://[",
+                    "已公告資料:預算金額": "0元 原因：收入性質",
+                }
+            }
+        )
+        self.assertIsNone(detail["official_notice_url"])
+        self.assertEqual(detail["summary"][0]["value"], "0元 原因：收入性質")

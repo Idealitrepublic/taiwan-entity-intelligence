@@ -63,7 +63,7 @@ const output=process.env.TEI_FUZZ_OUTPUT||'/tmp/tei-ui-fuzz-'+seed+'.json';
   await page.locator('#svg .node').nth(1).waitFor();
   for(let i=0;i<steps;i++){
    const action=pick(['expand','expand','resize','zoom','fit','collapse','range','select','switch-fast','focus','drag','evidence']);
-   const record={step:i,action};actions.push(record);
+   const record={step:i,action,executed:true};actions.push(record);
    if(action==='expand'){
     const choices=await page.locator('#svg .node[data-node-id]').all();const node=pick(choices);record.id=await node.getAttribute('data-node-id');
     await node.press('Enter');
@@ -82,21 +82,21 @@ const output=process.env.TEI_FUZZ_OUTPUT||'/tmp/tei-ui-fuzz-'+seed+'.json';
      assert.equal(await select.inputValue(),record.id);
     }
    }else if(action==='focus'){
-    if(await page.locator('#graphFocus').isVisible())await page.locator('#graphFocus').click();
+    if(await page.locator('#graphFocus').isVisible())await page.locator('#graphFocus').click();else record.executed=false;
    }else if(action==='drag'){
     const svg=await page.locator('#svg').boundingBox();const circle=page.locator('#svg .node circle:not(.hit)').first();const box=await circle.boundingBox();
-    if(box&&box.x>=svg.x&&box.y>=svg.y&&box.x+box.width<svg.x+svg.width&&box.y+box.height<svg.y+svg.height){await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+pick([-18,18]),box.y+box.height/2+pick([-12,12]),{steps:3});await page.mouse.up()}
+    if(box&&box.x>=svg.x&&box.y>=svg.y&&box.x+box.width<svg.x+svg.width&&box.y+box.height<svg.y+svg.height){await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+pick([-18,18]),box.y+box.height/2+pick([-12,12]),{steps:3});await page.mouse.up()}else record.executed=false;
    }else if(action==='evidence'){
     if(await page.locator('#mobileGraphList').isVisible()){
-     const choices=page.locator('#mobileGraphList button');if(await choices.count())await choices.first().click();
-    }
+     const choices=page.locator('#mobileGraphList button');if(await choices.count())await choices.first().click();else record.executed=false;
+    }else{const edge=page.locator('#svg .edge-group[role=button]').first();if(await edge.count())await edge.press('Enter');else record.executed=false;}
    }
    if(await page.locator('#nodeInfo').isVisible())await page.locator('#closeNode').click();
    await inspect('step '+i+' '+action);
   }
   assert.deepEqual(errors,[]);
-  fs.writeFileSync(output,JSON.stringify({result:'PASS',seed,steps,actions,requests:requests.length,blocked_outbound:blocked,errors},null,2));
-  console.log(JSON.stringify({result:'PASS',seed,steps,requests:requests.length,errors}));
+  fs.writeFileSync(output,JSON.stringify({result:'PASS',seed,steps,executed_steps:actions.filter(a=>a.executed).length,actions,requests:requests.length,blocked_outbound:blocked,errors},null,2));
+  console.log(JSON.stringify({result:'PASS',seed,steps,executed_steps:actions.filter(a=>a.executed).length,requests:requests.length,errors}));
  }catch(e){
   await page.screenshot({path:output.replace('.json','.png'),fullPage:true}).catch(()=>{});
   fs.writeFileSync(output,JSON.stringify({result:'FAIL',seed,steps,actions,error:e.message,errors,blocked_outbound:blocked},null,2));
