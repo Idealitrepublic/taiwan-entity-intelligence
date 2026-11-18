@@ -100,6 +100,7 @@
     .record>summary>span:first-child{min-width:0;overflow-wrap:anywhere}
     .right:has(.tab[data-tab="judicial"].active)>#connectionSummary,
     .right:has(.tab[data-tab="penalty"].active)>#connectionSummary,
+    .right:has(.tab[data-tab="procurement"].active)>#connectionSummary,
     .right:has(.tab[data-tab="judicial"].active)>#pathEntityPicker,
     .right:has(.tab[data-tab="penalty"].active)>#pathEntityPicker{display:none}
     @media(max-width:420px){
@@ -107,6 +108,18 @@
       .panel .kv span:last-child{text-align:left}
       .path-segment .section-head{gap:5px}
     }
+    .left .section{overflow-x:auto}
+    .left :is(.title,.sub,.eyebrow,.notice,.card,p,b,a,span,small,h4){
+      white-space:nowrap;overflow-wrap:normal;word-break:normal
+    }
+    .left .path-results,.left .kv{width:max-content;min-width:100%}
+    .left .kv{grid-template-columns:max-content max-content;gap:8px 18px}
+    .left .path-results .card{width:100%}
+    .left .section-head{flex-wrap:nowrap}
+    .left .section-head h4{flex:0 0 auto}
+    .left .kv>div{display:contents}
+    .left .kv span:last-child{text-align:left}
+    .left .title,.left .sub,.left .notice,.left .eyebrow{width:max-content;min-width:100%}
   </style>
   <style>.app:has(.source-announcement:not([hidden])){grid-template-rows:auto 64px 88px minmax(0,1fr)}.app:has(.source-announcement:not([hidden])):has(.main.graph-focused){grid-template-rows:auto 64px 88px auto}.source-announcement{z-index:11;padding:9px 22px;border-bottom:1px solid #8b6423;background:#33240c;color:#fff0cb;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.source-announcement a{color:#fff4d8;text-decoration:underline}.source-announcement b{margin-right:8px}@media(max-width:1120px){.app:has(.source-announcement:not([hidden])){display:block}}</style>
 </head>
@@ -1628,9 +1641,9 @@
         `<p>${esc(panel.profileError||'載入單位資料中 / Loading entity details…')}</p>`)}
       </div><div class="card"><h4>圖譜已載入關係 / Loaded graph links</h4>${list(related)}</div></div>`;
     renderOfficialLookupPanes();
-    for(const [pane,type] of [['procurementPane','Contract']]){
-      $(pane).innerHTML=`<div class="card">${list(related.filter(edge=>relatedNode(edge)?.entity_type===type))}</div>`;
-    }
+    const contracts=related.filter(edge=>relatedNode(edge)?.entity_type==='Contract');
+    $('tabProcurementCount').textContent=`${contracts.length} 筆已載入 / loaded`;
+    $('procurementPane').innerHTML=`<div class="card">${list(contracts)}</div>`;
   }
   function renderPathEntityDetails(){
     const panel=knowledgeGraph?.entityPanel;
@@ -1642,6 +1655,7 @@
     renderOfficialLookupPanes();
     if(!panel){
       for(const id of ['overviewPane','procurementPane'])$(id).innerHTML=prompt;
+      $('tabProcurementCount').textContent='請選擇公司 / Select company';
       return;
     }
     const node=knowledgeGraph.nodes.get(panel.id);
@@ -1653,8 +1667,11 @@
       const message=panel.registryError||'載入公司資料中 / Loading company data…';
       $('overviewPane').innerHTML=`<div class="empty">${esc(message)}</div>`;
     }
-    $('procurementPane').innerHTML=panel.awards?procurementCard(panel.awards):
-      `<div class="empty">${esc(panel.awardsError||'載入決標公告中 / Loading award notices…')}</div>`;
+    $('tabProcurementCount').textContent=panel.awards?`${panel.awards.records?.length||0} 筆 / records`:
+      panel.awardsError?'來源暫不可用 / Unavailable':'查詢中 / Loading';
+    $('procurementPane').innerHTML=`<div class="notice">公司 / Company：${esc(connectionName(node))}</div>`+
+      (panel.awards?procurementCard(panel.awards):
+        `<div class="empty">${esc(panel.awardsError||'載入決標公告中 / Loading award notices…')}</div>`);
   }
   async function loadPathEntityProfile(id){
     const response=await fetch('/api/v1/entities/'+encodeURIComponent(id),{cache:'no-store'});
@@ -1898,6 +1915,8 @@
   }
   function renderKnowledgeAwards(panel){
     const pane=$('procurementPane');
+    $('tabProcurementCount').textContent=panel.awards?`${panel.awards.records?.length||0} 筆 / records`:
+      panel.error?'來源暫不可用 / Unavailable':'查詢中 / Loading';
     const content=panel.awards?procurementCard(panel.awards):panel.error
       ?`<div class="notice source-warning">${esc(panel.error)}</div>${companyAwardsAction(panel.id,'重試標案查詢 / Retry award lookup')}`
       :'<div class="notice">正在讀取決標公告 / Loading award notices…</div>';
