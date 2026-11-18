@@ -101,6 +101,15 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       assert.equal(await page.locator('#overviewPane .company-overview-name').textContent(),node.display_name);
       assert.match(await page.locator('#overviewPane .kv').first().textContent(),new RegExp(node.public_identifier));
       assert.equal(await page.locator('#overviewPane .company-overview-awards .record').count(),count);
+      assert.equal(await page.locator('#overviewPane').evaluate(el=>{
+        const summary=document.querySelector('#connectionSummary');
+        return Boolean(el.compareDocumentPosition(summary)&Node.DOCUMENT_POSITION_FOLLOWING);
+      }),true,'the selected company profile comes before the connection summary');
+      const inViewport=await page.locator('#overviewPane .company-overview-name').evaluate(el=>{
+        const p=el.closest('.panel').getBoundingClientRect(),r=el.getBoundingClientRect();
+        return r.top>=p.top&&r.bottom<=Math.min(p.bottom,innerHeight);
+      });
+      assert(inViewport,'the actual company name must be on screen, not just attached below the summary');
       await page.waitForFunction(()=>document.querySelector('#svg').getAttribute('aria-busy')==='false');
       const positions=await page.locator('#svg .node').evaluateAll(els=>els.map(el=>({id:el.dataset.nodeId,
         x:el.querySelector('circle:not(.hit)').getAttribute('cx'),y:el.querySelector('circle:not(.hit)').getAttribute('cy')})));

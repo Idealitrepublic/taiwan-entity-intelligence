@@ -861,7 +861,12 @@
     const graph=document.querySelector('.graph'),right=$('rightPanel');if(!graph||!right)return;
     const focused=Boolean(document.querySelector('.main.graph-focused')&&matchMedia('(min-width:1121px)').matches);
     if(focused&&panel.parentElement!==graph)graph.appendChild(panel);
-    else if(!focused&&panel.parentElement!==right)right.querySelector('.tabs').after(panel);
+    else if(!focused){
+      const inspecting=graphMode==='path'&&knowledgeGraph?.entityPanel?.id;
+      const overview=$('overviewPane'),previous=panel.previousElementSibling;
+      if(panel.parentElement!==right||inspecting&&previous!==overview||!inspecting&&overview&&previous===overview)
+        (inspecting?overview:right.querySelector('.tabs')).after(panel);
+    }
   }
   function clearConnectionSummary(){connectionModel=null;connectionTargetId=null;connectionFocusOn=true;const panel=$('connectionSummary');if(panel){panel.hidden=true;panel.innerHTML=''}const jump=$('connectionSummaryJump');if(jump)jump.hidden=true;applyConnectionFocus()}
   function renderConnectionSummary(){
@@ -1674,6 +1679,7 @@
   }
   function renderPathEntityDetails(){
     const panel=knowledgeGraph?.entityPanel;
+    placeConnectionSummary();
     const prompt='<div class="empty">選擇公司或單位以查看資料。 / Select a company or entity to inspect its records.</div>';
     const status=$('pathEntityStatus');
     status.textContent=panel?[panel.registryError,panel.awardsError,panel.profileError].filter(Boolean).join(' · '):'';
@@ -1717,6 +1723,7 @@
     Object.keys(filterState).forEach(key=>filterState[key]=key==='penaltyView'?'all':'');
     const panel=id?{id}:null;
     state.entityPanel=panel;
+    $('rightPanel').scrollTop=0;
     if(node&&node.entity_type!=='Company')selectOverviewTab();
     renderPathEntityDetails();
     if(!panel)return;
@@ -1940,6 +1947,7 @@
     document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab===active));
     const panes={overview:'overviewPane',judicial:'judicialPane',procurement:'procurementPane',penalty:'penaltyPane'};
     for(const [id,pane] of Object.entries(panes))$(pane).hidden=id!==active;
+    const panel=$('rightPanel');if(panel)panel.scrollTop=0;
   }
   function selectOverviewTab(){selectRecordTab('overview')}
   function companyAwardsAction(id,label='瀏覽本次標案 / Browse available awards'){
