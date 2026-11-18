@@ -27,6 +27,7 @@ try {
       !x.endsWith('_withhold_candidate_and_asset_publication.sql') &&
       !x.endsWith('_public_relationship_launch_scope.sql') &&
       !x.endsWith('_restore_public_preview_features.sql') &&
+      !x.endsWith('_withhold_lobby_publication.sql') &&
       !x.endsWith('_hide_public_judgments_and_penalties.sql'))
     .sort();
   for (const file of files) await db.exec(fs.readFileSync(`supabase/migrations/${file}`, 'utf8'));
@@ -979,6 +980,34 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   assert.equal((await db.query('select count(*)::int n from public.source_records')).rows[0].n, 3);
   assert.equal((await db.query('select count(*)::int n from public.relationships where id=$1',[courtLink])).rows[0].n, 1);
   checks += 3;
+  const lobbyId = 'b0000000-0000-4000-8000-000000000006';
+  const lobbyProof = 'b0000000-0000-4000-8000-000000000007';
+  await db.exec(`insert into public.entities
+    (id,entity_type,canonical_name,display_name,source,source_id,identity_status,publication_status)
+    values ('${lobbyId}','LobbyingRecord','遊說測試','遊說測試','內政部','test:lobby','SOURCE_SCOPED','published');
+    insert into public.evidence_records (id,source_name,source_record_id,source_class,
+      source_url,source_locator,title,summary,observed_at,retrieved_at,content_hash,publication_status)
+    values ('${lobbyProof}','內政部｜115年度遊說者申請登記事項總表','lobby:fixture','Primary Source',
+      'https://ws.moi.gov.tw/Download.ashx','{"table_row":1}','遊說測試','測試來源',now(),now(),repeat('f',64),'published');
+    insert into public.entity_evidence(entity_id,evidence_id,fact_type)
+      values ('${lobbyId}','${lobbyProof}','lobby_registration_observation');`);
+  const lobbyWithdrawal = fs.readdirSync('supabase/migrations')
+    .find(file => file.endsWith('_withhold_lobby_publication.sql'));
+  await db.exec(fs.readFileSync(`supabase/migrations/${lobbyWithdrawal}`, 'utf8'));
+  for (const role of ['anon','authenticated']) {
+    await db.exec(`set role ${role}`);
+    assert.equal((await db.query('select count(*)::int n from public.entities where id=$1',[lobbyId])).rows[0].n,0);
+    assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1',[lobbyProof])).rows[0].n,0);
+    assert.equal((await db.query('select count(*)::int n from public.entity_evidence where entity_id=$1',[lobbyId])).rows[0].n,0);
+    assert.equal((await db.query("select count(*)::int n from public.search_entities('遊說','LobbyingRecord',20)")).rows[0].n,0);
+    assert.equal((await db.query('select count(*)::int n from public.relationships where id=$1',[contributionId])).rows[0].n,1);
+    assert.equal((await db.query("select public.public_domain_snapshot('fixture.example') snapshot")).rows[0].snapshot.records.length,1);
+    await db.exec('reset role');
+    checks += 6;
+  }
+  assert.equal((await db.query('select count(*)::int n from public.entities where id=$1',[lobbyId])).rows[0].n,1);
+  assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1',[lobbyProof])).rows[0].n,1);
+  checks += 2;
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;

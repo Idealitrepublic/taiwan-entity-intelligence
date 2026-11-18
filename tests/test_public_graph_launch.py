@@ -52,6 +52,7 @@ class PublicGraphLaunchTests(unittest.TestCase):
         self.assertEqual(dispatch(f"/api/v1/graph/{ID}", {"relationship_type": ["RELATED_TO_PENALTY"]})[0], 400)
         self.assertEqual(dispatch("/api/v1/search", {"q": ["台灣"], "entity_type": ["Penalty"]})[0], 400)
         self.assertEqual(dispatch("/api/v1/search", {"q": ["台灣"], "entity_type": ["AssetDeclaration"]})[0], 400)
+        self.assertEqual(dispatch("/api/v1/search", {"q": ["遊說"], "entity_type": ["LobbyingRecord"]})[0], 400)
 
     def test_public_official_domain_lookup_uses_projected_snapshot(self):
         response = Mock()

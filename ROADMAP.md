@@ -381,7 +381,8 @@ Production 未修改；真人Pilot與另行正式發布授權仍為後續閘門�
 
 ### Public relationship release
 
-The public release covers companies, public-role holders, organizations, official
-lobbying records, exact-ID political contributions, awards, and 165 domain checks.
+The public release covers companies, public-role holders, organizations,
+exact-ID political contributions, awards, and 165 domain checks. Lobbying records
+are withdrawn from public search, evidence, graph and report reads.
 Court and labor panels lead to the government lookup portals.
 Production release follows the recorded backup, migration, WAF and rollout checks.

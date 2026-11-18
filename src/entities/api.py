@@ -13,7 +13,7 @@ LAUNCH_RELATIONSHIP_TYPES = frozenset({
     "COMMITTEE_MEMBER", "PROPOSED_BILL", "CO_SPONSORED_BILL", "GOVERNMENT_POSITION", "CONTRACT_WITH",
     "POLITICAL_CONTRIBUTION_TO",
 })
-WITHHELD_ENTITY_TYPES = frozenset({"Judgment", "Penalty"})
+WITHHELD_ENTITY_TYPES = frozenset({"Judgment", "Penalty", "LobbyingRecord"})
 
 
 def dispatch_entity_api(path, query, repository=None, *, public_graph_only=False):
