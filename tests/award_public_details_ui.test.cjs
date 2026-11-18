@@ -6,10 +6,11 @@ vm.runInContext(html.split('\n').find(row=>row.startsWith('  function safeSource
 context.row={unit_id:'3.13.31',job_number:'0630800011',notice_filename:'BDM-1-53131415'};
 assert(vm.runInContext('awardDetailSlot(row)',context).includes('0630800011'));
 assert.equal(vm.runInContext('awardDetailSlot({job_number:"0630800011"})',context),'');
-context.data={status:'ok',summary:[{label:'預算 / Budget',value:'0元 原因：收入性質',source_field:'已公告資料:預算金額'},{label:'決標日期',value:'109/06/03',source_field:'決標資料:決標日期'},{label:'附加說明',value:'不應堆滿所有資訊',source_field:'決標資料:附加說明'}],bidders:[[{label:'廠商名稱',value:'<script>bad</script>',source_field:'投標廠商:投標廠商1:廠商名稱'}]],items:[],official_notice_url:'https://web.pcc.gov.tw/detail',source_name:'OpenFun',retrieved_at:'2026-11-18'};
+context.data={status:'ok',summary:[{label:'預算 / Budget',value:'0元 原因：收入性質',source_field:'已公告資料:預算金額'},{label:'決標日期',value:'109/06/03',source_field:'決標資料:決標日期'},{label:'附加說明',value:'不應堆滿所有資訊',source_field:'決標資料:附加說明'}],bidders:[[{label:'廠商名稱',value:'<script>bad</script>',source_field:'投標廠商:投標廠商1:廠商名稱'},{label:'廠商代碼 / Bidder ID',value:'01234567',source_field:'投標廠商:投標廠商1:廠商代碼'}]],items:[],official_notice_url:'https://web.pcc.gov.tw/detail',source_name:'OpenFun',retrieved_at:'2026-11-18'};
 const out=vm.runInContext('awardPublicDetailHtml(data)',context);
 assert(out.includes('0元 原因：收入性質'));assert(out.includes('西元 2020 年（民國 109 年）6 月 3 日'));
 assert(out.includes('&lt;script>'));assert(!out.includes('<script>'));assert(!out.includes('不應堆滿所有資訊'));
+assert(out.includes('統編 / Company ID'));assert(!out.includes('廠商代碼 / Bidder ID'));assert.equal((out.match(/class="award-source-row"/g)||[]).length,2);
 assert(out.includes('<details>'));assert(out.includes('核對官方公告'));
 console.log('PASS key award detail: bounded fields, exact locator, zero/reason, collapsed bidders, escaping and provenance');
 vm.runInContext(html.slice(html.indexOf('  const awardDetailRequests='),html.indexOf('  function mergeProcurement(')),context);

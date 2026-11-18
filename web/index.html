@@ -139,6 +139,7 @@
       .graph:has(.node-info:not([hidden])) .mobile-graph-list:not([hidden]){top:calc(var(--graph-canvas-top,180px) + 540px)}
     }
     .award-public-detail{margin-top:16px;min-width:0}.award-bidder{padding:12px 0;border-top:1px solid var(--line,#304454)}.award-public-detail summary{cursor:pointer;padding:10px 0;overflow-wrap:anywhere}
+    .award-source-metadata{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:12px 0;min-width:0;width:100%;font-size:10px;line-height:1.7}.award-source-row{display:block;width:100%;min-width:0;max-width:none;white-space:normal;word-break:keep-all;overflow-wrap:normal;text-align:left}.award-source-row>span{display:inline;max-width:none;word-break:keep-all;overflow-wrap:normal;white-space:normal}
 </style>
   <style>.app:has(.source-announcement:not([hidden])){grid-template-rows:auto 64px 88px minmax(0,1fr)}.app:has(.source-announcement:not([hidden])):has(.main.graph-focused){grid-template-rows:auto 64px 88px auto}.source-announcement{z-index:11;padding:9px 22px;border-bottom:1px solid #8b6423;background:#33240c;color:#fff0cb;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.source-announcement a{color:#fff4d8;text-decoration:underline}.source-announcement b{margin-right:8px}@media(max-width:1120px){.app:has(.source-announcement:not([hidden])){display:block}}</style>
 </head>
@@ -1909,13 +1910,13 @@
     return `<section class="award-public-detail" data-unit="${esc(unit)}" data-job="${esc(job)}" data-file="${esc(file)}"><button class="toolbtn award-detail-load">讀取重要標案資訊 / Load key award details</button><div class="award-detail-content" aria-live="polite"></div></section>`;
   }
   function awardPublicDetailHtml(data){
-    const rows=fields=>(fields||[]).map(field=>nodeRows(awardFields({[field.label]:field.value}))).join('');
+    const rows=fields=>(fields||[]).map(field=>nodeRows(awardFields({[field.source_field?.endsWith(':廠商代碼')?'統編 / Company ID':field.label]:field.value}))).join('');
     const important=new Set(['已公告資料:預算金額','決標資料:總決標金額','已公告資料:招標方式','已公告資料:決標方式','決標資料:決標日期']);
     const main=(data.summary||[]).filter(field=>important.has(field.source_field));
     const bidders=(data.bidders||[]).map(fields=>rows(fields.filter(field=>!field.source_field.endsWith(':履約起迄日期')))).map(body=>`<article class="award-bidder">${body}</article>`).join('');
     const bids=(data.items||[]).map(fields=>rows(fields.filter(field=>!field.source_field.endsWith(':未得標原因')&&!field.source_field.endsWith(':是否合格')))).map(body=>`<article class="award-bidder">${body}</article>`).join('');
     const official=safeSourceUrl(data.official_notice_url),source=safeSourceUrl(data.source_url);
-    return `<h4>重要標案資訊 / Key award details</h4>${rows(main)}${!main.length?'<p>本次明細未提供主要欄位 / Key fields not supplied</p>':''}${bidders?`<details><summary>投標廠商與得標金額 / Bidders & awards (${data.bidders.length})</summary>${bidders}</details>`:''}${bids?`<details><summary>各品項報價與評選 / Item bids & evaluation</summary>${bids}</details>`:''}<p class="notice">未列欄位為本次來源未提供；不代表零或不存在。公告日期與決標日期不同。 / Missing fields are not zero; notice and award dates differ.</p><p>來源 / Source：${esc(data.source_name||'OpenFun 公告介接')}<br>資料取得日期 / Retrieved at：${esc(awardDate(data.retrieved_at||''))}</p>${official?`<p><a href="${esc(official)}" target="_blank" rel="noreferrer">核對官方公告 / Verify official notice ↗</a></p>`:''}${source?`<p><a href="${esc(source)}" target="_blank" rel="noreferrer">介接明細 / Structured source ↗</a></p>`:''}<small>結構化介接資料，尚非逐案獨立官方覆核。 / Structured mirror; not independently verified against each official notice.</small>`;
+    return `<h4>重要標案資訊 / Key award details</h4>${rows(main)}${!main.length?'<p>本次明細未提供主要欄位 / Key fields not supplied</p>':''}${bidders?`<details><summary>投標廠商與得標金額 / Bidders & awards (${data.bidders.length})</summary>${bidders}</details>`:''}${bids?`<details><summary>各品項報價與評選 / Item bids & evaluation</summary>${bids}</details>`:''}<p class="notice">未列欄位為本次來源未提供；不代表零或不存在。公告日期與決標日期不同。 / Missing fields are not zero; notice and award dates differ.</p><div class="award-source-metadata"><div class="award-source-row"><span>來源 / Source：</span><span>${esc(data.source_name||'OpenFun 公告介接')}</span></div><div class="award-source-row"><span>資料取得日期 / Retrieved at：</span><span>${esc(awardDate(data.retrieved_at||''))}</span></div></div>${official?`<p><a href="${esc(official)}" target="_blank" rel="noreferrer">核對官方公告 / Verify official notice ↗</a></p>`:''}${source?`<p><a href="${esc(source)}" target="_blank" rel="noreferrer">介接明細 / Structured source ↗</a></p>`:''}<small>結構化介接資料，尚非逐案獨立官方覆核。 / Structured mirror; not independently verified against each official notice.</small>`;
   }
   const awardDetailRequests=new Map();
   async function loadAwardDetails(root){

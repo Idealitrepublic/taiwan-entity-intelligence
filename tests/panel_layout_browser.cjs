@@ -68,12 +68,12 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         await new Promise(resolve=>setTimeout(resolve,60));
         data=awards(path.endsWith(b.public_identifier)?b:a);
       }
-      if(path==='/api/procurement-detail')data={status:'ok',source_name:'OpenFun',retrieved_at:'2026-11-18',summary:[
+      if(path==='/api/procurement-detail')data={status:'ok',source_name:'政府電子採購網公告（OpenFun 結構化介接）',retrieved_at:'2026-11-18T14:00:00+00:00',summary:[
         {label:'預算金額 / Budget',value:'0元 原因：收入性質',source_field:'已公告資料:預算金額'},
         {label:'總決標金額 / Total award amount',value:'228,900,001元',source_field:'決標資料:總決標金額'},
         {label:'決標日期 / Award date',value:'109/06/03',source_field:'決標資料:決標日期'}],bidders:[[
           {label:'廠商 / Bidder',value:'範例廠商',source_field:'投標廠商:投標廠商1:廠商名稱'},
-          {label:'廠商代碼 / Bidder ID',value:'01234567',source_field:'投標廠商:投標廠商1:廠商代碼'}]],items:[]};
+          {label:'統編 / Company ID',value:'01234567',source_field:'投標廠商:投標廠商1:廠商代碼'}]],items:[]};
       if(path==='/api/v1/workspace-config')data={auth_enabled:false};
       if(path==='/api/status')data={supabase:{connected:true,partial:true,canonical:{companies:472}},source_notices:[]};
       return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
@@ -203,6 +203,10 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/0元 原因/);
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/西元 2020 年（民國 109 年）6 月 3 日/);
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/資料取得日期 \/ Retrieved at/);
+      const metadata=await pane.locator('.award-source-metadata').first().evaluate(el=>{
+        const rows=[...el.querySelectorAll('.award-source-row')];return{count:rows.length,complete:rows.every(row=>row.scrollWidth<=row.clientWidth+1&&getComputedStyle(row).wordBreak==='keep-all'&&getComputedStyle(row).textOverflow!=='ellipsis'),separate:rows[1].getBoundingClientRect().top>=rows[0].getBoundingClientRect().bottom};
+      });
+      assert.deepEqual(metadata,{count:2,complete:true,separate:true},label+' metadata has two full-width rows without clipping or character splitting');
       const bidders=pane.locator('.award-detail-content details').first();
       assert.equal(await bidders.getAttribute('open'),null,'bidder breakdown starts collapsed');
       await bidders.locator('summary').click();

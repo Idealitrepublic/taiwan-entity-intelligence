@@ -352,7 +352,7 @@ def normalize_notice_detail(row):
     bidders = []
     for prefix in prefixes:
         bidders.append(fields([(label, prefix + ':' + key) for label, key in [
-            ('廠商名稱 / Bidder', '廠商名稱'), ('廠商代碼 / Bidder ID', '廠商代碼'),
+            ('廠商名稱 / Bidder', '廠商名稱'), ('統編 / Company ID', '廠商代碼'),
             ('是否得標 / Awarded', '是否得標'), ('決標金額 / Award amount', '決標金額'),
             ('履約期間（來源原文） / Contract period', '履約起迄日期')]]))
     item_prefixes = sorted({m[1] for key in detail if
