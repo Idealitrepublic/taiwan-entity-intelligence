@@ -67,6 +67,22 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
     });
     await page.goto('https://tei.local/');
+    async function searchButtons(width) {
+      const buttons=await page.locator('#search,#sample').evaluateAll(els=>els.map(el=>{
+        const range=document.createRange();range.selectNodeContents(el);
+        const lines=new Set([...range.getClientRects()].map(r=>Math.round(r.top)));
+        const box=el.getBoundingClientRect();
+        return {singleLine:lines.size===1,fits:el.scrollWidth<=el.clientWidth+1,
+          onScreen:box.left>=0&&box.right<=innerWidth+1};
+      }));
+      assert.deepEqual(buttons,[{singleLine:true,fits:true,onScreen:true},{singleLine:true,fits:true,onScreen:true}],
+        width+'px search and real-example buttons show all text on one line');
+    }
+    for(const width of [1920,1600,1440,1280,1121,1024,768,390,320]) {
+      await page.setViewportSize({width,height:900});
+      await searchButtons(width);
+    }
+    await page.setViewportSize({width:1440,height:900});
     await page.locator('#sample').click();
     await page.locator('#pathResult .path-segment').nth(1).waitFor();
 
@@ -179,6 +195,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
 
     for(const width of [1440,1280,1024,768,390]) {
       await page.setViewportSize({width,height:900});
+      await searchButtons(width);
       await toolbar(width+'px graph toolbar');
       if(width>1120) {
         for(let repeat=0;repeat<2;repeat++) {

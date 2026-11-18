@@ -487,3 +487,59 @@ test('nearest blank space is measured from actual child nodes rather than a wide
  assert.equal(distance(near),184,'the node sits beside the nearest clear boundary with the required gap');
  assert(!occupied.some(box=>context.graphBoxesOverlap(near,box,44)));
 });
+
+test('company records keep one side and one facing column across types, pages and nested expansion',()=>{
+ const data=path([segment(A,shared,'r1'),segment(shared,B,'r2',true)]);
+ const state={pathData:data,rootId:A.id,manualPositions:new Map()};
+ const context=vm.createContext({graphMode:'path',knowledgeGraph:state,num:Number,graphContext:null,
+  relationshipLabels:{MEMBER_OF:'公開紀錄 / Public record'},entityTypeLabels:{},connectionEdgeLabel:()=>''});
+ vm.runInContext(shipped('  function graphTextWidth(', '  function createKnowledgeGraph(')+shipped('  const graphNoteWidth=', '  function showKnowledgeNode('),context);
+ const nodes=[{...A,pathRole:'公司 A'}, {...shared,pathRole:'中介'}, {...B,pathRole:'公司 B'}];
+ const edges=data.segments.map(({relationship:r,evidence})=>({...r,source:r.source_entity_id,target:r.target_entity_id,primary_evidence:evidence}));
+ const before=context.groupedGraphLayout(nodes,edges);
+ const add=(parent,type,count,prefix)=>{
+  for(let i=0;i<count;i++){
+   const id=prefix+i;
+   nodes.push({id,entity_type:type,observation_kind:type==='Contract'?'AwardNotice':undefined,
+    display_name:'公開來源紀錄與完整職稱 '+id,expandedFromId:parent});
+   edges.push({id:'edge-'+id,source:parent,target:id,relationship_type:'MEMBER_OF',primary_evidence:{id:'proof-'+id}});
+  }
+ };
+ add(A.id,'Person',7,'a-person');add(A.id,'Contract',5,'a-award');
+ const first=context.groupedGraphLayout(nodes,edges);
+ add(A.id,'GovernmentAgency',3,'a-agency');add(A.id,'Person',4,'a-more');
+ add(B.id,'Person',5,'b-person');add(B.id,'Contract',6,'b-award');
+ const after=context.groupedGraphLayout(nodes,edges);
+ for(const node of nodes.filter(n=>first.positions.has(n.id)))
+  assert.deepEqual(after.positions.get(node.id),first.positions.get(node.id),'pagination keeps existing nodes fixed');
+ for(const parent of [A,B]){
+  const p=after.positions.get(parent.id),zones=after.zones.filter(z=>z.ownerId===parent.id);
+  assert(zones.length>1);
+  const side=parent===A?'left':'right';
+  assert.equal(state.groupedPlacement.directions.get(parent.id),side);
+  const facing=zones[0][side==='left'?'right':'left'];
+  for(const z of zones){
+   assert.equal(z[side==='left'?'right':'left'],facing,'every type shares the same company-facing boundary');
+   assert(side==='left'?z.right<p.x:z.left>p.x,'all records stay on the same side of their company');
+  }
+ }
+ for(const node of [A,shared,B])assert.deepEqual(after.positions.get(node.id),before.positions.get(node.id));
+ for(let i=0;i<after.zones.length;i++)for(const other of after.zones.slice(i+1))
+  assert(!context.graphBoxesOverlap(after.zones[i],other),'company columns never overlap other groups');
+ for(const [id,route] of after.routes){
+  const edge=edges.find(e=>e.id===id);
+  for(let i=1;i<route.points.length;i++){
+   const [x,y]=route.points[i-1],[u,v]=route.points[i];
+   assert(x===u||y===v,'company routes remain orthogonal');
+   for(const zone of after.zones.filter(z=>!z.ids.includes(edge.source)&&!z.ids.includes(edge.target)))
+    assert(!(x===u?x>zone.left&&x<zone.right&&Math.max(y,v)>zone.top&&Math.min(y,v)<zone.bottom:
+      y>zone.top&&y<zone.bottom&&Math.max(x,u)>zone.left&&Math.min(x,u)<zone.right),'company link avoids unrelated frames');
+  }
+ }
+ add(A.id,'Company',1,'subsidiary');
+ const withCompany=context.groupedGraphLayout(nodes,edges);
+ add('subsidiary0','Person',3,'nested-role');add('subsidiary0','Contract',2,'nested-award');
+ const nested=context.groupedGraphLayout(nodes,edges),parent=nested.positions.get('subsidiary0');
+ for(const zone of nested.zones.filter(z=>z.ownerId==='subsidiary0'))assert(zone.right<parent.x);
+ for(const [id,p] of withCompany.positions)assert.deepEqual(nested.positions.get(id),p);
+});

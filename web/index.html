@@ -128,6 +128,11 @@
     .graph .tools .graph-filter,.graph .graph-pager{flex-basis:100%}
     .graph-actions{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
     .graph .graph-actions .toolbtn{white-space:normal;height:auto;min-height:36px;max-width:100%;margin:0;padding:8px 11px}
+    .search #search,.search #sample{white-space:nowrap;min-width:max-content;flex-shrink:0}
+    @media(min-width:981px){.searchbox{min-width:0;grid-template-columns:minmax(0,1fr) minmax(140px,180px) minmax(0,.75fr) max-content}}
+    @media(max-width:1600px){.searchmeta{display:none}}
+    @media(max-width:1120px){.search{flex-wrap:wrap}.searchbox{flex:1 1 100%;max-width:none}}
+    @media(max-width:360px){.search #sample{font-size:13px}}
     .graph svg{top:var(--graph-canvas-top,100px)}
     @media(max-width:720px){
       .graph .mobile-graph-list:not([hidden]),.graph:has(.node-info:not([hidden])) .node-info{top:calc(var(--graph-canvas-top,180px) + 295px)}
@@ -1049,7 +1054,7 @@
   function graphBoxesOverlap(a,b,gap=0){
     return a.left<b.right+gap&&a.right+gap>b.left&&a.top<b.bottom+gap&&a.bottom+gap>b.top;
   }
-  function graphZoneSpot(parent,width,height,occupied,anchors=[{x:width/2,y:height/2}],distance){
+  function graphZoneSpot(parent,width,height,occupied,anchors=[{x:width/2,y:height/2}],distance,direction,lane){
     const gap=44;
     const x=parent.x-width/2,y=parent.y-height/2;
     const xs=[x,...anchors.map(p=>parent.x-p.x)],ys=[y,...anchors.map(p=>parent.y-p.y)];
@@ -1057,10 +1062,17 @@
       xs.push(box.left-gap-width,box.right+gap);
       ys.push(box.top-gap-height,box.bottom+gap);
     }
+    if(direction==='left')xs.push(parent.x-gap-width);
+    if(direction==='right')xs.push(parent.x+gap);
+    if(direction==='above')ys.push(parent.y-gap-height);
+    if(direction==='below')ys.push(parent.y+gap);
+    if(Number.isFinite(lane)){xs.length=0;xs.push(direction==='left'?lane-width:lane)}
     let best,bestDistance=Infinity,bestCenter=Infinity;
     // An empty rectangle can always be slid toward its parent until it meets a frame or aligns on an axis.
     for(const left of new Set(xs))for(const top of new Set(ys)){
       const candidate={left,top,right:left+width,bottom:top+height};
+      if(direction==='left'&&candidate.right>parent.x-gap||direction==='right'&&candidate.left<parent.x+gap||
+        direction==='above'&&candidate.bottom>parent.y-gap||direction==='below'&&candidate.top<parent.y+gap)continue;
       const cost=distance?distance(candidate):Math.min(...anchors.map(p=>Math.hypot(left+p.x-parent.x,top+p.y-parent.y)));
       const center=Math.hypot(left-x,top-y);
       if(cost>bestDistance||cost===bestDistance&&center>=bestCenter||occupied.some(box=>graphBoxesOverlap(candidate,box,gap)))continue;
@@ -1127,6 +1139,8 @@
     const connectionNotes=graphConnectionNotes(nodes,edges,data);
     const metrics=new Map(nodes.map(node=>[node.id,knowledgeMetrics(node,connectionNotes.get(node.id))]));
     const state=knowledgeGraph.groupedPlacement??={positions:new Map(),zones:[]};
+    const directions=state.directions??=new Map();
+    const lanes=state.lanes??=new Map();
     const {positions:fixed}=state;
     for(const id of fixed.keys())if(!byId.has(id))fixed.delete(id);
     state.zones=state.zones.filter(zone=>zone.ids.some(id=>fixed.has(id)));
@@ -1179,6 +1193,12 @@
     while(pending.size){
       const parentId=[...pending.keys()].find(id=>positions.has(id))??pending.keys().next().value;
       const parent=positions.get(parentId)||positions.get(spine[0]);
+      let direction=directions.get(parentId);
+      if(!direction&&byId.get(parentId)?.entity_type==='Company'){
+        const others=spine.filter(id=>id!==parentId&&positions.has(id)).map(id=>positions.get(id).x);
+        direction=others.length&&parent.x<others.reduce((sum,x)=>sum+x,0)/others.length?'left':'right';
+        directions.set(parentId,direction);
+      }
       for(const [type,members] of pending.get(parentId)){
         for(let i=0;i<members.length;i+=4){
           const ids=members.slice(i,i+4),sizes=ids.map(id=>metrics.get(id));
@@ -1188,16 +1208,17 @@
           let columnY=29;
           const columnAnchors=sizes.map(m=>{const p={x:width/2,y:columnY+m.top};columnY+=m.top+m.bottom+8;return p});
           const distance=(zone,anchors)=>Math.min(...anchors.map(p=>Math.hypot(zone.left+p.x-parent.x,zone.top+p.y-parent.y)));
-          const column=graphZoneSpot(parent,width,height,occupied,columnAnchors);
+          const column=graphZoneSpot(parent,width,height,occupied,columnAnchors,undefined,direction,lanes.get(parentId));
+          if(direction&&!lanes.has(parentId))lanes.set(parentId,direction==='left'?column.right:column.left);
           const slots=sizes.map(m=>Math.max(82,2*m.halfWidth+22));
           const rowHeight=44+Math.max(...sizes.map(m=>m.top+m.radius+m.noteHeight));
           let rowX=0;
           const rowAnchors=slots.map(slot=>{const p={x:rowX+slot/2,y:24};rowX+=slot;return p});
           const rowPoints=zone=>rowAnchors.map(p=>({...p,y:(zone.top+zone.bottom)/2>=parent.y?24:rowHeight-24}));
-          const row=ids.length>1?graphZoneSpot(parent,Math.max(zoneLabelWidth(type),rowX),rowHeight,occupied,
-            rowAnchors.flatMap(p=>[p,{...p,y:rowHeight-24}]),zone=>distance(zone,rowPoints(zone))):null;
+          const row=ids.length>1&&!direction?graphZoneSpot(parent,Math.max(zoneLabelWidth(type),rowX),rowHeight,occupied,
+            rowAnchors.flatMap(p=>[p,{...p,y:rowHeight-24}]),zone=>distance(zone,rowPoints(zone)),direction):null;
           const horizontal=row&&distance(row,rowPoints(row))<=distance(column,columnAnchors);
-          const zone={...(horizontal?row:column),type,ids};
+          const zone={...(horizontal?row:column),type,ids,ownerId:parentId};
           if(horizontal)zone.side=(zone.top+zone.bottom)/2>=parent.y?1:-1;
           let y=zone.top+29,left=zone.left;
           for(const id of ids){
