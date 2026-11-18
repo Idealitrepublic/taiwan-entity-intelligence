@@ -184,7 +184,12 @@ test('explicit browser download bypasses native picker and leaves a manual Save 
   assert.equal(h.requests.length,1);assert(h.events.includes('object-url'));
   assert(h.events.includes('append-active'));assert(h.events.includes('click'));
   assert(!h.events.includes('PDF 已儲存 / PDF saved'));
-  assert(html.includes("browserReportButton.addEventListener('click'"));
+});
+test('public PDF download works without the withdrawn login dialog and sends no authorization',async()=>{
+  const h=reportHarness({modal:false});delete h.elements.workspaceDialog;delete h.elements.workspaceMessage;
+  await vm.runInContext("exportReport('company','96979933',true,true)",h.context);
+  assert.equal(h.requests.length,1);assert(!h.requests[0].options.headers.Authorization);
+  assert(h.events.includes('prepend-notice'));assert(h.events.includes('click'));
 });
 test('file write failure aborts temporary write and never claims saved',async()=>{
   const events=[],h=reportHarness({picker:async()=>({createWritable:async()=>({write:async()=>{throw Error('disk failed')},abort:async()=>events.push('abort'),close:async()=>events.push('close')})})});

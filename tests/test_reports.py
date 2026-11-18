@@ -218,11 +218,12 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(body, b"<h1>Report</h1>")
         self.assertIn(("Content-Type", "text/html"), headers)
 
-    def test_ui_exposes_entity_politician_and_workspace_exports(self):
+    def test_ui_retains_public_exports_without_workspace_controls(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
-        for token in ("report-export", "workspaceReportView", "workspaceReportDownload",
-                      "/api/v1/reports/", "data-report-download"):
+        for token in ("report-export", "/api/v1/reports/", "data-report-download"):
             self.assertIn(token, html)
+        self.assertNotIn('id="workspaceReportView"', html)
+        self.assertNotIn('id="workspaceReportDownload"', html)
 
 
 if __name__ == "__main__":

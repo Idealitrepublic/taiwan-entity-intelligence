@@ -193,8 +193,7 @@ class EntitySearchTests(unittest.TestCase):
         self.assertIn("官方核對別名 / Verified alias", html)
         self.assertIn('value="GovernmentAgency"', html)
         self.assertIn('value="CivilOrganization"', html)
-        self.assertIn('value="PoliticalContribution"', html)
-        for withdrawn in ("Judgment", "Penalty", "AssetDeclaration", "LobbyingRecord"):
+        for withdrawn in ("Judgment", "Penalty", "AssetDeclaration", "LobbyingRecord", "Person", "PoliticalContribution", "LegislativeBill"):
             self.assertNotIn(f'value="{withdrawn}"', html)
         self.assertNotIn('maxlength="8" inputmode="numeric"', html)
 

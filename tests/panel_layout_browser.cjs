@@ -42,6 +42,11 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     const page=await browser.newPage({viewport:{width:1440,height:900}});
     page.setDefaultTimeout(10000);
     const errors=[];
+    const privateRequests=[];
+    page.on('request',request=>{
+      if(/\/api\/v1\/(?:workspace|watchlist|alerts)|\/auth\/v1\//.test(request.url()))privateRequests.push(new URL(request.url()).pathname);
+    });
+    await page.addInitScript(()=>sessionStorage.setItem('tei_workspace_session',JSON.stringify({access_token:'test-only-stale-session',refresh_token:'test-only'})));
     page.on('pageerror',e=>errors.push(e.message));
     await page.route('https://tei.local/**',async route=>{
       const url=new URL(route.request().url()),path=url.pathname;
@@ -64,9 +69,28 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         data=awards(path.endsWith(b.public_identifier)?b:a);
       }
       if(path==='/api/v1/workspace-config')data={auth_enabled:false};
+      if(path==='/api/status')data={supabase:{connected:true,partial:true,canonical:{companies:472}},source_notices:[]};
       return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
     });
     await page.goto('https://tei.local/');
+    assert.equal(await page.locator('#workspaceOpen,#watchlistOpen,#workspaceDialog,form[type="password"],input[type="password"]').count(),0);
+    assert.equal(await page.locator('#systemStatus').isVisible(),false);
+    assert.equal(await page.locator('#sample').textContent(),'載入真實範例 / Load real example');
+    assert.deepEqual(await page.locator('#entityTypeFilter option').evaluateAll(els=>els.map(el=>el.value)),
+      ['', 'Company','Politician','GovernmentOfficial','GovernmentAgency','PoliticalParty','CivilOrganization','Contract']);
+    assert.equal(await page.evaluate(()=>sessionStorage.getItem('tei_workspace_session')),null);
+    await page.locator('#q').fill('x');
+    await page.locator('#search').click();
+    assert.match(await page.locator('#uniform').textContent(),/Enter at least 2 characters/);
+    async function targetHeader(width) {
+      const result=await page.locator('.target-entity').evaluate(el=>{
+        const box=el.getBoundingClientRect();
+        return {fits:el.scrollWidth<=el.clientWidth+1,clipped:[...el.querySelectorAll('#company,#uniform,.kv span')].filter(child=>{
+          const r=child.getBoundingClientRect();return r.left<box.left-1||r.right>box.right+1||child.scrollWidth>child.clientWidth+1;
+        }).map(child=>child.textContent)};
+      });
+      assert.deepEqual(result,{fits:true,clipped:[]},width+'px target text needs no horizontal scrolling');
+    }
     async function searchButtons(width) {
       const buttons=await page.locator('#search,#sample').evaluateAll(els=>els.map(el=>{
         const range=document.createRange();range.selectNodeContents(el);
@@ -81,6 +105,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     for(const width of [1920,1600,1440,1280,1121,1024,768,390,320]) {
       await page.setViewportSize({width,height:900});
       await searchButtons(width);
+      await targetHeader(width);
     }
     await page.setViewportSize({width:1440,height:900});
     await page.locator('#sample').click();
@@ -141,7 +166,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         const nodes=[...document.querySelectorAll('.panel .section-head>*,.panel .kv span,.panel .card p,.panel .card a,.panel .notice,.panel .title,.panel .sub')];
         const clipped=nodes.filter(el=>{
           if(!el.getClientRects().length)return false;
-          if(el.closest('.left .section'))return false;
+          if(el.closest('.left .section')&&!el.closest('.target-entity'))return false;
           const box=el.getBoundingClientRect(),panel=el.closest('.panel').getBoundingClientRect();
           const card=el.closest('.card')?.getBoundingClientRect();
           return box.left<panel.left-1||box.right>panel.right+1||
@@ -151,6 +176,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
           .map(el=>el.className);
         const wrapped=[...document.querySelectorAll('.left .kv span,.left .section-head h4,.left .title,.left .sub')]
           .filter(el=>{
+            if(el.closest('.target-entity'))return false;
             if(!el.getClientRects().length)return false;
             const range=document.createRange();range.selectNodeContents(el);
             const lines=new Set([...range.getClientRects()].map(rect=>Math.round(rect.top)));
@@ -206,6 +232,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         }
       }
       await layout(width+'px path details');
+      await targetHeader(width);
       for(const [kind,url] of [['judicial','https://judgment.judicial.gov.tw/'],
         ['penalty','https://announcement.mol.gov.tw/']]) {
         await page.locator('#pathEntitySelect').selectOption(b.id);
@@ -256,10 +283,9 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     await page.locator('.tab[data-tab="overview"]').click();
     await layout('Agency profile and evidence');
     await page.setViewportSize({width:390,height:900});
-    await page.locator('#workspaceOpen').click();
-    const dialog=page.locator('dialog[open]');
-    assert.equal(await dialog.count(),1);
-    assert.equal(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+    assert.equal(await page.locator('dialog,input[type="password"]').count(),0);
+    assert.equal(await page.locator('#systemStatus').isVisible(),false);
+    assert.deepEqual(privateRequests,[],'a stale session never triggers private workspace, login or alert calls');
     assert.deepEqual(errors,[]);
     console.log('Panel layout: company overview plus awards, stable node coordinates and zoom after expansion, toolbar order, official links and 1440/1280/1024/768/390px passed.');
   } finally {

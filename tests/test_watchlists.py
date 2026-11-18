@@ -142,11 +142,10 @@ class WatchlistTests(unittest.TestCase):
             lambda value, _headers: status.append(value))
         self.assertEqual(status, ["405 Method Not Allowed"])
 
-    def test_ui_has_dashboard_filters_and_read_state(self):
+    def test_public_ui_has_no_tracking_entry(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
-        for token in ("watchlistOpen", "watchlistAdd", "/api/v1/watchlist/sync",
-                      "alertState", "alertReadAll", "alert-toggle-read"):
-            self.assertIn(token, html)
+        for token in ('id="watchlistOpen"', 'id="watchlistAdd"', 'id="alertState"', 'id="alertReadAll"'):
+            self.assertNotIn(token, html)
 
 
 if __name__ == "__main__":

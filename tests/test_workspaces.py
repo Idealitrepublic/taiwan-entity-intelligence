@@ -128,11 +128,11 @@ class WorkspaceTests(unittest.TestCase):
         self.assertFalse(result["auth_enabled"])
         self.assertEqual(result["publishable_key"], "")
 
-    def test_ui_has_auth_crud_and_six_bookmark_types(self):
+    def test_public_ui_has_no_workspace_or_login_entry(self):
         html = (Path(__file__).parents[1] / "web" / "index.html").read_text()
-        for token in ("workspaceOpen", "workspaceLogin", "/api/v1/workspaces",
-                      "ENTITY", "RELATIONSHIP", "EVIDENCE", "GRAPH", "SOURCE", "NOTE"):
-            self.assertIn(token, html)
+        for token in ('id="workspaceOpen"', 'id="workspaceLogin"', 'id="workspaceDialog"',
+                      'id="watchlistOpen"', 'type="password"'):
+            self.assertNotIn(token, html)
 
 
 if __name__ == "__main__":
