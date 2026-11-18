@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync('web/index.html', 'utf8');
 function loadDisplay(context) {
+  vm.runInContext(html.slice(html.indexOf("  function awardDetailSlot("), html.indexOf("  const awardDetailRequests=")), context);
   const line = html.split('\n').find(row => row.includes('const $=id=>'));
   vm.runInContext('const ' + line.slice(line.indexOf('esc='), line.indexOf(',num=')) + ';', context);
   vm.runInContext(html.split('\n').find(row => row.includes('function snapshotTime(')), context);

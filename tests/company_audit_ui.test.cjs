@@ -6,6 +6,7 @@ const ctx = vm.createContext({esc:String,num:Number,recordText:String,recordDate
   filterState:{},uniqueValues:()=>[],filterBox:()=>'',filterSelect:()=>'',countyRank:()=>0,
   procurementCounty:()=> '未分類',rawGrid:()=>'',penaltyArticles:()=>[],
   URL,displayDate:String,nodeRows:rows=>Object.values(rows).join(' ')});
+vm.runInContext(html.slice(html.indexOf('  function awardDetailSlot('),html.indexOf('  const awardDetailRequests=')),ctx);
 vm.runInContext(html.split('\n').find(line=>line.includes('function penaltySignal(')),ctx);
 vm.runInContext(html.split('\n').find(line=>line.includes('function safeSourceUrl(')),ctx);
 assert(vm.runInContext("penaltySignal([],{status:'partial'})",ctx).includes('Count unknown, not zero'));

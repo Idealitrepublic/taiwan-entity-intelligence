@@ -30,7 +30,7 @@ const registry = node => ({status:'ok',public_graph_scope:true,uniform_number:no
 const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開決標公告 / Award source',
   records:Array.from({length:node.id===a.id?7:5},(_,index)=>({
     id:node.id+'-award-'+index,title:node.display_name+'真實流程測試公告 案件'+index,
-    date:'2025-01-0'+(index+1),agency:'新北市政府',notice_type:'決標公告',
+    unit_id:'3.13.31',job_number:'0630800011',notice_filename:'BDM-1-53131415',date:'2025-01-0'+(index+1),agency:'新北市政府',notice_type:'決標公告',
     uniform_number:node.public_identifier,award_role:'winner',
     awardee_names:[node.display_name],source_url:'https://example.gov.tw/award/'+index
   }))});
@@ -68,6 +68,12 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         await new Promise(resolve=>setTimeout(resolve,60));
         data=awards(path.endsWith(b.public_identifier)?b:a);
       }
+      if(path==='/api/procurement-detail')data={status:'ok',source_name:'OpenFun',retrieved_at:'2026-11-18',summary:[
+        {label:'預算金額 / Budget',value:'0元 原因：收入性質',source_field:'已公告資料:預算金額'},
+        {label:'總決標金額 / Total award amount',value:'228,900,001元',source_field:'決標資料:總決標金額'},
+        {label:'決標日期 / Award date',value:'109/06/03',source_field:'決標資料:決標日期'}],bidders:[[
+          {label:'廠商 / Bidder',value:'範例廠商',source_field:'投標廠商:投標廠商1:廠商名稱'},
+          {label:'廠商代碼 / Bidder ID',value:'01234567',source_field:'投標廠商:投標廠商1:廠商代碼'}]],items:[]};
       if(path==='/api/v1/workspace-config')data={auth_enabled:false};
       if(path==='/api/status')data={supabase:{connected:true,partial:true,canonical:{companies:472}},source_notices:[]};
       return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
@@ -191,7 +197,15 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       if(await pane.locator('.notice').count())
         assert.match(await pane.locator('.notice').first().textContent(),new RegExp(node.display_name));
       await pane.locator('.record').first().locator('summary').click();
-      assert.equal(await pane.locator('.record').first().locator('a').isVisible(),true);
+      assert.equal(await pane.locator('.record').first().locator('a').first().isVisible(),true);
+      await pane.locator('.award-detail-content h4').first().waitFor();
+      assert.match(await pane.locator('.award-detail-content').first().textContent(),/228,900,001元/);
+      assert.match(await pane.locator('.award-detail-content').first().textContent(),/0元 原因/);
+      const bidders=pane.locator('.award-detail-content details').first();
+      assert.equal(await bidders.getAttribute('open'),null,'bidder breakdown starts collapsed');
+      await bidders.locator('summary').click();
+      assert.equal(await bidders.getByText('01234567',{exact:true}).isVisible(),true);
+      await layout(label+' key award details');
       await pane.getByRole('searchbox',{name:'標案關鍵字 / Award keyword',exact:true}).fill('公告 案件０');
       await pane.locator('.award-keyword-search button').click();
       assert.equal(await pane.locator('.record').count(),1,'multiple words and full-width digits match loaded awards');

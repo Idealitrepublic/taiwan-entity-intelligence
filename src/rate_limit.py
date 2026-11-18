@@ -69,6 +69,6 @@ def request_allowed(path, client):
         route_group = '/api/v1/' + (family if family in known else 'other')
     else:
         family = parts[2] if len(parts) > 2 else ''
-        known = {'company', 'company-sources', 'company-related', 'procurement', 'domain-check'}
+        known = {'company', 'company-sources', 'company-related', 'procurement', 'procurement-detail', 'domain-check'}
         route_group = '/api/' + (family if family in known else 'other')
     return LIMITER.allow(f'{client}:{route_group}', limit)

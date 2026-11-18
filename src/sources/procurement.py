@@ -67,6 +67,9 @@ def _normalize(row: dict[str, Any], uniform: str) -> dict[str, Any]:
         "agency": row.get("unit_name"),
         "job_number": row.get("job_number"),
         "unit_id": row.get("unit_id"),
+        "notice_filename": row.get("filename"),
+        "budget_amount": row.get("budget_amount"),
+        "total_award_amount": row.get("award_amount"),
         "company_names": names,
         "awardee_names": matched_names(row, uniform) if role == "winner" else [],
         "uniform_number": uniform,
@@ -269,7 +272,7 @@ def lookup_reviewed_awards(uniform: str, limit: int = 25, timeout: int = 12) -> 
                 or urllib.parse.urlsplit(evidence.get("source_url") or "").hostname != "web.pcc.gov.tw"
                 or not all(source.get(key) for key in ("unit_id", "job_number", "notice_filename", "award_date"))):
             continue
-        records.append({**{key: source.get(key) for key in ("title", "agency", "unit_id", "job_number", "amount")},
+        records.append({**{key: source.get(key) for key in ("title", "agency", "unit_id", "job_number", "amount", "notice_filename")},
                         "id": f"{source['unit_id']}:{source['job_number']}:{source['notice_filename']}",
                         "date": source["award_date"], "notice_type": "決標公告", "award_role": "winner",
                         "uniform_number": uniform, "source_url": evidence["source_url"],
@@ -307,3 +310,107 @@ def lookup_company_awards(uniform: str, limit: int = 100, timeout: int = 8) -> d
             "limited": partial or mirror["limited"] or reviewed["limited"] or len(records) > limit,
             "source": "政府電子採購網及 OpenFun 公告介接 / Government e-Procurement and OpenFun",
             "verification_scope": "per_record"}
+
+
+def _notice_text(value):
+    """Keep source wording (including zero/reasons), never infer a money unit."""
+    if value is None or isinstance(value, (dict, list)):
+        return None
+    return re.sub(r'\s+', ' ', str(value)).strip() or None
+
+
+def normalize_notice_detail(row):
+    """Whitelisted source fields; bidder and item roles stay notice-scoped."""
+    detail = row.get('detail') or {}
+    if not isinstance(detail, dict):
+        raise ValueError('Notice detail is malformed')
+
+    def fields(pairs):
+        return [{'label': label, 'value': text, 'source_field': key}
+                for label, key in pairs if (text := _notice_text(detail.get(key))) is not None]
+
+    summary = fields([
+        ('預算金額 / Budget', '已公告資料:預算金額'),
+        ('預算公開狀態 / Budget disclosure', '已公告資料:預算金額是否公開'),
+        ('總決標金額 / Total award amount', '決標資料:總決標金額'),
+        ('決標金額公開狀態 / Award disclosure', '決標資料:總決標金額是否公開'),
+        ('招標方式 / Tender method', '已公告資料:招標方式'),
+        ('決標方式 / Award method', '已公告資料:決標方式'),
+        ('限制性招標依據 / Legal basis', '已公告資料:限制性招標依據之法條'),
+        ('標的分類 / Procurement category', '已公告資料:標的分類'),
+        ('決標日期 / Award date', '決標資料:決標日期'),
+        ('公告日期 / Notice date', '決標資料:決標公告日期'),
+        ('公告序號 / Notice sequence', '決標資料:決標公告序號'),
+        ('公告更正序號 / Correction sequence', '已公告資料:公告更正序號'),
+        ('投標家數 / Bidder count', '投標廠商:投標廠商家數'),
+        ('附加說明 / Additional information', '決標資料:附加說明'),
+    ])
+    # Prefixes come from the source's exact paths, never a fuzzy company-name join.
+    prefixes = sorted({m[1] for key in detail
+                       if (m := re.fullmatch(r'(投標廠商:投標廠商\d+):[^:]+', key))},
+                      key=lambda p: int(re.search(r'\d+$', p)[0]))
+    bidders = []
+    for prefix in prefixes:
+        bidders.append(fields([(label, prefix + ':' + key) for label, key in [
+            ('廠商名稱 / Bidder', '廠商名稱'), ('廠商代碼 / Bidder ID', '廠商代碼'),
+            ('是否得標 / Awarded', '是否得標'), ('決標金額 / Award amount', '決標金額'),
+            ('履約期間（來源原文） / Contract period', '履約起迄日期')]]))
+    item_prefixes = sorted({m[1] for key in detail if
+                            (m := re.fullmatch(r'(決標品項:第\d+品項:(?:未得標廠商|得標廠商)\d+):[^:]+', key))})
+    items = []
+    for prefix in item_prefixes:
+        parent = prefix.rsplit(':', 1)[0]
+        entry = fields([('品項 / Item', parent + ':品項名稱')])
+        entry += [{'label': '品項角色 / Item role',
+                   'value': '未得標 / Not awarded' if ':未得標廠商' in prefix else '得標 / Awarded',
+                   'source_field': prefix}]
+        entry += fields([(label, prefix + ':' + key) for label, key in [
+            ('廠商 / Vendor', '得標廠商'), ('廠商 / Vendor', '未得標廠商'),
+            ('原始投標金額 / Original bid', '得標廠商原始投標金額'),
+            ('標價金額 / Bid price', '標價金額'), ('決標金額 / Award amount', '決標金額'),
+            ('是否合格 / Qualified', '是否合格'), ('未得標原因 / Reason not awarded', '未得標原因'),
+            ('評選序位或總評分 / Rank or score', '評選序位或總評分')]])
+        items.append(entry)
+    lifecycle = fields([
+        ('履約地點 / Contract location', '已公告資料:履約地點'),
+        ('契約編號 / Contract ID', '決標資料:契約編號'),
+        ('契約變更 / Contract change', '決標資料:契約變更'),
+        ('驗收結果 / Acceptance result', '決標資料:驗收結果'),
+        ('結算金額 / Final settlement', '決標資料:結算金額'),
+    ])
+    official = str(detail.get('url') or '')
+    parts = urllib.parse.urlsplit(official)
+    official = official if parts.scheme == 'https' and parts.hostname == 'web.pcc.gov.tw' and not parts.username else None
+    return {'summary': summary, 'bidders': [b for b in bidders if b], 'items': items,
+            'lifecycle': lifecycle, 'official_notice_url': official,
+            'source_fetched_at': detail.get('fetched_at'),
+            'coverage_note': '僅本公告公開欄位；未提供不代表零或未發生。附件、完整變更、驗收與結算若未載明，請至官方公告核對。 / Fields in this notice only; missing is not zero or proof of absence.'}
+
+
+def lookup_notice_detail(unit_id, job_number, filename, timeout=8):
+    """Fetch one exact notice version without changing publication or identity state."""
+    if (not re.fullmatch(r'[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*', unit_id or '')
+            or len(unit_id) > 80 or not re.fullmatch(r'[\w()./-]{1,100}', job_number or '')
+            or not re.fullmatch(r'[\w-]{1,120}', filename or '')):
+        raise ValueError('Invalid notice locator')
+    url = API.rsplit('/', 1)[0] + '/tender?' + urllib.parse.urlencode(
+        {'unit_id': unit_id, 'job_number': job_number})
+    try:
+        payload = _json_get(url, timeout=timeout)
+        rows = [row for row in payload['records'] if isinstance(row, dict)
+                and row.get('filename') == filename and row.get('unit_id') == unit_id
+                and str(row.get('job_number')) == job_number]
+        if len(rows) != 1 or not isinstance(rows[0].get('detail'), dict):
+            return {'status': 'unavailable', 'message': '來源未提供此版本明細 / Exact notice detail unavailable'}
+        detail = rows[0]['detail']
+        if any(detail.get(key) is not None and str(detail[key]) != value for key, value in
+               [('機關資料:機關代碼', unit_id), ('已公告資料:標案案號', job_number)]):
+            return {'status': 'unavailable', 'message': '公告識別不一致 / Conflicting notice identifiers'}
+        return {'status': 'ok', **normalize_notice_detail(rows[0]),
+                'unit_id': unit_id, 'job_number': job_number, 'filename': filename,
+                'source_url': url, 'source_name': '政府電子採購網公告（OpenFun 結構化介接）',
+                'retrieved_at': datetime.now(timezone.utc).isoformat(),
+                'verification_scope': 'structured_mirror_not_independently_verified_official'}
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+        return {'status': 'unavailable', 'message': '來源暫時無法讀取，可稍後重試 / Source unavailable; retry later',
+                'source_error': _source_error(exc)}

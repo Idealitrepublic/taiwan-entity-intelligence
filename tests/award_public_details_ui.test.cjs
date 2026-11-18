@@ -1,0 +1,33 @@
+const assert=require('node:assert/strict'),vm=require('node:vm');
+const {html,loadDisplay}=require('./web_display_harness.cjs');
+const context=vm.createContext({URL,nodeRows:rows=>Object.entries(rows).map(([k,v])=>`${k}: ${String(v).replace(/</g,'&lt;')}`).join('|')});
+loadDisplay(context);
+vm.runInContext(html.split('\n').find(row=>row.startsWith('  function safeSourceUrl(')),context);
+context.row={unit_id:'3.13.31',job_number:'0630800011',notice_filename:'BDM-1-53131415'};
+assert(vm.runInContext('awardDetailSlot(row)',context).includes('0630800011'));
+assert.equal(vm.runInContext('awardDetailSlot({job_number:"0630800011"})',context),'');
+context.data={status:'ok',summary:[{label:'預算 / Budget',value:'0元 原因：收入性質',source_field:'已公告資料:預算金額'},{label:'決標日期',value:'109/06/03',source_field:'決標資料:決標日期'},{label:'附加說明',value:'不應堆滿所有資訊',source_field:'決標資料:附加說明'}],bidders:[[{label:'廠商名稱',value:'<script>bad</script>',source_field:'投標廠商:投標廠商1:廠商名稱'}]],items:[],official_notice_url:'https://web.pcc.gov.tw/detail',source_name:'OpenFun',retrieved_at:'2026-11-18'};
+const out=vm.runInContext('awardPublicDetailHtml(data)',context);
+assert(out.includes('0元 原因：收入性質'));assert(out.includes('109/06/03'));
+assert(out.includes('&lt;script>'));assert(!out.includes('<script>'));assert(!out.includes('不應堆滿所有資訊'));
+assert(out.includes('<details>'));assert(out.includes('核對官方公告'));
+console.log('PASS key award detail: bounded fields, exact locator, zero/reason, collapsed bidders, escaping and provenance');
+vm.runInContext(html.slice(html.indexOf('  const awardDetailRequests='),html.indexOf('  function mergeProcurement(')),context);
+context.URLSearchParams=URLSearchParams;context.AbortSignal=AbortSignal;
+function slot(){const content={},button={};return{dataset:{unit:'3.13.31',job:'0630800011',file:'BDM-1-53131415'},isConnected:true,content,button,querySelector:s=>s.includes('content')?content:button}}
+(async()=>{
+ let count=0;context.fetch=async()=>{count++;return{ok:true,json:async()=>context.data}};
+ const first=slot(),second=slot();context.root={querySelectorAll:()=>[first,second]};
+ await vm.runInContext('loadAwardDetails(root)',context);
+ assert.equal(count,1,'same immutable notice shares one fetch');assert(first.dataset.loaded);assert(second.dataset.loaded);
+ assert(first.content.innerHTML.includes('0元'));assert(first.button.hidden);
+ vm.runInContext('awardDetailRequests.clear()',context);
+ const failed=slot();context.root={querySelectorAll:()=>[failed]};
+ context.fetch=async()=>{throw new Error('network failure')};await vm.runInContext('loadAwardDetails(root)',context);
+ assert(failed.content.textContent.includes('原有摘要仍可使用'));assert.equal(failed.button.disabled,false);assert(!failed.dataset.loaded);
+ context.fetch=async()=>({ok:true,json:async()=>context.data});await vm.runInContext('loadAwardDetails(root)',context);assert(failed.dataset.loaded,'failure can retry');
+ vm.runInContext('awardDetailRequests.clear()',context);
+ const stale=slot();context.root={querySelectorAll:()=>[stale]};context.fetch=async()=>{stale.isConnected=false;return{ok:true,json:async()=>context.data}};
+ await vm.runInContext('loadAwardDetails(root)',context);assert.equal(stale.content.innerHTML,undefined,'switching selected company never paints stale detail');
+ console.log('PASS lazy notice loading: shared request, failure isolation, retry, detached company guard');
+})().catch(error=>{console.error(error);process.exitCode=1});

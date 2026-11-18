@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 import urllib.request
 from src import cloud_company as core
-from src.sources.procurement import lookup_company_awards
+from src.sources.procurement import lookup_company_awards, lookup_notice_detail
 from src.live_related_companies import related_companies
 from src.entities.api import dispatch_entity_api
 from src.runtime_config import private_supabase_config
@@ -151,6 +151,15 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
             return 200, core.check_domain(query.get('domain', [''])[0], public_graph_only=True), None
         except ValueError as exc:
             return 400, {'error': str(exc)}, None
+    if path == '/api/procurement-detail':
+        if method not in ('GET', 'HEAD'):
+            return 405, {'error': 'Method not allowed'}, None
+        try:
+            result = lookup_notice_detail(*(query.get(key, [''])[0] for key in
+                                            ('unit_id', 'job_number', 'filename')))
+            return (200 if result['status'] == 'ok' else 503), result, None
+        except ValueError:
+            return 400, {'error': 'Invalid notice locator'}, None
     if path.startswith('/api/procurement/'):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None
