@@ -54,5 +54,5 @@ assert(!html.includes('owner-only RLS'));
 assert(html.includes('.workspace-grid,.watchlist-layout{grid-template-columns:minmax(0,1fr)}'));
 assert(html.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));
 assert(html.includes('.workspace-dialog .notice,.workspace-owner,.workspace-item b{overflow-wrap:anywhere}'));
-assert(html.includes('追蹤實體 / Followed entities'));
+assert(!html.includes('id="watchlistOpen"'));
 console.log('PASS bilingual terminology, scope, dates, escaping, notification states and ownership details');
