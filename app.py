@@ -6,11 +6,12 @@ import sys
 import time
 import uuid
 from pathlib import Path
+from datetime import datetime, timezone
 from urllib.parse import parse_qs
 from urllib.parse import urlencode
 from http import HTTPStatus
 from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
+from threading import Lock, Thread
 import urllib.request
 from src import cloud_company as core
 from src.sources.procurement import lookup_company_awards, lookup_notice_detail
@@ -29,9 +30,9 @@ STATUS_CACHE_LOCK = Lock()
 STATUS_REFRESH_LOCK = Lock()
 
 def db_count(table, **filters):
-    query = urlencode({'select': 'entity_id' if table == 'entity_evidence' else 'id', **filters})
+    query = urlencode({'select': 'entity_id' if table == 'entity_evidence' else 'id', 'limit': '0', **filters})
     req = urllib.request.Request(f'{core.SUPABASE}/rest/v1/{table}?{query}', method='HEAD', headers={'apikey': core.SUPABASE_KEY, 'Authorization': f'Bearer {core.SUPABASE_KEY}', 'Prefer': 'count=exact'})
-    with urllib.request.urlopen(req, timeout=8) as response:
+    with urllib.request.urlopen(req, timeout=3) as response:
         return int(response.headers['Content-Range'].split('/')[-1])
 
 def workspace_public_config():
@@ -46,7 +47,7 @@ def log_event(level, event, **fields):
           file=sys.stderr, flush=True)
 
 
-def database_status():
+def _refresh_database_status():
     # One refresh per process; concurrent page loads share the resulting counts.
     with STATUS_REFRESH_LOCK:
         cache_key = (core.SUPABASE, id(db_count))
@@ -57,6 +58,8 @@ def database_status():
             return saved[0], {**saved[1], 'source_notices': active_source_notices()}, None
         db = {'configured': bool(core.SUPABASE_KEY), 'connected': False}
         retry_deadline = time.monotonic() + 12
+        with STATUS_CACHE_LOCK:
+            previous = STATUS_CACHE.get(cache_key)
         if core.SUPABASE_KEY:
             tables = ['source_files', 'companies', 'people', 'evidence', 'source_records']
             counts = {
@@ -96,17 +99,30 @@ def database_status():
                     log_event('warning', 'status_count_unavailable', metric=label,
                               error_type=type(error).__name__,
                               http_status=getattr(error, 'code', None))
+            metric_checked_at = {}
+            checked_at = datetime.now(timezone.utc).isoformat()
+            stale_metrics = []
             for label, value, _ in results:
+                if value is None and previous:
+                    old = previous[1][1]['supabase']
+                    value = old.get('canonical', {}).get(label.split('.', 1)[1]) if label.startswith('canonical.') else old.get(label)
+                    if value is not None:
+                        stale_metrics.append(label)
+                        metric_checked_at[label] = old.get('metric_checked_at', {}).get(label, old.get('counts_checked_at'))
+                if label not in stale_metrics and value is not None:
+                    metric_checked_at[label] = checked_at
                 if label.startswith('canonical.'):
                     db.setdefault('canonical', {})[label.split('.', 1)[1]] = value
                 else:
                     db[label] = value
+            db.update(metric_checked_at=metric_checked_at, stale_metrics=stale_metrics, counts_checked_at=min((v for v in metric_checked_at.values() if v), default=checked_at), counts_state='cached' if stale_metrics else 'live')
             db['legacy'] = {key: db[key] for key in ('companies', 'people', 'evidence')}
             db['connected'] = any(value is not None for _, value, _ in results)
+            db['snapshot_available'] = bool(stale_metrics)
             db['partial'] = db['connected'] and any(failed for _, _, failed in results)
             if not db['connected']:
                 db['error'] = '資料庫連線失敗，請檢查伺服器金鑰與資料表權限。'
-        code = 200 if db['connected'] else 503
+        code = 200 if db['connected'] or db.get('snapshot_available') else 503
         body = {'status': 'partial' if db.get('partial') else 'ok' if db['connected'] else 'degraded',
                 'version': '9.3-directional-filters', 'supabase': db,
                 'source_notices': active_source_notices()}
@@ -114,6 +130,47 @@ def database_status():
             with STATUS_CACHE_LOCK:
                 STATUS_CACHE[cache_key] = (time.monotonic(), (code, body))
         return code, body, None
+
+
+STATUS_BACKGROUND_LOCK = Lock()
+
+
+def verified_count_snapshot():
+    """Public aggregates, scoped to one database and always dated; never estimates."""
+    try:
+        snapshot = json.loads((Path(__file__).parent / 'src/public_database_counts.json').read_text())
+        if core.SUPABASE.rstrip('/') != snapshot['database_url'] or not core.SUPABASE_KEY:
+            return None
+        db = snapshot['supabase']
+        return {**db, 'configured': True, 'connected': False, 'snapshot_available': True,
+                'counts_state': 'cached', 'stale_metrics': list(db['metric_checked_at'])}
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def database_status():
+    cache_key = (core.SUPABASE, id(db_count))
+    with STATUS_CACHE_LOCK:
+        cached = STATUS_CACHE.get(cache_key)
+        if not cached:
+            snapshot = verified_count_snapshot()
+            if snapshot:
+                body = {'status': 'cached', 'version': '9.3-directional-filters', 'supabase': snapshot}
+                cached = (0, (200, body))
+                STATUS_CACHE[cache_key] = cached
+    if cached:
+        # Return the last verified counts immediately, never replace them with a
+        # timeout/zero. Only one bounded background refresh per process.
+        if time.monotonic() - cached[0] >= 55 and STATUS_BACKGROUND_LOCK.acquire(blocking=False):
+            def refresh():
+                try:
+                    _refresh_database_status()
+                finally:
+                    STATUS_BACKGROUND_LOCK.release()
+            Thread(target=refresh, daemon=True).start()
+        code, body = cached[1]
+        return code, {**body, 'source_notices': active_source_notices()}, None
+    return _refresh_database_status()
 
 def dispatch(path, query, method='GET', payload=None, authorization=None):
     if path.rstrip('/') == '/api/v1/workspace-config':
@@ -148,7 +205,7 @@ def dispatch(path, query, method='GET', payload=None, authorization=None):
         if method not in ('GET', 'HEAD'):
             return 405, {'error': 'Method not allowed'}, None
         try:
-            return 200, core.check_domain(query.get('domain', [''])[0], public_graph_only=True), None
+            return 410, {'status':'withdrawn','message':'網域比對功能已移除 / Domain check removed'}, None
         except ValueError as exc:
             return 400, {'error': str(exc)}, None
     if path == '/api/procurement-detail':

@@ -258,6 +258,7 @@ class ReportService:
         """Snapshot the same bounded live sources used by the company screen."""
         if not isinstance(uniform, str) or not re.fullmatch(r"[0-9]{8}", uniform):
             raise ReportValidationError("Invalid company identifier")
+        enrich_awards = company_loader is None and award_loader is None
         if company_loader is None:
             from src.cloud_company import build_company
             def company_loader(value):
@@ -293,12 +294,27 @@ class ReportService:
                 published = published_job.result()
             except EntityStoreUnavailable:
                 published, published_unavailable = None, True
+        if enrich_awards:
+            from src.sources.procurement import lookup_notice_detail
+            def detail_row(row):
+                if not all(row.get(k) for k in ('unit_id','job_number','notice_filename')):
+                    return row
+                try:
+                    detail = lookup_notice_detail(row['unit_id'], row['job_number'], row['notice_filename'], timeout=5)
+                except (ValueError, OSError):
+                    detail = {'status': 'unavailable'}
+                return {**row, 'key_award_detail': detail}
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                selected = (awards.get('records') or [])[:8]
+                enriched = list(pool.map(detail_row, selected))
+            awards = {**awards, 'records': enriched + (awards.get('records') or [])[8:]}
         if data.get("status") != "ok" or data.get("uniform_number") != uniform:
             raise ReportNotFound("Official company not found")
         company = data.get("company") or {}
         if str(company.get("Business_Accounting_NO") or "") != uniform:
             raise ReportNotFound("Official company ID mismatch")
         graph = data.get("graph") or {}
+        graph = {**graph, "nodes": [n for n in graph.get("nodes", []) if n.get("type") != "anti_fraud"], "edges": [e for e in graph.get("edges", []) if e.get("relationship") != "listed_in_anti_fraud"]}
         nodes = {row["id"]: dict(row) for row in graph.get("nodes", []) if row.get("id")}
         edges = [dict(edge) for edge in graph.get("edges") or []]
         root_id = f"company:{uniform}"
@@ -313,19 +329,6 @@ class ReportService:
                                  "label": check["domain"], "evidence": site_evidence}
             edges.append({"source": root_id, "target": website_id,
                           "relationship": "website", "evidence": site_evidence})
-            for index, hit in enumerate((check.get("anti_fraud") or {}).get("records") or []):
-                hit_id = f"anti_fraud:{check['domain']}:{index}"
-                hit_evidence = {"title": hit.get("網站性質") or "165 官方網域紀錄",
-                                "source_name": "165 警政署網域索引",
-                                "source_url": hit.get("source_url") or check.get("source_url"),
-                                "source_record_id": check["domain"],
-                                "retrieved_at": check.get("indexed_at")}
-                nodes[hit_id] = {"id": hit_id, "type": "anti_fraud",
-                                 "label": hit.get("網站性質") or check["domain"],
-                                 "evidence": hit_evidence}
-                edges.append({"source": website_id, "target": hit_id,
-                              "relationship": "listed_in_anti_fraud", "evidence": hit_evidence,
-                              "observation_only": True})
         root_evidence = (nodes.get(root_id) or {}).get("evidence") or {}
         registry = {"uniform_number": uniform, "name": data.get("company_name"),
                     "status": company.get("Company_Status_Desc"),
@@ -353,10 +356,17 @@ class ReportService:
             evidence = {"title": row.get("title"), "source_name": awards.get("source"),
                         "source_url": row.get("source_url"),
                         "source_record_id": row.get("id"),
-                        "retrieved_at": awards.get("retrieved_at")}
+                        "retrieved_at": awards.get("retrieved_at"),
+                        "source_locator": {"unit_id": row.get("unit_id"), "job_number": row.get("job_number"),
+                                           "notice_filename": row.get("notice_filename"),
+                                           "detail_retrieved_at": (row.get("key_award_detail") or {}).get("retrieved_at"),
+                                           "detail_source_url": (row.get("key_award_detail") or {}).get("source_url"),
+                                           "detail_fields": (row.get("key_award_detail") or {}).get("summary", [])}}
             nodes[record_id] = {"id": record_id, "type": "procurement",
                                 "label": row.get("title") or "政府決標公告",
                                 "properties": {"date": row.get("date"), "agency": row.get("agency"),
+                                               "job_number": row.get("job_number"),
+                                               "key_award_detail": row.get("key_award_detail"),
                                                "identity_status": row.get("identity_status"),
                                                "verification_scope": row.get("verification_scope")},
                                 "evidence": evidence}
@@ -417,7 +427,21 @@ class ReportService:
                             else "官方統編或來源內紀錄 / Exact ID or source-scoped record"}
             properties = target.get("properties") or {}
             if properties.get("identity_status") == "mirror_exact_bidder_id_unconfirmed_official":
-                relationship["source_role"] = "民間介接統編命中；官方公告待核 / Mirror ID match; verify official notice"
+                relationship["source_role"] = "民間介接統編符合；官方公告待核 / Mirror ID match; verify official notice"
+            if raw_type == 'procurement_award':
+                relationship['核對範圍 / Verification scope'] = relationship.pop('source_role', '')
+                relationship['案號 / Job no.'] = properties.get('job_number')
+                detail = properties.get('key_award_detail') or {}
+                keep = {'已公告資料:預算金額','決標資料:總決標金額','已公告資料:招標方式','已公告資料:決標方式','決標資料:決標日期'}
+                for field in detail.get('summary') or []:
+                    if field.get('source_field') in keep:
+                        relationship[field['label']] = field['value']
+                if detail.get('status') == 'ok':
+                    evidence = {**evidence, 'source_locator': {**(evidence.get('source_locator') or {}),
+                        'detail_retrieved_at': detail.get('retrieved_at'), 'detail_source_url': detail.get('source_url'),
+                        'key_fields': [f for f in detail.get('summary') or [] if f.get('source_field') in keep]}}
+                else:
+                    relationship['明細狀態 / Detail status'] = '本次未取得或超出前8筆明細範圍 / Detail unavailable or outside first eight notices'
             amount = properties.get("amount")
             if amount is None:
                 amount = properties.get("fine")
@@ -454,12 +478,6 @@ class ReportService:
                                      "entity_type": "Company", "public_identifier": uniform,
                                      "identity_status": "EXACT", "evidence": [root_evidence] if root_evidence else []}],
                 "company_registry": [registry], "key_relationships": relationships,
-                "anti_fraud_checks": [{"domain": check.get("domain"),
-                                       "status": check.get("status") or "unavailable",
-                                       "matched": (check.get("anti_fraud") or {}).get("matched", 0),
-                                       "source_url": check.get("source_url"),
-                                       "retrieved_at": check.get("indexed_at")}]
-                if check.get("domain") else [],
                 "political_relationships": [], **categories,
                 "relationship_graph": {"nodes": list(nodes.values()), "edges": edges,
                                        "truncated": truncated},
@@ -733,6 +751,7 @@ def dispatch_report_api(path, query, authorization=None, service=None):
         return 503, {"status": "unavailable", "error": "報告資料暫時無法使用 / Report data unavailable"}, None
     if getattr(service, "public_graph_only", False) is True:
         report["public_graph_scope"] = True
+        report.pop("anti_fraud_checks", None)
         for key in ("judgments", "penalties"):
             report.pop(key, None)
     if output_format == "html":

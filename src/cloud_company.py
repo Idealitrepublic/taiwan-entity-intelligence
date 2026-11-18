@@ -458,7 +458,9 @@ def build_company(uniform, *, public_graph_only=False):
         data["evidence_note"] = "公司職務依官方登記或有日期的快照顯示。同名人士各自保留。 / Officer roles use official records or dated snapshots."
         data["public_graph_scope"] = True
         data.pop("website_crosscheck", None)
-        _attach_domain_check(data, public_graph_only=True)
+        data['website_crosscheck'] = {'domain': data.get('website_host'), 'website_url': data.get('website_url'), 'website_source': data.get('website_source')}
+        data['graph']['nodes'] = [n for n in data['graph']['nodes'] if n.get('type') != 'anti_fraud']
+        data['graph']['edges'] = [e for e in data['graph']['edges'] if e.get('relationship') != 'listed_in_anti_fraud']
         data.pop("published_case_status", None)
         return data
     data['evidence_status']['165'] = {'status':'not_checked','matched':0,

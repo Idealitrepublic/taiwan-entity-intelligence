@@ -1,0 +1,38 @@
+{
+  "database_url": "https://canqjiokrtcxkwblhmml.supabase.co",
+  "verification": "Exact COUNT under public anon role and current RLS; no unpublished rows or estimates.",
+  "supabase": {
+    "source_files": 0,
+    "companies": 0,
+    "people": 0,
+    "evidence": 0,
+    "source_records": 0,
+    "canonical": {
+      "companies": 472,
+      "people": 152,
+      "entities": 65890,
+      "entity_evidence": 66904,
+      "evidence_records": 67134,
+      "relationships": 1389
+    },
+    "legacy": {
+      "companies": 0,
+      "people": 0,
+      "evidence": 0
+    },
+    "counts_checked_at": "2026-11-18T14:41:25.082197+00:00",
+    "metric_checked_at": {
+      "source_files": "2026-11-18T14:41:25.082197+00:00",
+      "companies": "2026-11-18T14:44:33.795322+00:00",
+      "people": "2026-11-18T14:44:33.795322+00:00",
+      "evidence": "2026-11-18T14:44:33.795322+00:00",
+      "source_records": "2026-11-18T14:41:25.082197+00:00",
+      "canonical.companies": "2026-11-18T14:41:25.082197+00:00",
+      "canonical.people": "2026-11-18T14:41:25.082197+00:00",
+      "canonical.entities": "2026-11-18T14:41:25.082197+00:00",
+      "canonical.entity_evidence": "2026-11-18T14:41:25.082197+00:00",
+      "canonical.evidence_records": "2026-11-18T14:41:25.082197+00:00",
+      "canonical.relationships": "2026-11-18T14:41:25.082197+00:00"
+    }
+  }
+}

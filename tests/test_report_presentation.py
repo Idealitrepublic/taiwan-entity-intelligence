@@ -38,7 +38,7 @@ class ReportPresentationTests(unittest.TestCase):
         relation = next(section for section in view["sections"]
                         if section["key"] == "key_relationships")["items"][0]
         self.assertIn(("原始連結 / Source URL", source_url), relation["facts"])
-        self.assertIn(("取得時間 / Retrieved at", "2026-10-19 08:00:00 (UTC+08:00)"), relation["facts"])
+        self.assertIn(("資料取得日期 / Retrieved at", "2026-10-19 08:00:00 (UTC+08:00)（西元2026年／民國115年）"), relation["facts"])
         html = render_report_html(report)
         self.assertIn(f'href="{source_url}"', html)
         self.assertIn("中華電信", html)

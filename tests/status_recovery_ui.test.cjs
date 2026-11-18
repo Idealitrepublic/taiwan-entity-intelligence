@@ -5,7 +5,7 @@ const html=fs.readFileSync('web/index.html','utf8');
 const start=html.indexOf('  let statusInFlight='),end=html.indexOf('  const hubDefinitions=',start);
 const elements={dbStatus:{innerHTML:''},systemStatus:{textContent:'',className:''}};
 let requests=0,mode='failure',resolve;
-const ctx=vm.createContext({$:id=>elements[id],Date,AbortController,setTimeout,clearTimeout,num:Number,sourceNotices:[],updateSourceNotice:()=>{},
+const ctx=vm.createContext({$:id=>elements[id],Date,AbortController,setTimeout,clearTimeout,num:Number,esc:String,sourceNotices:[],updateSourceNotice:()=>{},
  fetch:async()=>{requests++;if(mode==='failure')throw Error('network');if(mode==='pending')await new Promise(r=>resolve=r);return{ok:true,json:async()=>({supabase:{connected:true,canonical:{companies:462,people:121,entity_evidence:3,evidence_records:4},source_records:5,source_files:1}})}}});
 vm.runInContext(html.slice(start,end),ctx);
 (async()=>{

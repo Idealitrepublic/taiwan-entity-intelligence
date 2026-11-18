@@ -289,7 +289,7 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
   $:()=>select,renderPathEntityDetails:()=>renders.push({...state.entityPanel}),
   graphCompanySource:(_,node,kind)=>new Promise(resolve=>responses.set(node.id+kind,resolve))
  });
- vm.runInContext(shipped('  function selectPathEntity(', '  function activateKnowledgeNode(')+
+ vm.runInContext(line('hasTaiwanRegistrySource')+'\n'+shipped('  function selectPathEntity(', '  function activateKnowledgeNode(')+
   '\nselectPathEntity("a");selectPathEntity("b");',context);
  responses.get('bregistry')({uniform_number:'54690903'});
  responses.get('bawards')({records:[]});

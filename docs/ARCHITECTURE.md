@@ -576,3 +576,9 @@ The Entity, path, Evidence and report readers require the database's launch scop
 version before reading canonical data. Restrictive RLS applies the same scope to
 direct Data API reads and invoker RPCs. Authenticated users keep owner-only
 workspaces and see alerts only for visible relationships.
+
+### Public count availability (2026-11-18)
+
+`/api/status` returns dated, verified exact public-role aggregates immediately when available, then attempts a single bounded background refresh per process. A timeout retains the metric's last successful value and timestamp rather than replacing it with null/zero. A bundled snapshot is strictly scoped to its verified Supabase URL; a different database cannot inherit its counts. `snapshot_available` is distinct from a current successful `connected` check, and the UI labels cached counts as non-live. Serverless background execution is best-effort; the dated packaged snapshot survives cold starts. Refresh the verified snapshot after data/publication-policy changes. No planner estimates, service-role counting, schema changes or expanded public grants are involved.
+
+Public reports and company views no longer query or display the archived 165 dataset. The withdrawn domain-check endpoint returns 410; official company website links remain. Company/person/agency/organization graph inspectors share the existing knowledge graph controls while retaining type-specific profiles and source-scoped identity boundaries.

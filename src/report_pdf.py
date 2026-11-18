@@ -110,7 +110,7 @@ def _register_font():
 
 def render_report_pdf(report):
     # JSON retains the full projection; PDF emphasizes readable findings and sources.
-    from src.report_presentation import LABELS, format_context, format_date, format_money, present_report, source_locator_text, unique_records
+    from src.report_presentation import LABELS, format_context, display_date as format_date, format_money, present_report, source_locator_text, unique_records
 
     _register_font()
     output = BytesIO()
@@ -237,6 +237,11 @@ def render_report_pdf(report):
                         date_text += " → " + (format_date(relation['end_date']) or "—")
                     target_name = (target.get('display_name') or target.get('canonical_name')
                                    or record.get('disposition') or record.get('evidence', {}).get('title') or '—')
+                    if key == 'government_contracts':
+                        for field, value in relation.items():
+                            if ' / ' in field and value is not None:
+                                shown = format_date(value) if '日期' in field or 'Date' in field else value
+                                target_name += f"\n{field}: {shown}"
                     rows.append([paragraph(date_text),
                                  paragraph(relation_label),
                                  paragraph(f"{source.get('display_name') or '—'} → {target_name}"),
@@ -257,7 +262,7 @@ def render_report_pdf(report):
         if key == "sources":
             if sources:
                 rows = [[paragraph(value, muted) for value in
-                         ("編號 / Ref", "來源與定位 / Source & locator", "原始連結 / Source URL", "取得 / Retrieved")]]
+                         ("編號 / Ref", "來源與定位 / Source & locator", "原始連結 / Source URL", "資料取得日期 / Retrieved at")]]
                 for source_index, source in enumerate(sources, 1):
                     locator = source_locator_text(source)
                     provider_code = source.get('source_name') or source.get('source') or ''

@@ -124,7 +124,7 @@ class LiveCompanyReportTests(unittest.TestCase):
         self.assertEqual(len(report["relationship_graph"]["nodes"]), 5)
         self.assertEqual(len(report["relationship_graph"]["edges"]), 4)
         self.assertEqual(len(report["government_contracts"]), 1)
-        self.assertIn('官方公告待核', report['government_contracts'][0]['relationship']['source_role'])
+        self.assertIn('官方公告待核', report['government_contracts'][0]['relationship']['核對範圍 / Verification scope'])
         self.assertEqual(len(report["penalties"]), 1)
         self.assertFalse(report["relationship_graph"]["truncated"])
         pdf = render_report_pdf(report)

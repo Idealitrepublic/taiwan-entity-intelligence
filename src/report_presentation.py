@@ -26,14 +26,14 @@ LABELS = {
     "CORPORATE_DIRECTOR_LINK": "法人董監事代表 / Corporate director link",
     "procurement_award": "政府決標 / Government award",
     "labor_penalty": "勞動裁罰 / Labor penalty",
-    "mentioned_in_judgment": "裁判書名稱命中 / Name mentioned in judgment",
+    "mentioned_in_judgment": "裁判書名稱符合 / Name mentioned in judgment",
     "source_connected_company": "有來源連結的公司 / Source-connected company",
     "website": "公司網站 / Company website",
     "listed_in_anti_fraud": "165 網域命中 / 165 domain listing",
     "source_observation": "來源觀察 / Source observation",
     "identifier": "識別資訊 / Identifier", "note": "備註 / Note",
     "disposition": "處分文號 / Disposition", "amount": "金額 / Amount",
-    "source_role": "起點角色 / From role", "target_role": "終點角色 / To role",
+    "source_role": "紀錄角色 / Record role", "target_role": "終點角色 / To role",
     "end_date": "結束日期 / End date", "currency": "幣別 / Currency",
     "contribution_type": "獻金類型 / Contribution type",
     "quantity": "數量 / Quantity", "company_name": "公司名稱 / Company name",
@@ -104,6 +104,15 @@ def format_date(value):
         return text
 
 
+def display_date(value):
+    text = format_date(value)
+    if text and (match := re.match(r'^(\d{4})-(\d{2})-(\d{2})(.*)$', text)):
+        year = int(match[1])
+        if year >= 1912:
+            return f"{text}（西元{year}年／民國{year-1911}年）"
+    return text
+
+
 def format_number(value):
     if value is None or value == "":
         return None
@@ -164,10 +173,12 @@ def format_locator(value):
               "source_amount": "公告金額 / Published amount", "source_company_label": "公告公司名稱 / Published company name",
               "title": "公告標題 / Notice title", "agency": "採購機關 / Procuring agency",
               "amount": "金額 / Amount", "winner": "得標標記 / Award marker",
+              "detail_retrieved_at": "明細資料取得日期 / Detail retrieved at",
+              "detail_source_url": "明細來源 / Detail source",
               "unit_id": "機關代碼 / Agency ID", "award_date": "決標日期 / Award date",
-              "job_number": "標案案號 / Contract number", "mirror_url": "結構化介接 / Structured mirror URL",
+              "job_number": "案號 / Job no.", "mirror_url": "結構化介接 / Structured mirror URL",
               "bidder_name": "投標廠商 / Bidder", "notice_date": "公告日期 / Notice date",
-              "notice_filename": "公告識別 / Notice reference", "bidder_uniform_number": "廠商統編 / Bidder company ID",
+              "notice_filename": "公告版本 / Notice version", "bidder_uniform_number": "廠商統編 / Bidder company ID",
               "candidate_name": "申報對象 / Candidate", "election": "選舉 / Election",
               "term_number": "屆別 / Term", "constituency": "選區 / Constituency",
               "csv_row": "來源列 / Source row", "pdf_page": "來源頁 / Source page",
@@ -182,15 +193,15 @@ def format_locator(value):
     readable = {key: meanings.get(item, item) if isinstance(item, str) else item
                 for key, item in value.items()}
     return "\n".join(f"{labels.get(key, '來源欄位 / ' + str(key).replace('_', ' '))}: "
-                     f"{format_date(item) if key == 'disposition_date' else format_locator(item) or '—'}"
-                     for key, item in readable.items() if key != "source_file_id")
+                     f"{display_date(item) if key in ('disposition_date','detail_retrieved_at') else format_locator(item) or '—'}"
+                     for key, item in readable.items() if key not in ("source_file_id", "detail_fields", "key_fields") and item is not None and item != [])
 
 
 def source_locator_text(row):
     """Prefer official citations over opaque ingestion IDs, which remain in JSON."""
     locator = row.get("source_locator")
     has_official = isinstance(locator, dict) and any(locator.get(key) for key in
-                    ("disposition_number", "jid", "case_number", "uniform_number"))
+                    ("disposition_number", "jid", "case_number", "uniform_number", "job_number"))
     if has_official:
         return format_locator({key: value for key, value in locator.items()
                                if key != "source_record_id"})
@@ -201,12 +212,13 @@ def source_locator_text(row):
 
 def _additional_facts(row, excluded):
     """Show only human-labelled facts, never opaque IDs or database internals."""
-    return [_fact(LABELS[key], format_date(value) if key == "end_date" else
+    return [_fact(LABELS.get(key, key), display_date(value) if key == 'end_date' or '日期' in key or 'Date' in key else
                   format_context(value) if key in ('source_role', 'target_role') else
-                  format_number(value) if key == "quantity" else value)
+                  format_number(value) if key == 'quantity' else value)
             for key, value in row.items()
-            if key not in excluded and key in LABELS
+            if key not in excluded and (key in LABELS or (' / ' in key and re.search(r'[\u3400-\u9fff]', key)))
             and isinstance(value, (str, int, float, bool))]
+
 
 
 def format_context(value):
@@ -244,7 +256,7 @@ def _evidence_facts(evidence):
     return (_fact("證據 / Evidence", evidence.get("title") or evidence.get("id")),
             _fact("來源 / Source", LABELS.get(evidence.get("source_name") or evidence.get("source"), evidence.get("source_name") or evidence.get("source"))),
             _fact("原始連結 / Source URL", evidence.get("source_url")),
-            _fact("取得時間 / Retrieved at", format_date(evidence.get("retrieved_at"))))
+            _fact("資料取得日期 / Retrieved at", display_date(evidence.get("retrieved_at"))))
 
 
 def _records(key, values, detail_sections=None):
@@ -261,12 +273,12 @@ def _records(key, values, detail_sections=None):
                             else "索引不可用 / Index unavailable"),
                       _fact("網域命中 / Domain matches", row.get("matched")),
                       _fact("原始連結 / Source URL", row.get("source_url")),
-                      _fact("索引時間 / Indexed at", format_date(row.get("retrieved_at"))))
+                      _fact("索引時間 / Indexed at", display_date(row.get("retrieved_at"))))
                 for row in values or [] if isinstance(row, dict)]
     if key in ("key_relationships", "political_relationships", "government_contracts",
                "judgments", "penalties"):
         values = sorted((row for row in values or [] if isinstance(row, dict)),
-                        key=lambda row: format_date((row.get("relationship") or row).get("start_date")
+                        key=lambda row: display_date((row.get("relationship") or row).get("start_date")
                                                      or (row.get("relationship") or row).get("observed_at")) or "",
                         reverse=True)
     elif key == "asset_records":
@@ -295,10 +307,10 @@ def _records(key, values, detail_sections=None):
                                 _fact("代表人 / Representative", row.get("representative_name")),
                                 _fact("地址 / Address", row.get("address")),
                                 _fact("資本額 / Capital", format_money(row.get("capital_amount"), "TWD")),
-                                _fact("設立日期 / Established", format_date(row.get("established_date"))),
+                                _fact("設立日期 / Established", display_date(row.get("established_date"))),
                                 _fact("來源 / Source", row.get("source")),
                                 _fact("原始連結 / Source URL", row.get("source_url")),
-                                _fact("取得時間 / Retrieved at", format_date(row.get("fetched_at")))))
+                                _fact("資料取得日期 / Retrieved at", display_date(row.get("fetched_at")))))
         elif key in ("key_relationships", "political_relationships", "government_contracts",
                      "judgments", "penalties"):
             relation = row.get("relationship") or row
@@ -309,7 +321,7 @@ def _records(key, values, detail_sections=None):
             result.append(_item(LABELS.get(kind, kind or "公開關係 / Public relationship"),
                                 _fact("起點 / From", source.get("display_name") or source.get("id")),
                                 _fact("終點 / To", target.get("display_name") or target.get("id")),
-                                _fact("日期 / Date", format_date(relation.get("start_date") or relation.get("observed_at"))),
+                                _fact("日期 / Date", display_date(relation.get("start_date") or relation.get("observed_at"))),
                                 _fact("金額 / Amount", format_money(relation.get("amount"), relation.get("currency"))),
                                 *_additional_facts(relation, RELATION_FIELDS),
                                 *_evidence_facts(evidence)))
@@ -333,13 +345,13 @@ def _records(key, values, detail_sections=None):
                                 _fact("收藏類型 / Saved type", LABELS.get(row.get("item_type"), row.get("item_type"))),
                                 _fact("筆記 / Note", row.get("note_text")),
                                 _fact("來源連結 / Source URL", row.get("source_url")),
-                                _fact("收藏時間 / Saved at", format_date(row.get("created_at")))))
+                                _fact("收藏時間 / Saved at", display_date(row.get("created_at")))))
         elif key in ("sources", "saved_evidence"):
             result.append(_item(row.get("title") or row.get("source_name") or row.get("source") or row.get("id"),
                                 _fact("提供者 / Provider", LABELS.get(row.get("source_name") or row.get("source"), row.get("source_name") or row.get("source"))),
                                 _fact("來源定位 / Source locator", source_locator_text(row)),
                                 _fact("原始連結 / Source URL", row.get("source_url")),
-                                _fact("取得時間 / Retrieved at", format_date(row.get("retrieved_at")))))
+                                _fact("資料取得日期 / Retrieved at", display_date(row.get("retrieved_at")))))
     return result
 
 
@@ -348,8 +360,6 @@ def present_report(report):
     order = list(SECTION_TITLES)
     if report.get("public_graph_scope"):
         order = [(key, title) for key, title in order if key not in ("judgments", "penalties")]
-    if report.get("report_type") == "LIVE_COMPANY":
-        order.insert(2, ("anti_fraud_checks", "165 網域比對 / Official Domain Check"))
     if report.get("report_type") == "WORKSPACE":
         order += [("saved_evidence", "已收藏證據 / Saved evidence"),
                   ("workspace_items", "調查筆記與收藏 / Notes & saved items")]
@@ -387,7 +397,7 @@ def present_report(report):
                           if report.get("report_type") == "LIVE_COMPANY" and not report.get("public_graph_scope")
                           else "關係 / Relationships")
     return {"sections": sections, "empty": empty, "warnings": warnings,
-            "generated_at": format_date(report.get("generated_at")),
+            "generated_at": display_date(report.get("generated_at")),
             "report_type": LABELS.get(report.get("report_type"), report.get("report_type")),
             "summary": {"實體 / Entities": len(unique_records(report.get("entity_profiles"))),
                         relationship_label: relationship_count,

@@ -29,7 +29,7 @@ class PublicGraphLaunchTests(unittest.TestCase):
         self.assertTrue(proof["source_locator"].startswith(f"Business_Accounting_NO={UNIFORM};"))
         self.assertEqual(payload["evidence_status"]["裁罰"]["url"], "https://announcement.mol.gov.tw/")
         self.assertEqual(payload["evidence_status"]["司法院"]["url"], "https://judgment.judicial.gov.tw/")
-        self.assertFalse({"judicial_records", "labor_penalties", "website_crosscheck"} & payload.keys())
+        self.assertFalse({"judicial_records", "labor_penalties"} & payload.keys())
 
     def test_signed_off_scope_is_required_before_canonical_data_queries(self):
         repository = EntityRepository(require_launch_scope=True)
@@ -62,9 +62,10 @@ class PublicGraphLaunchTests(unittest.TestCase):
         with (patch.object(cloud_company, "SUPABASE_KEY", "anon"),
               patch("src.cloud_company.urllib.request.urlopen", return_value=response) as opened):
             status, result, _ = dispatch("/api/domain-check", {"domain": ["https://www.example.com/a"]})
-        self.assertEqual((status, result["domain"], result["indexed_records"]), (200, "example.com", 86644))
-        self.assertEqual(result["anti_fraud"]["matched"], 0)
-        self.assertIn("/rpc/public_domain_snapshot?snapshot_domain=example.com", opened.call_args.args[0].full_url)
+        self.assertEqual(status, 410)
+        self.assertEqual(result["status"], "withdrawn")
+        self.assertNotIn("anti_fraud", result)
+        opened.assert_not_called()
 
     def test_public_contributions_endpoint_uses_scoped_repository(self):
         with patch("src.entities.api.EntityRepository") as factory:
