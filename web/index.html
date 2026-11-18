@@ -108,21 +108,16 @@
       .panel .kv span:last-child{text-align:left}
       .path-segment .section-head{gap:5px}
     }
-    .left .section{overflow-x:auto}
-    .left :is(.title,.sub,.eyebrow,.notice,.card,p,b,a,span,small,h4){
-      white-space:nowrap;overflow-wrap:normal;word-break:normal
-    }
-    .left .path-results,.left .kv{width:max-content;min-width:100%}
-    .left .kv{grid-template-columns:max-content max-content;gap:8px 18px}
-    .left .path-results .card{width:100%}
-    .left .section-head{flex-wrap:nowrap}
-    .left .section-head h4{flex:0 0 auto}
-    .left .kv>div{display:contents}
+    .left .section{overflow-x:visible}
+    .left :is(.title,.sub,.eyebrow,.notice,.signal,.card,p,b,a,span,small,h4){white-space:normal;overflow-wrap:anywhere;word-break:normal;min-width:0}
+    .left :is(.path-results,.kv,.title,.sub,.notice,.eyebrow){width:auto;min-width:0;max-width:100%}
+    .left .kv{grid-template-columns:minmax(0,1fr);gap:8px}
+    .left .kv>div{display:grid;grid-template-columns:minmax(0,1fr);gap:3px}
     .left .kv span:last-child{text-align:left}
-    .left .title,.left .sub,.left .notice,.left .eyebrow{width:max-content;min-width:100%}
-    .left .target-entity{overflow-x:visible}
-    .left .target-entity :is(.title,.sub,.eyebrow,.signal,span){white-space:normal;overflow-wrap:anywhere;word-break:normal;width:auto;min-width:0}
-    .left .target-entity .kv{width:100%;min-width:0;grid-template-columns:minmax(0,1fr)}
+    .left .section-head{flex-wrap:wrap}
+    .left .section-head h4{flex:1 1 100%}
+    .left .path-controls{grid-template-columns:minmax(0,1fr)}
+    .left .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
     .graph .graphbar,.graph:has(svg[data-type-zones="true"]) .graphbar{
       display:grid;grid-template-columns:minmax(0,1fr);gap:8px
     }

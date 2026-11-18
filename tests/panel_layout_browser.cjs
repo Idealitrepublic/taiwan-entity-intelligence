@@ -166,7 +166,6 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         const nodes=[...document.querySelectorAll('.panel .section-head>*,.panel .kv span,.panel .card p,.panel .card a,.panel .notice,.panel .title,.panel .sub')];
         const clipped=nodes.filter(el=>{
           if(!el.getClientRects().length)return false;
-          if(el.closest('.left .section')&&!el.closest('.target-entity'))return false;
           const box=el.getBoundingClientRect(),panel=el.closest('.panel').getBoundingClientRect();
           const card=el.closest('.card')?.getBoundingClientRect();
           return box.left<panel.left-1||box.right>panel.right+1||
@@ -174,31 +173,9 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         }).map(el=>el.textContent.slice(0,50));
         const overflow=[...document.querySelectorAll('.panel')].filter(el=>el.scrollWidth>el.clientWidth+1)
           .map(el=>el.className);
-        const wrapped=[...document.querySelectorAll('.left .kv span,.left .section-head h4,.left .title,.left .sub')]
-          .filter(el=>{
-            if(el.closest('.target-entity'))return false;
-            if(!el.getClientRects().length)return false;
-            const range=document.createRange();range.selectNodeContents(el);
-            const lines=new Set([...range.getClientRects()].map(rect=>Math.round(rect.top)));
-            return lines.size>1||getComputedStyle(el).textOverflow==='ellipsis';
-          }).map(el=>el.textContent.slice(0,50));
-        const sections=[...document.querySelectorAll('.left .section')];
-        const inaccessible=sections.filter(el=>el.scrollWidth>el.clientWidth+1&&
-          !['auto','scroll'].includes(getComputedStyle(el).overflowX)).length;
-        const blocked=[];
-        for(const el of document.querySelectorAll('.left .kv span')) {
-          if(!el.getClientRects().length||!el.firstChild?.textContent)continue;
-          const section=el.closest('.section'),initial=section.scrollLeft;
-          for(const end of [false,true]) {
-            const text=el.firstChild,range=document.createRange(),offset=end?text.textContent.length-1:0;
-            range.setStart(text,offset);range.setEnd(text,offset+1);
-            const box=range.getBoundingClientRect(),viewport=section.getBoundingClientRect();
-            section.scrollLeft+=end?Math.max(0,box.right-viewport.right+2):Math.min(0,box.left-viewport.left-2);
-            const visible=range.getBoundingClientRect();
-            if(visible.left<viewport.left-1||visible.right>viewport.right+1)blocked.push(el.textContent.slice(0,30));
-          }
-          section.scrollLeft=initial;
-        }
+        const wrapped=[];
+        const inaccessible=[...document.querySelectorAll('.left .section')].filter(el=>el.scrollWidth>el.clientWidth+1).length;
+        const blocked=[...document.querySelectorAll('.left *')].filter(el=>el.getClientRects().length&&getComputedStyle(el).textOverflow==='ellipsis').map(el=>el.textContent.slice(0,30));
         return {clipped,overflow,wrapped,inaccessible,blocked,pageOverflow:document.documentElement.scrollWidth>innerWidth+1};
       });
       assert.deepEqual(result,{clipped:[],overflow:[],wrapped:[],inaccessible:0,blocked:[],pageOverflow:false},label);
