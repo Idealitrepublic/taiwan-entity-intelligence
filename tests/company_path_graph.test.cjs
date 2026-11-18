@@ -247,7 +247,7 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
     requests.push(url);
     if(url.startsWith('/api/v1/graph/'))return {ok:true,json:async()=>({data:{nodes:[A,shared],edges:[firstEdge]}})};
     if(url.startsWith('/api/procurement/')){
-      const winner={id:'award-1',uniform_number:'22659295',award_role:'winner',title:'Exact award',source_url:'https://example.gov.tw/award'};
+      const winner={id:'award-1',uniform_number:'22659295',award_role:'winner',title:'Exact award',source_url:'https://example.gov.tw/award',amount:0,currency:'TWD',job_number:'0630800011'};
       return {ok:true,json:async()=>({status:'ok',records:[winner,{...winner,id:'award-2',award_role:'nonwinner'}]})};
     }
     if(url.endsWith('22659295')&&unavailable){unavailable=false;return {ok:false}}
@@ -268,6 +268,9 @@ test('successful path marks the actual bridge and both endpoint roles',()=>{
  assert.deepEqual(officers.map(n=>n.expandedFromId),['a','b']);
  assert.equal(state.nodes.size,7,'name-only penalties and nonwinner notices stay outside the company branch');
  assert.equal([...state.nodes.values()].filter(n=>n.observation_kind==='AwardNotice').length,1);
+ const awardEdge=[...state.edges.values()].find(e=>e.observation_kind==='AwardNotice');
+ assert.equal(awardEdge.amount,0);assert.equal(awardEdge.currency,'TWD');
+ assert.equal(awardEdge.primary_evidence.job_number,'0630800011');
  assert.equal([...state.nodes.values()].filter(n=>n.observation_kind==='JudgmentMention').length,1);
  assert.equal(requests.filter(url=>url==='/api/procurement/22659295').length,1,'the successful source stays cached on retry');
  assert.equal(requests.filter(url=>url.startsWith('/api/v1/graph/a?')).length,1,'retry only the failed source');
