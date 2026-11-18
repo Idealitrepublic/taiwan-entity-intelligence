@@ -90,11 +90,22 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     }
 
     for(const node of [a,b]) {
+      const oldPositions=await page.locator('#svg .node').evaluateAll(els=>els.map(el=>({id:el.dataset.nodeId,
+        x:el.querySelector('circle:not(.hit)').getAttribute('cx'),y:el.querySelector('circle:not(.hit)').getAttribute('cy')})));
+      const scale=await page.locator('#zoomValue').textContent();
       await page.locator(`#svg .node[data-node-id="${node.id}"]`).press('Enter');
       const count=awards(node).records.length;
-      await page.locator('#procurementPane .record').nth(count-1).waitFor({state:'attached'});
-      assert.equal(await page.locator('#procurementPane').isVisible(),true,
-        'Clicking a path company must open its awards without a second tab click');
+      await page.locator('#overviewPane .company-overview-awards .record').nth(count-1).waitFor({state:'attached'});
+      assert.equal(await page.locator('#overviewPane').isVisible(),true,
+        'Company selection keeps its profile visible together with its awards');
+      assert.equal(await page.locator('#overviewPane .company-overview-name').textContent(),node.display_name);
+      assert.match(await page.locator('#overviewPane .kv').first().textContent(),new RegExp(node.public_identifier));
+      assert.equal(await page.locator('#overviewPane .company-overview-awards .record').count(),count);
+      await page.waitForFunction(()=>document.querySelector('#svg').getAttribute('aria-busy')==='false');
+      const positions=await page.locator('#svg .node').evaluateAll(els=>els.map(el=>({id:el.dataset.nodeId,
+        x:el.querySelector('circle:not(.hit)').getAttribute('cx'),y:el.querySelector('circle:not(.hit)').getAttribute('cy')})));
+      for(const old of oldPositions)assert.deepEqual(positions.find(p=>p.id===old.id),old,'expansion keeps existing nodes fixed');
+      assert.equal(await page.locator('#zoomValue').textContent(),scale,'expansion preserves the current zoom');
       assert.equal(await page.locator('#pathEntitySelect').inputValue(),node.id);
       assert.equal(await page.locator('#tabProcurementCount').textContent(),count+' 筆 / records');
     }
@@ -224,7 +235,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     assert.equal(await dialog.count(),1);
     assert.equal(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
     assert.deepEqual(errors,[]);
-    console.log('Panel layout: toolbar order after focus/restore, direct company-node awards, single-line source text, all award modes, official links and 1440/1280/1024/768/390px passed.');
+    console.log('Panel layout: company overview plus awards, stable node coordinates and zoom after expansion, toolbar order, official links and 1440/1280/1024/768/390px passed.');
   } finally {
     await browser.close();
   }

@@ -632,11 +632,17 @@
     const fit=box=>Math.min(area.width/Math.max(1,box.right-box.left),area.height/Math.max(1,box.bottom-box.top));
     let box=bounds([origin,...branches]);
     if(fit(box)<zoom){
-      const nearest=branches.reduce((best,zone)=>Math.hypot((zone.left+zone.right)/2-parent.x,(zone.top+zone.bottom)/2-parent.y)<
+      const nearby=[...newIds].filter(id=>layout.positions.has(id)&&knowledgeGraph.nodes.has(id)).map(id=>{
+        const p=layout.positions.get(id),metric=layout.metrics?.get(id)||knowledgeMetrics(knowledgeGraph.nodes.get(id));
+        return {left:p.x-metric.halfWidth,right:p.x+metric.halfWidth,top:p.y-metric.top,bottom:p.y+metric.bottom};
+      });
+      const nearest=(nearby.length?nearby:branches).reduce((best,zone)=>Math.hypot((zone.left+zone.right)/2-parent.x,(zone.top+zone.bottom)/2-parent.y)<
         Math.hypot((best.left+best.right)/2-parent.x,(best.top+best.bottom)/2-parent.y)?zone:best);
       box=bounds([origin,nearest]);
     }
-    if(fit(box)<zoom)setZoom(Math.floor(fit(box)*100)/100);
+    // Keep the chosen scale and parent visible; a large new group is explored by panning, not global zoom-out.
+    if((box.right-box.left)*zoom>area.width){box.left=origin.left;box.right=origin.right}
+    if((box.bottom-box.top)*zoom>area.height){box.top=origin.top;box.bottom=origin.bottom}
     const adjust=(a,b,start,span,pan,center)=>{
       const first=center+pan+(a-center)*zoom,last=center+pan+(b-center)*zoom;
       return pan+Math.max(start-first,Math.min(0,start+span-last));
@@ -1038,21 +1044,22 @@
   function graphBoxesOverlap(a,b,gap=0){
     return a.left<b.right+gap&&a.right+gap>b.left&&a.top<b.bottom+gap&&a.bottom+gap>b.top;
   }
-  function graphZoneSpot(parent,width,height,occupied){
+  function graphZoneSpot(parent,width,height,occupied,anchors=[{x:width/2,y:height/2}],distance){
     const gap=44;
     const x=parent.x-width/2,y=parent.y-height/2;
-    const xs=[x],ys=[y];
+    const xs=[x,...anchors.map(p=>parent.x-p.x)],ys=[y,...anchors.map(p=>parent.y-p.y)];
     for(const box of occupied){
       xs.push(box.left-gap-width,box.right+gap);
       ys.push(box.top-gap-height,box.bottom+gap);
     }
-    let best,bestDistance=Infinity;
+    let best,bestDistance=Infinity,bestCenter=Infinity;
     // An empty rectangle can always be slid toward its parent until it meets a frame or aligns on an axis.
     for(const left of new Set(xs))for(const top of new Set(ys)){
       const candidate={left,top,right:left+width,bottom:top+height};
-      const distance=Math.hypot(left-x,top-y);
-      if(distance>=bestDistance||occupied.some(box=>graphBoxesOverlap(candidate,box,gap)))continue;
-      best=candidate;bestDistance=distance;
+      const cost=distance?distance(candidate):Math.min(...anchors.map(p=>Math.hypot(left+p.x-parent.x,top+p.y-parent.y)));
+      const center=Math.hypot(left-x,top-y);
+      if(cost>bestDistance||cost===bestDistance&&center>=bestCenter||occupied.some(box=>graphBoxesOverlap(candidate,box,gap)))continue;
+      best=candidate;bestDistance=cost;bestCenter=center;
     }
     return best;
   }
@@ -1173,12 +1180,18 @@
           const width=Math.max(zoneLabelWidth(type),...sizes.map(m=>2*m.halfWidth+26));
           const height=35+sizes.reduce((total,m)=>total+m.top+m.bottom+8,0);
           const occupied=spineBox?[spineBox,...zones]:zones;
-          const column=graphZoneSpot(parent,width,height,occupied);
+          let columnY=29;
+          const columnAnchors=sizes.map(m=>{const p={x:width/2,y:columnY+m.top};columnY+=m.top+m.bottom+8;return p});
+          const distance=(zone,anchors)=>Math.min(...anchors.map(p=>Math.hypot(zone.left+p.x-parent.x,zone.top+p.y-parent.y)));
+          const column=graphZoneSpot(parent,width,height,occupied,columnAnchors);
           const slots=sizes.map(m=>Math.max(82,2*m.halfWidth+22));
           const rowHeight=44+Math.max(...sizes.map(m=>m.top+m.radius+m.noteHeight));
-          const row=ids.length>1?graphZoneSpot(parent,Math.max(zoneLabelWidth(type),slots.reduce((sum,w)=>sum+w,0)),rowHeight,occupied):null;
-          const distance=z=>Math.hypot((z.left+z.right)/2-parent.x,(z.top+z.bottom)/2-parent.y);
-          const horizontal=row&&distance(row)<=distance(column);
+          let rowX=0;
+          const rowAnchors=slots.map(slot=>{const p={x:rowX+slot/2,y:24};rowX+=slot;return p});
+          const rowPoints=zone=>rowAnchors.map(p=>({...p,y:(zone.top+zone.bottom)/2>=parent.y?24:rowHeight-24}));
+          const row=ids.length>1?graphZoneSpot(parent,Math.max(zoneLabelWidth(type),rowX),rowHeight,occupied,
+            rowAnchors.flatMap(p=>[p,{...p,y:rowHeight-24}]),zone=>distance(zone,rowPoints(zone))):null;
+          const horizontal=row&&distance(row,rowPoints(row))<=distance(column,columnAnchors);
           const zone={...(horizontal?row:column),type,ids};
           if(horizontal)zone.side=(zone.top+zone.bottom)/2>=parent.y?1:-1;
           let y=zone.top+29,left=zone.left;
@@ -1686,6 +1699,8 @@
     $('procurementPane').innerHTML=`<div class="notice">公司 / Company：${esc(connectionName(node))}</div>`+
       (panel.awards?procurementCard(panel.awards):
         `<div class="empty">${esc(panel.awardsError||'載入決標公告中 / Loading award notices…')}</div>`);
+    $('overviewPane').insertAdjacentHTML('beforeend',`<section class="company-overview-awards" aria-label="公司標案 / Company awards">${panel.awards?procurementCard(panel.awards):
+      `<div class="notice">決標公告 / Awards：${esc(panel.awardsError||'載入中 / Loading…')}</div>`}</section>`);
   }
   async function loadPathEntityProfile(id){
     const response=await fetch('/api/v1/entities/'+encodeURIComponent(id),{cache:'no-store'});
@@ -1717,7 +1732,7 @@
     if(graphMode!=='path'||node.observation_only)showKnowledgeNode(node);
     else{
       selectedNodeId=node.id;$('nodeInfo').hidden=true;selectPathEntity(node.id);
-      if(node.entity_type==='Company')selectRecordTab('procurement');
+      if(node.entity_type==='Company')selectOverviewTab();
     }
     if(!node.observation_only)expandKnowledgeNode(node.id);
   }

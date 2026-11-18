@@ -474,3 +474,16 @@ test('typed zones contain only their own nodes and visible routes avoid unrelate
  assert.deepEqual(back.positions.get(moved),positions.get(moved));
  assert.deepEqual(back.zones.find(zone=>zone.ids.includes(moved)),home);
 });
+
+test('nearest blank space is measured from actual child nodes rather than a wide frame center',()=>{
+ const context=vm.createContext({});
+ vm.runInContext(shipped('  function graphBoxesOverlap(', '  function graphConnector('),context);
+ const parent={x:0,y:0},occupied=[{left:-90,right:90,top:-90,bottom:90}];
+ const anchors=[100,300,500,700].map(x=>({x,y:50}));
+ const center=context.graphZoneSpot(parent,800,100,occupied);
+ const near=context.graphZoneSpot(parent,800,100,occupied,anchors);
+ const distance=zone=>Math.min(...anchors.map(p=>Math.hypot(zone.left+p.x,zone.top+p.y)));
+ assert(distance(near)<distance(center),'the closest visible node wins over the closest group center');
+ assert.equal(distance(near),184,'the node sits beside the nearest clear boundary with the required gap');
+ assert(!occupied.some(box=>context.graphBoxesOverlap(near,box,44)));
+});

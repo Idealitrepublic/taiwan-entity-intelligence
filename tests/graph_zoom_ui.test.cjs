@@ -38,4 +38,10 @@ assert.equal(focusContext.zoom,1,'no global zoom-out for a group just beyond the
 assert.equal(focusContext.panX,-30,'pan only the distance needed to reveal the group');
 assert.equal(focusContext.panY,0);
 assert(html.includes("focusKnowledgeExpansion(entityId,layout,newIds)"));
+focusContext.panX=0;
+focusContext.layout.zones[0]={ids:['child'],left:-1400,right:2400,top:180,bottom:1500};
+vm.runInContext('focusKnowledgeExpansion("bridge",layout,newIds);',focusContext);
+assert.equal(focusContext.zoom,1,'a large expansion never shrinks all existing nodes');
+assert.equal(focusContext.panX,0,'an oversized group does not pull the camera away from its parent');
+assert.equal(focusContext.panY,0);
 console.log('PASS expansion preserves the camera and pans minimally to reveal a nearby group');
