@@ -82,7 +82,32 @@
     .graph .graph-connection-note:is(:hover,:focus-visible) rect{fill:#23415d;stroke:#9dc7ff}
     @media(min-width:1121px){.graph:has(svg[data-type-zones="true"]) .graphbar{display:grid;grid-template-columns:minmax(0,1fr) max-content}.graph:has(svg[data-type-zones="true"]) .graphbar>div:first-child{max-width:none}.graph:has(svg[data-type-zones="true"]) .tools{width:auto}}
     @media(max-width:720px){#graphCrossLinks,#graphBranchLines{display:none}}
-</style>
+    /* Allow bilingual source text to fit narrow investigation panels. */
+    .main>*,.panel,.section,.pane,.card,.notice,.detail,.path-results,.path-segment,.section-head>*{min-width:0}
+    .panel{scrollbar-gutter:stable}
+    .panel .title,.panel .sub,.panel .eyebrow,.panel .notice,.panel .card,.panel .meta,.panel .src,.connection-summary{overflow-wrap:anywhere}
+    .section-head{align-items:flex-start;flex-wrap:wrap}
+    .section-head h4{flex:1 1 130px}
+    .section-head .count{flex:0 1 auto;max-width:100%;overflow-wrap:anywhere}
+    .panel .kv>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:8px 12px}
+    .panel .kv span{min-width:0;overflow-wrap:anywhere}
+    .panel .kv span:last-child{max-width:none}
+    .panel .toolbtn,.connection-summary .toolbtn{white-space:normal;height:auto;min-height:36px;max-width:100%;padding-top:8px;padding-bottom:8px}
+    .panel .meta,.panel .src{flex-wrap:wrap}
+    .path-coverage div{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr)}
+    .path-coverage dt,.path-coverage dd{min-width:0;overflow-wrap:anywhere}
+    .path-entity-picker select,.connection-summary select{min-width:0;max-width:100%}
+    .record>summary>span:first-child{min-width:0;overflow-wrap:anywhere}
+    .right:has(.tab[data-tab="judicial"].active)>#connectionSummary,
+    .right:has(.tab[data-tab="penalty"].active)>#connectionSummary,
+    .right:has(.tab[data-tab="judicial"].active)>#pathEntityPicker,
+    .right:has(.tab[data-tab="penalty"].active)>#pathEntityPicker{display:none}
+    @media(max-width:420px){
+      .panel .kv>div{grid-template-columns:minmax(0,1fr);gap:3px}
+      .panel .kv span:last-child{text-align:left}
+      .path-segment .section-head{gap:5px}
+    }
+  </style>
   <style>.app:has(.source-announcement:not([hidden])){grid-template-rows:auto 64px 88px minmax(0,1fr)}.app:has(.source-announcement:not([hidden])):has(.main.graph-focused){grid-template-rows:auto 64px 88px auto}.source-announcement{z-index:11;padding:9px 22px;border-bottom:1px solid #8b6423;background:#33240c;color:#fff0cb;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.source-announcement a{color:#fff4d8;text-decoration:underline}.source-announcement b{margin-right:8px}@media(max-width:1120px){.app:has(.source-announcement:not([hidden])){display:block}}</style>
 </head>
 <body>
@@ -1602,7 +1627,8 @@
         '<p>本次未取得來源紀錄 / No source records returned</p>':
         `<p>${esc(panel.profileError||'載入單位資料中 / Loading entity details…')}</p>`)}
       </div><div class="card"><h4>圖譜已載入關係 / Loaded graph links</h4>${list(related)}</div></div>`;
-    for(const [pane,type] of [['judicialPane','Judgment'],['procurementPane','Contract'],['penaltyPane','Penalty']]){
+    renderOfficialLookupPanes();
+    for(const [pane,type] of [['procurementPane','Contract']]){
       $(pane).innerHTML=`<div class="card">${list(related.filter(edge=>relatedNode(edge)?.entity_type===type))}</div>`;
     }
   }
@@ -1613,8 +1639,9 @@
     status.textContent=panel?[panel.registryError,panel.awardsError,panel.profileError].filter(Boolean).join(' · '):'';
     $('pathEntityRetry').hidden=!status.textContent;
     renderPathCompanyCoverage(panel);
+    renderOfficialLookupPanes();
     if(!panel){
-      for(const id of ['overviewPane','judicialPane','procurementPane','penaltyPane'])$(id).innerHTML=prompt;
+      for(const id of ['overviewPane','procurementPane'])$(id).innerHTML=prompt;
       return;
     }
     const node=knowledgeGraph.nodes.get(panel.id);
@@ -1622,11 +1649,9 @@
     const data=panel.registry;
     if(data){
       $('overviewPane').innerHTML=companyOverview(data,data.company,data.people||[],data.website_crosscheck,false,null);
-      $('judicialPane').innerHTML=judicialCard(data.judicial_result||{records:data.judicial_records||[]});
-      $('penaltyPane').innerHTML=penaltyCard(data.labor_penalties||[],data.evidence_status?.['裁罰']);
     }else{
       const message=panel.registryError||'載入公司資料中 / Loading company data…';
-      for(const id of ['overviewPane','judicialPane','penaltyPane'])$(id).innerHTML=`<div class="empty">${esc(message)}</div>`;
+      $('overviewPane').innerHTML=`<div class="empty">${esc(message)}</div>`;
     }
     $('procurementPane').innerHTML=panel.awards?procurementCard(panel.awards):
       `<div class="empty">${esc(panel.awardsError||'載入決標公告中 / Loading award notices…')}</div>`;
@@ -1830,7 +1855,21 @@
   function formatRegistryAmount(value){const raw=String(value??'').trim();if(!raw)return'—';const normalized=raw.replace(/,/g,'');if(!/^\d+(?:\.\d+)?$/.test(normalized))return raw;const [whole,decimal]=normalized.split('.');return`NT$ ${whole.replace(/\B(?=(\d{3})+(?!\d))/g,',')}${decimal===undefined?'':'.'+decimal}`}
   function companyRegistryFields(data,company){const rows=[['公司狀態 / Status',company.Company_Status_Desc||company.Case_Status_Desc],['統一編號 / Company ID',data.uniform_number],['負責人 / Representative',company.Responsible_Name],['地址 / Address',company.Company_Location],['設立日期 / Established',company.Company_Setup_Date],['資本額 / Capital',company.Capital_Stock_Amount?formatRegistryAmount(company.Capital_Stock_Amount):null],['實收資本額 / Paid-in capital',company.Paid_In_Capital_Amount?formatRegistryAmount(company.Paid_In_Capital_Amount):null],['登記機關 / Registry authority',company.Register_Organization_Desc],['最後變更日期 / Last registry change',company.Change_Of_Approval_Data],['每股面額 / Par value',company.Share_Val?formatRegistryAmount(company.Share_Val):null],['股權金額 / Equity amount',company.Equity_Amt?formatRegistryAmount(company.Equity_Amt):null]];return rows.filter(([,value])=>value!==null&&value!==undefined&&value!=='').map(([label,value])=>`<div><span>${esc(label)}</span><span>${esc(displayValue(label,value))}</span></div>`).join('')}
   function companyOverview(data,company,people,check,manual,searchItem=companySearchItem){const snapshot=data.data_mode==='published_registry_snapshot_plus_supabase',publishedLink=searchItem?.entity_id&&!searchItem.is_live_fallback?`<button class="toolbtn open-published-graph" data-entity-id="${esc(searchItem.entity_id)}">查看已發布關係圖 / Published graph</button>`:'';return`<div class="detail"><div class="card"><div class="section-head"><h4>公司基礎資料<br>Company registry profile</h4><span class="count">經濟部 / MOEA</span></div><h3 class="company-overview-name">${esc(data.company_name||data.uniform_number)}</h3>${snapshot?'<div class="notice source-warning">經濟部即時查詢暫時不可用；以下公司身分來自已發布的官方登記快照，其他來源依各自狀態顯示。 / Live registry unavailable; identity comes from a dated official snapshot.</div>':''}<div class="workspace-actions">${publishedLink}<button class="toolbtn report-export" data-report-scope="company" data-report-id="${esc(data.uniform_number)}" data-report-download="false">預覽雙語 PDF / Preview PDF</button><button class="toolbtn report-export" data-report-scope="company" data-report-id="${esc(data.uniform_number)}" data-report-download="true">下載完整調查 PDF / Download PDF</button></div><p class="relation-guide">重新查詢目前可取得的來源；名稱候選不視為已核身關係。 / Rechecks available sources; name candidates remain unverified.</p><div class="kv">${companyRegistryFields(data,company)}</div></div><div class="card"><div class="section-head"><h4>內部人員資訊<br>Officers & internal people</h4><span class="count">${snapshot?'來源暫不可用':people.length+' 位'}</span></div>${people.length?people.slice(0,50).map(person=>`<details class="record"><summary><span>${esc(person.person_name)}</span><span>${esc(person.position||'')}</span></summary><div class="record-body"><div class="kv"><div><span>持股 / Shares</span><span>${esc(person.shares||'—')}</span></div><div><span>法人代表 / Representative</span><span>${esc(person.representative||'—')}</span></div></div></div></details>`).join(''):snapshot?'<p>官方董監事即時來源暫不可用，不能據此判定為零人。 / Official officer data is temporarily unavailable; this is not a zero-person finding.</p>':'<p>目前無董監事資料 / No officer data.</p>'}</div>${websiteCard(check,manual)}<div class="notice">${esc(data.evidence_note||'公開紀錄不構成法律結論。 / Public records are not legal conclusions.')}</div></div>`}
-  function renderRecordPanes(){if(!current)return;const judicial=current.judicial_result||{records:current.judicial_records||[],matched:(current.judicial_records||[]).length},procurement=current.procurement_result||{status:'partial',records:[],matched:0},penalties=Array.isArray(current.labor_penalties)?current.labor_penalties:[];$('judicialPane').innerHTML=judicialCard(judicial);$('procurementPane').innerHTML=procurementCard(procurement);$('penaltyPane').innerHTML=penaltyCard(penalties,current.evidence_status?.['裁罰'])}
+  function officialLookupCard(kind){
+    const judicial=kind==='judicial';
+    const url=judicial?'https://judgment.judicial.gov.tw/':'https://announcement.mol.gov.tw/';
+    const title=judicial?'司法院裁判書查詢 / Judicial Yuan lookup':'裁罰查詢 / Labor penalty lookup';
+    return '<div class="card official-lookup"><a href="'+url+'" target="_blank" rel="noreferrer">'+title+' ↗</a></div>';
+  }
+  function renderOfficialLookupPanes(){
+    $('judicialPane').innerHTML=officialLookupCard('judicial');
+    $('penaltyPane').innerHTML=officialLookupCard('penalty');
+  }
+  function renderRecordPanes(){
+    renderOfficialLookupPanes();
+    if(!current)return;
+    $('procurementPane').innerHTML=procurementCard(current.procurement_result||{status:'partial',records:[],matched:0});
+  }
   function render(data,check,manual){
     clearConnectionSummary();graphMode='legacy';knowledgeGraph=null;$('relationshipFilter').hidden=true;hopLimit.hidden=true;if(location.pathname!=='/')history.pushState({},'','/');
     if(!current||current.uniform_number!==data.uniform_number){zoom=1;panX=0;panY=0;selectedNodeId=null;legacyFocusId=null;expandedHub=null;resetLegacyDetails();Object.keys(filterState).forEach(key=>filterState[key]='');$('nodeInfo').hidden=true}
@@ -1848,11 +1887,7 @@
     $('searchResults').innerHTML=`<div class="search-results-head"><div><b>${items.length?`找到 ${items.length} 個可查詢實體 / ${items.length} searchable entities`:'沒有搜尋結果 / No result'}</b><small>同名人物會分開顯示；未索引公司可由經濟部即時公司登記查詢。<br>Same-name people remain separate; unindexed companies may come from the live MOEA registry.</small></div><button class="close-results" aria-label="關閉搜尋結果 Close results">×</button></div>${content||'<div class="notice">可改用完整名稱，或用 8 碼統編執行既有公司即時查詢。<br>Try a full name, or use an 8-digit ID for the live company lookup.</div>'}`;$('searchResults').hidden=false
   }
   function selectRecordTab(active){
-    if(active==='judicial'||active==='penalty'){
-      const url=active==='judicial'?'https://judgment.judicial.gov.tw/':'https://announcement.mol.gov.tw/';
-      const title=active==='judicial'?'司法院裁判書查詢 / Judicial Yuan lookup':'勞動部違反勞動法令查詢 / Ministry of Labor lookup';
-      $(active==='judicial'?'judicialPane':'penaltyPane').innerHTML=`<div class="card"><a href="${url}" target="_blank" rel="noreferrer">${title} ↗</a></div>`;
-    }
+    if(active==='judicial'||active==='penalty')renderOfficialLookupPanes();
     document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab===active));
     const panes={overview:'overviewPane',judicial:'judicialPane',procurement:'procurementPane',penalty:'penaltyPane'};
     for(const [id,pane] of Object.entries(panes))$(pane).hidden=id!==active;
@@ -1896,7 +1931,7 @@
     selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;current=null;currentCheck=null;currentManual=false;hideSearchResults();$('company').textContent=profile.display_name;$('uniform').textContent=`${entityTypeLabels[profile.entity_type]||profile.entity_type} · Entity ID ${profile.id}`;$('companyKV').innerHTML=`<div class="kv"><div><span>識別狀態 / Identity status</span><span>${esc(displayValue('identity_status',profile.identity_status))}</span></div><div><span>搜尋脈絡 / Search context</span><span>${esc(displayContext(item.context_label||'—'))}</span></div></div>`;$('signal').hidden=true;$('sourceStatus').innerHTML=(profile.evidence||[]).map(link=>`<div class="src"><span class="name">${esc(link.evidence?.source_name||'公開來源 / Public source')}</span><span class="ok">已發布 / Published</span></div>`).join('');
     $('coverageScope').textContent='點擊節點可分批展開已發布關係，預設不限層數。展開公司時也可查看依統編核對的登記職務。 / Click nodes to explore published links page by page at any depth. Company expansion can also show registry roles verified by company ID.';
     for(const id of ['people','edges','penaltyCount','judicialCount','procurementCount'])$(id).textContent='0';$('evcount').textContent=(profile.evidence||[]).length;$('evcount').nextElementSibling.textContent='已發布證據 / Published evidence';$('tabPenaltyCount').textContent='官方查詢 / Official lookup';$('tabJudicialCount').textContent='官方查詢 / Official lookup';$('tabProcurementCount').textContent='Awards';$('graphTitle').textContent=profile.display_name;$('graphSub').textContent='正在建立實體關係圖 / Building entity graph';$('graphEmpty').innerHTML='點擊節點展開相鄰關係<br>Click a node to load its neighbors';
-    const evidence=(profile.evidence||[]).map(link=>{const row=link.evidence||{},url=safeSourceUrl(row.source_url);return`<div class="card"><div class="section-head"><h4>${esc(row.title||link.fact_type)}</h4><span class="count">${esc(row.source_name||'')}</span></div><p>${esc(row.summary||'')}</p><div class="meta"><span>${esc(row.source_class||'')}</span><span>${esc(row.observed_at||'')}</span></div>${url?`<p><a href="${esc(url)}" target="_blank" rel="noreferrer">開啟原始資料 / Open source ↗</a></p>`:''}</div>`}).join(''),companyAction=/^\d{8}$/.test(item.public_identifier||'')?`<p><button class="toolbtn open-company-investigation" data-uniform="${esc(item.public_identifier)}">開啟完整公司調查 / Open full company investigation</button></p>`:'';$('overviewPane').innerHTML=profile.entity_type==='Politician'&&politician?politicianOverview(profile,politician,contributions):`<div class="detail"><h3>${esc(profile.display_name)}</h3><div class="tag">${esc(entityTypeLabels[profile.entity_type]||profile.entity_type)}</div><div class="notice">此為獨立 Entity ID；相同姓名不會自動合併。<br>This is a distinct entity ID; identical names are not auto-merged.</div>${companyAction}${pathEntityActions(profile)}<div style="height:10px"></div>${profile.entity_type==='Company'&&contributions?politicalContributionCards(contributions):''}${evidence||'<p class="empty">目前沒有可公開的證據摘要。 / No public evidence summary.</p>'}</div>`;$('judicialPane').innerHTML='<div class="notice">請在關係圖點選「相關裁判」關係查看證據。 / Select a related-judgment edge in the graph to inspect evidence.</div>';$('procurementPane').innerHTML='<div class="notice">請在關係圖點選「政府標案」關係查看證據。 / Select a contract edge in the graph to inspect evidence.</div>';$('penaltyPane').innerHTML='<div class="notice">請在關係圖點選「相關裁罰」關係查看證據。 / Select a related-penalty edge in the graph to inspect evidence.</div>';selectOverviewTab()
+    const evidence=(profile.evidence||[]).map(link=>{const row=link.evidence||{},url=safeSourceUrl(row.source_url);return`<div class="card"><div class="section-head"><h4>${esc(row.title||link.fact_type)}</h4><span class="count">${esc(row.source_name||'')}</span></div><p>${esc(row.summary||'')}</p><div class="meta"><span>${esc(row.source_class||'')}</span><span>${esc(row.observed_at||'')}</span></div>${url?`<p><a href="${esc(url)}" target="_blank" rel="noreferrer">開啟原始資料 / Open source ↗</a></p>`:''}</div>`}).join(''),companyAction=/^\d{8}$/.test(item.public_identifier||'')?`<p><button class="toolbtn open-company-investigation" data-uniform="${esc(item.public_identifier)}">開啟完整公司調查 / Open full company investigation</button></p>`:'';$('overviewPane').innerHTML=profile.entity_type==='Politician'&&politician?politicianOverview(profile,politician,contributions):`<div class="detail"><h3>${esc(profile.display_name)}</h3><div class="tag">${esc(entityTypeLabels[profile.entity_type]||profile.entity_type)}</div><div class="notice">此為獨立 Entity ID；相同姓名不會自動合併。<br>This is a distinct entity ID; identical names are not auto-merged.</div>${companyAction}${pathEntityActions(profile)}<div style="height:10px"></div>${profile.entity_type==='Company'&&contributions?politicalContributionCards(contributions):''}${evidence||'<p class="empty">目前沒有可公開的證據摘要。 / No public evidence summary.</p>'}</div>`;renderOfficialLookupPanes();$('procurementPane').innerHTML='<div class="notice">請在關係圖點選「政府標案」關係查看證據。 / Select a contract edge in the graph to inspect evidence.</div>';selectOverviewTab()
     if(profile.entity_type==='CivilOrganization'){
       $('overviewPane').insertAdjacentHTML('afterbegin','<div class="notice source-warning">官方團體清冊來源紀錄；請核對 Evidence 的來源與時間。目前登記狀態與跨來源身分未核對，沒有連線不代表沒有關係。 / Official roster observation; verify Evidence source and date. Current status and cross-source identity are unverified.</div>');
       const dissolution=profile.evidence?.map(row=>row.evidence?.source_locator?.dissolution_date_raw).find(value=>value&&value!=='/');
