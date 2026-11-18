@@ -29,7 +29,7 @@ const registry = node => ({status:'ok',public_graph_scope:true,uniform_number:no
   evidence:[],evidence_status:{}});
 const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開決標公告 / Award source',
   records:Array.from({length:node.id===a.id?7:5},(_,index)=>({
-    id:node.id+'-award-'+index,title:node.display_name+'真實流程測試公告 '+index,
+    id:node.id+'-award-'+index,title:node.display_name+'真實流程測試公告 案件'+index,
     date:'2025-01-0'+(index+1),agency:'新北市政府',notice_type:'決標公告',
     uniform_number:node.public_identifier,award_role:'winner',
     awardee_names:[node.display_name],source_url:'https://example.gov.tw/award/'+index
@@ -192,6 +192,19 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         assert.match(await pane.locator('.notice').first().textContent(),new RegExp(node.display_name));
       await pane.locator('.record').first().locator('summary').click();
       assert.equal(await pane.locator('.record').first().locator('a').isVisible(),true);
+      await pane.getByRole('searchbox',{name:'標案關鍵字 / Award keyword',exact:true}).fill('公告 案件０');
+      await pane.locator('.award-keyword-search button').click();
+      assert.equal(await pane.locator('.record').count(),1,'multiple words and full-width digits match loaded awards');
+      await pane.getByRole('searchbox',{name:'標案關鍵字 / Award keyword',exact:true}).fill('沒有這個標案');
+      await pane.locator('.award-keyword-search button').click();
+      assert.equal(await pane.locator('.record').count(),0);
+      assert.match(await pane.textContent(),/No award notice matches/);
+      await pane.locator('.clear-filters').click();
+      assert.equal(await pane.locator('.record').count(),count,'reset restores all loaded awards');
+      await pane.getByRole('searchbox',{name:'標案關鍵字 / Award keyword',exact:true}).fill('新北市政府');
+      await pane.locator('.award-keyword-search button').click();
+      assert.equal(await pane.locator('.record').count(),count,'agency search is supported');
+      await pane.locator('.clear-filters').click();
       await layout(label+' awards');
       await page.locator('.tab[data-tab="overview"]').click();
     }

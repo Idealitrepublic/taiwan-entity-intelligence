@@ -5,6 +5,7 @@ const elements = {alertBadge:{},alertItems:{},workspaceItems:{},workspaceCount:{
 const ctx = vm.createContext({$:id=>elements[id],safeSourceUrl:value=>value,
   dashboardAlerts:[],activeWorkspace:null});
 loadDisplay(ctx);
+assert.equal(vm.runInContext("displayContext('得標欄位命中 / Winner field match')",ctx),'得標欄位符合 / Winner field match');
 vm.runInContext(html.split('\n').find(row=>row.trimStart().startsWith('function graphNodeTypeLabel(')),ctx);
 for(const [node,label] of [[{type:'company'},'公司 / Company'],[{entity_type:'Politician'},'政治人物／立委 / Politician'],[{type:'hub'},'資料分類 / Data category'],[{type:'website'},'公司官網 / Company website'],[{type:'related_detail',colorType:'person'},'人物 / Person'],[{type:'unknown_internal_type'},'實體 / Entity']]){
   ctx.mobileNode=node;assert.equal(vm.runInContext('graphNodeTypeLabel(mobileNode)',ctx),label);
