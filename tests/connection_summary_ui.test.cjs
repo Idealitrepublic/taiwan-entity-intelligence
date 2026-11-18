@@ -33,6 +33,12 @@ test('award details use the job number, distinguish missing fields and retain ze
  const out=courtRoleDetail('得標欄位符合 / Winner field match',fields);
  assert(out.includes('案號 / Job no.'));assert(out.includes('0630800011'));assert(!out.includes('來源紀錄 / Source record'));
  assert(out.includes('公告日期 / Notice date'));assert(out.includes('Not supplied in loaded source'));
+ assert(out.includes('標案名稱 / Tender title'));assert(!out.includes('目標實體 / Target entity'));
+ assert(out.indexOf('標案名稱 / Tender title')<out.indexOf('案號 / Job no.'));
+ assert(out.indexOf('案號 / Job no.')<out.indexOf('來源角色 / Source role'));
+ for(const label of ['結束日期 / End date','觀察日期 / Observed at','比例 / Percentage','信心 / Confidence']){
+  assert(!out.includes(label));assert(courtRoleDetail(null).includes(label),'other relationships retain their fields');
+ }
  const zero=courtRoleDetail(null,{...fields,amount:0,currency:'TWD'});
  assert(zero.includes('TWD 0'));
 });
