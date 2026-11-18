@@ -35,7 +35,7 @@ test('award details use the job number, distinguish missing fields and retain ze
  assert(out.includes('公告日期 / Notice date'));assert(!out.includes('金額 / Amount'));assert(!out.includes('本公司決標金額 / Company award amount'));
  assert(out.includes('標案名稱 / Tender title'));assert(!out.includes('目標實體 / Target entity'));
  assert(out.indexOf('標案名稱 / Tender title')<out.indexOf('案號 / Job no.'));
- assert(out.indexOf('案號 / Job no.')<out.indexOf('來源角色 / Source role'));
+ assert(!out.includes('來源角色 / Source role'));assert(out.includes('資料取得日期 / Retrieved at'));assert(!out.includes('<b>取得日期 / Retrieved at</b>'));assert(out.includes('西元 2020 年（民國 109 年）7 月 3 日'));
  for(const label of ['結束日期 / End date','觀察日期 / Observed at','比例 / Percentage','信心 / Confidence']){
   assert(!out.includes(label));assert(courtRoleDetail(null).includes(label),'other relationships retain their fields');
  }

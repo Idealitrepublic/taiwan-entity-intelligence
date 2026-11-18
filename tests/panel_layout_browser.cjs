@@ -201,6 +201,8 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       await pane.locator('.award-detail-content h4').first().waitFor();
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/228,900,001元/);
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/0元 原因/);
+      assert.match(await pane.locator('.award-detail-content').first().textContent(),/西元 2020 年（民國 109 年）6 月 3 日/);
+      assert.match(await pane.locator('.award-detail-content').first().textContent(),/資料取得日期 \/ Retrieved at/);
       const bidders=pane.locator('.award-detail-content details').first();
       assert.equal(await bidders.getAttribute('open'),null,'bidder breakdown starts collapsed');
       await bidders.locator('summary').click();
