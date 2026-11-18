@@ -1,0 +1,173 @@
+{
+  "baseline_commit": "7a91cfbcb5191e6a7c89510669a37f5180788217",
+  "generated_cases": 75300,
+  "ui_steps": 450,
+  "offline_runs": [
+    {
+      "seed": 20261118,
+      "cases_per_target": 5000,
+      "targets": {
+        "api": {
+          "cases": 5000,
+          "unique_inputs": 4058,
+          "failure_classes": 0,
+          "seconds": 0.135
+        },
+        "procurement": {
+          "cases": 5000,
+          "unique_inputs": 272,
+          "failure_classes": 0,
+          "seconds": 0.451
+        },
+        "notice_detail": {
+          "cases": 5000,
+          "unique_inputs": 132,
+          "failure_classes": 0,
+          "seconds": 0.235
+        },
+        "exact_path": {
+          "cases": 5000,
+          "unique_inputs": 3718,
+          "failure_classes": 0,
+          "seconds": 0.148
+        },
+        "pdf": {
+          "cases": 100,
+          "unique_inputs": 100,
+          "failure_classes": 0,
+          "seconds": 0.984
+        },
+        "report_html": {
+          "cases": 5000,
+          "unique_inputs": 5000,
+          "failure_classes": 0,
+          "seconds": 1.365
+        }
+      },
+      "network": "denied",
+      "failures": []
+    },
+    {
+      "seed": 20261119,
+      "cases_per_target": 5000,
+      "targets": {
+        "api": {
+          "cases": 5000,
+          "unique_inputs": 4039,
+          "failure_classes": 0,
+          "seconds": 0.136
+        },
+        "procurement": {
+          "cases": 5000,
+          "unique_inputs": 272,
+          "failure_classes": 0,
+          "seconds": 0.471
+        },
+        "notice_detail": {
+          "cases": 5000,
+          "unique_inputs": 132,
+          "failure_classes": 0,
+          "seconds": 0.244
+        },
+        "exact_path": {
+          "cases": 5000,
+          "unique_inputs": 3734,
+          "failure_classes": 0,
+          "seconds": 0.156
+        },
+        "pdf": {
+          "cases": 100,
+          "unique_inputs": 100,
+          "failure_classes": 0,
+          "seconds": 0.995
+        },
+        "report_html": {
+          "cases": 5000,
+          "unique_inputs": 5000,
+          "failure_classes": 0,
+          "seconds": 1.446
+        }
+      },
+      "network": "denied",
+      "failures": []
+    },
+    {
+      "seed": 73013,
+      "cases_per_target": 5000,
+      "targets": {
+        "api": {
+          "cases": 5000,
+          "unique_inputs": 4043,
+          "failure_classes": 0,
+          "seconds": 0.137
+        },
+        "procurement": {
+          "cases": 5000,
+          "unique_inputs": 272,
+          "failure_classes": 0,
+          "seconds": 0.468
+        },
+        "notice_detail": {
+          "cases": 5000,
+          "unique_inputs": 132,
+          "failure_classes": 0,
+          "seconds": 0.244
+        },
+        "exact_path": {
+          "cases": 5000,
+          "unique_inputs": 3748,
+          "failure_classes": 0,
+          "seconds": 0.154
+        },
+        "pdf": {
+          "cases": 100,
+          "unique_inputs": 100,
+          "failure_classes": 0,
+          "seconds": 1.069
+        },
+        "report_html": {
+          "cases": 5000,
+          "unique_inputs": 5000,
+          "failure_classes": 0,
+          "seconds": 1.44
+        }
+      },
+      "network": "denied",
+      "failures": []
+    }
+  ],
+  "browser_runs": [
+    {
+      "result": "PASS",
+      "seed": 20261118,
+      "steps": 150,
+      "requests": 81,
+      "errors": [],
+      "blocked_outbound": []
+    },
+    {
+      "result": "PASS",
+      "seed": 20261119,
+      "steps": 150,
+      "requests": 80,
+      "errors": [],
+      "blocked_outbound": []
+    },
+    {
+      "result": "PASS",
+      "seed": 73013,
+      "steps": 150,
+      "requests": 100,
+      "errors": [],
+      "blocked_outbound": []
+    }
+  ],
+  "remaining_failure_classes": 0,
+  "product_findings": [
+    "Malformed procurement role paths poisoned a valid batch; malformed later corrections stay unresolved.",
+    "Malformed source URLs crashed PDF/HTML rendering.",
+    "Deferred graph focus reset erased a later node selection."
+  ],
+  "production_modified": false,
+  "database_writes": false
+}

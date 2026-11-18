@@ -84,8 +84,28 @@ def _normalize(row: dict[str, Any], uniform: str) -> dict[str, Any]:
     }
 
 
+def _notice_shape_valid(row):
+    """Fail closed on role paths; preserve other notices in the source batch."""
+    if not isinstance(row, dict) or not isinstance(row.get('brief') or {}, dict):
+        return False
+    companies = (row.get('brief') or {}).get('companies') or {}
+    if not isinstance(companies, dict) or not isinstance(row.get('detail') or {}, dict):
+        return False
+    for name in ('id_key', 'name_key'):
+        mapping = companies.get(name) or {}
+        if not isinstance(mapping, dict) or any(
+                not isinstance(key, str) or not isinstance(paths, list)
+                or any(not isinstance(path, str) for path in paths)
+                for key, paths in mapping.items()):
+            return False
+    return all(row.get(key) is None or isinstance(row[key], (str, int))
+               for key in ('date', 'filename', 'unit_id', 'job_number'))
+
+
 def matched_names(row: dict[str, Any], uniform: str) -> list[str]:
     """Use the bidder identifier's field path, never positional/name inference."""
+    if not _notice_shape_valid(row):
+        return []
     companies = (row.get('brief') or {}).get('companies') or {}
     prefixes = [key.rsplit(':', 1)[0] + ':'
                 for key in (companies.get('id_key') or {}).get(uniform, [])]
@@ -94,6 +114,8 @@ def matched_names(row: dict[str, Any], uniform: str) -> list[str]:
 
 
 def award_role(row: dict[str, Any], uniform: str) -> str:
+    if not _notice_shape_valid(row):
+        return 'unresolved'
     companies = (row.get('brief') or {}).get('companies') or {}
     names = list(dict.fromkeys(matched_names(row, uniform)))
     # The mirror groups role paths by name. If one name denotes multiple
@@ -129,7 +151,8 @@ def award_role(row: dict[str, Any], uniform: str) -> str:
 
 def is_award_notice(row: dict[str, Any]) -> bool:
     """An unsuccessful-tender notice also contains 決標, but is not an award."""
-    return str((row.get('brief') or {}).get('type') or '').strip() == '決標公告'
+    brief = row.get('brief') if isinstance(row, dict) else None
+    return isinstance(brief, dict) and str(brief.get('type') or '').strip() == '決標公告'
 
 
 def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str, Any]:
@@ -139,15 +162,21 @@ def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str
     try:
         payload = _json_get(url, timeout=timeout)
         rows = payload.get("records") if isinstance(payload.get("records"), list) else []
-        notices = [row for row in rows if isinstance(row, dict) and is_award_notice(row)]
+        notices = [row for row in rows if is_award_notice(row)]
+        invalid_record_count = sum(not _notice_shape_valid(row) for row in rows)
+        try:
+            total_records = max(len(rows), int(payload.get('total_records') or 0))
+        except (TypeError, ValueError, OverflowError):
+            total_records = len(rows)
+            invalid_record_count += 1
         # Select the latest notice before classifying: a correction can withdraw
         # a formerly successful award. Keep unknown keys separate, not merged.
         latest = {}
         ambiguous = set()
-        for row in sorted(notices, key=lambda item: str(item.get('date'))):
+        for index, row in enumerate(sorted(notices, key=lambda item: str(item.get('date')))):
             key = (row.get('unit_id'), row.get('job_number'))
-            if not all(key):
-                key = ('notice', row.get('filename'), row.get('date'))
+            if not all(isinstance(part, (str, int)) and part for part in key):
+                key = ('notice', str(row.get('filename')), str(row.get('date')), index)
             previous = latest.get(key)
             if previous and previous.get('date') == row.get('date'):
                 if award_role(previous, uniform) != award_role(row, uniform):
@@ -162,13 +191,14 @@ def lookup_awards(uniform: str, limit: int = 100, timeout: int = 40) -> dict[str
         return {
             "status": "ok", "matched": len(awards[:limit]),
             "retrieved_at": datetime.now(timezone.utc).isoformat(),
-            "available_notices": int(payload.get("total_records") or len(rows)),
+            "available_notices": total_records,
+            "invalid_record_count": invalid_record_count,
             "records": awards[:limit],
             "returned_notices": len(rows),
             "award_notices": len(notices),
             "nonwinner_count": sum(award_role(row, uniform) == 'nonwinner' for row in classified),
             "unresolved_count": len(ambiguous) + sum(award_role(row, uniform) == 'unresolved' for row in classified),
-            "limited": int(payload.get("total_records") or 0) > len(rows) or len(awards) > limit,
+            "limited": bool(invalid_record_count or total_records > len(rows) or len(awards) > limit),
             "source": "政府電子採購網公告（OpenFun 民間結構化介接）",
             "source_api": API, "official_search_url": OFFICIAL_SEARCH,
             "match_rule": "exact bidder identifier field path and explicit winner role; latest notice per job; first page only",

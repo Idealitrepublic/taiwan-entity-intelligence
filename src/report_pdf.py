@@ -137,9 +137,12 @@ def render_report_pdf(report):
 
     def paragraph(value, style=normal, key=""):
         text = escape(str(value)).replace("\n", "<br/>")
-        parsed = urlsplit(str(value)) if "URL" in key else None
+        try:
+            parsed = urlsplit(str(value)) if "URL" in key else None
+        except ValueError:
+            parsed = None  # Keep the source text; a malformed link cannot break export.
         # All content is escaped. No images, files or external resources are loaded.
-        if parsed and parsed.scheme in ("http", "https") and parsed.netloc:
+        if parsed and parsed.scheme in ("http", "https") and parsed.hostname and not parsed.username and not parsed.password:
             text = f'<link href="{escape(str(value), quote=True)}" color="#1769aa">{text}</link>'
         return Paragraph(text, style)
 

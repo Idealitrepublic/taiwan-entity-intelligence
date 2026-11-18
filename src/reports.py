@@ -682,8 +682,11 @@ class ReportService:
 def _safe_url(value):
     if not isinstance(value, str):
         return None
-    parsed = urlsplit(value)
-    return value if parsed.scheme in ("http", "https") and parsed.netloc else None
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return None
+    return value if parsed.scheme in ("http", "https") and parsed.hostname and not parsed.username and not parsed.password else None
 
 
 def render_report_html(report):

@@ -1,0 +1,95 @@
+[
+  {
+    "target": "procurement",
+    "seed": 20261118,
+    "index": 7,
+    "error": "AssertionError:One malformed notice erased the valid award",
+    "input": {
+      "records": [
+        {
+          "date": "20261119",
+          "filename": "BAD",
+          "unit_id": "3.2",
+          "job_number": "bad",
+          "brief": {
+            "type": "決標公告",
+            "companies": {
+              "id_key": {
+                "22659295": 42
+              },
+              "name_key": {
+                "壞資料": [
+                  "path"
+                ]
+              }
+            }
+          },
+          "unit_name": "ＡＢ１２"
+        },
+        {
+          "date": "20261118",
+          "filename": "BDM-1",
+          "unit_id": "3.1",
+          "job_number": "0630800011",
+          "brief": {
+            "type": "決標公告",
+            "title": "保留有效決標",
+            "companies": {
+              "names": [
+                "有效廠商"
+              ],
+              "id_key": {
+                "22659295": [
+                  "決標品項:第1品項:得標廠商1:廠商代碼"
+                ]
+              },
+              "name_key": {
+                "有效廠商": [
+                  "決標品項:第1品項:得標廠商1:廠商名稱"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "total_records": 2
+    },
+    "occurrences": 125
+  },
+  {
+    "target": "pdf",
+    "seed": 20261118,
+    "index": 2,
+    "error": "ValueError:Invalid IPv6 URL",
+    "input": {
+      "title": "模糊測試／Fuzz report",
+      "methodology": "隔離合成測試資料，不匯入資料庫",
+      "report_type": "ENTITY",
+      "generated_at": "not-a-date",
+      "sentinel": "FUZZCASE00002",
+      "entity_profiles": [
+        {
+          "display_name": "混合English123",
+          "entity_type": "Company"
+        }
+      ],
+      "sources": [
+        {
+          "title": "FUZZCASE00002",
+          "source_name": "測試來源",
+          "source_url": "https://[",
+          "retrieved_at": "2026-11-18T14:00:00Z",
+          "source_record_id": "FUZZCASE00002",
+          "source_locator": {
+            "future_field": "混合English123"
+          }
+        }
+      ],
+      "relationship_graph": {
+        "nodes": [],
+        "edges": []
+      }
+    },
+    "occurrences": 32
+  }
+]
