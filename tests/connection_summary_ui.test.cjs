@@ -32,7 +32,7 @@ test('award details use the job number, distinguish missing fields and retain ze
  const fields={observation_kind:'AwardNotice',primary_evidence:{source_record_id:'0630800011',source_url:'https://example.gov.tw/award'},start_date:'20200703'};
  const out=courtRoleDetail('得標欄位符合 / Winner field match',fields);
  assert(out.includes('案號 / Job no.'));assert(out.includes('0630800011'));assert(!out.includes('來源紀錄 / Source record'));
- assert(out.includes('公告日期 / Notice date'));assert(out.includes('Not supplied in loaded source'));
+ assert(out.includes('公告日期 / Notice date'));assert(!out.includes('金額 / Amount'));assert(!out.includes('本公司決標金額 / Company award amount'));
  assert(out.includes('標案名稱 / Tender title'));assert(!out.includes('目標實體 / Target entity'));
  assert(out.indexOf('標案名稱 / Tender title')<out.indexOf('案號 / Job no.'));
  assert(out.indexOf('案號 / Job no.')<out.indexOf('來源角色 / Source role'));
