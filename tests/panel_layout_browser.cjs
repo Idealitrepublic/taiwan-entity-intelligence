@@ -70,6 +70,36 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     await page.locator('#sample').click();
     await page.locator('#pathResult .path-segment').nth(1).waitFor();
 
+    async function toolbar(label) {
+      await page.waitForFunction(()=>{
+        const bar=document.querySelector('.graphbar').getBoundingClientRect();
+        return document.querySelector('#svg').getBoundingClientRect().top>=bar.bottom;
+      });
+      const result=await page.evaluate(()=>{
+        const tools=document.querySelector('.graphbar .tools').getBoundingClientRect();
+        const actions=document.querySelector('.graph-actions').getBoundingClientRect();
+        const bar=document.querySelector('.graphbar').getBoundingClientRect();
+        const outside=[...document.querySelectorAll('.graphbar button')].filter(el=>{
+          if(!el.getClientRects().length)return false;
+          const box=el.getBoundingClientRect();
+          return box.left<bar.left-1||box.right>bar.right+1;
+        }).map(el=>el.textContent);
+        return {below:actions.top>=tools.bottom,outside};
+      });
+      assert.deepEqual(result,{below:true,outside:[]},label);
+    }
+
+    for(const node of [a,b]) {
+      await page.locator(`#svg .node[data-node-id="${node.id}"]`).press('Enter');
+      const count=awards(node).records.length;
+      await page.locator('#procurementPane .record').nth(count-1).waitFor({state:'attached'});
+      assert.equal(await page.locator('#procurementPane').isVisible(),true,
+        'Clicking a path company must open its awards without a second tab click');
+      assert.equal(await page.locator('#pathEntitySelect').inputValue(),node.id);
+      assert.equal(await page.locator('#tabProcurementCount').textContent(),count+' 筆 / records');
+    }
+    await page.locator('.tab[data-tab="overview"]').click();
+
     async function layout(label) {
       const result=await page.evaluate(()=>{
         const nodes=[...document.querySelectorAll('.panel .section-head>*,.panel .kv span,.panel .card p,.panel .card a,.panel .notice,.panel .title,.panel .sub')];
@@ -129,6 +159,15 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
 
     for(const width of [1440,1280,1024,768,390]) {
       await page.setViewportSize({width,height:900});
+      await toolbar(width+'px graph toolbar');
+      if(width>1120) {
+        for(let repeat=0;repeat<2;repeat++) {
+          await page.locator('#graphFocus').click();
+          await toolbar(width+'px focused');
+          await page.locator('#graphFocus').click();
+          await toolbar(width+'px panels restored');
+        }
+      }
       await layout(width+'px path details');
       for(const [kind,url] of [['judicial','https://judgment.judicial.gov.tw/'],
         ['penalty','https://announcement.mol.gov.tw/']]) {
@@ -185,7 +224,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     assert.equal(await dialog.count(),1);
     assert.equal(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
     assert.deepEqual(errors,[]);
-    console.log('Panel layout: single-line source text, local horizontal scrolling, all awards in investigation/indexed/path modes, official lookup tabs, async updates, Workspace and 1440/1280/1024/768/390px passed.');
+    console.log('Panel layout: toolbar order after focus/restore, direct company-node awards, single-line source text, all award modes, official links and 1440/1280/1024/768/390px passed.');
   } finally {
     await browser.close();
   }

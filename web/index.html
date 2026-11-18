@@ -120,6 +120,19 @@
     .left .kv>div{display:contents}
     .left .kv span:last-child{text-align:left}
     .left .title,.left .sub,.left .notice,.left .eyebrow{width:max-content;min-width:100%}
+    .graph .graphbar,.graph:has(svg[data-type-zones="true"]) .graphbar{
+      display:grid;grid-template-columns:minmax(0,1fr);gap:8px
+    }
+    .graph .graphbar>div:first-child{max-width:none}
+    .graph .tools{display:flex;flex-wrap:wrap;justify-content:flex-start;width:100%;flex:none}
+    .graph .tools .graph-filter,.graph .graph-pager{flex-basis:100%}
+    .graph-actions{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
+    .graph .graph-actions .toolbtn{white-space:normal;height:auto;min-height:36px;max-width:100%;margin:0;padding:8px 11px}
+    .graph svg{top:var(--graph-canvas-top,100px)}
+    @media(max-width:720px){
+      .graph .mobile-graph-list:not([hidden]),.graph:has(.node-info:not([hidden])) .node-info{top:calc(var(--graph-canvas-top,180px) + 295px)}
+      .graph:has(.node-info:not([hidden])) .mobile-graph-list:not([hidden]){top:calc(var(--graph-canvas-top,180px) + 540px)}
+    }
   </style>
   <style>.app:has(.source-announcement:not([hidden])){grid-template-rows:auto 64px 88px minmax(0,1fr)}.app:has(.source-announcement:not([hidden])):has(.main.graph-focused){grid-template-rows:auto 64px 88px auto}.source-announcement{z-index:11;padding:9px 22px;border-bottom:1px solid #8b6423;background:#33240c;color:#fff0cb;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.source-announcement a{color:#fff4d8;text-decoration:underline}.source-announcement b{margin-right:8px}@media(max-width:1120px){.app:has(.source-announcement:not([hidden])){display:block}}</style>
 </head>
@@ -157,7 +170,8 @@
   let current=null,currentCheck=null,currentManual=false,zoom=1,panX=0,panY=0,selectedNodeId=null,selectedEdgeId=null,expandedHub=null,expandedProcurementCounty=null,expandedProcurementYear=null,procurementPage=0,relatedProcurementUniform=null,expandedJudicialYear=null,expandedJudicialMonth=null,expandedPenaltyLaw=null,expandedPenaltyArticle=null,expandedPenaltyYear=null,expandedPenaltyCounty=null,judicialPage=0,penaltyPage=0,graphRoot=null,lastGraphView=null,legacyFocusId=null,dragState=null,nodeDragState=null,suppressNodeClick=false,searchItems=new Map(),graphMode='legacy',knowledgeGraph=null,pathSelection={source:null,target:null},companyRequestSerial=0,companySearchItem=null;
   const relatedCompanyBranches=new Map();
   const graphPager=document.createElement('div');graphPager.id='graphPager';graphPager.className='graph-pager';graphPager.hidden=true;graphPager.innerHTML='<button id="graphPrev" type="button">上一組 / Previous</button><span id="graphPageLabel" aria-live="polite"></span><button id="graphNext" type="button">下一組 / Next</button>';document.querySelector('.graphbar .tools').appendChild(graphPager);
-  const graphFocus=document.createElement('button');graphFocus.id='graphFocus';graphFocus.type='button';graphFocus.className='toolbtn graph-focus';graphFocus.textContent='展開圖譜 / Expand graph';graphFocus.setAttribute('aria-pressed','false');document.querySelector('.graphbar>div:first-child').appendChild(graphFocus);
+  const graphActions=document.createElement('div');graphActions.className='graph-actions';graphActions.setAttribute('role','group');graphActions.setAttribute('aria-label','圖譜顯示操作 / Graph display controls');document.querySelector('.graphbar .tools').after(graphActions);
+  const graphFocus=document.createElement('button');graphFocus.id='graphFocus';graphFocus.type='button';graphFocus.className='toolbtn graph-focus';graphFocus.textContent='展開圖譜 / Expand graph';graphFocus.setAttribute('aria-pressed','false');graphActions.appendChild(graphFocus);
   const graphBar=document.querySelector('.graphbar'),graphSection=document.querySelector('.graph');
   const syncGraphCanvasTop=()=>graphSection.style.setProperty('--graph-canvas-top',`${Math.ceil(graphBar.offsetTop+graphBar.offsetHeight+12)}px`);
   if(typeof ResizeObserver!=='undefined')new ResizeObserver(syncGraphCanvasTop).observe(graphBar);
@@ -1701,7 +1715,10 @@
   }
   function activateKnowledgeNode(node){
     if(graphMode!=='path'||node.observation_only)showKnowledgeNode(node);
-    else{selectedNodeId=node.id;$('nodeInfo').hidden=true;selectPathEntity(node.id)}
+    else{
+      selectedNodeId=node.id;$('nodeInfo').hidden=true;selectPathEntity(node.id);
+      if(node.entity_type==='Company')selectRecordTab('procurement');
+    }
     if(!node.observation_only)expandKnowledgeNode(node.id);
   }
   async function expandKnowledgeNode(entityId){
@@ -1925,8 +1942,8 @@
   async function openGraphCompanyAwards(id){
     const state=knowledgeGraph,node=state?.nodes.get(id);
     if(node?.entity_type!=='Company')return;
-    if(graphMode==='path'&&state.entityPanel?.id===id){
-      selectRecordTab('procurement');return;
+    if(graphMode==='path'){
+      selectPathEntity(id);selectRecordTab('procurement');return;
     }
     if(graphMode!=='knowledge')return;
     selectRecordTab('procurement');
