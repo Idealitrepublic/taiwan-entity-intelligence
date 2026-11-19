@@ -11,7 +11,9 @@ function path(){return{found:true,depth:2,source_entity:A,target_entity:B,segmen
 function mockElement(id){const classes=new Set();return{dataset:{nodeId:id},classList:{toggle(k,on){on?classes.add(k):classes.delete(k)},contains:k=>classes.has(k)},style:{setProperty(){}},classes}}
 // Exercise the shipped edge detail renderer, including its real HTML escaping.
 function courtRoleDetail(role,overrides={}){
- const elements={nodeInfoTitle:{},nodeInfoKind:{},nodeInfoBody:{},nodeInfo:{hidden:true}};
+ const elements={nodeInfoTitle:{},nodeInfoKind:{},nodeInfoBody:{insertAdjacentHTML(position,markup){
+  assert.equal(position,'beforeend');this.innerHTML+=markup;
+ }},nodeInfo:{hidden:true}};
  const edge={id:'case-role',source:'a',target:'case',relationship_type:'RELATED_TO_JUDGMENT',source_role:role,primary_evidence:{title:'法院公告',source_url:'https://example.gov.tw/case',summary:'共同提及不等於有罪'},...overrides};
  const context=vm.createContext({URL,$:id=>elements[id],document:{querySelectorAll:()=>[]},knowledgeGraph:{nodes:new Map([['a',A],['case',node('case','Judgment','裁判公告')]])},selectedNodeId:null,selectedEdgeId:null,edge});
  loadDisplay(context);
@@ -31,6 +33,7 @@ test('edge Evidence shows a specific source role without turning co-mentions int
 test('award details use the job number, distinguish missing fields and retain zero amounts',()=>{
  const fields={observation_kind:'AwardNotice',primary_evidence:{source_record_id:'0630800011',source_url:'https://example.gov.tw/award'},start_date:'20200703'};
  const out=courtRoleDetail('得標欄位符合 / Winner field match',fields);
+ assert(out.includes('Notice detail identifiers unavailable'));
  assert(out.includes('案號 / Job no.'));assert(out.includes('0630800011'));assert(!out.includes('來源紀錄 / Source record'));
  assert(out.includes('公告日期 / Notice date'));assert(!out.includes('金額 / Amount'));assert(!out.includes('本公司決標金額 / Company award amount'));
  assert(out.includes('標案名稱 / Tender title'));assert(!out.includes('目標實體 / Target entity'));
