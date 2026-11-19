@@ -238,6 +238,7 @@ def build_company(uniform: str, *, public_graph_only=False):
     })
     company_evidence = {"source_name": "經濟部公司登記", "source_url": registry_url,
                         "source_record_id": uniform, "retrieved_at": retrieved_at,
+                        "source_locator_type": "company_uniform_number",
                         "match_rule": "published_exact_id_snapshot" if snapshot else "exact_uniform_number",
                         "data_status": "published_snapshot_not_live" if snapshot else "live_official"}
     if snapshot:
@@ -444,6 +445,11 @@ def build_company(uniform, *, public_graph_only=False):
     elif data.get('website_url'):
         data['website_source'] = '公司登記開放資料欄位 / company registry open-data field'
         data['website_verification'] = 'government_registry_field'
+        company_node = next((node for node in data['graph']['nodes']
+                             if node.get('id') == f'company:{uniform}'), {})
+        registry_evidence = company_node.get('evidence') or {}
+        data['website_source_url'] = registry_evidence.get('source_url')
+        data['website_source_record_id'] = registry_evidence.get('source_record_id')
     else:
         data['website_source'] = None
         data['website_verification'] = 'not_available'
@@ -458,7 +464,14 @@ def build_company(uniform, *, public_graph_only=False):
         data["evidence_note"] = "公司職務依官方登記或有日期的快照顯示。同名人士各自保留。 / Officer roles use official records or dated snapshots."
         data["public_graph_scope"] = True
         data.pop("website_crosscheck", None)
-        data['website_crosscheck'] = {'domain': data.get('website_host'), 'website_url': data.get('website_url'), 'website_source': data.get('website_source')}
+        data['website_crosscheck'] = {
+            'domain': data.get('website_host'),
+            **{field: data.get(field) for field in (
+                'website_url', 'website_source', 'website_source_url', 'website_site_source_url',
+                'website_source_record_id', 'website_source_class', 'website_verified_on',
+                'website_verification',
+            )},
+        }
         data['graph']['nodes'] = [n for n in data['graph']['nodes'] if n.get('type') != 'anti_fraud']
         data['graph']['edges'] = [e for e in data['graph']['edges'] if e.get('relationship') != 'listed_in_anti_fraud']
         data.pop("published_case_status", None)

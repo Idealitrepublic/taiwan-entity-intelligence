@@ -25,11 +25,16 @@ function segment(from,to,index,reverse=false) {
 const registry = node => ({status:'ok',public_graph_scope:true,uniform_number:node.public_identifier,
   company_name:node.display_name,company:{Business_Accounting_NO:node.public_identifier,
     Company_Name:node.display_name,Responsible_Name:'負責人',Company_Location:'臺北市信義區'+'長地址'.repeat(30)},
-  people:[],graph:{nodes:[{id:'company:'+node.public_identifier,type:'company',label:node.display_name}],edges:[]},
+  people:[],website_crosscheck:{domain:'5v.com.tw',website_url:'https://www.5v.com.tw',
+    website_source:'證交所 / TWSE',website_site_source_url:'https://openapi.twse.com.tw/v1/opendata/t187ap03_L',
+    website_source_record_id:'2537',website_source_class:'official_issuer_disclosure',website_verified_on:'2026-10-22'},
+  graph:{nodes:[{id:'company:'+node.public_identifier,type:'company',label:node.display_name,
+    evidence:{source_name:'經濟部公司登記',source_record_id:node.public_identifier,
+      source_locator_type:'company_uniform_number',source_url:'https://data.gcis.nat.gov.tw/'}}],edges:[]},
   evidence:[],evidence_status:{}});
 const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開決標公告 / Award source',
   records:Array.from({length:node.id===a.id?7:5},(_,index)=>({
-    id:node.id+'-award-'+index,title:node.display_name+'真實流程測試公告 案件'+index,
+    id:node.id+'-award-'+index,title:node.display_name+'甄選「臺北市中正區仁愛路二段臨時停車場土地主導合建案」案件'+index,
     unit_id:'3.13.31',job_number:'0630800011',notice_filename:'BDM-1-53131415',date:'2025-01-0'+(index+1),agency:'新北市政府',notice_type:'決標公告',
     uniform_number:node.public_identifier,award_role:'winner',
     awardee_names:[node.display_name],source_url:'https://example.gov.tw/award/'+index
@@ -204,9 +209,9 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/西元 2020 年（民國 109 年）6 月 3 日/);
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/資料取得日期 \/ Retrieved at/);
       const metadata=await pane.locator('.award-source-metadata').first().evaluate(el=>{
-        const rows=[...el.querySelectorAll('.award-source-row')];return{count:rows.length,complete:rows.every(row=>row.scrollWidth<=row.clientWidth+1&&getComputedStyle(row).wordBreak==='keep-all'&&getComputedStyle(row).textOverflow!=='ellipsis'),separate:rows[1].getBoundingClientRect().top>=rows[0].getBoundingClientRect().bottom};
+        const rows=[...el.querySelectorAll('.award-source-row')];return{count:rows.length,complete:rows.every(row=>{const style=getComputedStyle(row);return style.whiteSpace==='nowrap'&&style.overflowX==='auto'&&style.textOverflow!=='ellipsis'&&row.clientHeight<=Math.ceil(parseFloat(style.lineHeight))+1}),separate:rows[1].getBoundingClientRect().top>=rows[0].getBoundingClientRect().bottom};
       });
-      assert.deepEqual(metadata,{count:2,complete:true,separate:true},label+' metadata has two full-width rows without clipping or character splitting');
+      assert.deepEqual(metadata,{count:2,complete:true,separate:true},label+' metadata has two single lines, with local scrolling for overflow');
       const bidders=pane.locator('.award-detail-content details').first();
       assert.equal(await bidders.getAttribute('open'),null,'bidder breakdown starts collapsed');
       await bidders.locator('summary').click();
@@ -277,6 +282,31 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     await page.locator('.company-overview-name').waitFor();
     await layout('Company search with long official address');
     await checkAwards(a,'Company investigation');
+    for(const width of [1440,1280,1024,768,390]){
+      await page.setViewportSize({width,height:900});
+      const info=page.locator('#nodeInfo');
+      await page.locator('#svg .node[data-node-id="company:22659295"]').dispatchEvent('click');
+      assert.match(await info.textContent(),/負責人/);
+      assert.equal(await info.locator('a').getAttribute('href'),'https://data.gcis.nat.gov.tw/');
+      await page.locator('#svg .node[data-node-id="website:5v.com.tw"]').dispatchEvent('click');
+      assert.match(await info.textContent(),/2537/);
+      assert.match(await info.textContent(),/2026-10-22/);
+      assert.equal(await info.locator('a').getAttribute('href'),'https://openapi.twse.com.tw/v1/opendata/t187ap03_L');
+      assert.equal(await info.evaluate(el=>el.scrollTop),0);
+      await page.evaluate(()=>document.querySelector('#closeNode').click());
+      await page.locator('.tab[data-tab="procurement"]').click();
+      const summary=page.locator('#procurementPane .record>summary').first();
+      const geometry=await summary.evaluate(el=>[...el.children].map(child=>{
+        const style=getComputedStyle(child);
+        return {height:child.clientHeight,lineHeight:parseFloat(style.lineHeight),top:child.offsetTop,overflow:style.overflowX};
+      }));
+      assert(geometry.every(row=>row.height<=Math.ceil(row.lineHeight)+1), JSON.stringify(geometry));
+      assert(geometry[1].top>geometry[0].top);
+      assert(geometry.every(row=>row.overflow==='auto'));
+      await layout(width+'px long award title and dates');
+      await page.locator('.tab[data-tab="overview"]').click();
+    }
+
     for(const node of [a,b]) {
       await page.goto('https://tei.local/entity/'+node.id);
       await page.locator('#graphTitle').filter({hasText:node.display_name}).waitFor();

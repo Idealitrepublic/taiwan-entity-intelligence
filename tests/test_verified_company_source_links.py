@@ -75,6 +75,21 @@ class VerifiedCompanySourceLinksTests(unittest.TestCase):
         self.assertEqual(result["website_crosscheck"]["website_source_url"],
                          reviewed_websites()["04231910"]["identity_source_url"])
 
+    def test_public_website_node_receives_existing_official_disclosure(self):
+        uniform = "22659295"
+        proof = reviewed_websites()[uniform]
+        base = {"status": "ok", "uniform_number": uniform,
+                "company_name": proof["company_name"], "evidence_status": {}}
+        with patch.object(cloud_company, "_base_company", return_value=base):
+            result = cloud_company.build_company(uniform, public_graph_only=True)
+        website = result["website_crosscheck"]
+        self.assertEqual(website["website_url"], "https://www.5v.com.tw")
+        self.assertEqual(website["website_verified_on"], proof["verified_on"])
+        self.assertEqual(website["website_site_source_url"], proof["website_source_url"])
+        self.assertEqual(website["website_source_record_id"], "2537")
+        self.assertEqual(website["website_source_class"], "official_issuer_disclosure")
+        self.assertNotIn("anti_fraud", website)
+
     def test_registry_domain_conflict_does_not_auto_check(self):
         base = {"status": "ok", "uniform_number": "04231910",
                 "company_name": "國泰世華商業銀行股份有限公司",
