@@ -1,0 +1,412 @@
+{
+  "baseline_commit": "b3f80f40f277728ac3ebc6c712dcf045f9f34bb2",
+  "round": "different async workflows",
+  "schedule_cases": 6000,
+  "distinct_browser_workflows": 19,
+  "browser_runs": [
+    {
+      "seed": 91021,
+      "round": "async-workflows",
+      "cases": 19,
+      "failures": 0,
+      "results": [
+        {
+          "name": "reversed-name-search",
+          "result": "PASS",
+          "requests": 3,
+          "downloads": 0
+        },
+        {
+          "name": "escape-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "invalid-input-after-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "outside-click-after-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "company-tail-after-entity",
+          "result": "PASS",
+          "requests": 8,
+          "downloads": 0
+        },
+        {
+          "name": "dismissed-lookup-keeps-current-company-sources",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "current-profile-does-not-close-new-search-results",
+          "result": "PASS",
+          "requests": 4,
+          "downloads": 0
+        },
+        {
+          "name": "profile-after-company",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "company-tail-after-example",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "path-after-new-search",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "path-range-then-clear",
+          "result": "PASS",
+          "requests": 3,
+          "downloads": 0
+        },
+        {
+          "name": "path-clear-pending",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "award-filter-detach-retry",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 0
+        },
+        {
+          "name": "download-retry-http503",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-html200",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-corrupt-pdf",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-abort",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-while-switching-company",
+          "result": "PASS",
+          "requests": 10,
+          "downloads": 1
+        },
+        {
+          "name": "closed-report-preview",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        }
+      ],
+      "network": "all application external requests blocked"
+    },
+    {
+      "seed": 43817,
+      "round": "async-workflows",
+      "cases": 19,
+      "failures": 0,
+      "results": [
+        {
+          "name": "reversed-name-search",
+          "result": "PASS",
+          "requests": 3,
+          "downloads": 0
+        },
+        {
+          "name": "escape-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "invalid-input-after-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "outside-click-after-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "company-tail-after-entity",
+          "result": "PASS",
+          "requests": 8,
+          "downloads": 0
+        },
+        {
+          "name": "dismissed-lookup-keeps-current-company-sources",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "current-profile-does-not-close-new-search-results",
+          "result": "PASS",
+          "requests": 4,
+          "downloads": 0
+        },
+        {
+          "name": "profile-after-company",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "company-tail-after-example",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "path-after-new-search",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "path-range-then-clear",
+          "result": "PASS",
+          "requests": 3,
+          "downloads": 0
+        },
+        {
+          "name": "path-clear-pending",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "award-filter-detach-retry",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 0
+        },
+        {
+          "name": "download-retry-http503",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-html200",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-corrupt-pdf",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-abort",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-while-switching-company",
+          "result": "PASS",
+          "requests": 10,
+          "downloads": 1
+        },
+        {
+          "name": "closed-report-preview",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        }
+      ],
+      "network": "all application external requests blocked"
+    },
+    {
+      "seed": 12077,
+      "round": "async-workflows",
+      "cases": 19,
+      "failures": 0,
+      "results": [
+        {
+          "name": "reversed-name-search",
+          "result": "PASS",
+          "requests": 3,
+          "downloads": 0
+        },
+        {
+          "name": "escape-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "invalid-input-after-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "outside-click-after-pending-search",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "company-tail-after-entity",
+          "result": "PASS",
+          "requests": 8,
+          "downloads": 0
+        },
+        {
+          "name": "dismissed-lookup-keeps-current-company-sources",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "current-profile-does-not-close-new-search-results",
+          "result": "PASS",
+          "requests": 4,
+          "downloads": 0
+        },
+        {
+          "name": "profile-after-company",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "company-tail-after-example",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "path-after-new-search",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        },
+        {
+          "name": "path-range-then-clear",
+          "result": "PASS",
+          "requests": 3,
+          "downloads": 0
+        },
+        {
+          "name": "path-clear-pending",
+          "result": "PASS",
+          "requests": 2,
+          "downloads": 0
+        },
+        {
+          "name": "award-filter-detach-retry",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 0
+        },
+        {
+          "name": "download-retry-http503",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-html200",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-corrupt-pdf",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-retry-abort",
+          "result": "PASS",
+          "requests": 7,
+          "downloads": 1
+        },
+        {
+          "name": "download-while-switching-company",
+          "result": "PASS",
+          "requests": 10,
+          "downloads": 1
+        },
+        {
+          "name": "closed-report-preview",
+          "result": "PASS",
+          "requests": 6,
+          "downloads": 0
+        }
+      ],
+      "network": "all application external requests blocked"
+    }
+  ],
+  "workflow_executions": 57,
+  "remaining_failures": 0,
+  "successful_isolated_downloads": 15,
+  "initial_failures": [
+    {
+      "name": "reversed-name-search",
+      "error": "Older name response replaced the latest search"
+    },
+    {
+      "name": "escape-pending-search",
+      "error": "Dismissed search results reopened after a late reply\n\ntrue !== false\n"
+    },
+    {
+      "name": "company-tail-after-entity",
+      "error": "Old company awards replaced a newly selected entity\n\n'隔離公司甲' !== '隔離機關丙'\n"
+    },
+    {
+      "name": "profile-after-company",
+      "error": "Old entity profile replaced a newer company investigation\n\n'隔離機關丙' !== '隔離公司乙'\n"
+    },
+    {
+      "name": "company-tail-after-example",
+      "error": "Old company source rerender removed the example path\n\nnull !== 'true'\n"
+    },
+    {
+      "name": "path-after-new-search",
+      "error": "Late path response replaced a newer search\n\n'true' !== null\n"
+    }
+  ],
+  "additional_initial_failure": {
+    "name": "download-retry-http503",
+    "error": "Successful retry kept the old report failure visible"
+  },
+  "production_modified": false,
+  "database_writes": false
+}

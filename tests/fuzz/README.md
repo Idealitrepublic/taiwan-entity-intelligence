@@ -45,3 +45,16 @@ python -m unittest tests.test_fuzz_regressions -v
 ## 限制
 
 固定預算與合成來源不能證明沒有其他漏洞，也不能驗證官方資料真實性、真實使用者滿意度或全部 RLS 行為。RLS／migration 另跑隔離 PostgreSQL integration；Preview 只做正常少量 smoke 與真實 PDF 下載，不對雲端執行上述高量 fuzzing。
+
+## 第二輪：不同操作與完成順序
+
+2026-11-19 的新 campaign 不沿用上輪展開／拖曳的操作表。它以可手動釋放的回應 gate，強制「後查先回、先查後回」，並測試取消、跨公司／機關／路徑切換、標案明細失敗後篩選／重試、HTTP 503／HTML 200／壞 PDF／網路失敗後重試、下載期間改查另一公司，以及關閉尚未完成的預覽視窗。
+
+```sh
+TEI_FUZZ_SEED=91021 node tests/fuzz/async_workflows.test.cjs
+TEI_FUZZ_SEED=91021 TEI_PYTHON=python3 node tests/fuzz/async_workflows_browser.cjs
+```
+
+另兩種子為 `43817`、`12077`。可用 `TEI_FUZZ_CASE=案例名稱` 只重播一個操作；`TEI_FUZZ_OUTPUT` 指定結果位置。每流程 18 秒隔離預算，逾時會記錄 FAIL，不把未完成算通過。此腳本會在本機呼叫專案 renderer 建立兩家公司不同內容的真實 PDF，用來逐 byte 核對下載，不載入憑證或真實 DB。
+
+`beginInvestigation` 管理目前公司／實體／路徑的生命週期；名稱搜尋另有自己的世代編號。選擇新調查目標會淘汰舊畫面的回應；單純開關搜尋視窗仍讓目前公司的來源完成更新。兩者不能混為一個全部取消的狀態。

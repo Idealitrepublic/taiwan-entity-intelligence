@@ -67,10 +67,11 @@ vm.runInContext(html.slice(routeStart,routeEnd),searchContext);
   const relatedPending=new Promise(resolve=>{finishRelated=resolve});
   const controls={search:{disabled:false,textContent:''},domain:{value:''},graphSub:{textContent:''}};
   const renderCounts=[];
-  const asyncContext=vm.createContext({companyRequestSerial:0,companySearchItem:null,relatedCompanyBranches:new Map(),
+  const asyncContext=vm.createContext({companyRequestSerial:0,activeNameRequest:null,companySearchItem:null,relatedCompanyBranches:new Map(),
     $:id=>controls[id],Date,Promise,fetch:async url=>({ok:true,json:async()=>url.includes('/api/company-related/')?await relatedPending:url.includes('/api/procurement/')?{status:'ok',matched:71,records:[{id:'award'}]}:{uniform_number:'96979933',graph:{nodes:[],edges:[]}}}),
     mergeWebsiteCheck:()=>{},render:data=>renderCounts.push(data.procurement_result?.matched||0),mergeProcurement:(data,result)=>{data.procurement_result=result},mergeRelatedCompanies:()=>{},loadLiveCompanyContributions:async()=>{}});
   const searchStart=html.indexOf('  async function searchCompany('),searchEnd=html.indexOf('  async function search(){',searchStart);
+  asyncContext.beginInvestigation=()=>++asyncContext.companyRequestSerial;
   vm.runInContext(html.slice(searchStart,searchEnd),asyncContext);
   const searchTask=vm.runInContext("searchCompany('96979933')",asyncContext);
   await new Promise(resolve=>setImmediate(resolve));

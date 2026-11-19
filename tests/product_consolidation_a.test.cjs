@@ -22,6 +22,7 @@ function pathHarness() {
     updateGraphLoading:()=>{},renderPathEndpoints:()=>{},createKnowledgeGraph:()=>({nodes:new Map(),edges:new Map()}),renderKnowledgeGraph:()=>{},resetGraphView:()=>{},hopLimit:{hidden:false},graphMode:'legacy',knowledgeGraph:null,selectedNodeId:null,selectedEdgeId:null,clearPathGraph:()=>{},clearConnectionSummary:()=>{},connectionModel:null,
     renderPathResult:data=>renders.push(data),setTimeout:()=>1,clearTimeout:()=>{},
     fetch:(url,options)=>new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}))});
+  context.beginInvestigation=()=>vm.runInContext('invalidatePathRequest()',context);
   vm.runInContext(`let pathRequestSerial=0,pathRequestController=null,pathLoading=false;
     const pathRange=$('pathDepth');
     let pathSelection={source:{id:'A',display_name:'A',entity_type:'Company'},target:{id:'B',display_name:'B',entity_type:'Company'}};
@@ -41,7 +42,7 @@ function reportHarness({popup=null,status=200,mime='application/pdf',bytes='%PDF
     clearWorkspaceSession:()=>{events.push('session-cleared');events.push('signed-out')},
     workspaceAuthView:()=>events.push('signed-out'),workspaceMessage:message=>events.push(message),
     sessionStorage:{removeItem:()=>events.push('session-cleared')},
-    window:{open:()=>popup,...(picker?{showSaveFilePicker:picker}:{})},document:{createElement:tag=>tag==='a'?link:notice,querySelector:()=>({prepend:()=>events.push('prepend-notice')})},
+    window:{open:()=>popup,...(picker?{showSaveFilePicker:picker}:{})},document:{createElement:tag=>tag==='a'?link:notice,querySelector:selector=>selector==='.report-feedback'?null:({prepend:()=>events.push('prepend-notice')})},
     URL:{createObjectURL:()=>{events.push('object-url');return 'blob:test'},revokeObjectURL:()=>events.push('revoke')},
     setTimeout:(callback,delay)=>{timers.push({callback,delay});return timers.length},clearTimeout:()=>{},setInterval:()=>1,clearInterval:()=>{},
     fetch:async(url,options)=>{requests.push({url,options});return {ok:status===200,status,
@@ -52,6 +53,13 @@ function reportHarness({popup=null,status=200,mime='application/pdf',bytes='%PDF
 }
 const cases=[];
 function test(name,run){cases.push({name,run})}
+test('public report retry removes the previous failure banner',async()=>{
+  const h=reportHarness({modal:false});
+  h.context.document.querySelector=selector=>selector==='.report-feedback'?{remove:()=>h.events.push('old-failure-cleared')}:{prepend:()=>{}};
+  await vm.runInContext("exportReport('company','22659295',true)",h.context);
+  assert(h.events.includes('old-failure-cleared'));
+  assert.equal(h.requests.length,1);
+});
 test('range remains 1/2/3, not an API semantic change',()=>{
   for(const [depth,label] of [[1,'直接關係 / Direct'],[2,'1 個中介 / 1 intermediary'],[3,'2 個中介 / 2 intermediaries']])
     assert(html.includes(`<option value="${depth}"${depth===3?' selected':''}>${label}</option>`));

@@ -185,7 +185,7 @@
   function displayValue(key,value){if(typeof value==='boolean')return value?'是 / Yes':'否 / No';const text=String(value??'—');if(/(?:source_locator|來源定位|Source locator)/i.test(key)&&!/^https?:\/\//i.test(text))return text.replace(/Business_Accounting_NO=(\d{8})/g,'統一編號 / Company ID：$1').replace(/(?:^|;)row=(\d+)/g,'；來源列 / Source row：$1');if(text==='exact_company_uniform;person_identity_source_scoped')return displayValueLabels.exact_company_uniform__person_source;if(displayValueLabels[text])return displayValueLabels[text];if(entityTypeLabels[text])return entityTypeLabels[text];if(relationshipLabels[text])return relationshipLabels[text];if(/(?:date|_at$|日期|時間|Retrieved|Observed)/i.test(key))return displayDate(text);return text}
   function displayContext(value){return String(value??'').replace(/得標欄位命中/g,'得標欄位符合').replace(/\b(term|session|co_chair):\s*([^;]+)/g,(_,key,item)=>`${displayFieldLabels[key]}：${key==='co_chair'?item.trim()==='Y'?'是 / Yes':item.trim()==='N'?'否 / No':item.trim():item.trim()}`)}
   const GRAPH_PAGE_SIZE=12,GRAPH_AUTO_NODE_BUDGET=60,GRAPH_SNAPSHOT_NODE_LIMIT=60,LEGACY_RECORD_PAGE_SIZE=8,RELATED_COMPANY_DETAIL_LIMIT=8;
-  let current=null,currentCheck=null,currentManual=false,zoom=1,panX=0,panY=0,selectedNodeId=null,selectedEdgeId=null,expandedHub=null,expandedProcurementCounty=null,expandedProcurementYear=null,procurementPage=0,relatedProcurementUniform=null,expandedJudicialYear=null,expandedJudicialMonth=null,expandedPenaltyLaw=null,expandedPenaltyArticle=null,expandedPenaltyYear=null,expandedPenaltyCounty=null,judicialPage=0,penaltyPage=0,graphRoot=null,lastGraphView=null,legacyFocusId=null,dragState=null,nodeDragState=null,suppressNodeClick=false,searchItems=new Map(),graphMode='legacy',knowledgeGraph=null,pathSelection={source:null,target:null},companyRequestSerial=0,companySearchItem=null;
+  let current=null,currentCheck=null,currentManual=false,zoom=1,panX=0,panY=0,selectedNodeId=null,selectedEdgeId=null,expandedHub=null,expandedProcurementCounty=null,expandedProcurementYear=null,procurementPage=0,relatedProcurementUniform=null,expandedJudicialYear=null,expandedJudicialMonth=null,expandedPenaltyLaw=null,expandedPenaltyArticle=null,expandedPenaltyYear=null,expandedPenaltyCounty=null,judicialPage=0,penaltyPage=0,graphRoot=null,lastGraphView=null,legacyFocusId=null,dragState=null,nodeDragState=null,suppressNodeClick=false,searchItems=new Map(),graphMode='legacy',knowledgeGraph=null,pathSelection={source:null,target:null},companyRequestSerial=0,companySearchItem=null,activeNameRequest=null,nameSearchSerial=0;
   const relatedCompanyBranches=new Map();
   const graphPager=document.createElement('div');graphPager.id='graphPager';graphPager.className='graph-pager';graphPager.hidden=true;graphPager.innerHTML='<button id="graphPrev" type="button">上一組 / Previous</button><span id="graphPageLabel" aria-live="polite"></span><button id="graphNext" type="button">下一組 / Next</button>';document.querySelector('.graphbar .tools').appendChild(graphPager);
   const graphActions=document.createElement('div');graphActions.className='graph-actions';graphActions.setAttribute('role','group');graphActions.setAttribute('aria-label','圖譜顯示操作 / Graph display controls');document.querySelector('.graphbar .tools').after(graphActions);
@@ -285,6 +285,7 @@
     if(!id)throw Error('請先選擇報告目標 / Select a report target');
     const requestKey=`${scope}:${id}:${download}`;
     if(reportRequests.has(requestKey))return;
+    if(scope!=='workspace')document.querySelector('.report-feedback')?.remove();
     const headers={},epoch=workspaceEpoch;
     if(scope==='workspace'){
       if(!workspaceSession?.access_token)throw Error('請先登入 / Sign in first');
@@ -944,7 +945,7 @@
   }
   async function findRelationshipPath(){
     if($('pathFind').disabled)return;
-    invalidatePathRequest();
+    beginInvestigation();
     const serial=pathRequestSerial,controller=new AbortController(),button=$('pathFind');
     pathRequestController=controller;pathLoading=true;renderPathSelection();renderPathEndpoints();updateGraphLoading();button.textContent='查找中 / Finding…';
     const params=new URLSearchParams({source:pathSelection.source.id,target:pathSelection.target.id,max_depth:$('pathDepth').value,company_only:'1',exact_depth:$('pathDepth').value});if(/^\d{8}$/.test(pathSelection.source.public_identifier||'')&&/^\d{8}$/.test(pathSelection.target.public_identifier||'')){params.set('source_uniform',pathSelection.source.public_identifier);params.set('target_uniform',pathSelection.target.public_identifier)}if(pathSelection.source.is_live_fallback||pathSelection.target.is_live_fallback)params.set('live','1');const timeout=setTimeout(()=>controller.abort(),35000);
@@ -1838,7 +1839,27 @@
     if(initial&&graph.status==='fulfilled')void autoExpandPublishedCompanies(state);
     if(initial&&graph.status==='rejected')$('graphSub').textContent=graph.reason.message;
   }
-  async function openEntityGraph(entityId,item={},updateHistory=true){clearConnectionSummary();$('search').disabled=true;$('search').textContent='載入中 / Loading…';try{const response=await fetch('/api/v1/entities/'+encodeURIComponent(entityId),{cache:'no-store'}),payload=await response.json();if(!response.ok)throw Error(payload.error||'實體載入失敗 / Entity load failed');let politician=null;if(payload.data.entity_type==='Politician'){const detailResponse=await fetch('/api/v1/politicians/'+encodeURIComponent(entityId)+'?limit=25',{cache:'no-store'}),detailPayload=await detailResponse.json();if(detailResponse.ok)politician=detailPayload.data}const contributions=null;graphMode='knowledge';knowledgeGraph=createKnowledgeGraph(payload.data,item);$('relationshipFilter').hidden=false;hopLimit.hidden=false;renderIndexedEntity(payload.data,item,politician,contributions);knowledgeGraph.rootOverview=$('overviewPane').innerHTML;renderKnowledgeGraph();if(updateHistory)history.pushState({entityId},'',`${payload.data.entity_type==='Politician'?'/politician':'/graph'}/${entityId}`);await expandKnowledgeNode(entityId)}catch(error){$('company').textContent='載入失敗 / Load failed';$('uniform').textContent=error.message}finally{$('search').disabled=false;$('search').textContent='開始調查 / Search'}}
+  async function openEntityGraph(entityId,item={},updateHistory=true){
+    const serial=beginInvestigation();
+    clearConnectionSummary();$('search').disabled=true;$('search').textContent='載入中 / Loading…';
+    try{
+      const response=await fetch('/api/v1/entities/'+encodeURIComponent(entityId),{cache:'no-store'}),payload=await response.json();
+      if(serial!==companyRequestSerial)return;
+      if(!response.ok)throw Error(payload.error||'實體載入失敗 / Entity load failed');
+      let politician=null;
+      if(payload.data.entity_type==='Politician'){
+        const detailResponse=await fetch('/api/v1/politicians/'+encodeURIComponent(entityId)+'?limit=25',{cache:'no-store'}),detailPayload=await detailResponse.json();
+        if(serial!==companyRequestSerial)return;
+        if(detailResponse.ok)politician=detailPayload.data;
+      }
+      const contributions=null;graphMode='knowledge';knowledgeGraph=createKnowledgeGraph(payload.data,item);
+      $('relationshipFilter').hidden=false;hopLimit.hidden=false;
+      renderIndexedEntity(payload.data,item,politician,contributions);knowledgeGraph.rootOverview=$('overviewPane').innerHTML;renderKnowledgeGraph();
+      if(updateHistory)history.pushState({entityId},'',`${payload.data.entity_type==='Politician'?'/politician':'/graph'}/${entityId}`);
+      await expandKnowledgeNode(entityId);
+    }catch(error){if(serial===companyRequestSerial){$('company').textContent='載入失敗 / Load failed';$('uniform').textContent=error.message}}
+    finally{if(serial===companyRequestSerial&&activeNameRequest===null){$('search').disabled=false;$('search').textContent='開始調查 / Search'}}
+  }
   function websiteCard(check,manual){const url=safeSourceUrl(check?.website_url||current?.website_url);return url?`<div class="card"><h4>公司官網 / Company website</h4><p><a href="${esc(url)}" target="_blank" rel="noreferrer">${esc(check?.domain||url)} ↗</a></p></div>`:''}
 
   function rawGrid(row){const entries=Object.entries(row||{}).filter(([key,value])=>!key.startsWith('_')&&value!==null&&value!==''&&typeof value!=='object').slice(0,36);return entries.length?`<div class="raw-grid">${entries.map(([key,value])=>`<div class="raw-row"><b>${esc(key)}</b><span>${esc(value)}</span></div>`).join('')}</div>`:''}
@@ -2041,7 +2062,7 @@
   function politicianOverview(profile,data,contributions=null){const terms=Array.isArray(data?.terms)?data.terms:[],committees=Array.isArray(data?.committees)?data.committees:[],proposed=Array.isArray(data?.proposed_bills)?data.proposed_bills:[],coSponsored=Array.isArray(data?.co_sponsored_bills)?data.co_sponsored_bills:[],affiliations=[...(data?.affiliations||[]),...(data?.legislatures||[])];const termCards=terms.length?terms.map(term=>{const evidence=term.primary_evidence||{},url=safeSourceUrl(evidence.source_url);return`<div class="card"><div class="section-head"><h4>第 ${esc(term.term_number)} 屆立法委員<br>Legislative term ${esc(term.term_number)}</h4><span class="count">${esc(term.start_date)} → ${esc(term.end_date||'現任 / current')}</span></div><div class="kv"><div><span>政黨 / Party</span><span>${esc(term.party?.display_name||'—')}</span></div><div><span>選區 / Constituency</span><span>${esc(term.constituency)}</span></div><div><span>選區類型 / Type</span><span>${esc(displayValue('constituency_type',term.constituency_type))}</span></div><div><span>Evidence</span><span>${esc(evidence.title||evidence.id||'—')}</span></div></div>${url?`<p><a href="${esc(url)}" target="_blank" rel="noreferrer">開啟原始資料 / Open source ↗</a></p>`:''}</div>`}).join(''):'<div class="notice">尚無已發布任期資料；仍可查看下方有 Evidence 的關係。<br>No published term profile yet; evidence-backed relationships remain available.</div>';return`<div class="detail"><h3>${esc(profile.display_name)}</h3><div class="tag">立法委員 / Legislator · Politician Entity</div><div class="notice">同名人物不會自動合併；任期、政黨、委員會與提案皆須保留原始證據。<br>Same-name records stay separate; every fact requires source Evidence.</div>${pathEntityActions(profile)}<div style="height:10px"></div>${termCards}${contributions?politicalContributionCards(contributions):''}${politicianRelationshipCards('政黨／立法院關係 · Affiliations',affiliations)}${politicianRelationshipCards('委員會 · Committees',committees)}${politicianRelationshipCards('提案 · Proposed bills',proposed)}${politicianRelationshipCards('共同提案 · Co-sponsored bills',coSponsored)}${data?.relationship_has_more?'<div class="notice">另有關係未列於本頁；請用 Graph lazy loading 查看。 / More relationships are available in Graph.</div>':''}</div>`}
   function renderIndexedEntity(profile,item,politician=null,contributions=null){
     relationSummary.innerHTML='<div class="eyebrow">這個實體連結了什麼 / Relationship summary</div><p class="relation-guide">正在載入有公開證據的相鄰關係；點圖中連線查看來源。 / Loading evidenced neighbors; select a link for its source.</p>';
-    selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;current=null;currentCheck=null;currentManual=false;hideSearchResults();$('company').textContent=profile.display_name;$('uniform').textContent=`${entityTypeLabels[profile.entity_type]||profile.entity_type} · Entity ID ${profile.id}`;$('companyKV').innerHTML=`<div class="kv"><div><span>識別狀態 / Identity status</span><span>${esc(displayValue('identity_status',profile.identity_status))}</span></div><div><span>搜尋脈絡 / Search context</span><span>${esc(displayContext(item.context_label||'—'))}</span></div></div>`;$('signal').hidden=true;$('sourceStatus').innerHTML=(profile.evidence||[]).map(link=>`<div class="src"><span class="name">${esc(link.evidence?.source_name||'公開來源 / Public source')}</span><span class="ok">已發布 / Published</span></div>`).join('');
+    selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;current=null;currentCheck=null;currentManual=false;$('company').textContent=profile.display_name;$('uniform').textContent=`${entityTypeLabels[profile.entity_type]||profile.entity_type} · Entity ID ${profile.id}`;$('companyKV').innerHTML=`<div class="kv"><div><span>識別狀態 / Identity status</span><span>${esc(displayValue('identity_status',profile.identity_status))}</span></div><div><span>搜尋脈絡 / Search context</span><span>${esc(displayContext(item.context_label||'—'))}</span></div></div>`;$('signal').hidden=true;$('sourceStatus').innerHTML=(profile.evidence||[]).map(link=>`<div class="src"><span class="name">${esc(link.evidence?.source_name||'公開來源 / Public source')}</span><span class="ok">已發布 / Published</span></div>`).join('');
     $('coverageScope').textContent='點擊節點可分批展開已發布關係，預設不限層數。展開公司時也可查看依統編核對的登記職務。 / Click nodes to explore published links page by page at any depth. Company expansion can also show registry roles verified by company ID.';
     for(const id of ['people','edges','penaltyCount','judicialCount','procurementCount'])$(id).textContent='0';$('evcount').textContent=(profile.evidence||[]).length;$('evcount').nextElementSibling.textContent='已發布證據 / Published evidence';$('tabPenaltyCount').textContent='官方查詢 / Official lookup';$('tabJudicialCount').textContent='官方查詢 / Official lookup';$('tabProcurementCount').textContent='Awards';$('graphTitle').textContent=profile.display_name;$('graphSub').textContent='正在建立實體關係圖 / Building entity graph';$('graphEmpty').innerHTML='點擊節點展開相鄰關係<br>Click a node to load its neighbors';
     const evidence=(profile.evidence||[]).map(link=>{const row=link.evidence||{},url=safeSourceUrl(row.source_url);return`<div class="card"><div class="section-head"><h4>${esc(row.title||link.fact_type)}</h4><span class="count">${esc(row.source_name||'')}</span></div><p>${esc(row.summary||'')}</p><div class="meta"><span>${esc(row.source_class||'')}</span><span>${esc(row.observed_at||'')}</span></div>${url?`<p><a href="${esc(url)}" target="_blank" rel="noreferrer">開啟原始資料 / Open source ↗</a></p>`:''}</div>`}).join(''),companyAction=/^\d{8}$/.test(item.public_identifier||'')?`<p><button class="toolbtn open-company-investigation" data-uniform="${esc(item.public_identifier)}">開啟完整公司調查 / Open full company investigation</button></p>`:'';$('overviewPane').innerHTML=profile.entity_type==='Politician'&&politician?politicianOverview(profile,politician,contributions):`<div class="detail"><h3>${esc(profile.display_name)}</h3><div class="tag">${esc(entityTypeLabels[profile.entity_type]||profile.entity_type)}</div><div class="notice">此為獨立 Entity ID；相同姓名不會自動合併。<br>This is a distinct entity ID; identical names are not auto-merged.</div>${companyAction}${pathEntityActions(profile)}<div style="height:10px"></div>${profile.entity_type==='Company'&&contributions?politicalContributionCards(contributions):''}${evidence||'<p class="empty">目前沒有可公開的證據摘要。 / No public evidence summary.</p>'}</div>`;renderOfficialLookupPanes();$('procurementPane').innerHTML='<div class="notice">請在關係圖點選「政府標案」關係查看證據。 / Select a contract edge in the graph to inspect evidence.</div>';selectOverviewTab()
@@ -2054,8 +2075,22 @@
   async function openSearchResult(item){
     hideSearchResults();if(item.entity_type==='Company'&&/^\d{8}$/.test(item.public_identifier||'')){await searchCompany(item.public_identifier,item);return}await openEntityGraph(item.entity_id,item)
   }
+  function beginInvestigation(){
+    const serial=++companyRequestSerial;
+    nameSearchSerial++;activeNameRequest=null;
+    invalidatePathRequest();renderPathSelection();hideSearchResults();
+    $('search').disabled=false;$('search').textContent='開始調查 / Search';
+    return serial;
+  }
+  function dismissSearchResults(){
+    hideSearchResults();nameSearchSerial++;
+    if(activeNameRequest!==null){
+      activeNameRequest=null;
+      $('search').disabled=false;$('search').textContent='開始調查 / Search';
+    }
+  }
   async function searchCompany(uniform,item=null){
-    const serial=++companyRequestSerial,domain=$('domain')?.value?.trim();
+    const serial=beginInvestigation(),domain=$('domain')?.value?.trim();
     companySearchItem=item;
     relatedCompanyBranches.clear();
     $('search').disabled=true;$('search').textContent='查詢中 / Searching…';
@@ -2075,12 +2110,24 @@
       await Promise.allSettled([procurementUpdate,relatedUpdate]);
       await loadLiveCompanyContributions(uniform,serial)
     }catch(error){if(serial===companyRequestSerial){$('company').textContent='查詢失敗 / Search failed';$('uniform').textContent=error.message}}
-    finally{if(serial===companyRequestSerial){$('search').disabled=false;$('search').textContent='開始調查 / Search'}}
+    finally{if(serial===companyRequestSerial&&activeNameRequest===null){$('search').disabled=false;$('search').textContent='開始調查 / Search'}}
   }
   async function search(){
-    const term=$('q').value.normalize('NFKC').trim(),kind=$('entityTypeFilter').value;if(/^\d{8}$/.test(term)&&(!kind||kind==='Company')){hideSearchResults();await searchCompany(term);return}if(term.length<2||term.length>100){$('uniform').textContent='請輸入至少 2 個字 / Enter at least 2 characters';$('q').focus();return}$('search').disabled=true;$('search').textContent='搜尋中 / Searching…';try{const params=new URLSearchParams({q:term,limit:'20'});if(kind)params.set('entity_type',kind);const response=await fetch('/api/v1/search?'+params,{cache:'no-store'}),payload=await response.json();if(!response.ok)throw Error(payload.error||'搜尋失敗 / Search failed');renderSearchResults(payload.data)}catch(error){$('company').textContent='搜尋失敗 / Search failed';$('uniform').textContent=error.message;hideSearchResults()}finally{$('search').disabled=false;$('search').textContent='開始調查 / Search'}
+    const term=$('q').value.normalize('NFKC').trim(),kind=$('entityTypeFilter').value;
+    if(/^\d{8}$/.test(term)&&(!kind||kind==='Company')){await searchCompany(term);return}
+    const serial=++nameSearchSerial;hideSearchResults();
+    if(term.length<2||term.length>100){dismissSearchResults();$('uniform').textContent='請輸入至少 2 個字 / Enter at least 2 characters';$('q').focus();return}
+    activeNameRequest=serial;$('search').disabled=true;$('search').textContent='搜尋中 / Searching…';
+    try{
+      const params=new URLSearchParams({q:term,limit:'20'});if(kind)params.set('entity_type',kind);
+      const response=await fetch('/api/v1/search?'+params,{cache:'no-store'}),payload=await response.json();
+      if(serial!==nameSearchSerial)return;
+      if(!response.ok)throw Error(payload.error||'搜尋失敗 / Search failed');
+      renderSearchResults(payload.data);
+    }catch(error){if(serial===nameSearchSerial){$('company').textContent='搜尋失敗 / Search failed';$('uniform').textContent=error.message;hideSearchResults()}}
+    finally{if(serial===nameSearchSerial){activeNameRequest=null;$('search').disabled=false;$('search').textContent='開始調查 / Search'}}
   }
-  $('search').addEventListener('click',search);$('q').addEventListener('keydown',event=>{if(event.key==='Enter')search();if(event.key==='Escape')hideSearchResults()});$('domain').addEventListener('keydown',event=>{if(event.key==='Enter')search()});$('sample').addEventListener('click',loadRelationshipExample);$('searchResults').addEventListener('click',event=>{if(event.target.closest('.close-results')){hideSearchResults();return}const button=event.target.closest('[data-search-id]');if(button)openSearchResult(searchItems.get(button.dataset.searchId))});document.addEventListener('click',event=>{if(!event.target.closest('.search'))hideSearchResults();const button=event.target.closest('.path-select');if(button)setPathEndpoint(button.dataset.pathRole,{id:button.dataset.entityId,display_name:button.dataset.entityName,entity_type:button.dataset.entityType,public_identifier:button.dataset.pathUniform,is_live_fallback:button.dataset.pathLive==='1'})});$('pathFind').addEventListener('click',findRelationshipPath);$('pathClear').addEventListener('click',()=>{pathSelection={source:null,target:null};$('pathResult').innerHTML='';renderPathSelection()});$('clear').addEventListener('click',()=>location.reload());$('fit').addEventListener('click',resetGraphView);$('collapse').addEventListener('click',collapseGraph);$('plus').addEventListener('click',()=>setZoom(zoom+.1));$('minus').addEventListener('click',()=>setZoom(zoom-.1));document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{
+  $('search').addEventListener('click',search);$('q').addEventListener('keydown',event=>{if(event.key==='Enter')search();if(event.key==='Escape')dismissSearchResults()});$('domain').addEventListener('keydown',event=>{if(event.key==='Enter')search()});$('sample').addEventListener('click',loadRelationshipExample);$('searchResults').addEventListener('click',event=>{if(event.target.closest('.close-results')){dismissSearchResults();return}const button=event.target.closest('[data-search-id]');if(button)openSearchResult(searchItems.get(button.dataset.searchId))});document.addEventListener('click',event=>{if(!event.target.closest('.search'))dismissSearchResults();const button=event.target.closest('.path-select');if(button)setPathEndpoint(button.dataset.pathRole,{id:button.dataset.entityId,display_name:button.dataset.entityName,entity_type:button.dataset.entityType,public_identifier:button.dataset.pathUniform,is_live_fallback:button.dataset.pathLive==='1'})});$('pathFind').addEventListener('click',findRelationshipPath);$('pathClear').addEventListener('click',()=>{pathSelection={source:null,target:null};$('pathResult').innerHTML='';renderPathSelection()});$('clear').addEventListener('click',()=>location.reload());$('fit').addEventListener('click',resetGraphView);$('collapse').addEventListener('click',collapseGraph);$('plus').addEventListener('click',()=>setZoom(zoom+.1));$('minus').addEventListener('click',()=>setZoom(zoom-.1));document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{
     const tab=button.dataset.tab;
     selectRecordTab(tab);
     if(tab==='procurement'&&graphMode==='knowledge'){
