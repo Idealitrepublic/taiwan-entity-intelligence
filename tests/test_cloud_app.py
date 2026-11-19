@@ -13,6 +13,11 @@ class CloudAppTests(unittest.TestCase):
         status=[]
         body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':path,'HTTP_HOST':'taiwan-entity-intelligence.vercel.app'},lambda s,h:status.append(s)))
         return status[0],body
+    def manual_status(self):
+        # Exact totals are an explicit off-request audit, never page-load work.
+        import app as entrypoint
+        code,body,_=entrypoint._refresh_database_status()
+        return str(code),json.dumps(body).encode()
     def test_primary_domain_serves_locally(self):
         with patch('urllib.request.urlopen',side_effect=AssertionError('No proxy allowed')):
             status,body=self.request('/')
@@ -25,7 +30,7 @@ class CloudAppTests(unittest.TestCase):
     def test_health_does_not_claim_success_on_failed_database(self):
         import app as entrypoint
         entrypoint.STATUS_CACHE.clear()
-        with patch('app.db_count',side_effect=RuntimeError('Unavailable')):
+        with patch('app.core.SUPABASE_KEY',''), patch('app.db_count',side_effect=AssertionError('No counts on public requests')):
             status,body=self.request('/api/status')
         self.assertTrue(status.startswith('503'))
         self.assertFalse(json.loads(body)['supabase']['connected'])
@@ -39,7 +44,7 @@ class CloudAppTests(unittest.TestCase):
             return {'source_files': 3, 'source_records': 80122, 'entity_evidence': 908,
                     'evidence_records': 911, 'relationships': 1027}.get(table, 0)
         with patch('app.db_count', side_effect=count), patch('app.core.SUPABASE_KEY', 'anon-test'):
-            status, body = self.request('/api/status')
+            status, body = self.manual_status()
         data = json.loads(body)['supabase']
         self.assertTrue(status.startswith('200'))
         self.assertEqual(data['legacy'], {'companies': 0, 'people': 0, 'evidence': 0})
@@ -58,7 +63,7 @@ class CloudAppTests(unittest.TestCase):
         with patch('app.db_count', side_effect=count) as counted, \
                 patch('app.core.SUPABASE_KEY', 'anon-test'), \
                 patch('app.log_event') as logged:
-            status, body = self.request('/api/status')
+            status, body = self.manual_status()
             self.assertTrue(status.startswith('200'))
             payload = json.loads(body)
             self.assertEqual(payload['status'], 'partial')
@@ -66,7 +71,7 @@ class CloudAppTests(unittest.TestCase):
             self.assertIsNone(payload['supabase']['canonical']['evidence_records'])
             self.assertEqual(payload['supabase']['canonical']['companies'], 462)
             first_calls = counted.call_count
-            cached_status, cached_body = self.request('/api/status')
+            cached_status, cached_body = self.manual_status()
             self.assertEqual(cached_status, status)
             self.assertEqual(json.loads(cached_body)['status'], 'partial')
             self.assertEqual(counted.call_count, first_calls)
@@ -92,7 +97,7 @@ class CloudAppTests(unittest.TestCase):
         with patch('app.db_count', side_effect=count) as counted, \
                 patch('app.core.SUPABASE_KEY', 'anon-test'), \
                 patch('app.log_event') as logged:
-            status, body = self.request('/api/status')
+            status, body = self.manual_status()
         self.assertTrue(status.startswith('200'))
         payload = json.loads(body)
         self.assertEqual(payload['status'], 'ok')
@@ -125,9 +130,9 @@ class CloudAppTests(unittest.TestCase):
 
         with patch('app.db_count', side_effect=count), patch('app.core.SUPABASE_KEY', 'anon-test'):
             with ThreadPoolExecutor(max_workers=2) as pool:
-                first = pool.submit(entrypoint.dispatch, '/api/status', {})
+                first = pool.submit(entrypoint._refresh_database_status)
                 self.assertTrue(first_wave.wait(2))
-                second = pool.submit(entrypoint.dispatch, '/api/status', {})
+                second = pool.submit(entrypoint._refresh_database_status)
                 try:
                     self.assertFalse(duplicate.wait(.1), 'parallel requests repeated the full count fanout')
                 finally:
@@ -149,7 +154,7 @@ class CloudAppTests(unittest.TestCase):
                 patch('app.core.SUPABASE_KEY', 'anon-test'), \
                 patch('app.time.monotonic', side_effect=lambda: clock[0]), \
                 patch('app.log_event'):
-            status, payload, _ = entrypoint.database_status()
+            status, payload, _ = entrypoint._refresh_database_status()
         self.assertEqual(status, 503)
         self.assertFalse(payload['supabase']['connected'])
         self.assertEqual(counted.call_count, 11)

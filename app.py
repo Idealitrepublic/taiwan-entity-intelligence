@@ -157,20 +157,54 @@ def database_status():
             if snapshot:
                 body = {'status': 'cached', 'version': '9.3-directional-filters', 'supabase': snapshot}
                 cached = (0, (200, body))
-                STATUS_CACHE[cache_key] = cached
+            else:
+                body = {'status': 'degraded', 'version': '9.3-directional-filters',
+                        'supabase': {'configured': bool(core.SUPABASE_KEY),
+                                     'connected': False, 'counts_state': 'unavailable'}}
+                cached = (0, (503, body))
+            STATUS_CACHE[cache_key] = cached
     if cached:
-        # Return the last verified counts immediately, never replace them with a
-        # timeout/zero. Only one bounded background refresh per process.
-        if time.monotonic() - cached[0] >= 55 and STATUS_BACKGROUND_LOCK.acquire(blocking=False):
+        # Never fan out exact RLS counts on a public page load: those compete
+        # with search on the same database. Keep dated verified aggregates and
+        # probe connectivity with one bounded row, single-flight per process.
+        if core.SUPABASE_KEY and time.monotonic() - cached[0] >= 55 and STATUS_BACKGROUND_LOCK.acquire(blocking=False):
             def refresh():
                 try:
-                    _refresh_database_status()
+                    _refresh_status_connectivity()
                 finally:
                     STATUS_BACKGROUND_LOCK.release()
             Thread(target=refresh, daemon=True).start()
         code, body = cached[1]
         return code, {**body, 'source_notices': active_source_notices()}, None
-    return _refresh_database_status()
+
+
+def _refresh_status_connectivity():
+    cache_key = (core.SUPABASE, id(db_count))
+    with STATUS_CACHE_LOCK:
+        previous = STATUS_CACHE.get(cache_key)
+    if not previous:
+        return
+    db = {**previous[1][1]['supabase']}
+    request = urllib.request.Request(
+        core.SUPABASE.rstrip('/') + '/rest/v1/entities?select=id&limit=1',
+        headers={'apikey': core.SUPABASE_KEY, 'Authorization': f'Bearer {core.SUPABASE_KEY}'})
+    try:
+        with urllib.request.urlopen(request, timeout=2) as response:
+            rows = json.load(response)
+        if not isinstance(rows, list):
+            raise ValueError('Invalid database probe response')
+        db['connected'] = True
+    except Exception as exc:
+        db['connected'] = False
+        log_event('warning', 'status_probe_unavailable', error_type=type(exc).__name__,
+                  http_status=getattr(exc, 'code', None))
+    # A successful probe is not a new count verification. Preserve every
+    # aggregate value, its original timestamp, and the cached/stale labels.
+    code = 200 if db['connected'] or db.get('snapshot_available') else 503
+    status = 'cached' if db.get('snapshot_available') else 'partial' if db['connected'] else 'degraded'
+    body = {**previous[1][1], 'status': status, 'supabase': db}
+    with STATUS_CACHE_LOCK:
+        STATUS_CACHE[cache_key] = (time.monotonic(), (code, body))
 
 def dispatch(path, query, method='GET', payload=None, authorization=None):
     if path.rstrip('/') == '/api/v1/workspace-config':
