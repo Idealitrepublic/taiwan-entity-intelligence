@@ -596,3 +596,8 @@ JIT is disabled only inside this short interactive RPC; role/global JIT, stateme
 timeouts, grants and all write/publication policies are unchanged. Migration
 `20261119032245_public_search_timeout_repair.sql` changes no stored rows and introduces
 no SECURITY DEFINER bypass, new tables or indexes.
+Follow-up `20261119033610_public_search_identifier_fast_path.sql` directly resolves a
+visible unique company number when the caller requests one result. Its score-zero
+result is identical to the full ranked search; if absent, the normal name/identifier
+search still runs. This internal company-resolution path never reads the name
+projection or relationship context, reducing cold-query work without weakening RLS.

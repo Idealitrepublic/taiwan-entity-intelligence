@@ -1029,6 +1029,7 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     ['same1','排序測試同名人','排序測試同名人','Person','SOURCE_SCOPED','published'],
     ['same2','排序測試同名人','排序測試同名人','Person','SOURCE_SCOPED','published'],
     ['wildcard','排序%_\\測試公司','排序%_\\測試公司','Company','EXACT','published'],
+    ['number-name','87654321字串公司','87654321字串公司','Company','EXACT','published'],
     ['draft','排序測試草稿','排序測試草稿','Company','EXACT','draft'],
     ['unresolved','排序測試待核公司','排序測試待核公司','Company','UNRESOLVED','published']
   ]) {
@@ -1041,8 +1042,10 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     values (md5('search-alias')::uuid,'排序測試','search-fixture');
     insert into public.entity_search_terms(entity_id,normalized_term,display_term,term_kind)
     values (md5('search-draft')::uuid,'排序測試','排序測試','alias') on conflict do nothing;`);
-  const searchFix = files.find(file => file.endsWith('_public_search_timeout_repair.sql'));
-  await db.exec(fs.readFileSync(`supabase/migrations/${searchFix}`, 'utf8'));
+  for (const suffix of ['_public_search_timeout_repair.sql','_public_search_identifier_fast_path.sql']) {
+    const searchFix = files.find(file => file.endsWith(suffix));
+    await db.exec(fs.readFileSync(`supabase/migrations/${searchFix}`, 'utf8'));
+  }
   assert.equal((await db.query(`select prosecdef,proconfig from pg_proc
     where oid='public.search_entities(text,text,integer)'::regprocedure`)).rows[0].prosecdef,false);
   assert.ok((await db.query(`select proconfig from pg_proc
@@ -1054,7 +1057,9 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     ['排序%_',null,20],['%_',null,20],['\\測試',null,20],
     ['測試公司',null,20],['12345678','Company',20],['１２３４５６７８',null,20],
     ['林立委',null,20],['MOTC',null,20],['交通',null,20],
-    ['測試裁判','Judgment',20],['遊說','LobbyingRecord',20],['沒有此公司',null,20]
+    ['測試裁判','Judgment',20],['遊說','LobbyingRecord',20],['沒有此公司',null,20],
+    ['12345678','Company',1],['１２３４５６７８',null,1],
+    ['12345678','Person',1],['87654321','Company',1],['排序測試','Company',1]
   ];
   for (const role of ['anon','authenticated']) {
     await db.exec(`set role ${role}`);
@@ -1079,6 +1084,16 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     checks += 9;
   }
   await db.exec('drop function public.search_entities_reference(text,text,integer)');
+  // Exact single-ID resolution must not even read the name projection. This
+  // catches a regression back to the expensive all-name plan, without timing
+  // assertions that depend on CI machine speed.
+  await db.exec('revoke select on public.entity_search_terms from anon; set role anon');
+  const directId=(await db.query("select * from public.search_entities('12345678','Company',1)")).rows;
+  assert.equal(directId.length,1);
+  assert.equal(directId[0].public_identifier,'12345678');
+  await rejects("select * from public.search_entities('測試公司',null,20)",'name projection denial is real');
+  await db.exec('reset role; grant select on public.entity_search_terms to anon');
+  checks += 3;
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;
