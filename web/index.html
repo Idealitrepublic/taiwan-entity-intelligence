@@ -716,6 +716,7 @@
       '定位類型 / Locator type':evidence.source_locator_type,
       '資料依據 / Data basis':evidence.data_status,
       '比對方式 / Match rule':match,
+      ...(!isAward&&node.type!=='company'?{'資料日期 / Event date':evidence.event_date||properties.date}:{}),
       '資料取得日期 / Retrieved at':isAward?awardDate(evidence.retrieved_at||properties.retrieved_at):evidence.retrieved_at||properties.retrieved_at,
     };
     const sourceLabel=evidence.source_locator_type==='dataset_only'||evidence.source_locator_type==='issuer_disclosure'
