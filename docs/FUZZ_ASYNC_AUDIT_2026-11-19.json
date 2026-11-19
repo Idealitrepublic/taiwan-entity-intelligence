@@ -408,5 +408,55 @@
     "error": "Successful retry kept the old report failure visible"
   },
   "production_modified": false,
-  "database_writes": false
+  "database_writes": false,
+  "verified_code_commit": "fc427745580eab63472d367ec0bca671774b18dc",
+  "clean_commit_validation": {
+    "python_tests": 550,
+    "isolated_postgresql_checks": 250,
+    "javascript": "PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "existing_browser_suites": 8
+  },
+  "preview": {
+    "url": "https://taiwan-entity-intelligence-ki31sf0v2-coldlight871029-9944.vercel.app/",
+    "deployment_id": "dpl_53A6vdydractAWDw3C7c89RBWHvT",
+    "state": "READY",
+    "initial_run": "FAIL",
+    "initial_api_503": [
+      {
+        "path": "/api/v1/search",
+        "duration_ms": 7316.7
+      },
+      {
+        "path": "/api/v1/search",
+        "duration_ms": 7774.5
+      }
+    ],
+    "last_full_run": {
+      "result": "PASS",
+      "latest_name_search": true,
+      "company": "聯上開發",
+      "path_nodes": 3,
+      "range_switch": true,
+      "right_company": true,
+      "pdf": "tei-company-22659295.pdf",
+      "bytes": 129321,
+      "page_errors": [],
+      "api_5xx": []
+    },
+    "pdf_pages": 13,
+    "pdf_content_company_verified": true
+  },
+  "open_findings": [
+    {
+      "id": "R2-04",
+      "severity": "Medium",
+      "status": "OPEN",
+      "issue": "Intermittent anon search_entities statement timeout",
+      "evidence": "PostgREST search_entities HTTP 500 and PostgreSQL 57014 at 2026-11-19 02:49 UTC; application search returned 503. Later retry recovered but database timeout recurred.",
+      "trigger_not_established": true,
+      "schema_changed": false
+    }
+  ]
 }

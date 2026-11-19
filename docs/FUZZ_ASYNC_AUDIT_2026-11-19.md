@@ -45,13 +45,27 @@
 - 其中每種子有 5 次成功 PDF 實際下載，合計 15 個檔案，均與該目標生成的有效 PDF bytes 一致。另有 4 類故障回應與取消視窗不下載檢查。
 - 全部應用外連攔截，僅提供 `tei.local` 合成回應；沒有寫入資料庫，也沒有向官方網站或 Production fuzz。
 - 本機完整測試（含原有備份變更）：551 Python tests、250 隔離 PostgreSQL checks、全部 JavaScript、lint、build 通過。
-- 原有八套 browser regression 全部通過。另從乾淨 commit 驗證後再記錄正式數量。
+- 原有八套 browser regression 全部通過。另從乾淨的修復 commit `fc427745580eab63472d367ec0bca671774b18dc` 匯出並重跑：550 Python tests、250 隔離 PostgreSQL checks、全部 JavaScript、lint、build 通過。551 與 550 的差異是使用者原有未提交備份測試，本輪沒有將它納入 commit。
 
 可重跑命令與限制見 [測試工具說明](../tests/fuzz/README.md)；機器結果見 [本輪數據](FUZZ_ASYNC_AUDIT_2026-11-19.json)。
 
 ## Preview
 
-待獨立分支部署後，以正常使用量驗證實際搜尋／切換、路徑、標案與 PDF 按鈕；不得以隔離結果代替真實 Preview，亦不向雲端發送高量故障測試。
+修復 commit：`fc427745580eab63472d367ec0bca671774b18dc`。
+
+[已驗證 Preview](https://taiwan-entity-intelligence-ki31sf0v2-coldlight871029-9944.vercel.app/)，部署 `dpl_53A6vdydractAWDw3C7c89RBWHvT`，READY，分支 `test/fuzz-async-workflows`。使用受保護 Preview 的臨時授權，只發送正常使用量；沒有解除登入保護或向雲端執行高量 fuzz。
+
+| 實際驗證 | 結果 |
+|---|---|
+| 連續送出「中華電信」再「聯上開發」，選最新公司結果 | 最終驗證 PASS；選中聯上開發，舊結果未覆蓋 |
+| 真實中介範例與 1／2 中介快速切換 | PASS，最終保留 3 個路徑節點；不把取消的 2 中介查詢當成完整資料驗收 |
+| 路徑右側重新選聯上開發，載入公司概況／標案 | PASS，公司及 procurement API 200，概況對應選中公司；未全量覆核所有標案明細 |
+| 點「下載完整調查 PDF」至實際檔案 | PASS，`tei-company-22659295.pdf`，129,321 bytes、13 頁，PDF parser 可讀，內文包含聯上開發及統編；本輪未重新宣稱所有頁面排版人工驗收 |
+| 最後一次完整瀏覽器流程 | PASS，pageerror 0、該次 API 5xx 0 |
+
+**R2-04／Medium，尚未解決：真實搜尋偶發資料庫逾時。** 首次 Preview 驗證的兩筆 `/api/v1/search` 於臺灣時間 2026-11-19 10:49 回 503，耗時 7,316.7／7,774.5 ms；該次驗收 FAIL，沒有抹除。Supabase 唯讀日誌同時記錄 anon 的 `rpc/search_entities` HTTP 500 與 PostgreSQL `57014: canceling statement due to statement timeout`，確認後端搜尋查詢遭逾時取消；不是本輪前端回應世代修復能保證消除的問題。後續正常流程重跑完成，但 10:52 仍有搜尋在資料庫層逾時後由既有 retry 恢復，成功不代表查詢成本已修復。
+
+目前證據尚不足將逾時歸因於缺少索引、RLS 成本、同時執行統計或特定資源限制；本輪未擅自調高 timeout、移除 RLS、修改 Development schema 或升級方案。此項保持 OPEN，後續應針對 `search_entities` 的 anon 執行計畫與同時查詢負載做獨立效能修復。Vercel 的 error/fatal 日誌為 0，但上述受控 503 記於 info，不能因此宣稱 runtime 零錯誤。
 
 ## 限制
 
