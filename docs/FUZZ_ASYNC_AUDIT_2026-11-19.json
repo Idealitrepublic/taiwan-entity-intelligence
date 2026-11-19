@@ -448,15 +448,19 @@
     "pdf_pages": 13,
     "pdf_content_company_verified": true
   },
-  "open_findings": [
+  "resolved_followup_findings": [
     {
       "id": "R2-04",
       "severity": "Medium",
-      "status": "OPEN",
+      "status": "CLOSED",
       "issue": "Intermittent anon search_entities statement timeout",
       "evidence": "PostgREST search_entities HTTP 500 and PostgreSQL 57014 at 2026-11-19 02:49 UTC; application search returned 503. Later retry recovered but database timeout recurred.",
       "trigger_not_established": true,
-      "schema_changed": false
+      "schema_changed": false,
+      "resolved_by": "8bc3ed91886d617cb3d2b7c5fcdc026eb122cbad",
+      "followup_report": "SEARCH_TIMEOUT_REPAIR_2026-11-19.md"
     }
-  ]
+  ],
+  "open_findings": [],
+  "followup_development_schema_migrations": 3
 }

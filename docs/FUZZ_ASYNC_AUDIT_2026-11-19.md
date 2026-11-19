@@ -63,10 +63,14 @@
 | 點「下載完整調查 PDF」至實際檔案 | PASS，`tei-company-22659295.pdf`，129,321 bytes、13 頁，PDF parser 可讀，內文包含聯上開發及統編；本輪未重新宣稱所有頁面排版人工驗收 |
 | 最後一次完整瀏覽器流程 | PASS，pageerror 0、該次 API 5xx 0 |
 
-**R2-04／Medium，尚未解決：真實搜尋偶發資料庫逾時。** 首次 Preview 驗證的兩筆 `/api/v1/search` 於臺灣時間 2026-11-19 10:49 回 503，耗時 7,316.7／7,774.5 ms；該次驗收 FAIL，沒有抹除。Supabase 唯讀日誌同時記錄 anon 的 `rpc/search_entities` HTTP 500 與 PostgreSQL `57014: canceling statement due to statement timeout`，確認後端搜尋查詢遭逾時取消；不是本輪前端回應世代修復能保證消除的問題。後續正常流程重跑完成，但 10:52 仍有搜尋在資料庫層逾時後由既有 retry 恢復，成功不代表查詢成本已修復。
+**R2-04／Medium，首次驗證時未解決，後續已修復：真實搜尋偶發資料庫逾時。** 首次 Preview 驗證的兩筆 `/api/v1/search` 於臺灣時間 2026-11-19 10:49 回 503，耗時 7,316.7／7,774.5 ms；該次驗收 FAIL，沒有抹除。Supabase 唯讀日誌同時記錄 anon 的 `rpc/search_entities` HTTP 500 與 PostgreSQL `57014: canceling statement due to statement timeout`，確認後端搜尋查詢遭逾時取消；不是本輪前端回應世代修復能保證消除的問題。後續正常流程重跑完成，但 10:52 仍有搜尋在資料庫層逾時後由既有 retry 恢復，成功不代表查詢成本已修復。
 
-目前證據尚不足將逾時歸因於缺少索引、RLS 成本、同時執行統計或特定資源限制；本輪未擅自調高 timeout、移除 RLS、修改 Development schema 或升級方案。此項保持 OPEN，後續應針對 `search_entities` 的 anon 執行計畫與同時查詢負載做獨立效能修復。Vercel 的 error/fatal 日誌為 0，但上述受控 503 記於 info，不能因此宣稱 runtime 零錯誤。
+該次驗證時證據尚不足將逾時歸因於缺少索引、RLS 成本、同時執行統計或特定資源限制；本輪未擅自調高 timeout、移除 RLS、修改 Development schema 或升級方案。該時點保持 OPEN，後續須針對 `search_entities` 的 anon 執行計畫與同時查詢負載做獨立效能修復。Vercel 的 error/fatal 日誌為 0，但上述受控 503 記於 info，不能因此宣稱 runtime 零錯誤。
 
 ## 限制
 
 這是固定預算、控制回應順序的 UI／函式測試，不是全站所有輸入的形式驗證、負載測試或滲透認證。除了既有路徑取消外，部分舊 fetch 可能在背景完成，但其結果不再更新不屬於它的畫面。RLS 與資料真實性沒有因本輪而重新全量覆核，不宣稱零漏洞或全國資料完整。
+
+## R2-04 後續結案
+
+2026-11-19 已在另一個修復工作中完成 Development RPC／RLS 與公共統計負載隔離修復，未修改資料列。最終修復 `8bc3ed9`，555 tests、328 DB checks、build 與實際 Preview 通過；20 次搜尋 HTTP 200，冷啟動及同時段搜尋 RPC 日誌無 500／503。R2-04 在本次驗證範圍標記 CLOSED；初始失敗紀錄保留，完整限制與復原流程見 [搜尋逾時修復驗收](SEARCH_TIMEOUT_REPAIR_2026-11-19.md)。

@@ -1,0 +1,629 @@
+{
+  "issue": "R2-04",
+  "state": "CLOSED",
+  "code_commit": "8bc3ed91886d617cb3d2b7c5fcdc026eb122cbad",
+  "branch": "fix/search-timeout",
+  "development_project": "canqjiokrtcxkwblhmml",
+  "production_deployment_changed": false,
+  "production_env_changed": false,
+  "stored_entity_data_changed": false,
+  "migrations": [
+    "20261119032245_public_search_timeout_repair",
+    "20261119033610_public_search_identifier_fast_path",
+    "20261119035549_public_search_lazy_context"
+  ],
+  "baseline": {
+    "query": "聯上開發",
+    "role": "anon",
+    "execution_ms": 5269.498,
+    "shared_buffer_hits": 1060473,
+    "correlated_entity_policy_loops": 131828
+  },
+  "initial_benchmarks": [
+    {
+      "role_name": "anon",
+      "query": "聯上開發",
+      "ms": "695.879",
+      "hits": 5945,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "中華電信",
+      "ms": "122.997",
+      "hits": 4609,
+      "rows": 4
+    },
+    {
+      "role_name": "anon",
+      "query": "協會",
+      "ms": "827.797",
+      "hits": 452858,
+      "rows": 20
+    },
+    {
+      "role_name": "anon",
+      "query": "股份",
+      "ms": "136.560",
+      "hits": 8144,
+      "rows": 20
+    },
+    {
+      "role_name": "anon",
+      "query": "吳思瑤",
+      "ms": "137.491",
+      "hits": 4767,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "不存在測試公司",
+      "ms": "118.673",
+      "hits": 4677,
+      "rows": 0
+    },
+    {
+      "role_name": "anon",
+      "query": "１２３４５６７８",
+      "ms": "110.614",
+      "hits": 4558,
+      "rows": 0
+    },
+    {
+      "role_name": "anon",
+      "query": "聯上開發",
+      "ms": "111.944",
+      "hits": 4561,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "聯上開發",
+      "ms": "112.088",
+      "hits": 4561,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "中華電信",
+      "ms": "110.965",
+      "hits": 4609,
+      "rows": 4
+    },
+    {
+      "role_name": "authenticated",
+      "query": "協會",
+      "ms": "578.967",
+      "hits": 452858,
+      "rows": 20
+    },
+    {
+      "role_name": "authenticated",
+      "query": "吳思瑤",
+      "ms": "116.849",
+      "hits": 4767,
+      "rows": 1
+    }
+  ],
+  "identifier_stage_benchmarks": [
+    {
+      "role_name": "anon",
+      "query": "22659295",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "7.012",
+      "hits": 711,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "96979933",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "2.258",
+      "hits": 27,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "２２６５９２９５",
+      "kind": null,
+      "lim": 1,
+      "ms": "0.814",
+      "hits": 25,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "00000000",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "223.513",
+      "hits": 5292,
+      "rows": 0
+    },
+    {
+      "role_name": "anon",
+      "query": "中華電信",
+      "kind": "Company",
+      "lim": 20,
+      "ms": "122.814",
+      "hits": 4590,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "聯上開發",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "111.251",
+      "hits": 4563,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "協會",
+      "kind": "CivilOrganization",
+      "lim": 20,
+      "ms": "906.067",
+      "hits": 452860,
+      "rows": 20
+    },
+    {
+      "role_name": "anon",
+      "query": "吳思瑤",
+      "kind": "Politician",
+      "lim": 20,
+      "ms": "147.575",
+      "hits": 4769,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "22659295",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "0.989",
+      "hits": 27,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "96979933",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "0.751",
+      "hits": 27,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "２２６５９２９５",
+      "kind": null,
+      "lim": 1,
+      "ms": "0.159",
+      "hits": 11,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "00000000",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "114.060",
+      "hits": 4678,
+      "rows": 0
+    },
+    {
+      "role_name": "authenticated",
+      "query": "中華電信",
+      "kind": "Company",
+      "lim": 20,
+      "ms": "109.001",
+      "hits": 4587,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "聯上開發",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "106.022",
+      "hits": 4563,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "協會",
+      "kind": "CivilOrganization",
+      "lim": 20,
+      "ms": "572.143",
+      "hits": 452860,
+      "rows": 20
+    },
+    {
+      "role_name": "authenticated",
+      "query": "吳思瑤",
+      "kind": "Politician",
+      "lim": 20,
+      "ms": "115.354",
+      "hits": 4769,
+      "rows": 1
+    }
+  ],
+  "final_benchmarks": [
+    {
+      "role_name": "anon",
+      "query": "聯上開發",
+      "kind": null,
+      "lim": 20,
+      "ms": "1558.189",
+      "hits": 5384,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "中華電信",
+      "kind": null,
+      "lim": 20,
+      "ms": "184.551",
+      "hits": 5250,
+      "rows": 4
+    },
+    {
+      "role_name": "anon",
+      "query": "22659295",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "5.793",
+      "hits": 46,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "00000000",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "101.474",
+      "hits": 4496,
+      "rows": 0
+    },
+    {
+      "role_name": "anon",
+      "query": "中華電信",
+      "kind": "Company",
+      "lim": 20,
+      "ms": "102.362",
+      "hits": 4507,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "聯上開發",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "104.015",
+      "hits": 4483,
+      "rows": 1
+    },
+    {
+      "role_name": "anon",
+      "query": "協會",
+      "kind": "CivilOrganization",
+      "lim": 20,
+      "ms": "783.493",
+      "hits": 453056,
+      "rows": 20
+    },
+    {
+      "role_name": "anon",
+      "query": "吳思瑤",
+      "kind": "Politician",
+      "lim": 20,
+      "ms": "131.842",
+      "hits": 4689,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "聯上開發",
+      "kind": null,
+      "lim": 20,
+      "ms": "104.839",
+      "hits": 4481,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "中華電信",
+      "kind": null,
+      "lim": 20,
+      "ms": "107.883",
+      "hits": 4609,
+      "rows": 4
+    },
+    {
+      "role_name": "authenticated",
+      "query": "22659295",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "0.898",
+      "hits": 27,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "00000000",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "102.282",
+      "hits": 4496,
+      "rows": 0
+    },
+    {
+      "role_name": "authenticated",
+      "query": "中華電信",
+      "kind": "Company",
+      "lim": 20,
+      "ms": "103.130",
+      "hits": 4507,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "聯上開發",
+      "kind": "Company",
+      "lim": 1,
+      "ms": "103.662",
+      "hits": 4483,
+      "rows": 1
+    },
+    {
+      "role_name": "authenticated",
+      "query": "協會",
+      "kind": "CivilOrganization",
+      "lim": 20,
+      "ms": "565.628",
+      "hits": 452780,
+      "rows": 20
+    },
+    {
+      "role_name": "authenticated",
+      "query": "吳思瑤",
+      "kind": "Politician",
+      "lim": 20,
+      "ms": "109.801",
+      "hits": 4689,
+      "rows": 1
+    }
+  ],
+  "cold_stage_failures": [
+    {
+      "utc": "2026-11-19T03:29:38Z",
+      "query": "22659295",
+      "type": "Company",
+      "limit": 1,
+      "note": "Fixed by identifier fast path"
+    },
+    {
+      "utc": "2026-11-19T03:38:56Z",
+      "queries": [
+        "聯上開發",
+        "中華電信"
+      ],
+      "note": "Persisted after SQL-only fixes; heavy count fanout observed"
+    },
+    {
+      "utc": "2026-11-19T03:47:44Z",
+      "queries": [
+        "聯上開發",
+        "中華電信"
+      ],
+      "note": "Persisted after count isolation; fixed next by separating lazy relationship context"
+    }
+  ],
+  "cold_probe_after_lazy_context": {
+    "result": "PASS",
+    "queries": [
+      "中華電信",
+      "聯上開發",
+      "吳思瑤",
+      "中華電信"
+    ],
+    "window_utc": {
+      "start": "2026-11-19T03:55:50Z",
+      "end": "2026-11-19T03:58:00Z"
+    },
+    "search_rpc_500": 0
+  },
+  "clean_validation": {
+    "python_tests": 555,
+    "postgresql_checks": 328,
+    "javascript": "PASS",
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "limits": [
+    "Bounded normal-use verification, not a load capacity guarantee",
+    "MOEA fallback and official registry availability can still affect overall latency",
+    "Counts remain dated verified snapshots; public health probes do not refresh counts"
+  ],
+  "preview": {
+    "url": "https://taiwan-entity-intelligence-kw6g8ycom-coldlight871029-9944.vercel.app/",
+    "deployment_id": "dpl_sEkE7f8LQJX21C7n8LM3MgTe6UvZ",
+    "state": "READY",
+    "result": "PASS",
+    "latest_name_search": true,
+    "company": "聯上開發",
+    "path_nodes": 3,
+    "range_switch": true,
+    "right_company": true,
+    "search_api_runs": [
+      {
+        "pass": 1,
+        "query": "聯上開發",
+        "status": 200,
+        "ms": 9336,
+        "count": 1
+      },
+      {
+        "pass": 1,
+        "query": "中華電信",
+        "status": 200,
+        "ms": 9910,
+        "count": 5
+      },
+      {
+        "pass": 1,
+        "query": "吳思瑤",
+        "status": 200,
+        "ms": 8534,
+        "count": 1
+      },
+      {
+        "pass": 1,
+        "query": "協會",
+        "status": 200,
+        "ms": 1048,
+        "count": 20
+      },
+      {
+        "pass": 1,
+        "query": "股份",
+        "status": 200,
+        "ms": 510,
+        "count": 20
+      },
+      {
+        "pass": 1,
+        "query": "96979933",
+        "status": 200,
+        "ms": 4197,
+        "count": 1
+      },
+      {
+        "pass": 1,
+        "query": "９６９７９９３３",
+        "status": 200,
+        "ms": 2629,
+        "count": 1
+      },
+      {
+        "pass": 1,
+        "query": "不存在測試公司",
+        "status": 200,
+        "ms": 9252,
+        "count": 0
+      },
+      {
+        "pass": 2,
+        "query": "聯上開發",
+        "status": 200,
+        "ms": 8972,
+        "count": 1
+      },
+      {
+        "pass": 2,
+        "query": "中華電信",
+        "status": 200,
+        "ms": 11260,
+        "count": 5
+      },
+      {
+        "pass": 2,
+        "query": "吳思瑤",
+        "status": 200,
+        "ms": 8946,
+        "count": 1
+      },
+      {
+        "pass": 2,
+        "query": "協會",
+        "status": 200,
+        "ms": 970,
+        "count": 20
+      },
+      {
+        "pass": 2,
+        "query": "股份",
+        "status": 200,
+        "ms": 919,
+        "count": 20
+      },
+      {
+        "pass": 2,
+        "query": "96979933",
+        "status": 200,
+        "ms": 3275,
+        "count": 1
+      },
+      {
+        "pass": 2,
+        "query": "９６９７９９３３",
+        "status": 200,
+        "ms": 2718,
+        "count": 1
+      },
+      {
+        "pass": 2,
+        "query": "不存在測試公司",
+        "status": 200,
+        "ms": 8855,
+        "count": 0
+      },
+      {
+        "pass": 1,
+        "query": "22659295",
+        "kind": "Company",
+        "limit": 1,
+        "status": 200,
+        "ms": 465,
+        "count": 1
+      },
+      {
+        "pass": 1,
+        "query": "96979933",
+        "kind": "Company",
+        "limit": 1,
+        "status": 200,
+        "ms": 455,
+        "count": 1
+      },
+      {
+        "pass": 2,
+        "query": "22659295",
+        "kind": "Company",
+        "limit": 1,
+        "status": 200,
+        "ms": 409,
+        "count": 1
+      },
+      {
+        "pass": 2,
+        "query": "96979933",
+        "kind": "Company",
+        "limit": 1,
+        "status": 200,
+        "ms": 407,
+        "count": 1
+      }
+    ],
+    "status_check": {
+      "code": 200,
+      "companies": 472,
+      "counts_state": "cached",
+      "counts_checked_at": "2026-11-18T14:41:25.082197+00:00"
+    },
+    "pdf": "tei-company-22659295.pdf",
+    "bytes": 128837,
+    "page_errors": [],
+    "api_5xx": [],
+    "pdf_pages": 13,
+    "pdf_company_and_id_verified": true
+  },
+  "final_search_log_window": {
+    "start": "2026-11-19T04:01:40Z",
+    "end": "2026-11-19T04:04:06Z"
+  },
+  "final_search_rpc_500_503": 0
+}
