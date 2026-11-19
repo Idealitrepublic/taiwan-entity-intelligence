@@ -1,5 +1,7 @@
 # 2026-11-18 模糊測試與修復驗收
 
+測試於 2026-11-18 開始，2026-11-19 完成最後 Preview 驗收（臺灣時間）。
+
 基準：`7a91cfb`；分支 `test/reproducible-fuzz-audit`。僅本機／隔離瀏覽器與 Preview，Production 不修改。沒有載入真實憑證到模糊測試，沒有寫入資料庫，也沒有向官方 API 或公開網站發送高量測試。
 
 ## 方法來源與實際採用
@@ -32,14 +34,31 @@
 
 總計 75,300 次生成案例；這是執行次數，不是 75,300 種獨特資料。每 target、每種子的 distinct input 數已保留在 JSON（例如來源明細的 5,000 次有 132 種不同輸入）。固定種子：`20261118`、`20261119`、`73013`。修復後未留下可重現的失敗類別；不表示所有輸入或時間排程均已窮盡。
 
-- 原工作樹完整測試：551 Python tests（含使用者原有備份變更）、250 隔離 PostgreSQL checks、JavaScript、lint、build 通過。提交本身的獨立乾淨測試另驗，不能把未提交的備份修改當成本輪發布內容。
+- 原工作樹完整測試：551 Python tests（含使用者原有備份變更）、250 隔離 PostgreSQL checks、JavaScript、lint、build 通過。已另外從提交本身建立乾淨隔離目錄：550 Python tests、250 DB checks、全部 JavaScript、lint、build 通過；原有備份修改未混入本次提交。
 - 原有八套瀏覽器 regression 全部通過：公司來源、路徑、中華電信、多層持續展開、分類年度、密集圖譜、右側與 responsive、跨類型共用操作。
 - UI 序列包含 450 次狀態檢查、416 步實際操作，34 次因當時不適用而明確記錄未操作，不算按鈕通過。UI 隨機測試涵蓋展開／分頁、選取、快速切換、拖曳、縮放、置中、收合、範圍、focus、390／768／1024／1280／1440px；沒有 pageerror、重複節點 ID、非有限座標或 HTML 注入。所有非隔離主機外連均攔截，未向真實服務 fuzz。
 - 每個實際產品失敗都保留最小 regression，已加入一般完整測試；重跑也保留種子、生成索引、輸入與瀏覽器操作序列。
 
 ## Preview 驗收
 
-待本次修復部署後，以正常少量真實查詢、圖譜操作與實際 PDF 按鈕下載驗證。不在 Preview 跑高量 fuzz。驗收前不把本機合成通過寫成 Preview 實測通過。
+修復提交：`5bd5fdcec7a09281ee7169b18cefe87e9484098a`（前一修復 `59dd6ca`）。
+部署：`dpl_B46MWA8sERsGuqXibBs7qpRHTTsD`，READY、target=null，非 Production。
+實測 Preview：<https://taiwan-entity-intelligence-q0k6sfmhd-coldlight871029-9944.vercel.app/>。
+
+以下為正常少量的真實查詢，並未對 Preview 執行高量 fuzz：
+
+| 項目 | 結果 | 證據 |
+|---|---|---|
+| 聯上開發標案 | PASS | API 200、8 筆公告、本次 malformed=0 |
+| 中華電信公司／人員 | PASS | API 200、13 位董監事 |
+| 統計 | PASS | API 200、公司 472、人物與政治人物 152、Evidence 67,134，快取有核對日期 |
+| 真實圖譜 focus→選取 | PASS | 社會福利及衛生環境委員會；點放大圖譜後立刻選節點，經過兩個動畫 frame 資訊框仍存在；返回完整畫面與右側選取正常 |
+| Responsive | PASS | 1440／1280／1024／768／390px 畫布仍存在且可操作 |
+| 實際按鈕下載 | PASS | 聯上開發，report API 200，`tei-company-22659295.pdf`，128,717 bytes、有效 `%PDF-`、13 頁橫式；案號 0630800011、預算、決標總額、資料取得日期與民國年份保留；無 165 章節 |
+| 瀏覽器／API 錯誤 | PASS（本次觀察） | 真實流程無 pageerror、無捕獲的 API 5xx |
+| Runtime logs | PASS（觀察窗口） | 此 Preview 查詢最近 30 分鐘 error／fatal 無紀錄；不推論窗口外永無錯誤 |
+
+本輪驗收完成；未推進 Production。這份紀錄後續文件提交與本次已驗證修復程式相同，不重新宣稱已測到不同的功能版本。
 
 ## 限制
 

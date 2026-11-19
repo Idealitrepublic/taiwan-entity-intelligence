@@ -173,5 +173,36 @@
   ],
   "production_modified": false,
   "database_writes": false,
-  "ui_executed_steps": 416
+  "ui_executed_steps": 416,
+  "acceptance_completed_local_date": "2026-11-19",
+  "verified_commit": "5bd5fdcec7a09281ee7169b18cefe87e9484098a",
+  "clean_commit_checks": {
+    "python_tests": 550,
+    "isolated_db_checks": 250,
+    "browser_regression_suites": 8,
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "preview": {
+    "url": "https://taiwan-entity-intelligence-q0k6sfmhd-coldlight871029-9944.vercel.app/",
+    "deployment_id": "dpl_B46MWA8sERsGuqXibBs7qpRHTTsD",
+    "state": "READY",
+    "target": null,
+    "real_pdf_download": {
+      "result": "PASS",
+      "bytes": 128717,
+      "pages": 13,
+      "landscape": true
+    },
+    "focus_then_select": "PASS",
+    "widths": [
+      1440,
+      1280,
+      1024,
+      768,
+      390
+    ],
+    "page_errors": 0,
+    "observed_api_5xx": 0
+  }
 }
