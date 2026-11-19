@@ -1042,7 +1042,7 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
     values (md5('search-alias')::uuid,'排序測試','search-fixture');
     insert into public.entity_search_terms(entity_id,normalized_term,display_term,term_kind)
     values (md5('search-draft')::uuid,'排序測試','排序測試','alias') on conflict do nothing;`);
-  for (const suffix of ['_public_search_timeout_repair.sql','_public_search_identifier_fast_path.sql']) {
+  for (const suffix of ['_public_search_timeout_repair.sql','_public_search_identifier_fast_path.sql','_public_search_lazy_context.sql']) {
     const searchFix = files.find(file => file.endsWith(suffix));
     await db.exec(fs.readFileSync(`supabase/migrations/${searchFix}`, 'utf8'));
   }
@@ -1093,6 +1093,16 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   assert.equal(directId[0].public_identifier,'12345678');
   await rejects("select * from public.search_entities('測試公司',null,20)",'name projection denial is real');
   await db.exec('reset role; grant select on public.entity_search_terms to anon');
+  checks += 3;
+  // A company name search with an exact public company number must not plan
+  // the relationship context either. This would fail with the old LATERAL
+  // query even when its runtime One-Time Filter was false.
+  await db.exec('revoke select on public.relationships from anon; set role anon');
+  const namedCompany=(await db.query("select * from public.search_entities('測試公司','Company',1)")).rows;
+  assert.equal(namedCompany.length,1);
+  assert.equal(namedCompany[0].public_identifier,'12345678');
+  await rejects("select * from public.search_entities('排序測試同名人','Person',20)",'person context still requires relationship access');
+  await db.exec('reset role; grant select on public.relationships to anon');
   checks += 3;
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);

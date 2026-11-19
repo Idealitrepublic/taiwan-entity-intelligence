@@ -592,6 +592,12 @@ instead of a correlated entity lookup for every term. Entity RLS, including all
 withdrawal and identity restrictions, still applies inside that subquery and to
 candidate joins. A single term scan calculates the best match score; a materialized
 ranked result page limits relationship/evidence context work to selected results.
+Migration `20261119035549_public_search_lazy_context.sql` isolates candidate selection
+from context enrichment as separate invoker statements: exact-ID Company results
+do not even plan a relationship query, while other rows lazily read the same
+latest published relationship label (at most 20 results). This avoids cold-query
+policy expansion costs for the common company search without omitting context
+or broadening visibility. SQL parity and revoked-permission tests enforce this.
 JIT is disabled only inside this short interactive RPC; role/global JIT, statement
 timeouts, grants and all write/publication policies are unchanged. Migration
 `20261119032245_public_search_timeout_repair.sql` changes no stored rows and introduces
