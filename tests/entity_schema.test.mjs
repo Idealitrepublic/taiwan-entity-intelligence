@@ -1008,6 +1008,77 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   assert.equal((await db.query('select count(*)::int n from public.entities where id=$1',[lobbyId])).rows[0].n,1);
   assert.equal((await db.query('select count(*)::int n from public.evidence_records where id=$1',[lobbyProof])).rows[0].n,1);
   checks += 2;
+  // Search optimization must preserve the old RPC's complete ordered response,
+  // including aliases, escaped wildcard literals and withheld/stale projections.
+  // Reference function exists only in this disposable PostgreSQL, never hosted.
+  const previousSearch = fs.readFileSync('supabase/migrations/20260915173315_phase_2_global_entity_search.sql', 'utf8');
+  const referenceSearch = previousSearch.slice(previousSearch.indexOf('create or replace function public.search_entities('),
+    previousSearch.indexOf('comment on function public.search_entities('))
+    .replace('public.search_entities(', 'public.search_entities_reference(');
+  await db.exec(referenceSearch);
+  await db.exec(`insert into public.entities
+    (id,entity_type,canonical_name,display_name,source,source_id,identity_status,publication_status)
+    select md5('search-ranking-'||i)::uuid,'Company','排序測試供應商'||lpad(i::text,3,'0'),
+      '排序測試供應商'||lpad(i::text,3,'0'),'search-fixture',i::text,'EXACT','published'
+    from generate_series(1,120) i;`);
+  for (const [key,canonical,display,type,identity,status] of [
+    ['exact','排序測試','排序測試','Company','EXACT','published'],
+    ['canonical','排序測試','其他正式名稱','Company','EXACT','published'],
+    ['contains','前綴排序測試內容','前綴排序測試內容','Company','EXACT','published'],
+    ['alias','別名登記公司','別名登記公司','Company','EXACT','published'],
+    ['same1','排序測試同名人','排序測試同名人','Person','SOURCE_SCOPED','published'],
+    ['same2','排序測試同名人','排序測試同名人','Person','SOURCE_SCOPED','published'],
+    ['wildcard','排序%_\\測試公司','排序%_\\測試公司','Company','EXACT','published'],
+    ['draft','排序測試草稿','排序測試草稿','Company','EXACT','draft'],
+    ['unresolved','排序測試待核公司','排序測試待核公司','Company','UNRESOLVED','published']
+  ]) {
+    await db.query(`insert into public.entities
+      (id,entity_type,canonical_name,display_name,source,source_id,identity_status,publication_status)
+      values (md5($1)::uuid,$4,$2,$3,'search-fixture',$1,$5,$6)`,
+      ['search-'+key,canonical,display,type,identity,status]);
+  }
+  await db.exec(`insert into public.entity_aliases(entity_id,alias,source)
+    values (md5('search-alias')::uuid,'排序測試','search-fixture');
+    insert into public.entity_search_terms(entity_id,normalized_term,display_term,term_kind)
+    values (md5('search-draft')::uuid,'排序測試','排序測試','alias') on conflict do nothing;`);
+  const searchFix = files.find(file => file.endsWith('_public_search_timeout_repair.sql'));
+  await db.exec(fs.readFileSync(`supabase/migrations/${searchFix}`, 'utf8'));
+  assert.equal((await db.query(`select prosecdef,proconfig from pg_proc
+    where oid='public.search_entities(text,text,integer)'::regprocedure`)).rows[0].prosecdef,false);
+  assert.ok((await db.query(`select proconfig from pg_proc
+    where oid='public.search_entities(text,text,integer)'::regprocedure`)).rows[0].proconfig.includes('jit=off'));
+  checks += 2;
+  const searchMatrix = [
+    ['排序測試',null,20],['排序測試',null,1],['排序測試','Company',7],
+    ['排序測試','Person',20],['排序測試同名人',null,20],
+    ['排序%_',null,20],['%_',null,20],['\\測試',null,20],
+    ['測試公司',null,20],['12345678','Company',20],['１２３４５６７８',null,20],
+    ['林立委',null,20],['MOTC',null,20],['交通',null,20],
+    ['測試裁判','Judgment',20],['遊說','LobbyingRecord',20],['沒有此公司',null,20]
+  ];
+  for (const role of ['anon','authenticated']) {
+    await db.exec(`set role ${role}`);
+    for (const args of searchMatrix) {
+      const actual=(await db.query('select * from public.search_entities($1,$2,$3)',args)).rows;
+      const expected=(await db.query('select * from public.search_entities_reference($1,$2,$3)',args)).rows;
+      assert.deepEqual(actual,expected,`${role} search parity: ${JSON.stringify(args)}`);
+      checks++;
+    }
+    const ranked=(await db.query("select * from public.search_entities('排序測試',null,20)")).rows;
+    assert.equal(ranked.length,20);
+    assert.equal(ranked[0].match_type,'name_exact');
+    assert.equal(ranked[0].entity_id,(await db.query("select md5('search-exact')::uuid id")).rows[0].id);
+    const sameNames=(await db.query("select * from public.search_entities('排序測試同名人','Person',20)")).rows;
+    assert.equal(sameNames.length,2);
+    assert.notEqual(sameNames[0].entity_id,sameNames[1].entity_id);
+    assert.equal((await db.query("select count(*)::int n from public.entity_search_terms where entity_id in (md5('search-draft')::uuid,md5('search-unresolved')::uuid)")).rows[0].n,0);
+    await rejects("select * from public.search_entities('排序測試',null,21)",'search remains bounded');
+    await rejects("insert into public.entity_search_terms values (md5('search-exact')::uuid,'改寫','改寫','alias')",'search remains read-only');
+    await rejects('select * from public.entity_identifiers','private identifiers stay private');
+    await db.exec('reset role');
+    checks += 9;
+  }
+  await db.exec('drop function public.search_entities_reference(text,text,integer)');
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;

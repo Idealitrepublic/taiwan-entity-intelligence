@@ -582,3 +582,17 @@ workspaces and see alerts only for visible relationships.
 `/api/status` returns dated, verified exact public-role aggregates immediately when available, then attempts a single bounded background refresh per process. A timeout retains the metric's last successful value and timestamp rather than replacing it with null/zero. A bundled snapshot is strictly scoped to its verified Supabase URL; a different database cannot inherit its counts. `snapshot_available` is distinct from a current successful `connected` check, and the UI labels cached counts as non-live. Serverless background execution is best-effort; the dated packaged snapshot survives cold starts. Refresh the verified snapshot after data/publication-policy changes. No planner estimates, service-role counting, schema changes or expanded public grants are involved.
 
 Public reports and company views no longer query or display the archived 165 dataset. The withdrawn domain-check endpoint returns 410; official company website links remain. Company/person/agency/organization graph inspectors share the existing knowledge graph controls while retaining type-specific profiles and source-scoped identity boundaries.
+
+### Public search execution budget (2026-11-19)
+
+`search_entities` remains SECURITY INVOKER with the same signature, NFKC normalization,
+escaped literal matching, stable identifier/exact/prefix/contains ranking and 20-row cap.
+The search-term RLS policy evaluates the caller-visible published Entity ID set once,
+instead of a correlated entity lookup for every term. Entity RLS, including all
+withdrawal and identity restrictions, still applies inside that subquery and to
+candidate joins. A single term scan calculates the best match score; a materialized
+ranked result page limits relationship/evidence context work to selected results.
+JIT is disabled only inside this short interactive RPC; role/global JIT, statement
+timeouts, grants and all write/publication policies are unchanged. Migration
+`20261119032245_public_search_timeout_repair.sql` changes no stored rows and introduces
+no SECURITY DEFINER bypass, new tables or indexes.
