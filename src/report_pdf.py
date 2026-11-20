@@ -46,10 +46,10 @@ def _source_links(source):
     result = []
     for url in dict.fromkeys(url for url in candidates if url):
         parsed = urlsplit(url)
-        query = (parsed.path.rstrip('/') in ('', '/prkms/tender/common/basic/indexTenderBasic')
+        official = parsed.hostname == 'web.pcc.gov.tw' or parsed.hostname.endswith('.gov.tw')
+        query = ((not parsed.path.rstrip('/') and official)
                  or 'indexTenderBasic' in parsed.path)
         dataset = ('/dataset/' in parsed.path or '/opendata/' in parsed.path)
-        official = parsed.hostname == 'web.pcc.gov.tw' or parsed.hostname.endswith('.gov.tw')
         if query:
             label = '查詢入口（非單筆） / Search portal'
         elif dataset:
@@ -58,6 +58,8 @@ def _source_links(source):
             label = '官方資料 / Official record'
         elif parsed.hostname == 'pcc-api.openfun.app':
             label = '介接明細 / Structured source'
+        elif not parsed.path.rstrip('/'):
+            label = '網站首頁 / Website homepage'
         else:
             label = '來源資料 / Source record'
         result.append((label, url, query or dataset))

@@ -62,6 +62,8 @@ class ReportPDFTests(unittest.TestCase):
         direct = 'https://example.gov.tw/record/123'
         self.assertEqual(_source_links({'source_url': direct})[0][1], direct)
         self.assertEqual(len(_source_links({'source_url': direct, 'original_source_url': direct})), 1)
+        self.assertEqual(_source_links({'source_url': 'https://www.5v.com.tw/'}),
+                         [('網站首頁 / Website homepage', 'https://www.5v.com.tw/')])
 
     def test_compact_workspace_retains_all_facts_without_a_page_per_saved_item(self):
         from copy import deepcopy
