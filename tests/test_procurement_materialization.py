@@ -49,6 +49,23 @@ def official_row():
 
 
 class ProcurementMaterializationTests(unittest.TestCase):
+    def test_existing_verified_agency_connects_without_losing_contract_or_evidence(self):
+        agency={'id':'22222222-2222-4222-8222-222222222222','entity_type':'GovernmentAgency',
+                'publication_status':'published','display_name':'桃園市政府體育局','pcc_unit_id':'3.80.41'}
+        result=build_official_award_bundle(notice(),official=official_row(),company_entity_id=COMPANY_ID,
+                                          company_uniform=UNIFORM,company_name=NAME,retrieved_at='2026-11-20T00:00:00Z',agency_entity=agency)
+        self.assertEqual(len(result['entities']),1,'No duplicate agency is invented')
+        self.assertEqual(len(result['relationships']),2)
+        contract,link=result['relationships']
+        self.assertEqual(link['target_entity_id'],agency['id'])
+        self.assertEqual(link['primary_evidence_id'],contract['primary_evidence_id'])
+        self.assertEqual(len(result['relationship_evidence']),2)
+        self.assertEqual(len({x['id'] for x in result['relationships']}),2)
+        for key,value in (('display_name','不同機關'),('pcc_unit_id','different'),('entity_type','Person'),('publication_status','draft')):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                build_official_award_bundle(notice(),official=official_row(),company_entity_id=COMPANY_ID,
+                                           company_uniform=UNIFORM,company_name=NAME,retrieved_at='2026-11-20T00:00:00Z',agency_entity={**agency,key:value})
+
     def test_official_alphanumeric_agency_code_is_supported(self):
         row = notice()
         row["unit_id"] = "A.47.1.7"

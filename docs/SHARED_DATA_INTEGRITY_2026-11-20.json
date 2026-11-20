@@ -1,0 +1,13 @@
+{
+  "invalid_edges": 0,
+  "duplicate_edges": 0,
+  "published_edges": 1399,
+  "politician_edges": 1163,
+  "published_people": 0,
+  "published_companies": 472,
+  "verified_company_ids": 472,
+  "published_politicians": 121,
+  "company_registry_evidence": 472,
+  "politicians_with_official_ids": 121,
+  "politician_edges_with_matching_official_id": 1163
+}

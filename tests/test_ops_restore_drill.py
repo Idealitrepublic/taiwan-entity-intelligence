@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from scripts.verify_real_path_local import exercise_reviewed_path
 from scripts.ops_restore_drill import drill, normalize_constraint, restore_error_category, sql_identifier, validate_archive
 
 
@@ -28,6 +29,13 @@ class RestoreDrillTests(unittest.TestCase):
         self.assertIn('create schema tei_source_checks;', source)
         self.assertIn("'--schema=tei_source_checks'", source)
         self.assertIn("'public','auth','tei_private','tei_source_checks'", source)
+
+    def test_scenario_cannot_write_to_network_or_existing_local_database(self):
+        for host in ('localhost','db.canqjiokrtcxkwblhmml.supabase.co','/tmp/existing-cluster'):
+            with self.subTest(host=host), patch('scripts.verify_real_path_local.query') as query:
+                with self.assertRaises(ValueError):
+                    exercise_reviewed_path({'PGHOST':host,'PGUSER':'tei_restore'}, {})
+                query.assert_not_called()
 
     def test_tampered_encrypted_archive_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:

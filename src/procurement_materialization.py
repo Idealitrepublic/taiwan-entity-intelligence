@@ -9,7 +9,7 @@ import re
 import unicodedata
 from urllib.parse import urlencode, urlsplit
 
-from src.entities.models import Entity, evidence_from_projection, stable_id, timestamp
+from src.entities.models import Entity, evidence_from_projection, stable_id, timestamp, uuid_string
 from src.sources.procurement import award_role, is_award_notice, matched_names, OFFICIAL_SEARCH
 
 
@@ -115,7 +115,7 @@ def build_contract_bundle(notice, *, company_entity_id, company_uniform,
 
 
 def build_official_award_bundle(notice, *, official, company_entity_id,
-                                company_uniform, company_name, retrieved_at):
+                                company_uniform, company_name, retrieved_at, agency_entity=None):
     """Publish only after independently matching the original PCC award row.
 
     `official` is a reviewed transcription of the original notice, not a
@@ -162,7 +162,7 @@ def build_official_award_bundle(notice, *, official, company_entity_id,
     edge = {**draft["relationships"][0],
             "id": stable_id("relationship", "PCC official", f"{source_id}:{company_uniform}"),
             "primary_evidence_id": proof["id"], "status": "published"}
-    return {
+    result = {
         "entities": [{**contract, "publication_status": "published"}],
         "evidence": [proof],
         "entity_evidence": [
@@ -172,3 +172,22 @@ def build_official_award_bundle(notice, *, official, company_entity_id,
         "relationships": [edge],
         "relationship_evidence": [{"relationship_id": edge["id"], "evidence_id": proof["id"]}],
     }
+
+    if agency_entity is not None:
+        # The caller must supply an existing, reviewed agency/code mapping;
+        # never manufacture or merge an agency from its display name.
+        agency_id = uuid_string(agency_entity.get('id'))
+        if (agency_entity.get('entity_type') != 'GovernmentAgency'
+                or agency_entity.get('publication_status') != 'published'
+                or agency_entity.get('pcc_unit_id') != locator['unit_id']
+                or unicodedata.normalize('NFKC', agency_entity.get('display_name', '')).strip()
+                != unicodedata.normalize('NFKC', official['agency']).strip()):
+            raise ValueError('Existing verified agency identity and PCC unit mapping required')
+        agency_edge = {**edge, 'id': stable_id('relationship', 'PCC official:agency',
+                       f"{source_id}:{company_uniform}:{agency_id}"),
+                       'target_entity_id': agency_id,
+                       'source_role': '得標廠商與招標機關 / Awarded supplier and procuring agency'}
+        result['relationships'].append(agency_edge)
+        result['relationship_evidence'].append({'relationship_id': agency_edge['id'], 'evidence_id': proof['id']})
+        result['entity_evidence'].append({'entity_id': agency_id, 'evidence_id': proof['id'], 'fact_type': 'PROCUREMENT_AGENCY'})
+    return result

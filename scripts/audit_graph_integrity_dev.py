@@ -15,6 +15,16 @@ from scripts.audit_graph_coverage_dev import is_development_target  # noqa: E402
 from scripts.audit_p0_data_chain import development_environment  # noqa: E402
 
 
+COMPANY_ID_PREDICATE = """e.identity_status='EXACT' and (
+    (i.namespace='tw:uniform_number' and i.value~'^[0-9]{8}$')
+    or (i.namespace='us:sec:cik' and i.value~'^[0-9]{10}$'
+        and e.source='US SEC EDGAR' and e.source_id='us:sec:cik:'||i.value))"""
+POLITICIAN_EVIDENCE_IDENTIFIER = """coalesce(ev.source_locator->>'legislator_number',
+    case when ev.source_locator->>'politician_identifier_namespace'='tw:legislative_yuan:legislator_number'
+      and ev.source_locator->>'politician_match_method'='exact_official_identifier'
+    then ev.source_locator->>'politician_identifier_value' end)"""
+
+
 SQL = """
 BEGIN READ ONLY;
 select jsonb_build_object(
@@ -22,7 +32,7 @@ select jsonb_build_object(
   'verified_company_ids', (select count(distinct e.id) from public.entities e
     join public.entity_identifiers i on i.entity_id=e.id
     where e.entity_type='Company' and e.publication_status='published'
-      and e.identity_status='EXACT' and i.namespace='tw:uniform_number' and i.value~'^[0-9]{8}$'),
+      and /*company_identifier*/),
   'company_registry_evidence', (select count(distinct e.id) from public.entities e
     join public.entity_evidence ee on ee.entity_id=e.id
     join public.evidence_records ev on ev.id=ee.evidence_id
@@ -42,7 +52,7 @@ select jsonb_build_object(
     join public.evidence_records ev on ev.id=r.primary_evidence_id
     join public.entity_identifiers i on i.entity_id=p.id
       and i.namespace='tw:legislative_yuan:legislator_number'
-      and i.value=ev.source_locator->>'legislator_number'
+      and i.value=/*politician_identifier*/
     where r.status='published' and p.entity_type='Politician'),
   'published_edges', (select count(*) from public.relationships where status='published'),
   'invalid_edges', (select count(*) from public.relationships r
@@ -65,6 +75,8 @@ select jsonb_build_object(
 );
 ROLLBACK;
 """
+
+SQL = SQL.replace("/*company_identifier*/", COMPANY_ID_PREDICATE).replace("/*politician_identifier*/", POLITICIAN_EVIDENCE_IDENTIFIER)
 
 
 def validate(counts):

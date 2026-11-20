@@ -38,7 +38,7 @@ select jsonb_build_object(
 rollback;"""
 
 
-def report(counts, now=None):
+def report(counts, now=None, *, known_issues=()):
     now = now or datetime.now(timezone.utc)
     failures = [key for key in ('invalid_edges', 'missing_provenance', 'duplicate_edges', 'missing_glyph_names')
                 if counts.get(key) != 0]
@@ -52,25 +52,27 @@ def report(counts, now=None):
         freshness.append({**row, 'latest_retrieval_age_hours': round((now-parsed).total_seconds()/3600, 2)})
     return {'generated_at': now.isoformat(), 'environment': 'tei-development',
             'scope': 'current_public_product_anon_rls', 'read_only': True,
-            'high_count': len(failures), 'failures': failures,
+            'high_count': len(failures), 'failures': failures, 'known_upstream_issues': list(known_issues),
             'counts': {**counts, 'freshness': freshness}, 'population_coverage': None,
             'freshness_certified': False,
             'limitations': ['官方母體與逐來源更新 SLA 尚未完整建立；不可由入庫筆數推估全臺覆蓋率。',
                             '資料取得時間不等於官方資料異動時間；即時公司登記與標案需另驗 API。',
-                            '45 筆 ASCII 問號缺字團體保留待核，未猜測更名或刪除原件；另列全形問號名稱待人工判別，不將標點符號自動視為缺字。',
+                            f"公開範圍有 {counts.get('missing_glyph_names', '未知')} 筆 ASCII 問號／替代字元名稱；篩查不等於法定名稱覆核，不猜字改名。全形問號另列人工判別。",
                             '已撤下的裁判、裁罰、候選人、財產、遊說及 165 不列公開站 freshness；歷史同步健康另留原報告。']}
 
 
 def markdown(value):
     names = {'Company':'公司','Politician':'立委／政治人物','GovernmentOfficial':'政府官員',
              'GovernmentAgency':'政府機關','PoliticalParty':'政黨','CivilOrganization':'民間團體','Contract':'標案'}
-    rows = ['# 公開資料健康檢查', '', f"檢查時間：{value['generated_at']}。僅 Development；Production 未修改。", '',
+    rows = ['# 公開資料健康檢查', '', f"檢查時間：{value['generated_at']}。唯讀檢查 Development；正式站與 Preview 共用公開資料，本流程不寫入資料庫。", '',
             f"公開資料結構 High = {value['high_count']}；這不等於上線總驗收通過。", '',
             '| 類型 | anon/RLS 可見筆數 |', '|---|---:|']
     rows += [f'| {names.get(k,k)} | {v:,} |' for k,v in value['counts']['entities'].items()]
     rows += ['', f"關係 {value['counts']['relationships']:,} 筆；證據 {value['counts']['evidence']:,} 筆。",
              f"失效關係、缺來源、重複關係、公開缺字名稱：{', '.join(str(value['counts'][k]) for k in ('invalid_edges','missing_provenance','duplicate_edges','missing_glyph_names'))}。", '',
              '## 範圍與限制', ''] + ['- '+x for x in value['limitations']]
+    rows += ['', '## 已隔離的來源問題', '']
+    rows += [f"- {r['severity']}：{r['description']}（{r['records']} 筆；{r['scope']}）。" for r in value.get('known_upstream_issues', [])]
     rows += ['', '## 各來源實際取得時間', '', '| 來源 | 證據筆數 | 最早取得 | 最近取得 | 距最近取得小時 |', '|---|---:|---|---|---:|']
     rows += [f"| {r['source_name']} | {r['records']} | {r['oldest_retrieved_at']} | {r['latest_retrieved_at']} | {r['latest_retrieval_age_hours']} |" for r in value['counts']['freshness']]
     rows += ['', '原 Phase 6 全來源報告保留於 [歷史健康報告](archive/DATA_HEALTH_PHASE6_2026-11-04.md)。公開站檢查不修改司法 checkpoint，也不宣稱歷史上游錯誤已恢復。', '']
@@ -92,7 +94,17 @@ def main():
                              text=True, capture_output=True, env=env, timeout=90)
         if run.returncode:
             raise RuntimeError('Read-only public health query failed; sensitive details suppressed')
-        value = report(json.loads(run.stdout))
+        review_path=ROOT/'docs/CIVIL_NAME_QUALITY_REVIEW_2026-11-20.json'
+        review=json.loads(review_path.read_text()) if review_path.exists() else {}
+        issues=[]
+        if review.get('action')=='quarantined_after_explicit_shared_public_data_approval':
+            issues=[{'severity':'Medium','records':review['official_missing_glyph_confirmed'],
+                     'scope':'本輪 45 筆已隔離團體，不代表全臺母體',
+                     'description':'官方原件名稱同樣缺字，保留 Evidence 待官方補正'},
+                    {'severity':'Medium','records':review['non_csv_review_pending']+review['official_unavailable'],
+                     'scope':'本輪 45 筆已隔離團體，不推定缺字原因',
+                     'description':'官方非 CSV／暫無法取得原件，待逐筆覆核'}]
+        value = report(json.loads(run.stdout),known_issues=issues)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n')
         args.markdown.write_text(markdown(value))

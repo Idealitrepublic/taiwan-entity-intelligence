@@ -1,0 +1,131 @@
+{
+  "status": "APPLIED_AFTER_EXPLICIT_SHARED_PUBLIC_DATA_APPROVAL",
+  "requires_shared_public_data_approval": false,
+  "official_row_verified": true,
+  "official_html_sha256": "4bc006eb6ceeb74af8e183afa7a61aa881721ac1b6db9c6d0b3c2d6c9b4c4063",
+  "official_source_url": "https://web.pcc.gov.tw/tps/atm/AtmAwardWithoutSso/QueryAtmAwardDetailHist?fkPmsMainHist=OTU4NzYxOTQ=",
+  "reviewed_at": "2026-11-20T13:08:56.179936+00:00",
+  "company": {
+    "id": "98293adc-a2b2-553c-9426-43dcc426bf8b",
+    "name": "全家便利商店股份有限公司",
+    "uniform": "23060248"
+  },
+  "agency": {
+    "id": "ff8ba698-6fe0-5bf9-9aca-8af9d37088c2",
+    "entity_type": "GovernmentAgency",
+    "display_name": "立法院",
+    "publication_status": "published",
+    "pcc_unit_id": "4",
+    "source": "立法院開放資料服務平台",
+    "source_id": "government-agency:legislative-yuan"
+  },
+  "source_company_id": "003e0ccc-1f16-55cc-89d3-570d74a48ea8",
+  "target_company_id": "98293adc-a2b2-553c-9426-43dcc426bf8b",
+  "interpretation": "聯上之政治獻金紀錄、吳思瑤之立委職務、全家之立法院得標公告分屬不同日期與事件；不代表吳思瑤參與採購、不代表兩家公司合作或違法。",
+  "bundle": {
+    "entities": [
+      {
+        "id": "9356cc1f-04b6-5a6a-9d40-75c42b4c074c",
+        "entity_type": "Contract",
+        "canonical_name": "立法院「115年度禮券採購案」",
+        "display_name": "立法院「115年度禮券採購案」",
+        "source": "PCC/OpenFun",
+        "source_id": "4:1141401387:BDM-1-71037681",
+        "identity_status": "SOURCE_SCOPED",
+        "publication_status": "published"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b",
+        "source_name": "政府電子採購網",
+        "source_record_id": "4:1141401387:BDM-1-71037681",
+        "source_class": "Primary Source",
+        "source_url": "https://web.pcc.gov.tw/tps/atm/AtmAwardWithoutSso/QueryAtmAwardDetailHist?fkPmsMainHist=OTU4NzYxOTQ=",
+        "source_locator": {
+          "unit_id": "4",
+          "job_number": "1141401387",
+          "notice_filename": "BDM-1-71037681",
+          "notice_date": "2025-12-05",
+          "award_date": "2025-11-18",
+          "bidder_uniform_number": "23060248",
+          "amount": 10267760,
+          "title": "立法院「115年度禮券採購案」",
+          "bidder_name": "全家便利商店股份有限公司 (Taiwan FamilyMart Co., Ltd.)",
+          "winner": true,
+          "agency": "立法院",
+          "mirror_url": "https://pcc-api.openfun.app/api/tender?unit_id=4&job_number=1141401387",
+          "review_method": "official_row_compared_with_exact_bidder_id_and_award_role"
+        },
+        "title": "立法院「115年度禮券採購案」",
+        "summary": "立法院；得標廠商：全家便利商店股份有限公司（23060248）",
+        "observed_at": "2025-11-18T00:00:00+08:00",
+        "retrieved_at": "2026-11-20T13:08:56.175848+00:00",
+        "content_hash": "3dc1d204bd63fc6a082662eb17867d2ce1c4bc12664d1cb3f38776135c6423de",
+        "publication_status": "published",
+        "status": "active"
+      }
+    ],
+    "entity_evidence": [
+      {
+        "entity_id": "98293adc-a2b2-553c-9426-43dcc426bf8b",
+        "evidence_id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b",
+        "fact_type": "CONTRACT"
+      },
+      {
+        "entity_id": "9356cc1f-04b6-5a6a-9d40-75c42b4c074c",
+        "evidence_id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b",
+        "fact_type": "CONTRACT"
+      },
+      {
+        "entity_id": "ff8ba698-6fe0-5bf9-9aca-8af9d37088c2",
+        "evidence_id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b",
+        "fact_type": "PROCUREMENT_AGENCY"
+      }
+    ],
+    "relationships": [
+      {
+        "id": "c8afabcd-eb37-54f3-9f5e-7012e9aa755e",
+        "source_entity_id": "98293adc-a2b2-553c-9426-43dcc426bf8b",
+        "target_entity_id": "9356cc1f-04b6-5a6a-9d40-75c42b4c074c",
+        "relationship_type": "CONTRACT_WITH",
+        "primary_evidence_id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b",
+        "observed_at": "2025-11-18T00:00:00+08:00",
+        "confidence": "HIGH",
+        "status": "published",
+        "start_date": "2025-11-18",
+        "date_precision": "day",
+        "amount": 10267760,
+        "currency": "TWD",
+        "source_role": "得標廠商"
+      },
+      {
+        "id": "35fe2712-6e61-577d-a13c-268222364c7c",
+        "source_entity_id": "98293adc-a2b2-553c-9426-43dcc426bf8b",
+        "target_entity_id": "ff8ba698-6fe0-5bf9-9aca-8af9d37088c2",
+        "relationship_type": "CONTRACT_WITH",
+        "primary_evidence_id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b",
+        "observed_at": "2025-11-18T00:00:00+08:00",
+        "confidence": "HIGH",
+        "status": "published",
+        "start_date": "2025-11-18",
+        "date_precision": "day",
+        "amount": 10267760,
+        "currency": "TWD",
+        "source_role": "得標廠商與招標機關 / Awarded supplier and procuring agency"
+      }
+    ],
+    "relationship_evidence": [
+      {
+        "relationship_id": "c8afabcd-eb37-54f3-9f5e-7012e9aa755e",
+        "evidence_id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b"
+      },
+      {
+        "relationship_id": "35fe2712-6e61-577d-a13c-268222364c7c",
+        "evidence_id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b"
+      }
+    ]
+  },
+  "shared_update_explicitly_authorized": true,
+  "applied_at": "2026-11-20T13:24:59.308794+00:00"
+}

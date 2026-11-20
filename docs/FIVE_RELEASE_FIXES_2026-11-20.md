@@ -1,40 +1,59 @@
-# 發布稽核五項修正
+# 發布稽核五項修正與驗收
 
-範圍：基準 af42751；僅本機與 Development／Preview。Production 程式、設定與資料未修改。此文件不宣告 Product Consolidation COMPLETE 或正式發布通過。
+本輪五項修正 PASS；不宣告全臺資料完整、法律認證或 Product Consolidation 全階段完成。基準 af42751，僅推測試分支，未推 main、未部署或修改正式程式／設定／WAF。
 
-| 項目 | 狀態 | 實際處理與證據 |
+## 五項結果
+
+| 項目 | 結果 | 修正與實際證據 |
 |---|---|---|
-| 密集圖譜字級 | 本機 PASS；Preview 待驗 | 展開後將主標籤提高至至少約 12px；視窗 resize、放大畫布及返回欄位改為恢復分支鏡頭，不再自動縮小整圖。顯式「置中」仍可看全圖；其餘節點可拖曳畫布查看。1440／1280／1024／768px 字級、節點固定、連線避字及 Evidence 回歸通過。 |
-| PDF 同頁重複表頭 | 本機 PASS；Preview 待驗 | 一般表格只在列間分頁；超過整頁的單列只於新頁開始切分。真實聯上開發報告 15 頁，所有頁面無同頁重複章節表頭；超長列 900 次內容回歸完整。保留官方單筆連結、中英文及橫式。 |
-| 團體名稱缺字 | PASS（隔離，非補造名稱） | 45 筆 ASCII 問號名稱：33 筆官方 CSV 原件同樣缺字；4 筆官方非 CSV 待覆核；8 筆官方來源目前無法取回。45 個既有實體與 45 個證據轉 draft，ID、原名、provenance、FK 全數保留，0 關係／0 收藏受影響。匯入流程加入缺字待核 gate，正常名稱照常發布。詳見逐筆 JSON。 |
-| 真實兩個中介正例 | PARTIAL | anon/RLS 全部 1,389 段關係以雙向三段、不重複節點／邊 SQL 查核，真實公司三段路徑總數為 0。合成正例與獨立 oracle 通過，真實一個中介及三段無結果回應通過；尚無真實正例，不造邊、不改為「最多兩個中介」，不標此項 PASS。另核對中華電信 73、聯上 8 筆可取得標案，未找到可補驗的立法院採購正例。 |
-| 當前範圍健康／復原／防護 | PASS（有明確界線） | 新增唯讀公開範圍健康檢查，保留歷史全來源報告及司法 checkpoint。公開結構 High=0，不等於全臺覆蓋或 freshness 已認證。實際 age 加密備份及全新 socket-only 本機 PostgreSQL 還原通過：30 表、39 migrations、120 indexes、73 RLS policies、205 constraints、38 functions、28 triggers、row counts／anon 可讀範圍一致。修復漏還原 tei_source_checks schema 的問題。透過既有 Vercel 登入唯讀核對已啟用 API 規則：600 次／60 秒／IP，超過門檻 Deny 403；排除 status／workspace-config。未改規則、未做正式站壓測。 |
+| 密集圖譜字級 | PASS | 展開後主標籤提高至至少約 12px；resize、放大畫布與返回欄位恢復分支鏡頭，不再自動縮小整圖。明確按「置中」仍可看全圖，保留縮放、拖曳、Evidence 與續展。真實 Preview 22 節點在 1440／1280／1024／768px 低於 9px 的標籤數皆為 0；本機混合 10／17／46+ 節點仍無重疊及連線穿字。 |
+| PDF 同頁重複表頭 | PASS | 一般列在列間分頁；超過整頁的長列從新頁切分，避免同頁再插表頭。Preview 下載按鈕實際產生 165,853 bytes、15 頁 A4 橫式 PDF，所有頁面無重複章節表頭；第 4、10、13 頁已渲染視檢。超長列 900 次內容回歸完整，保留中英文、URL 與單筆官方連結。 |
+| 團體名稱缺字 | PASS（隔離，非猜字補名） | 45 筆：33 筆官方原件同樣缺字，4 筆官方非 CSV 待覆核，8 筆目前無法取得原件。45 個實體與 45 個證據轉 draft；ID、原名、provenance、45 個 Evidence FK 全數保留，0 關係／0 收藏受影響。匯入加入缺字 gate；不自動改名、合併或刪除。詳見逐筆 JSON。另 2 筆全形問號名稱可能含合法標點，仍分開人工判別。 |
+| 真實兩個中介 | PASS | 原已發布圖沒有三段公司路徑；已核標案只有公司→標案，缺公司→既有招標機關。新增可選的 upstream materialization：只有已核既有機關 ID、名稱與 PCC 代碼吻合才建立機關關係，不造新機關。同一官方 Evidence 同時支持原標案與機關連結。立法院案號 1141401387 已獨立核對統編 23060248、得標「是」、10,267,760 元及機關。隔離 SQL／anon RLS／原 API、真實回應的 Chrome 回播、實際 Preview 全數通過「聯上→吳思瑤→立法院←全家」四節點／三段；三段 Evidence 可查，採購連結正確開官方單筆，點全家可續展為 21 節點／20 關係。 |
+| 當前健康／備份復原／防護 | PASS（範圍明確） | 當前公開結構 High=0，另保留 33＋12 筆來源問題為 Medium，不把缺字隔離當成官方已補正。已更新真實 anon/RLS 計數與日期。最終 age 加密備份及全新 Unix-socket 本機 PostgreSQL 隔離還原通過：30 表、39 migrations、120 indexes、73 RLS policies、205 constraints、38 functions、28 triggers、row counts／anon 可讀範圍一致；修復 tei_source_checks schema 漏還原。Vercel 現行 API 規則已唯讀核對：600 次／60 秒／IP、超限 Deny 403，排除 status／workspace-config；未改規則或做正式站壓測。 |
 
-## 測試
+上述路徑來自不同日期與事件，不代表吳思瑤參與採購，也不代表兩家公司合作、持股控制或違法。
 
-- 乾淨隔離副本：564 Python tests、328 PostgreSQL checks、套件 JavaScript tests、lint、build 通過。
-- 瀏覽器回歸涵蓋 10／17／46+ 混合節點、66 層／79 節點連續展開、原節點固定、分支線與 Evidence、各桌面寬度、手機清單、右欄選取、真實 PDF 輸出流程。
-- 新增／更新字級、鏡頭 resize、放大畫布與立即點選競態、長表格分頁、缺字匯入及健康範圍的回歸。
-- 舊「展開時 zoom 絕對不變」斷言改為「不可縮小且字級至少約 12px」，避免原測試反過來強迫保留看不清楚的比例；幾何無重疊與連線避字門檻保留。
-- 真實報告與截圖暫存於 /tmp/tei-five-fixes；憑證、age 私鑰及未加密備份不寫入 repo。
+## 共用資料與使用者核准
 
-## 可重跑與復原
+事後確認正式站會讀取同一份 Development 公開資料。先前 45 筆隔離曾短暫改變正式站可見性；已從修改前加密備份核對並回復原發布狀態，未回寫歷史更新時間。之後只在拋棄式本機副本驗證。
 
-公開站健康（只讀 Development；先於安全子程序載入既有設定）：
+使用者明確回覆「允許僅這次共用資料更新」後，才再次套用這 45 筆隔離，以及 1 標案、1 Evidence、2 段關係。沒有更動其他公司、人物或已撤下資料的公開限制。正式程式與設定仍不變。
+
+目前公開可見：472 公司（467 臺灣統編、5 既有 SEC CIK 公司）、65,203 團體、3 標案、1,391 關係、67,090 Evidence、66,862 Entity–Evidence 連結。其他類型：121 立委／政治人物、31 政府官員、12 政府機關、4 政黨。這些是資料庫收錄筆數，不能推估全臺覆蓋率。
+
+## 測試與獨立覆核
+
+- 乾淨隔離副本：567 Python tests、338 PostgreSQL checks、套件 JavaScript tests、lint、build。
+- 八套確定性瀏覽器回歸、240 步狀態式 fuzz（seed 20261121，224 步實際適用）、19 組非同步瀏覽器流程／2,000 排程回歸；另加真實兩中介瀏覽器驗收。
+- 圖譜回歸涵蓋 66 層／79 節點連續展開、原節點固定、分支線、Evidence、桌面各寬度與手機清單；手機實測 46 個操作入口可開來源。
+- 調整舊「展開時 zoom 絕對不變」斷言為「不可縮小且字級約 12px」，保留無重疊、連線避字及顯式全圖門檻。修復測試在舊快照筆數斷言失敗後未釋放 mock lock 的清理問題。
+- 真實庫嚴格身分／Evidence／FK 稽核通過。原稽核只認臺灣統編，以及單一立委編號欄位，誤報 5 個既有 SEC CIK 公司及 6 筆有官方 crosswalk 的內部已撤下紀錄；改為嚴格核對正確來源範圍，不改資料或放寬 name-only 比對。新增 SQL 正反例測試，錯來源、錯編號及純姓名仍失敗。
+- 曾遇一次 Preview 名稱搜尋暫時 503；統編重試成功，本機同名簡稱／全名重新查詢均 200，分別約 4.93／1.54 秒。不宣稱已消除所有來源網路波動。錯誤與重試可見，未用假空資料替代。
+- PDF S 編號仍是來源索引，不是風險或罪責分數；直接官方連結已保留，7 個連結註記不代表 7 個不同案件。
+
+## 重跑與復原
 
 ```sh
 .venv/bin/python scripts/public_release_health.py --local-env
 ```
 
-這個流程讀 anon/RLS 可見資料；取得時間與官方事件時間分開、不推估母體。原司法健康檢查仍屬內部歷史同步範圍，不以公開站撤下功能冒充已修復官方來源。
+此流程唯讀固定 Development，保留每來源真實取得時間、未知母體、已隔離 Medium 與歷史 Phase 6 報告，不修改司法 checkpoint。公開結構 High=0 不代表 freshness 已認證。
 
-名稱覆核：docs/CIVIL_NAME_QUALITY_REVIEW_2026-11-20.json 保留每個原實體與證據 ID、快照雜湊及此次官方取回結果。取得官方完整字形後才更正並覆核發布；不因 rollback 自動把缺字名稱重新上架。不重建人物、不改收藏或關係。
+```sh
+.venv/bin/python scripts/verify_real_path_local.py \
+  --backup-dir <私有加密備份目錄> \
+  --local-env-file <權限0600的本機環境檔> \
+  --proposal docs/PROPOSED_REAL_TWO_INTERMEDIARY_CASE_2026-11-20.json \
+  --output /tmp/tei-isolated-path-result.json
+```
 
-備份為 repo 外私有目錄中的 age 加密檔，隔離還原使用獨立 PostgreSQL 暫存 cluster；未連接既有本機 DB。演練含 tei_private 與 tei_source_checks，原 Supabase 平台 Auth／Storage 服務、原 ownership／ACL 與實際 Vercel 部署回滾不在此次本機演練的保證範圍。
+只有通過固定 Development 來源檢查及隔離還原後，情境測試才寫入新建的本機 cluster；拒絕 network／既有本機資料庫目標，結束自動移除。
 
-## 剩餘發布條件
+備份只放 repo 外私有目錄，明文 dump 不落地；Supabase 平台 Auth／Storage 服務、原 ownership／ACL 與實際正式部署回滾仍不在本機演練保證範圍。45 筆缺字待官方補正；沒有官方完整字形不自動重新發布。來源更新 SLA、全國母體覆蓋與長時間負載亦未全面認證。
 
-1. 真實兩個中介正例仍缺。應取得能用官方身分／單筆證據串接的資料後再驗收；無路徑是資料範圍結果，不是應以猜測補線的程式錯誤。
-2. 45 筆缺字仍待官方名稱覆核；其中 12 筆未能取得可核對原件。另有 2 筆全形問號名稱須判別是否為合法標點，不自動視為缺字改名。
-3. 來源 freshness、全國母體覆蓋及長時間負載尚未全面認證；公開結構 High=0 僅代表此次明列的完整性檢查通過。
-4. 未修改或批准正式部署。正式發布與正式 smoke 仍需另外授權。
+## 已實測 Preview
+
+https://taiwan-entity-intelligence-kzntwe3ic-coldlight871029-9944.vercel.app/
+
+程式 d7064aa 的 UI／PDF 已實測；後續提交包含資料匯入 helper、驗收與更新統計，UI／PDF 程式不再改動。最新測試分支 Preview 由 Git 自動建立，最終網址與提交另記回報。

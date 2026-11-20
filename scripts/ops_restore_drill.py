@@ -143,7 +143,7 @@ def validate_archive(folder):
     return folder
 
 
-def drill(folder, source_url, identity):
+def drill(folder, source_url, identity, *, local_exercise=None):
     folder = validate_archive(folder)
     if not identity.is_file() or identity.stat().st_mode & 0o077:
         raise ValueError('An owner-only age identity is required')
@@ -226,7 +226,8 @@ def drill(folder, source_url, identity):
                 expected[metric] = query(source, sql) if has_grant else 0
             if (anonymous != expected or anonymous['workspaces'] or anonymous['saved_items']):
                 raise RuntimeError('Restored anonymous visibility or private RLS boundary mismatch')
-            return {'result': 'PASS', 'project_ref': 'canqjiokrtcxkwblhmml',
+            exercise_result = local_exercise(dict(local)) if local_exercise is not None else None
+            return {'result': 'PASS', 'local_exercise': exercise_result, 'project_ref': 'canqjiokrtcxkwblhmml',
                     'target': 'disposable local PostgreSQL, Unix socket only',
                     'tables': len(restored['rows']), 'migrations': len(restored['migrations']),
                     'indexes': len(restored['indexes']), 'rls_policies': len(restored['policies']),

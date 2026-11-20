@@ -1,5 +1,7 @@
 """Regression contracts for the public operations remediation."""
 import unittest
+import json
+from pathlib import Path
 from unittest.mock import Mock, patch
 from io import BytesIO
 from pypdf import PdfReader
@@ -24,22 +26,27 @@ class FullAuditRemediation(unittest.TestCase):
 
     def test_verified_snapshot_is_scoped_dated_and_preserved_on_timeout(self):
         app.STATUS_CACHE.clear()
+        snapshot=json.loads((Path(__file__).resolve().parents[1]/'src/public_database_counts.json').read_text())['supabase']
         with patch('app.core.SUPABASE', 'https://canqjiokrtcxkwblhmml.supabase.co'), patch('app.core.SUPABASE_KEY', 'anon-test'), patch('app.Thread') as thread:
             code, body, _ = app.database_status()
-            self.assertEqual(code, 200)
-            self.assertFalse(body['supabase']['connected'])
-            self.assertTrue(body['supabase']['snapshot_available'])
-            self.assertEqual(body['supabase']['canonical']['evidence_records'], 67134)
-            self.assertIn('2026-11-18', body['supabase']['counts_checked_at'])
-            thread.assert_called_once()
-            # A real background thread releases this lock itself.
-            app.STATUS_BACKGROUND_LOCK.release()
+            try:
+                self.assertEqual(code, 200)
+                self.assertFalse(body['supabase']['connected'])
+                self.assertTrue(body['supabase']['snapshot_available'])
+                self.assertGreater(snapshot['canonical']['evidence_records'],0)
+                self.assertEqual(body['supabase']['canonical']['evidence_records'], snapshot['canonical']['evidence_records'])
+                self.assertEqual(body['supabase']['counts_checked_at'],snapshot['counts_checked_at'])
+                thread.assert_called_once()
+            finally:
+                # Mock threads never execute their real lock-release callback.
+                if thread.called:
+                    app.STATUS_BACKGROUND_LOCK.release()
             with patch('app.db_count', side_effect=TimeoutError), patch('app.log_event'):
                 # Keep the same cache identity while simulating exact count failure.
                 key = (app.core.SUPABASE, id(app.db_count))
                 app.STATUS_CACHE[key] = (0, (code, body))
                 refreshed = app._refresh_database_status()[1]['supabase']
-                self.assertEqual(refreshed['canonical']['evidence_records'], 67134)
+                self.assertEqual(refreshed['canonical']['evidence_records'], snapshot['canonical']['evidence_records'])
                 self.assertIn('canonical.evidence_records', refreshed['stale_metrics'])
         with patch('app.core.SUPABASE', 'https://different.supabase.co'):
             self.assertIsNone(app.verified_count_snapshot())

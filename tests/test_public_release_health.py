@@ -16,6 +16,16 @@ class PublicReleaseHealthTests(unittest.TestCase):
         self.assertFalse(value['freshness_certified'])
         self.assertIn('不等於上線總驗收通過',markdown(value))
 
+    def test_quarantine_keeps_known_upstream_issues_visible_without_hiding_public_failure(self):
+        issue={'severity':'Medium','records':33,'scope':'reviewed cohort','description':'upstream missing glyph'}
+        value=report(self.counts(),known_issues=[issue])
+        self.assertEqual(value['known_upstream_issues'],[issue])
+        self.assertEqual(value['high_count'],0)
+        self.assertIn('Medium',markdown(value))
+        counts=self.counts()
+        counts['missing_glyph_names']=1
+        self.assertEqual(report(counts,known_issues=[issue])['high_count'],1)
+
     def test_missing_integrity_counts_and_withheld_types_fail_closed(self):
         for key in ('invalid_edges','missing_provenance','duplicate_edges','missing_glyph_names'):
             counts=self.counts()

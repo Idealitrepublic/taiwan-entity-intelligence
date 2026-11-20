@@ -1,5 +1,6 @@
 {
   "result": "PASS",
+  "local_exercise": null,
   "project_ref": "canqjiokrtcxkwblhmml",
   "target": "disposable local PostgreSQL, Unix socket only",
   "tables": 30,
@@ -31,23 +32,23 @@
     "entity_aliases": 0,
     "entity_identifiers": 714,
     "political_identity_crosswalks": 293,
-    "relationship_evidence": 1696,
-    "relationships": 1441,
-    "entity_evidence": 67072,
-    "entity_sources": 67070,
-    "entities": 65955,
-    "entity_search_terms": 131738,
+    "relationship_evidence": 1698,
+    "relationships": 1443,
+    "entity_evidence": 67075,
+    "entity_sources": 67073,
+    "entities": 65956,
+    "entity_search_terms": 131740,
     "source_records": 167699,
-    "evidence_records": 67918,
+    "evidence_records": 67919,
     "nonprofit_tax_observations": 99788
   },
   "anonymous": {
-    "entities": 65845,
-    "relationships": 1389,
-    "evidence": 67089,
+    "entities": 65846,
+    "relationships": 1391,
+    "evidence": 67090,
     "workspaces": 0,
     "saved_items": 0
   },
   "scope": "application schemas; excludes managed services and original ownership/ACLs",
-  "backup_created_at": "2026-11-20T08:56:23.853588+00:00"
+  "backup_created_at": "2026-11-20T13:23:39.443690+00:00"
 }

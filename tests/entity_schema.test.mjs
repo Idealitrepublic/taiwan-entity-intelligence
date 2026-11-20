@@ -1107,6 +1107,32 @@ print(json.dumps(build_political_master_bundle(members, committees, retrieved_at
   const exposed = await db.query("select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not c.relrowsecurity");
   assert.deepEqual(exposed.rows, []);
   checks++;
+  // The integrity audit must honor official foreign IDs and reviewed
+  // cross-source identifiers, without relaxing exact identity requirements.
+  const predicates=JSON.parse(execFileSync(process.env.TEI_TEST_PYTHON||'python',['-c',
+    'import json; from scripts.audit_graph_integrity_dev import COMPANY_ID_PREDICATE,POLITICIAN_EVIDENCE_IDENTIFIER; print(json.dumps([COMPANY_ID_PREDICATE,POLITICIAN_EVIDENCE_IDENTIFIER]))'],{encoding:'utf8'}));
+  for(const [identity,source,sourceId,namespace,value,expected] of [
+    ['EXACT','MOEA','company','tw:uniform_number','01234567',true],
+    ['EXACT','US SEC EDGAR','us:sec:cik:0001579878','us:sec:cik','0001579878',true],
+    ['SOURCE_SCOPED','US SEC EDGAR','us:sec:cik:0001579878','us:sec:cik','0001579878',false],
+    ['EXACT','unverified news','us:sec:cik:0001579878','us:sec:cik','0001579878',false],
+    ['EXACT','US SEC EDGAR','us:sec:cik:0000000000','us:sec:cik','0001579878',false],
+    ['EXACT','US SEC EDGAR','us:sec:cik:1579878','us:sec:cik','1579878',false]
+  ]){
+    const actual=(await db.query(`select ${predicates[0]} ok from
+      (select $1::text identity_status,$2::text source,$3::text source_id) e,
+      (select $4::text namespace,$5::text value) i`,[identity,source,sourceId,namespace,value])).rows[0].ok;
+    assert.equal(actual,expected);checks++;
+  }
+  for(const [locator,expected] of [
+    [{legislator_number:'00082'},'00082'],
+    [{politician_identifier_namespace:'tw:legislative_yuan:legislator_number',politician_match_method:'exact_official_identifier',politician_identifier_value:'00082'},'00082'],
+    [{politician_identifier_namespace:'unverified:name',politician_match_method:'exact_official_identifier',politician_identifier_value:'00082'},null],
+    [{politician_identifier_namespace:'tw:legislative_yuan:legislator_number',politician_match_method:'name_only',politician_identifier_value:'00082'},null]
+  ]){
+    const actual=(await db.query(`select ${predicates[1]} identifier from (select $1::jsonb source_locator) ev`,[JSON.stringify(locator)])).rows[0].identifier;
+    assert.equal(actual,expected);checks++;
+  }
   console.log(`PostgreSQL integration: ${checks} checks passed; migration, idempotency, constraints, retraction and RLS verified.`);
 } finally {
   await db.close();

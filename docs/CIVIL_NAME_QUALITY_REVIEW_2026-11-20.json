@@ -1,7 +1,7 @@
 {
   "checked_at": "2026-11-20T08:58:01.650893+00:00",
   "environment": "tei-development",
-  "action": "draft_quarantine_only",
+  "action": "quarantined_after_explicit_shared_public_data_approval",
   "entities": 45,
   "relationships_affected": 0,
   "saved_items_affected": 0,
@@ -19,7 +19,8 @@
       "official_review": "non_csv_requires_official_review",
       "official_snapshot_sha256": "1b137e84e3b32ba222f860b2dec06503d79cd4c62e384dc4c92549ea1ca9e13f",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "cf79e263-8af0-5181-a6a9-22f449f3b85c",
@@ -30,7 +31,8 @@
       "official_review": "non_csv_requires_official_review",
       "official_snapshot_sha256": "1b137e84e3b32ba222f860b2dec06503d79cd4c62e384dc4c92549ea1ca9e13f",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "2fa85056-8d14-5d41-9143-675e6a767fc9",
@@ -41,7 +43,8 @@
       "official_review": "non_csv_requires_official_review",
       "official_snapshot_sha256": "1b137e84e3b32ba222f860b2dec06503d79cd4c62e384dc4c92549ea1ca9e13f",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "d18d6961-6078-589c-8f63-4f741adf7e38",
@@ -52,7 +55,8 @@
       "official_review": "non_csv_requires_official_review",
       "official_snapshot_sha256": "1b137e84e3b32ba222f860b2dec06503d79cd4c62e384dc4c92549ea1ca9e13f",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "04ed7726-e307-5905-abbd-fb02dc7dfebe",
@@ -63,7 +67,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "65e32502-b52c-5f2b-94d2-eb4bb56af5ee",
@@ -74,7 +79,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "fb12c033-c9fc-5170-bd73-0f49fb23212b",
@@ -85,7 +91,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "a48341f9-cff9-5c4a-a2e8-6f90eaa109eb",
@@ -96,7 +103,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "154cf1eb-5a21-53ee-84b1-d90582a8b8fe",
@@ -107,7 +115,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "8ae57b8d-5597-5d25-ad4a-d93eabec61c6",
@@ -118,7 +127,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "d6ebdcc4-8b3b-5a9b-81c6-d41d26c62250",
@@ -129,7 +139,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "b2fc7437-c19d-517e-8861-4ec747e9cc5b",
@@ -140,7 +151,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "6b9d4bba-d6a7-5f0d-a9d6-ac08cb20729e",
@@ -151,7 +163,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "4d30091479494c2c32e5a58cc1dd3e444777fc16983fd2a5ebb310b473708584",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "f9e9ef81-ffbe-5756-9732-ea9338fa8ea5",
@@ -162,7 +175,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b874c8ddc4b752acb24cc7d075eb676dc6960f2f6506c5f624530bd22c96d020",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "1b69f66b-e489-5a0a-94f4-38492cfff9d7",
@@ -173,7 +187,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b874c8ddc4b752acb24cc7d075eb676dc6960f2f6506c5f624530bd22c96d020",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "5048493c-e364-5472-8262-dcdb0540d078",
@@ -184,7 +199,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b874c8ddc4b752acb24cc7d075eb676dc6960f2f6506c5f624530bd22c96d020",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "9fd621f5-ac6a-5f01-a30e-24f4c7ca2e82",
@@ -195,7 +211,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b874c8ddc4b752acb24cc7d075eb676dc6960f2f6506c5f624530bd22c96d020",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "7c1a8011-b5e5-5501-92c0-c2612ceeeae7",
@@ -206,7 +223,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b874c8ddc4b752acb24cc7d075eb676dc6960f2f6506c5f624530bd22c96d020",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "60a90a22-0a42-5c3d-8f85-e0964ec24a13",
@@ -217,7 +235,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b874c8ddc4b752acb24cc7d075eb676dc6960f2f6506c5f624530bd22c96d020",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "0204b45f-e460-52a4-a5f8-1dc67c600b7d",
@@ -228,7 +247,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b874c8ddc4b752acb24cc7d075eb676dc6960f2f6506c5f624530bd22c96d020",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "f44a748c-d26b-57c0-b82f-281ab5d6421f",
@@ -239,7 +259,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b3cdc2feb6d0b2b3d1219478dfde37e6ff8af4dc4277ecc9700d4b7b9814930a",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "ffacd3fd-eccc-563d-a8f8-b5566301ca82",
@@ -250,7 +271,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "b3cdc2feb6d0b2b3d1219478dfde37e6ff8af4dc4277ecc9700d4b7b9814930a",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "75687f8f-c5f3-5b1c-976d-c07fe945915f",
@@ -261,7 +283,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "11ea2f32034eb0bc35609a1058877d842073e95be16c3632ccc700ecf89489ba",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "ae602bfc-d45a-5973-9561-af7e1cf3c990",
@@ -272,7 +295,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "11ea2f32034eb0bc35609a1058877d842073e95be16c3632ccc700ecf89489ba",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "0b1ebc32-6979-57a2-be3e-9478c8df7d39",
@@ -283,7 +307,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "52b10a3798c6e33e3e21743f13063df471bf06107ce18b268acb1af2afc19db8",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "063f082d-3568-54a3-98a4-369b057e02e1",
@@ -294,7 +319,8 @@
       "official_review": "unavailable",
       "official_snapshot_sha256": null,
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "fbeddd91-6899-568e-af66-7cae163688c8",
@@ -305,7 +331,8 @@
       "official_review": "unavailable",
       "official_snapshot_sha256": null,
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "aec192cc-c479-5726-bfda-781b7f738ed3",
@@ -316,7 +343,8 @@
       "official_review": "unavailable",
       "official_snapshot_sha256": null,
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "09357c19-b077-57d1-a32e-87723d680083",
@@ -327,7 +355,8 @@
       "official_review": "unavailable",
       "official_snapshot_sha256": null,
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "f2fca867-56fc-5f89-9916-09c59d1df5dc",
@@ -338,7 +367,8 @@
       "official_review": "unavailable",
       "official_snapshot_sha256": null,
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "3acab5e7-fcb4-509d-9f95-68e0ea01d95f",
@@ -349,7 +379,8 @@
       "official_review": "unavailable",
       "official_snapshot_sha256": null,
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "fc9b3500-f53e-55a3-8a4e-36c451e64729",
@@ -360,7 +391,8 @@
       "official_review": "unavailable",
       "official_snapshot_sha256": null,
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "74f1f480-bbbe-5097-9561-193abd36f456",
@@ -371,7 +403,8 @@
       "official_review": "unavailable",
       "official_snapshot_sha256": null,
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "87a3de01-8246-5caa-84ab-e640dfcfa950",
@@ -382,7 +415,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "26d9b103cb405925e914ac5078c406a78eff37f3313d5cde5b93a1b0ebb18b81",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "8ba3a350-a2db-5ded-8585-2417e0771e6f",
@@ -393,7 +427,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "6afc00a16ca3957f7282161335b8b94166d68b59c2edfaf27faeae5ede1471cd",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "8ca870ca-195e-5ed9-aa37-341ec532719c",
@@ -404,7 +439,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "6afc00a16ca3957f7282161335b8b94166d68b59c2edfaf27faeae5ede1471cd",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "d98a44eb-806a-594a-89bf-b1a947d97778",
@@ -415,7 +451,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "6afc00a16ca3957f7282161335b8b94166d68b59c2edfaf27faeae5ede1471cd",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "62f1472a-13d2-5b75-ae88-55258c5bb269",
@@ -426,7 +463,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "add75058408627542b6895d7e3330800b450cdb9646e5327cf3dc080d9f4d0e8",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "b4474a38-17ff-5e89-85d0-e2455c5aee02",
@@ -437,7 +475,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "42822de67fac3d2a04b16e864d673dabe40127dddc18419f14e0d0d1ef3673b3",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "1fcd4021-5d83-5ba4-9fc7-0db19cd494b6",
@@ -448,7 +487,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "c28ba7935b70fbee8d4dba8cbd8bf42db2092acf08399a64ceecf4e37896fa24",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "c62774dc-f58f-56e8-ba2d-9e0a0c6faa4b",
@@ -459,7 +499,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "c28ba7935b70fbee8d4dba8cbd8bf42db2092acf08399a64ceecf4e37896fa24",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "a8d767d2-3cff-5118-b717-2a18cb031c27",
@@ -470,7 +511,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "3100d1ee9ae2e9956df4a372d86f8b74796b34b02ac7889828457038ae299d78",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "a2177086-6fa3-5113-95cb-9f0b4086298b",
@@ -481,7 +523,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "c71bdb0131e0beefc409b5b3806109b9f1b4a464a3daba1f8beb7d71c1a7e5cf",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "5be80b25-e835-58ac-9ce8-911e321ede8b",
@@ -492,7 +535,8 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "a1ef398bf34bf8f325c5e99de9fd235472fd103db21d2bca022f1d73e1d13aaf",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     },
     {
       "id": "1aa19439-d1fc-5046-87c3-81df79cfec79",
@@ -503,7 +547,16 @@
       "official_review": "official_missing_glyph",
       "official_snapshot_sha256": "1c5a7cf85096c99195a8c59043352c486af7be7f6a16d2d16d5abaae5b6cea0b",
       "original_publication_status": "published",
-      "current_publication_status": "draft"
+      "current_publication_status": "draft",
+      "proposed_publication_status": "draft"
     }
-  ]
+  ],
+  "shared_public_data_detected": true,
+  "shared_entities_quarantined": 45,
+  "local_entities_quarantined": 45,
+  "baseline_publication_states_recovered_from_encrypted_backup": true,
+  "shared_publication_state_restored": false,
+  "shared_publication_state_restored_before_approval": true,
+  "shared_update_explicitly_authorized": true,
+  "approved_update_applied_at": "2026-11-20T13:24:59.308400+00:00"
 }

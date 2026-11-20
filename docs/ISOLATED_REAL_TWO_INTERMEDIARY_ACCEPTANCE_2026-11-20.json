@@ -1,0 +1,253 @@
+{
+  "result": "PASS",
+  "scope": "disposable_local_clone_only",
+  "shared_database_written": false,
+  "missing_glyph_names_after_quarantine": 0,
+  "depth_checks": [
+    {
+      "found": false,
+      "depth": null,
+      "exact_depth": 1
+    },
+    {
+      "found": false,
+      "depth": null,
+      "exact_depth": 2
+    },
+    {
+      "found": true,
+      "depth": 3,
+      "exact_depth": 3
+    }
+  ],
+  "path": {
+    "found": true,
+    "depth": 3,
+    "segments": [
+      {
+        "from_entity": {
+          "id": "003e0ccc-1f16-55cc-89d3-570d74a48ea8",
+          "entity_type": "Company",
+          "display_name": "聯上開發股份有限公司",
+          "canonical_name": "聯上開發股份有限公司",
+          "identity_status": "EXACT"
+        },
+        "to_entity": {
+          "id": "f58f140f-d9df-53ff-9344-45eb49a40064",
+          "entity_type": "Politician",
+          "display_name": "吳思瑤",
+          "canonical_name": "吳思瑤",
+          "identity_status": "EXACT"
+        },
+        "traversal_direction": "forward",
+        "relationship": {
+          "id": "47765902-08c3-5e79-9e9f-b1d24642b704",
+          "amount": 200000.0,
+          "status": "published",
+          "currency": "TWD",
+          "end_date": null,
+          "quantity": null,
+          "confidence": "HIGH",
+          "percentage": null,
+          "start_date": "2023-10-13",
+          "observed_at": "2023-10-13T00:00:00+08:00",
+          "source_role": "營利事業捐贈收入",
+          "quantity_unit": null,
+          "date_precision": "day",
+          "source_entity_id": "003e0ccc-1f16-55cc-89d3-570d74a48ea8",
+          "target_entity_id": "f58f140f-d9df-53ff-9344-45eb49a40064",
+          "relationship_type": "POLITICAL_CONTRIBUTION_TO",
+          "primary_evidence_id": "e13106cf-68fd-5af1-b704-78491d7653a7"
+        },
+        "evidence": {
+          "id": "e13106cf-68fd-5af1-b704-78491d7653a7",
+          "title": "政治獻金來源紀錄：聯上開發股份有限公司",
+          "status": "active",
+          "summary": "聯上開發股份有限公司（統編 22659295）→ 吳思瑤；200000.00 TWD；2023-10-13",
+          "source_url": "https://ardata.cy.gov.tw/api/v1/Search/download?AccountNumber=&DownloadType=3&ElectionArea=%E8%87%BA%E5%8C%97%E5%B8%82&ElectionName=113%E5%B9%B4%E7%AB%8B%E6%B3%95%E5%A7%94%E5%93%A1%E9%81%B8%E8%88%89&SearchType=2&Version=&YearOrSerial=1",
+          "observed_at": "2023-10-13T00:00:00+08:00",
+          "source_name": "監察院政治獻金公開查閱平臺",
+          "content_hash": "497e4ed4c7d3f8fab1cfcd9bc4d3c304d6cf55bdb06a82cb32053b5d78d3123b",
+          "retrieved_at": "2026-10-28T23:55:34.995029+08:00",
+          "source_class": "Government Open Data",
+          "source_locator": {
+            "filing": "首次申報",
+            "csv_row": 3241,
+            "dataset": "168061",
+            "election": "113年立法委員選舉",
+            "money_type": "金錢",
+            "row_serial": "3240",
+            "term_number": 11,
+            "cec_pdf_page": 1,
+            "constituency": "臺北市第1選舉區",
+            "match_method": "exact_uniform_number",
+            "election_area": "臺北市",
+            "return_status": "not_marked_returned_in_source",
+            "archive_member": "incomes.csv",
+            "candidate_name": "吳思瑤",
+            "cec_source_url": "https://web.cec.gov.tw/api/file/4a5b0001-a14d-4319-8dc1-676f5312c702.pdf",
+            "uniform_number": "22659295",
+            "donation_method": "匯款",
+            "snapshot_sha256": "8a9eecde731b3771d31411a0b19b627ef8f40f18912b017a3085b10224c16b92",
+            "contribution_year": 2023,
+            "resolution_status": "reviewed_election_term_constituency_company_identifier",
+            "cec_snapshot_sha256": "3d1cd84e4642cd5dd717acea7f9ea60ebffc085a30a02235bb73b25ecc7692f3",
+            "donor_uniform_number": "22659295",
+            "politician_crosswalk_id": "ea361ab4-78e9-5d0c-8510-8f24f8232843",
+            "politician_match_method": "exact_official_identifier",
+            "politician_identifier_value": "00014",
+            "politician_identifier_origin": "reviewed_crosswalk",
+            "politician_identifier_namespace": "tw:legislative_yuan:legislator_number"
+          },
+          "source_record_id": "168061:taipei:incomes:3240"
+        }
+      },
+      {
+        "from_entity": {
+          "id": "f58f140f-d9df-53ff-9344-45eb49a40064",
+          "entity_type": "Politician",
+          "display_name": "吳思瑤",
+          "canonical_name": "吳思瑤",
+          "identity_status": "EXACT"
+        },
+        "to_entity": {
+          "id": "ff8ba698-6fe0-5bf9-9aca-8af9d37088c2",
+          "entity_type": "GovernmentAgency",
+          "display_name": "立法院",
+          "canonical_name": "立法院",
+          "identity_status": "EXACT"
+        },
+        "traversal_direction": "forward",
+        "relationship": {
+          "id": "32aab148-b89e-5a7a-9ec8-e0ac8016904e",
+          "amount": null,
+          "status": "published",
+          "currency": null,
+          "end_date": null,
+          "quantity": null,
+          "confidence": "EXACT",
+          "created_at": "2026-09-23T07:32:01.318276+08:00",
+          "percentage": null,
+          "start_date": "2024-02-01",
+          "updated_at": "2026-09-23T07:42:58.583759+08:00",
+          "observed_at": "2024-02-01T08:00:00+08:00",
+          "source_role": "term:11",
+          "quantity_unit": null,
+          "date_precision": "day",
+          "source_entity_id": "f58f140f-d9df-53ff-9344-45eb49a40064",
+          "target_entity_id": "ff8ba698-6fe0-5bf9-9aca-8af9d37088c2",
+          "relationship_type": "LEGISLATOR_OF",
+          "primary_evidence_id": "486da248-46b5-533e-b41b-40779ce4f3ad"
+        },
+        "evidence": {
+          "id": "486da248-46b5-533e-b41b-40779ce4f3ad",
+          "title": "第11屆立法委員：吳思瑤",
+          "status": "active",
+          "summary": "吳思瑤；民主進步黨；臺北市第1選舉區；到職 2024-02-01",
+          "created_at": "2026-09-23T07:32:01.318276+08:00",
+          "source_url": "https://data.ly.gov.tw/getds.action?id=16",
+          "updated_at": "2026-09-23T07:41:07.754062+08:00",
+          "observed_at": "2024-02-01T08:00:00+08:00",
+          "source_name": "立法院開放資料服務平台",
+          "content_hash": "351ad6c784ec053da959c21b4f134eeea9fa8fbcbd067c6ae2ac5b960b85709b",
+          "retrieved_at": "2026-09-23T07:31:59.826508+08:00",
+          "source_class": "Government Open Data",
+          "source_locator": {
+            "term": 11,
+            "dataset_id": 16,
+            "source_record_id": "member:11:00014",
+            "legislator_number": "00014"
+          },
+          "source_record_id": "member:11:00014",
+          "publication_status": "published"
+        }
+      },
+      {
+        "from_entity": {
+          "id": "ff8ba698-6fe0-5bf9-9aca-8af9d37088c2",
+          "entity_type": "GovernmentAgency",
+          "display_name": "立法院",
+          "canonical_name": "立法院",
+          "identity_status": "EXACT"
+        },
+        "to_entity": {
+          "id": "98293adc-a2b2-553c-9426-43dcc426bf8b",
+          "entity_type": "Company",
+          "display_name": "全家便利商店股份有限公司",
+          "canonical_name": "全家便利商店股份有限公司",
+          "identity_status": "EXACT"
+        },
+        "traversal_direction": "reverse",
+        "relationship": {
+          "id": "35fe2712-6e61-577d-a13c-268222364c7c",
+          "amount": 10267760,
+          "status": "published",
+          "currency": "TWD",
+          "end_date": null,
+          "quantity": null,
+          "confidence": "HIGH",
+          "percentage": null,
+          "start_date": "2025-11-18",
+          "observed_at": "2025-11-18T00:00:00+08:00",
+          "source_role": "得標廠商與招標機關 / Awarded supplier and procuring agency",
+          "quantity_unit": null,
+          "date_precision": "day",
+          "source_entity_id": "98293adc-a2b2-553c-9426-43dcc426bf8b",
+          "target_entity_id": "ff8ba698-6fe0-5bf9-9aca-8af9d37088c2",
+          "relationship_type": "CONTRACT_WITH",
+          "primary_evidence_id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b"
+        },
+        "evidence": {
+          "id": "46c3ba28-bb2b-5fc0-8aa1-43a2863cf81b",
+          "title": "立法院「115年度禮券採購案」",
+          "status": "active",
+          "summary": "立法院；得標廠商：全家便利商店股份有限公司（23060248）",
+          "source_url": "https://web.pcc.gov.tw/tps/atm/AtmAwardWithoutSso/QueryAtmAwardDetailHist?fkPmsMainHist=OTU4NzYxOTQ=",
+          "observed_at": "2025-11-18T00:00:00+08:00",
+          "source_name": "政府電子採購網",
+          "content_hash": "3dc1d204bd63fc6a082662eb17867d2ce1c4bc12664d1cb3f38776135c6423de",
+          "retrieved_at": "2026-11-20T21:08:56.175848+08:00",
+          "source_class": "Primary Source",
+          "source_locator": {
+            "title": "立法院「115年度禮券採購案」",
+            "agency": "立法院",
+            "amount": 10267760,
+            "winner": true,
+            "unit_id": "4",
+            "award_date": "2025-11-18",
+            "job_number": "1141401387",
+            "mirror_url": "https://pcc-api.openfun.app/api/tender?unit_id=4&job_number=1141401387",
+            "bidder_name": "全家便利商店股份有限公司 (Taiwan FamilyMart Co., Ltd.)",
+            "notice_date": "2025-12-05",
+            "review_method": "official_row_compared_with_exact_bidder_id_and_award_role",
+            "notice_filename": "BDM-1-71037681",
+            "bidder_uniform_number": "23060248"
+          },
+          "source_record_id": "4:1141401387:BDM-1-71037681"
+        }
+      }
+    ],
+    "source_entity": {
+      "id": "003e0ccc-1f16-55cc-89d3-570d74a48ea8",
+      "entity_type": "Company",
+      "display_name": "聯上開發股份有限公司",
+      "canonical_name": "聯上開發股份有限公司",
+      "identity_status": "EXACT"
+    },
+    "target_entity": {
+      "id": "98293adc-a2b2-553c-9426-43dcc426bf8b",
+      "entity_type": "Company",
+      "display_name": "全家便利商店股份有限公司",
+      "canonical_name": "全家便利商店股份有限公司",
+      "identity_status": "EXACT"
+    },
+    "max_depth": 3,
+    "exact_depth": 3,
+    "backend": "company_exact_intermediaries",
+    "traversal_bounded": true,
+    "relationship_limit_per_node": 25,
+    "truncated": false,
+    "coverage_note": "指定中介數；每端讀取25條關係、中間連線200條，僅已發布資料。 / Exact intermediary count; bounded published data only."
+  },
+  "interpretation": "聯上之政治獻金紀錄、吳思瑤之立委職務、全家之立法院得標公告分屬不同日期與事件；不代表吳思瑤參與採購、不代表兩家公司合作或違法。"
+}
