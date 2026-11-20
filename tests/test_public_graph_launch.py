@@ -73,6 +73,20 @@ class PublicGraphLaunchTests(unittest.TestCase):
             self.assertEqual(dispatch(f"/api/v1/entities/{ID}/political-contributions", {})[0], 200)
         factory.assert_called_once_with(require_launch_scope=True)
 
+    def test_one_official_notice_counts_once_for_contract_and_agency_edges(self):
+        source={'bidder_uniform_number':UNIFORM,'winner':True,
+                'review_method':'official_row_compared_with_exact_bidder_id_and_award_role',
+                'unit_id':'4','job_number':'1141401387','notice_filename':'BDM-1-71037681','award_date':'2025-11-18'}
+        proof={'id':'official-proof','source_locator':source,'source_url':'https://web.pcc.gov.tw/review'}
+        edge={'source_entity_id':ID,'relationship_type':'CONTRACT_WITH','primary_evidence':proof}
+        with patch('src.entities.repository.EntityRepository') as factory:
+            db=factory.return_value
+            db.company_for_uniform.return_value={'id':ID}
+            db.graph_neighbors.return_value={'edges':[{**edge,'target_entity_id':'contract'},{**edge,'target_entity_id':'agency'}],'has_more':False}
+            result=lookup_reviewed_awards(UNIFORM)
+            self.assertEqual(result['matched'],1)
+            self.assertEqual(len(result['records']),1)
+
     def test_award_requires_official_notice_role_exact_uniform_and_identifier(self):
         source = {"bidder_uniform_number": UNIFORM, "winner": True,
                   "review_method": "official_row_compared_with_exact_bidder_id_and_award_role",

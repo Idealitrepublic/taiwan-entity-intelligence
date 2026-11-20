@@ -1,5 +1,7 @@
 """Deterministic, read-only investigation report projection and rendering."""
 from datetime import datetime, timezone
+from copy import deepcopy
+from decimal import Decimal, InvalidOperation
 from concurrent.futures import ThreadPoolExecutor
 from html import escape
 import json
@@ -68,6 +70,66 @@ def _evidence(record):
         "source_url": record.get("source_url"),
         "retrieved_at": record.get("retrieved_at"),
     }
+
+
+def _contract_case_records(rows):
+    """One official notice per supplier in the case list; keep every graph fact."""
+    result, seen, case_fields = [], {}, {}
+    def rank(row):
+        relation = row.get('relationship') or {}
+        return (bool(relation.get('案號 / Job no.')),
+                (row.get('target_entity') or {}).get('entity_type') == 'Contract')
+    def amount(value):
+        try:
+            parsed = Decimal(str(value))
+            return parsed if parsed.is_finite() else ('nonfinite', str(value))
+        except InvalidOperation:
+            return str(value)
+    for original in rows:
+        row = deepcopy(original)
+        evidence = row.get('evidence') or {}
+        if not isinstance(evidence, dict) or not isinstance(row.get('relationship'), dict):
+            result.append(row)
+            continue
+        locator = evidence.get('source_locator') or {}
+        locator = locator if isinstance(locator, dict) else {}
+        parts = [locator.get(k) for k in ('unit_id','job_number','notice_filename')]
+        company = (row.get('source_entity') or {}).get('id')
+        try:
+            parsed_url = urlsplit(str(evidence.get('source_url') or ''))
+            official = (parsed_url.scheme == 'https' and parsed_url.hostname == 'web.pcc.gov.tw'
+                        and not parsed_url.username and not parsed_url.password)
+        except ValueError:
+            official = False
+        if (not official or not isinstance(company,str) or not company
+                or not all(isinstance(p,str) and p for p in parts)):
+            result.append(row)
+            continue
+        case_fields[id(row)] = {'案號 / Job no.': parts[1], '招標機關 / Agency': locator.get('agency')}
+        key = (company, *parts)
+        if key not in seen:
+            seen[key] = len(result)
+            result.append(row)
+            continue
+        index = seen[key]
+        prior = result[index]
+        left, right = prior.get('relationship') or {}, row.get('relationship') or {}
+        conflict = any(left.get(k) is not None and right.get(k) is not None and
+                       (amount(left[k]) != amount(right[k]) if k=='amount' else left[k] != right[k])
+                       for k in ('amount','currency','start_date'))
+        if conflict:
+            result.append(row)  # Do not conceal conflicting observations.
+            continue
+        chosen, other = (row,prior) if rank(row)>rank(prior) else (prior,row)
+        for field in ('amount','currency','start_date'):
+            if chosen['relationship'].get(field) is None and (other.get('relationship') or {}).get(field) is not None:
+                chosen['relationship'][field] = other['relationship'][field]
+        result[index] = chosen
+    for row in result:
+        for label, value in case_fields.get(id(row), {}).items():
+            if value and row['relationship'].get(label) is None:
+                row['relationship'][label] = value
+    return result
 
 
 def _relation(edge, nodes):
@@ -239,6 +301,7 @@ class ReportService:
                                       "source_url": registry["source_url"],
                                       "retrieved_at": registry.get("fetched_at"),
                                       "title": "公司登記來源 / Company registry source"})
+        report["government_contracts"] = _contract_case_records(report.get("government_contracts", []))
         return report
 
     def entity_report(self, entity_id):
@@ -544,6 +607,7 @@ class ReportService:
                        source.get('retrieved_at'), source.get('content_hash'))
                 versions[key] = {**versions.get(key, {}), **{k: v for k, v in source.items() if v is not None}}
             report['sources'] = list(versions.values())
+        report["government_contracts"] = _contract_case_records(report.get("government_contracts", []))
         return report
 
     def workspace_report(self, workspace_id, access_token):
@@ -680,6 +744,7 @@ class ReportService:
                     unique[row_id] = row
             report[key] = list(unique.values())
         report["relationship_graph"]["edges"] = list(edge_map.values())
+        report["government_contracts"] = _contract_case_records(report.get("government_contracts", []))
         return report
 
 

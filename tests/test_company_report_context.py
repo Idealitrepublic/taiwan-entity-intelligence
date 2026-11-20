@@ -3,12 +3,48 @@ import unittest
 from unittest.mock import patch
 
 from src.entities.repository import EntityRepository
+from src.reports import _contract_case_records
+from copy import deepcopy
 
 COMPANY = '11111111-1111-4111-8111-111111111111'
 OTHER = '22222222-2222-4222-8222-222222222222'
 
 
 class CompanyReportContextTests(unittest.TestCase):
+    def test_award_case_list_deduplicates_graph_facts_but_preserves_versions_and_conflicts(self):
+        base={'source_entity':{'id':COMPANY},'target_entity':{'id':'agency','entity_type':'GovernmentAgency'},
+              'relationship':{'id':'agency-edge','amount':100,'currency':'TWD','start_date':'2025-11-18'},
+              'evidence':{'source_url':'https://web.pcc.gov.tw/record',
+                          'source_locator':{'unit_id':'4','job_number':'1141401387','notice_filename':'N1'}}}
+        contract=deepcopy(base)
+        contract['target_entity']={'id':'contract','entity_type':'Contract'}
+        contract['relationship']['id']='contract-edge'
+        enriched=deepcopy(base)
+        enriched['relationship']={'id':'live-row','案號 / Job no.':'1141401387','預算金額 / Budget':'100元'}
+        rows=[base,contract,enriched]
+        original=deepcopy(rows)
+        result=_contract_case_records(rows)
+        self.assertEqual(len(result),1)
+        self.assertEqual(result[0]['relationship']['amount'],100)
+        self.assertEqual(result[0]['relationship']['預算金額 / Budget'],'100元')
+        self.assertEqual(rows,original,'Graph facts and input provenance stay intact')
+        version=deepcopy(contract)
+        version['evidence']['source_locator']['notice_filename']='N2'
+        conflict=deepcopy(contract)
+        conflict['relationship']['amount']=200
+        self.assertEqual(len(_contract_case_records([base,version,conflict])),3)
+        self.assertEqual(_contract_case_records([contract,base])[0]['relationship']['案號 / Job no.'],'1141401387')
+
+    def test_contract_deduplication_does_not_crash_or_hide_ambiguous_source_values(self):
+        row={'source_entity':{'id':COMPANY},'relationship':{'amount':'sNaN'},
+             'evidence':{'source_url':'https://web.pcc.gov.tw/record',
+                         'source_locator':{'unit_id':'4','job_number':'J','notice_filename':'N'}}}
+        self.assertEqual(len(_contract_case_records([row,deepcopy(row)])),1)
+        for url in ('https://[broken','https://user:secret@web.pcc.gov.tw/record','https://web.pcc.gov.tw.evil/record'):
+            bad=deepcopy(row)
+            bad['evidence']['source_url']=url
+            self.assertEqual(len(_contract_case_records([bad,deepcopy(bad)])),2)
+
     def test_only_one_exact_official_identifier_can_select_the_company(self):
         calls = []
         def transport(table, params):

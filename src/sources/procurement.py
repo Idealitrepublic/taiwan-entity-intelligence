@@ -309,6 +309,9 @@ def lookup_reviewed_awards(uniform: str, limit: int = 25, timeout: int = 12) -> 
                         "official_search_url": OFFICIAL_SEARCH, "retrieved_at": evidence.get("retrieved_at"),
                         "publication_status": "published", "identity_status": "verified_identifier",
                         "verification_scope": "reviewed_official_notice"})
+    # A reviewed notice can evidence both the contract node and its agency.
+    # Those are two graph facts, but one identical award record in this list.
+    records = list({json.dumps(row, sort_keys=True, ensure_ascii=False): row for row in records}.values())
     records.sort(key=lambda row: row["date"], reverse=True)
     return {**result, "records": records, "matched": len(records),
             "retrieved_at": max((r["retrieved_at"] for r in records if r["retrieved_at"]), default=None),
