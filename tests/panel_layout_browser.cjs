@@ -78,7 +78,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
         {label:'總決標金額 / Total award amount',value:'228,900,001元',source_field:'決標資料:總決標金額'},
         {label:'決標日期 / Award date',value:'109/06/03',source_field:'決標資料:決標日期'}],bidders:[[
           {label:'廠商 / Bidder',value:'範例廠商',source_field:'投標廠商:投標廠商1:廠商名稱'},
-          {label:'統編 / Company ID',value:'01234567',source_field:'投標廠商:投標廠商1:廠商代碼'}]],items:[]};
+          {label:'統編 / Company ID',value:'01234567',source_field:'投標廠商:投標廠商1:廠商代碼'}],[{label:'廠商名稱 / Bidder',value:'第二家真實格式測試廠商',source_field:'投標廠商:投標廠商2:廠商名稱'}]],items:[]};
       if(path==='/api/v1/workspace-config')data={auth_enabled:false};
       if(path==='/api/status')data={supabase:{connected:true,partial:true,canonical:{companies:472}},source_notices:[]};
       return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
@@ -209,13 +209,21 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/西元 2020 年（民國 109 年）6 月 3 日/);
       assert.match(await pane.locator('.award-detail-content').first().textContent(),/資料取得日期 \/ Retrieved at/);
       const metadata=await pane.locator('.award-source-metadata').first().evaluate(el=>{
-        const rows=[...el.querySelectorAll('.award-source-row')];return{count:rows.length,complete:rows.every(row=>{const style=getComputedStyle(row);return style.whiteSpace==='nowrap'&&style.overflowX==='auto'&&style.textOverflow!=='ellipsis'&&row.clientHeight<=Math.ceil(parseFloat(style.lineHeight))+1}),separate:rows[1].getBoundingClientRect().top>=rows[0].getBoundingClientRect().bottom};
+        const rows=[...el.querySelectorAll('.award-source-row')],time=el.querySelector('time'),style=getComputedStyle(time);
+        return {count:rows.length,date:time.textContent,oneLine:time.clientHeight<=Math.ceil(parseFloat(style.lineHeight))+1,
+          fits:time.scrollWidth<=time.clientWidth+1,noScroll:!['auto','scroll'].includes(style.overflowX),
+          separate:rows[1].getBoundingClientRect().top>=rows[0].getBoundingClientRect().bottom};
       });
-      assert.deepEqual(metadata,{count:2,complete:true,separate:true},label+' metadata has two single lines, with local scrolling for overflow');
+      assert.deepEqual(metadata,{count:2,date:'西元2026/11/18（民國115年）22:00（臺灣時間）',oneLine:true,fits:true,noScroll:true,separate:true},label+' complete retrieval date fits on one line without horizontal scrolling');
       const bidders=pane.locator('.award-detail-content details').first();
       assert.equal(await bidders.getAttribute('open'),null,'bidder breakdown starts collapsed');
       await bidders.locator('summary').click();
       assert.equal(await bidders.getByText('01234567',{exact:true}).isVisible(),true);
+      const boundaries=await bidders.locator('.award-bidder').evaluateAll(articles=>articles.map((article,index)=>{
+        const last=article.querySelector('.raw-grid:last-child'),next=articles[index+1]?.querySelector('.raw-row');
+        return {extraBorder:getComputedStyle(article).borderTopWidth,gap:next?next.getBoundingClientRect().top-last.getBoundingClientRect().bottom:0};
+      }));
+      assert(boundaries.every(row=>row.extraBorder==='0px'&&row.gap<=11),JSON.stringify(boundaries)+' no blank separator row between bidders');
       await layout(label+' key award details');
       await pane.getByRole('searchbox',{name:'標案關鍵字 / Award keyword',exact:true}).fill('公告 案件０');
       await pane.locator('.award-keyword-search button').click();
