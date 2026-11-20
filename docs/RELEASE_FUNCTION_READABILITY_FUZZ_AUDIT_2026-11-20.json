@@ -1,0 +1,615 @@
+{
+  "檢查時間": "2026-11-20T16:15:55.214165+08:00",
+  "受測產品提交": "57c460eea665cfa72f482c0dd220a6ff8b9766c1",
+  "受測網址": "https://taiwan-entity-intelligence-guegyu7vn-coldlight871029-9944.vercel.app/",
+  "範圍": "本機及 Development Preview；未修改 Production、資料庫、來源資料、migration、RLS 或 checkpoint",
+  "結論": {
+    "正式全面發布": "NO-GO",
+    "小規模測試": "可繼續；需明示資料與功能範圍",
+    "說明": "核心功能與有限模糊測試通過，不等於全資料正確、長時間負載或正式環境已驗收"
+  },
+  "驗收": [
+    {
+      "項目": "核心功能、lint、build",
+      "結果": "PASS",
+      "證據": "乾淨受測提交：559 Python tests、328 isolated PostgreSQL checks、全部套件 JavaScript tests"
+    },
+    {
+      "項目": "變異式離線模糊測試",
+      "結果": "PASS",
+      "證據": "seed 20261120；25,100 案例；13,271 distinct inputs across targets；0 failure classes；外連封鎖"
+    },
+    {
+      "項目": "狀態式瀏覽器模糊測試",
+      "結果": "PASS",
+      "證據": "240 操作、228 實際執行、12 依當時可見狀態略過；0 pageerror；不接觸真實資料庫"
+    },
+    {
+      "項目": "非同步競態",
+      "結果": "PASS",
+      "證據": "19 browser workflows、2,000 isolated schedules；逆序回應、取消、重試、公司切換與下載"
+    },
+    {
+      "項目": "八套瀏覽器功能回歸",
+      "結果": "PASS",
+      "證據": "初跑一套因兩處舊警語斷言失敗；核對語意並校正後完整通過，不調整幾何門檻"
+    },
+    {
+      "項目": "閱讀與 responsive",
+      "結果": "PARTIAL",
+      "證據": "1440/1280/1024/768/390px 本機邊界與長標題點擊通過；Preview 實測1440/1280/390；手機清單可開證據；密集圖23節點展開後21段 SVG 文字高度低於9px，需改善預設聚焦與字級"
+    },
+    {
+      "項目": "真實搜尋、API、公司及標案",
+      "結果": "PASS",
+      "證據": "31 次少量唯讀 API 請求；七類各有正例；中華電信13董監事、聯上7、台積電10；本次載入中華73公告、聯上8公告；非全國覆蓋率"
+    },
+    {
+      "項目": "直接與一個中介／兩個中介",
+      "結果": "PARTIAL",
+      "證據": "深度1/2/3均200；聯上與敦峰深度2 found=true；深度1與3 found=false且清除舊連線。兩個中介生成圖及獨立oracle通過，但本次未取得真實三段正例，不造關係"
+    },
+    {
+      "項目": "實際 PDF 下載與連結",
+      "結果": "PASS",
+      "證據": "Preview 按鈕實際產生 PDF；本輪檔案14頁、165444 bytes、A4橫式；案號0630800011之官方公告精確URL存在7個連結註記；不是7個不同案件"
+    },
+    {
+      "項目": "PDF 閱讀",
+      "結果": "FAIL",
+      "證據": "第4頁政府標案表頭重複；第10、11、13頁來源表頭重複；文字與連結可用，但本輪未修改排版程式"
+    },
+    {
+      "項目": "公開資料完整性抽查",
+      "結果": "PASS",
+      "證據": "anon RLS下可讀關係1389條；可讀關係缺端點或primary evidence為0；公開Evidence缺URL/取得日期/來源定位為0。僅結構檢查，不是逐筆原文一致性認證"
+    },
+    {
+      "項目": "民間團體名稱品質",
+      "結果": "PARTIAL",
+      "證據": "65,248筆中45筆名稱含問號，例如?子、?林社區發展協會；需回官方原件覆核，不推定45筆都是同一原因，不自行改名或合併"
+    },
+    {
+      "項目": "下架項目與匿名權限",
+      "結果": "PASS",
+      "證據": "裁判、裁罰、財產申報、遊說filter=400；165入口410；未登入Workspace=401；UI無登入／Workspace／Alerts；公司回應無裁判／裁罰資料，只保留官方入口"
+    },
+    {
+      "項目": "最新備份、回滾及全域防護",
+      "結果": "PARTIAL",
+      "證據": "本輪未執行正式庫備份或復原；Vercel Firewall connector回404/存取權限不足，且本機沒有可用vercel CLI，不宣稱WAF已阻擋；既有每程序限流測試通過，不等於多實例全域限流"
+    },
+    {
+      "項目": "運維健康新鮮度",
+      "結果": "PARTIAL",
+      "證據": "既有健康產物生成於2026-11-04T23:31:17Z；現行evaluate回data_health_stale與judicial_sync_stale兩個High。司法已下架，不能當公開司法功能故障；但需重建符合本次公開範圍的健康判定，不沿用舊High=0"
+    },
+    {
+      "項目": "Production 升級一致性",
+      "結果": "PARTIAL",
+      "證據": "目前 Production commit bb74b09，受測Preview57c460e；本輪只讀部署metadata，不套用正式環境／部署，不能宣稱正式站與本輪受測版一致"
+    }
+  ],
+  "資料庫": {
+    "project": "tei-development",
+    "公開公司": 472,
+    "政治人物": 121,
+    "政府官員": 31,
+    "政府機關": 12,
+    "政黨": 4,
+    "民間團體": 65248,
+    "獨立標案實體": 2,
+    "公開關係": 1389,
+    "資料庫bytes": 476556435,
+    "專案自訂停止匯入線bytes": 480000000,
+    "距停止匯入線bytes": 3443565,
+    "注意": "停止匯入線是既有專案內部門檻，不是本次查證的Supabase方案硬上限；公司即時公告數不等於獨立標案實體數"
+  },
+  "發布前優先處理": [
+    "改善密集圖預設聚焦及最小可讀字級，再驗證同時展開多家公司與人物",
+    "修正PDF同頁重複表頭，逐頁檢查實際下載報告",
+    "逐筆覆核45筆名稱含問號的團體，保留原件與來源；無法確認者不冒充完整正確名稱",
+    "依現行公開功能重算Data Health，核對最新Development備份/還原與回滾產物",
+    "以有權限的唯讀方式核對全域限流/WAF，再另行核准正式發布與smoke，不自行部署"
+  ],
+  "模糊測試摘要": {
+    "seed": 20261120,
+    "cases_per_target": 5000,
+    "targets": {
+      "api": {
+        "cases": 5000,
+        "unique_inputs": 4012,
+        "failure_classes": 0,
+        "seconds": 0.149
+      },
+      "procurement": {
+        "cases": 5000,
+        "unique_inputs": 272,
+        "failure_classes": 0,
+        "seconds": 0.48
+      },
+      "notice_detail": {
+        "cases": 5000,
+        "unique_inputs": 132,
+        "failure_classes": 0,
+        "seconds": 0.246
+      },
+      "exact_path": {
+        "cases": 5000,
+        "unique_inputs": 3755,
+        "failure_classes": 0,
+        "seconds": 0.157
+      },
+      "pdf": {
+        "cases": 100,
+        "unique_inputs": 100,
+        "failure_classes": 0,
+        "seconds": 0.951
+      },
+      "report_html": {
+        "cases": 5000,
+        "unique_inputs": 5000,
+        "failure_classes": 0,
+        "seconds": 1.392
+      }
+    },
+    "network": "denied",
+    "failures": []
+  },
+  "瀏覽器回歸摘要": [
+    {
+      "test": "panel_layout_browser",
+      "status": 0,
+      "seconds": 10.4
+    },
+    {
+      "test": "public_remediation_browser",
+      "status": 0,
+      "seconds": 1.6
+    },
+    {
+      "test": "company_path_browser",
+      "status": 0,
+      "seconds": 2.1
+    },
+    {
+      "test": "knowledge_graph_layout_browser",
+      "status": 0,
+      "seconds": 3.8
+    },
+    {
+      "test": "graph_continuous_browser",
+      "status": 0,
+      "seconds": 49.3
+    },
+    {
+      "test": "auto_related_company_browser",
+      "status": 0,
+      "seconds": 2.4,
+      "initial_status": "FAIL: two obsolete warning-text assertions",
+      "disposition": "Updated warning wording and strengthened source-scoped identity assertions; product code unchanged"
+    },
+    {
+      "test": "chunghwa_graph_layout_browser",
+      "status": 0,
+      "seconds": 7.0
+    },
+    {
+      "test": "graph_expanded_hubs_browser",
+      "status": 0,
+      "seconds": 10.1
+    },
+    {
+      "test": "fuzz/ui_campaign",
+      "status": 0,
+      "seconds": 37.2
+    },
+    {
+      "test": "fuzz/async_workflows_browser",
+      "status": 0,
+      "seconds": 22.0
+    }
+  ],
+  "真實API摘要": [
+    {
+      "check": "search-valid-Company",
+      "status": 200,
+      "seconds": 5.092,
+      "result": "PASS",
+      "results": 2
+    },
+    {
+      "check": "search-valid-Politician",
+      "status": 200,
+      "seconds": 0.614,
+      "result": "PASS",
+      "results": 1
+    },
+    {
+      "check": "search-valid-GovernmentOfficial",
+      "status": 200,
+      "seconds": 0.475,
+      "result": "PASS",
+      "results": 1
+    },
+    {
+      "check": "search-valid-GovernmentAgency",
+      "status": 200,
+      "seconds": 0.758,
+      "result": "PASS",
+      "results": 1
+    },
+    {
+      "check": "search-valid-PoliticalParty",
+      "status": 200,
+      "seconds": 0.815,
+      "result": "PASS",
+      "results": 1
+    },
+    {
+      "check": "search-valid-CivilOrganization",
+      "status": 200,
+      "seconds": 0.506,
+      "result": "PASS",
+      "results": 1
+    },
+    {
+      "check": "search-valid-Contract",
+      "status": 200,
+      "seconds": 0.516,
+      "result": "PASS",
+      "results": 1
+    },
+    {
+      "check": "invalid-search",
+      "status": 400,
+      "seconds": 0.001,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "invalid-search",
+      "status": 400,
+      "seconds": 0.001,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "invalid-search",
+      "status": 400,
+      "seconds": 0.001,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "invalid-search",
+      "status": 400,
+      "seconds": 0.001,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "empty-and-encoded-search",
+      "status": 200,
+      "seconds": 0.439,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "empty-and-encoded-search",
+      "status": 200,
+      "seconds": 0.419,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "empty-and-encoded-search",
+      "status": 200,
+      "seconds": 0.463,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "withdrawn-Judgment",
+      "status": 400,
+      "seconds": 0.001,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "withdrawn-Penalty",
+      "status": 400,
+      "seconds": 0.001,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "withdrawn-AssetDeclaration",
+      "status": 400,
+      "seconds": 0.001,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "withdrawn-LobbyingRecord",
+      "status": 400,
+      "seconds": 0.001,
+      "result": "PASS",
+      "results": 0
+    },
+    {
+      "check": "company-96979933",
+      "status": 200,
+      "seconds": 0.37,
+      "result": "PASS",
+      "company_name": "中華電信股份有限公司",
+      "officers": 13
+    },
+    {
+      "check": "company-22659295",
+      "status": 200,
+      "seconds": 0.278,
+      "result": "PASS",
+      "company_name": "聯上開發股份有限公司",
+      "officers": 7
+    },
+    {
+      "check": "company-22099131",
+      "status": 200,
+      "seconds": 0.904,
+      "result": "PASS",
+      "company_name": "台灣積體電路製造股份有限公司",
+      "officers": 10
+    },
+    {
+      "check": "awards-96979933",
+      "status": 200,
+      "seconds": 1.032,
+      "result": "PASS",
+      "records": 73,
+      "source_status": "ok"
+    },
+    {
+      "check": "awards-22659295",
+      "status": 200,
+      "seconds": 0.841,
+      "result": "PASS",
+      "records": 8,
+      "source_status": "ok"
+    },
+    {
+      "check": "path-1",
+      "status": 200,
+      "seconds": 0.492,
+      "result": "PASS",
+      "found": false,
+      "depth": null
+    },
+    {
+      "check": "path-2",
+      "status": 200,
+      "seconds": 0.579,
+      "result": "PASS",
+      "found": true,
+      "depth": 2
+    },
+    {
+      "check": "path-3",
+      "status": 200,
+      "seconds": 0.914,
+      "result": "PASS",
+      "found": false,
+      "depth": null
+    },
+    {
+      "check": "unknown-entity",
+      "status": 404,
+      "seconds": 0.316,
+      "result": "PASS"
+    },
+    {
+      "check": "removed-domain",
+      "status": 410,
+      "seconds": 0.002,
+      "result": "PASS"
+    },
+    {
+      "check": "private-workspace-no-auth",
+      "status": 401,
+      "seconds": 0.001,
+      "result": "PASS"
+    },
+    {
+      "check": "status",
+      "status": 200,
+      "seconds": 0.002,
+      "result": "PASS"
+    },
+    {
+      "check": "real-company-pdf",
+      "status": 200,
+      "seconds": 3.937,
+      "result": "PASS",
+      "bytes": 164951
+    }
+  ],
+  "狀態式測試摘要": {
+    "result": "PASS",
+    "seed": 20261120,
+    "steps": 240,
+    "executed_steps": 228,
+    "requests": 129,
+    "blocked_outbound": [],
+    "errors": []
+  },
+  "非同步測試摘要": {
+    "seed": 20261120,
+    "round": "async-workflows",
+    "cases": 19,
+    "failures": 0,
+    "results": [
+      {
+        "name": "reversed-name-search",
+        "result": "PASS",
+        "requests": 3,
+        "downloads": 0
+      },
+      {
+        "name": "escape-pending-search",
+        "result": "PASS",
+        "requests": 2,
+        "downloads": 0
+      },
+      {
+        "name": "invalid-input-after-pending-search",
+        "result": "PASS",
+        "requests": 2,
+        "downloads": 0
+      },
+      {
+        "name": "outside-click-after-pending-search",
+        "result": "PASS",
+        "requests": 2,
+        "downloads": 0
+      },
+      {
+        "name": "company-tail-after-entity",
+        "result": "PASS",
+        "requests": 8,
+        "downloads": 0
+      },
+      {
+        "name": "dismissed-lookup-keeps-current-company-sources",
+        "result": "PASS",
+        "requests": 6,
+        "downloads": 0
+      },
+      {
+        "name": "current-profile-does-not-close-new-search-results",
+        "result": "PASS",
+        "requests": 4,
+        "downloads": 0
+      },
+      {
+        "name": "profile-after-company",
+        "result": "PASS",
+        "requests": 6,
+        "downloads": 0
+      },
+      {
+        "name": "company-tail-after-example",
+        "result": "PASS",
+        "requests": 6,
+        "downloads": 0
+      },
+      {
+        "name": "path-after-new-search",
+        "result": "PASS",
+        "requests": 6,
+        "downloads": 0
+      },
+      {
+        "name": "path-range-then-clear",
+        "result": "PASS",
+        "requests": 3,
+        "downloads": 0
+      },
+      {
+        "name": "path-clear-pending",
+        "result": "PASS",
+        "requests": 2,
+        "downloads": 0
+      },
+      {
+        "name": "award-filter-detach-retry",
+        "result": "PASS",
+        "requests": 7,
+        "downloads": 0
+      },
+      {
+        "name": "download-retry-http503",
+        "result": "PASS",
+        "requests": 7,
+        "downloads": 1
+      },
+      {
+        "name": "download-retry-html200",
+        "result": "PASS",
+        "requests": 7,
+        "downloads": 1
+      },
+      {
+        "name": "download-retry-corrupt-pdf",
+        "result": "PASS",
+        "requests": 7,
+        "downloads": 1
+      },
+      {
+        "name": "download-retry-abort",
+        "result": "PASS",
+        "requests": 7,
+        "downloads": 1
+      },
+      {
+        "name": "download-while-switching-company",
+        "result": "PASS",
+        "requests": 10,
+        "downloads": 1
+      },
+      {
+        "name": "closed-report-preview",
+        "result": "PASS",
+        "requests": 6,
+        "downloads": 0
+      }
+    ],
+    "network": "all application external requests blocked"
+  },
+  "PDF摘要": {
+    "file": "tei-company-22659295 (2).pdf",
+    "bytes": 165444,
+    "pages": 14,
+    "official_links": 67,
+    "repeat_headings_within_page": [
+      {
+        "page": 4,
+        "heading": "政府標案 / Government Contracts · 8 筆",
+        "count": 2
+      },
+      {
+        "page": 10,
+        "heading": "來源 / Sources · 19 筆",
+        "count": 2
+      },
+      {
+        "page": 11,
+        "heading": "來源 / Sources · 19 筆",
+        "count": 2
+      },
+      {
+        "page": 13,
+        "heading": "來源 / Sources · 19 筆",
+        "count": 2
+      }
+    ],
+    "landscape": true
+  },
+  "重跑": [
+    "python tests/fuzz/campaign.py --seed 20261120 --cases 5000 --output /tmp/tei-fuzz-release.json",
+    "TEI_FUZZ_SEED=20261120 TEI_FUZZ_STEPS=240 node tests/fuzz/ui_campaign.cjs",
+    "TEI_FUZZ_SEED=20261120 node tests/fuzz/async_workflows_browser.cjs",
+    "node tests/panel_layout_browser.cjs",
+    "node tests/auto_related_company_browser.cjs"
+  ],
+  "資料庫核對SQL": [
+    "begin read only; set local role anon; select entity_type, count(*) from public.entities group by entity_type order by entity_type; rollback;",
+    "begin read only; set local role anon; select count(*) from public.evidence_records where source_url is null or btrim(source_url)='' or retrieved_at is null or source_locator='{}'::jsonb; rollback;",
+    "begin read only; set local role anon; select count(*) from public.relationships r left join public.entities s on s.id=r.source_entity_id left join public.entities t on t.id=r.target_entity_id left join public.evidence_records e on e.id=r.primary_evidence_id where s.id is null or t.id is null or e.id is null; rollback;",
+    "begin read only; set local role anon; select count(*) from public.entities where entity_type='CivilOrganization' and display_name like '%?%'; rollback;",
+    "select pg_database_size(current_database());"
+  ],
+  "補充閱讀問題": [
+    "路徑模式已選公司A/B時，左側調查目標仍顯示尚未選擇企業，應改為路徑模式說明以免誤認未載入；不是資料庫資料遺失。",
+    "部分來源資料標題相同，缺少可在收合狀態區別的版本／角色；需閱讀整理，不能直接刪除不同Evidence。"
+  ]
+}

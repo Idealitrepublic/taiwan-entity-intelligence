@@ -112,7 +112,8 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     assert(layout.branches.every(branch=>branch.y1===branch.y2),'Branches stay horizontal');
     await page.locator('#svg .node[data-type="related_connection"]').first().click();
     assert.match(await page.locator('#nodeInfoBody').textContent(),/director-1/);
-    assert.match(await page.locator('#nodeInfoBody').textContent(),/來源觀察，非正式公司隸屬關係/);
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/公開紀錄中的連結不代表母子公司或持股控制/);
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/公司 A 統編.*22099131.*公司 B 統編.*12345678/);
     assert.equal(await page.locator('#nodeInfoBody a[href^="https://data.gcis.nat.gov.tw"]').count(),1);
     for(const width of [1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
@@ -156,7 +157,8 @@ const linkedCompany = uniform => {const result={status:'ok',uniform_number:unifo
     assert.match(await page.locator('#svg .node[data-node-id="related-category:12345678:person"]').textContent(),/顯示前 8 筆/);
     const directorId='related-detail:12345678:person%3Adirector%3A1';
     await page.locator(`#svg .node[data-node-id="${directorId}"]`).click();
-    assert.match(await page.locator('#nodeInfoBody').textContent(),/人物跨公司身分未核對/);
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/僅確認此公司來源列的職務/);
+    assert.match(await page.locator('#nodeInfoBody').textContent(),/查詢資料列，非人物官方識別/);
     assert.match(await page.locator('#nodeInfoBody').textContent(),/query-row-1/);
     await page.locator(`#svg .legacy-evidence-edge[data-target="${directorId}"]`).focus();
     await page.keyboard.press('Enter');

@@ -304,6 +304,11 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       await page.evaluate(()=>document.querySelector('#closeNode').click());
       await page.locator('.tab[data-tab="procurement"]').click();
       const summary=page.locator('#procurementPane .record>summary').first();
+      const closedRecord=page.locator('#procurementPane .record').first();
+      if(await closedRecord.getAttribute('open')!==null)await summary.press('Enter');
+      await summary.locator('span').first().click();
+      assert(await closedRecord.getAttribute('open')!==null,width+'px: tender title must open its record');
+      await summary.press('Enter');
       const geometry=await summary.evaluate(el=>[...el.children].map(child=>{
         const style=getComputedStyle(child);
         return {height:child.clientHeight,lineHeight:parseFloat(style.lineHeight),top:child.offsetTop,overflow:style.overflowX};
