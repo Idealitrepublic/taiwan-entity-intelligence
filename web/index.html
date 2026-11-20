@@ -134,6 +134,11 @@
     @media(max-width:1120px){.search{flex-wrap:wrap}.searchbox{flex:1 1 100%;max-width:none}}
     @media(max-width:360px){.search #sample{font-size:13px}}
     .graph svg{top:var(--graph-canvas-top,100px)}
+    @media(min-width:1121px){
+      /* Reserve 320px for the drawing and 42px for controls after the measured header. */
+      .graph{min-height:max(430px,calc(var(--graph-canvas-top,100px) + 362px))}
+      .main.graph-focused .graph{min-height:max(1120px,calc(var(--graph-canvas-top,100px) + 362px))}
+    }
     @media(max-width:720px){
       .graph .mobile-graph-list:not([hidden]),.graph:has(.node-info:not([hidden])) .node-info{top:calc(var(--graph-canvas-top,180px) + 295px)}
       .graph:has(.node-info:not([hidden])) .mobile-graph-list:not([hidden]){top:calc(var(--graph-canvas-top,180px) + 540px)}

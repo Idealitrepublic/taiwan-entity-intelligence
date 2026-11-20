@@ -338,6 +338,26 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     }
     await page.locator('.tab[data-tab="overview"]').click();
     await layout('Agency profile and evidence');
+    // A wrapped title and expansion message must not consume the drawing area
+    // in a short desktop window (fuzz seed 20261121: collapse -> expand).
+    for(const width of [1440,1280,1121]) {
+      for(const height of [625,520]) {
+        await page.setViewportSize({width,height});
+        await page.locator('#collapse').click();
+        await page.locator(`#svg .node[data-node-id="${agency.id}"]`).press('Enter');
+        await page.waitForFunction(()=>document.querySelector('#svg').getBoundingClientRect().height>=319);
+        const canvas=await page.evaluate(()=>({
+          height:document.querySelector('#svg').getBoundingClientRect().height,
+          top:document.querySelector('#svg').getBoundingClientRect().top,
+          headerBottom:document.querySelector('.graphbar').getBoundingClientRect().bottom,
+          pageWidth:document.documentElement.scrollWidth,
+          viewportWidth:innerWidth
+        }));
+        assert(canvas.height>=319,`${width}x${height}: keep at least 320px for drawing`);
+        assert(canvas.top>=canvas.headerBottom,`${width}x${height}: header cannot cover nodes`);
+        assert(canvas.pageWidth<=canvas.viewportWidth+1,`${width}x${height}: no page overflow`);
+      }
+    }
     await page.setViewportSize({width:390,height:900});
     assert.equal(await page.locator('dialog,input[type="password"]').count(),0);
     assert.equal(await page.locator('#systemStatus').isVisible(),false);
