@@ -1,0 +1,476 @@
+{
+  "checked_at": "2026-11-20T15:52:16.491467+00:00",
+  "base_url": "https://taiwan-entity-intelligence.vercel.app",
+  "commit": "ddd8022f8e5a792c2248e7dd2860e6bb90b5fb96",
+  "authentication": "none; no cookies or bypass",
+  "database_writes": false,
+  "results": [
+    {
+      "name": "civil_review_1",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.624
+    },
+    {
+      "name": "civil_review_10",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 1.07
+    },
+    {
+      "name": "civil_review_11",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.726
+    },
+    {
+      "name": "civil_review_12",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.519
+    },
+    {
+      "name": "civil_review_13",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.582
+    },
+    {
+      "name": "civil_review_14",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.603
+    },
+    {
+      "name": "civil_review_15",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.471
+    },
+    {
+      "name": "civil_review_16",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.47
+    },
+    {
+      "name": "civil_review_17",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.533
+    },
+    {
+      "name": "civil_review_18",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.505
+    },
+    {
+      "name": "civil_review_19",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.444
+    },
+    {
+      "name": "civil_review_2",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.423
+    },
+    {
+      "name": "civil_review_20",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.717
+    },
+    {
+      "name": "civil_review_21",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.52
+    },
+    {
+      "name": "civil_review_22",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.631
+    },
+    {
+      "name": "civil_review_23",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.539
+    },
+    {
+      "name": "civil_review_24",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.475
+    },
+    {
+      "name": "civil_review_25",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.468
+    },
+    {
+      "name": "civil_review_26",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.354
+    },
+    {
+      "name": "civil_review_27",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.472
+    },
+    {
+      "name": "civil_review_28",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.718
+    },
+    {
+      "name": "civil_review_29",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.512
+    },
+    {
+      "name": "civil_review_3",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.696
+    },
+    {
+      "name": "civil_review_30",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.486
+    },
+    {
+      "name": "civil_review_31",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.378
+    },
+    {
+      "name": "civil_review_32",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.354
+    },
+    {
+      "name": "civil_review_33",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.349
+    },
+    {
+      "name": "civil_review_34",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.523
+    },
+    {
+      "name": "civil_review_35",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.515
+    },
+    {
+      "name": "civil_review_36",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.653
+    },
+    {
+      "name": "civil_review_37",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.491
+    },
+    {
+      "name": "civil_review_38",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.481
+    },
+    {
+      "name": "civil_review_39",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.457
+    },
+    {
+      "name": "civil_review_4",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.342
+    },
+    {
+      "name": "civil_review_40",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.466
+    },
+    {
+      "name": "civil_review_41",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.481
+    },
+    {
+      "name": "civil_review_42",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.462
+    },
+    {
+      "name": "civil_review_43",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.632
+    },
+    {
+      "name": "civil_review_44",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.363
+    },
+    {
+      "name": "civil_review_45",
+      "result": "PASS",
+      "status": 404,
+      "seconds": 0.357
+    },
+    {
+      "name": "civil_review_5",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.467
+    },
+    {
+      "name": "civil_review_6",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.772
+    },
+    {
+      "name": "civil_review_7",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.478
+    },
+    {
+      "name": "civil_review_8",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.452
+    },
+    {
+      "name": "civil_review_9",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.926
+    },
+    {
+      "name": "database_status",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.155
+    },
+    {
+      "name": "path_1_intermediaries",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.554
+    },
+    {
+      "name": "path_2_intermediaries",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.727
+    },
+    {
+      "name": "private_workspace",
+      "result": "PASS",
+      "status": 401,
+      "seconds": 0.15
+    },
+    {
+      "name": "public_homepage",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.342
+    },
+    {
+      "name": "search_CivilOrganization",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.812
+    },
+    {
+      "name": "search_Company",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 4.118
+    },
+    {
+      "name": "search_GovernmentAgency",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.497
+    },
+    {
+      "name": "search_Politician",
+      "result": "PASS",
+      "status": 200,
+      "seconds": 0.54
+    },
+    {
+      "name": "withdrawn_165",
+      "result": "PASS",
+      "status": 410,
+      "seconds": 0.148
+    },
+    {
+      "name": "withdrawn_AssetDeclaration",
+      "result": "PASS",
+      "status": 400,
+      "seconds": 0.146
+    },
+    {
+      "name": "withdrawn_Candidate",
+      "result": "PASS",
+      "status": 400,
+      "seconds": 0.144
+    },
+    {
+      "name": "withdrawn_Judgment",
+      "result": "PASS",
+      "status": 400,
+      "seconds": 0.157
+    },
+    {
+      "name": "withdrawn_LobbyingRecord",
+      "result": "PASS",
+      "status": 400,
+      "seconds": 0.152
+    },
+    {
+      "name": "withdrawn_Penalty",
+      "result": "PASS",
+      "status": 400,
+      "seconds": 0.145
+    }
+  ],
+  "passed": 60,
+  "failed": 0,
+  "deployment": {
+    "id": "dpl_CMELBY8ikcZm13M2QuHUPDLgp9iJ",
+    "target": "production",
+    "state": "READY",
+    "source": "git main fast-forward",
+    "commit": "ddd8022f8e5a792c2248e7dd2860e6bb90b5fb96",
+    "previous_deployment_id": "dpl_7ToVykRn9hZP4CkzgBFnGNBxz2k3",
+    "previous_commit": "bb74b09cf570fae1716f7892b7565e6a99b28f96",
+    "configuration_changed": false,
+    "schema_migrations_applied": false
+  },
+  "ci": {
+    "url": "https://github.com/Idealitrepublic/taiwan-entity-intelligence/actions/runs/44767165642",
+    "result": "PASS",
+    "python_tests": 577,
+    "postgresql_checks": 338,
+    "javascript_tests": "PASS",
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "browser": {
+    "public_url": "https://taiwan-entity-intelligence.vercel.app/",
+    "one_intermediary": {
+      "nodes": 3,
+      "edges": 2
+    },
+    "two_intermediaries": {
+      "nodes": 4,
+      "edges": 3
+    },
+    "company_expansion": {
+      "nodes": 21,
+      "edges": 20
+    },
+    "official_evidence": true,
+    "downloaded_pdf": true,
+    "responsive": [
+      {
+        "bodyScroll": 1280,
+        "graphHeight": 504,
+        "page": 1280,
+        "width": 1280
+      },
+      {
+        "bodyScroll": 1009,
+        "graphHeight": 407,
+        "page": 1009,
+        "width": 1024
+      },
+      {
+        "bodyScroll": 753,
+        "graphHeight": 407,
+        "page": 753,
+        "width": 768
+      },
+      {
+        "bodyScroll": 375,
+        "graphHeight": 280,
+        "page": 375,
+        "width": 390
+      }
+    ],
+    "desktop_1440": {
+      "page": 1440,
+      "graph_height": 635
+    },
+    "focus_graph_height": 907,
+    "mobile_evidence_opened": true,
+    "console_errors": []
+  },
+  "pdf": {
+    "bytes": 496302,
+    "sha256": "eb649bf27581dedd6cce9ac7327f5bd04b5d13eb81a7ce4a669499ab299dfbe4",
+    "header_valid": true,
+    "pages": 56,
+    "all_landscape": true,
+    "contains_company": true,
+    "contains_bilingual": true,
+    "case_pages": [
+      19,
+      55
+    ],
+    "official_case_uri_annotations": 13,
+    "duplicate_section_headers": []
+  },
+  "pre_release_backup": {
+    "result": "PASS",
+    "created_at": "2026-11-20T15:49:18.715426+00:00",
+    "project_ref": "canqjiokrtcxkwblhmml",
+    "archive_verified": true,
+    "database_writes": false,
+    "checkpoint_modified": false
+  },
+  "runtime_errors": {
+    "deployment_scoped": true,
+    "levels": [
+      "error",
+      "fatal"
+    ],
+    "since": "15m",
+    "checked_at": "2026-11-20T15:57:06.647Z",
+    "records": 0,
+    "limitation": "Only the observed window; not long-duration availability certification"
+  },
+  "audit_harness_correction": "Initial validator assumed flat Evidence; actual entity evidence is nested. Validator corrected to require fact_type, nested source URL and original Evidence FK. No product/data change; all 45 cases rechecked."
+}
