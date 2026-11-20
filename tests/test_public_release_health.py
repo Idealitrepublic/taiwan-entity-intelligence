@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import unittest
-from scripts.public_release_health import SQL, markdown, report
+from scripts.public_release_health import SQL, markdown, report, civil_review_issues
 
 class PublicReleaseHealthTests(unittest.TestCase):
     def counts(self):
@@ -36,3 +36,10 @@ class PublicReleaseHealthTests(unittest.TestCase):
         counts=self.counts()
         counts['entities']['Judgment']=1
         self.assertIn('public_entity_scope',report(counts)['failures'])
+
+    def test_followup_only_changes_issue_totals_after_applied(self):
+        baseline={'action':'quarantined_after_explicit_shared_public_data_approval','official_missing_glyph_confirmed':33,'non_csv_review_pending':4,'official_unavailable':8}
+        f={'applied':False,'pending':10,'confirmed_historical_held':1}
+        self.assertEqual([i['records'] for i in civil_review_issues(baseline,f)],[33,12])
+        f['applied']=True
+        self.assertEqual([i['records'] for i in civil_review_issues(baseline,f)],[10,1])

@@ -8,31 +8,31 @@
     "evidence": 0,
     "source_records": 0,
     "canonical": {
-      "companies": 472,
       "people": 152,
-      "entities": 65846,
-      "entity_evidence": 66862,
-      "evidence_records": 67090,
-      "relationships": 1391
+      "entities": 65880,
+      "companies": 472,
+      "relationships": 1391,
+      "entity_evidence": 66896,
+      "evidence_records": 67124
     },
     "legacy": {
       "companies": 0,
       "people": 0,
       "evidence": 0
     },
-    "counts_checked_at": "2026-11-20T13:27:04.893041+00:00",
+    "counts_checked_at": "2026-11-20T14:25:16.313292+00:00",
     "metric_checked_at": {
-      "source_files": "2026-11-20T13:27:04.893041+00:00",
-      "companies": "2026-11-20T13:27:04.893041+00:00",
-      "people": "2026-11-20T13:27:04.893041+00:00",
-      "evidence": "2026-11-20T13:27:04.893041+00:00",
-      "source_records": "2026-11-20T13:27:04.893041+00:00",
-      "canonical.companies": "2026-11-20T13:27:04.893041+00:00",
-      "canonical.people": "2026-11-20T13:27:04.893041+00:00",
-      "canonical.entities": "2026-11-20T13:27:04.893041+00:00",
-      "canonical.entity_evidence": "2026-11-20T13:27:04.893041+00:00",
-      "canonical.evidence_records": "2026-11-20T13:27:04.893041+00:00",
-      "canonical.relationships": "2026-11-20T13:27:04.893041+00:00"
+      "source_files": "2026-11-20T14:25:16.313292+00:00",
+      "companies": "2026-11-20T14:25:16.313292+00:00",
+      "people": "2026-11-20T14:25:16.313292+00:00",
+      "evidence": "2026-11-20T14:25:16.313292+00:00",
+      "source_records": "2026-11-20T14:25:16.313292+00:00",
+      "canonical.companies": "2026-11-20T14:25:16.313292+00:00",
+      "canonical.people": "2026-11-20T14:25:16.313292+00:00",
+      "canonical.entities": "2026-11-20T14:25:16.313292+00:00",
+      "canonical.entity_evidence": "2026-11-20T14:25:16.313292+00:00",
+      "canonical.evidence_records": "2026-11-20T14:25:16.313292+00:00",
+      "canonical.relationships": "2026-11-20T14:25:16.313292+00:00"
     }
   }
 }

@@ -79,6 +79,26 @@ def markdown(value):
     return '\n'.join(rows)
 
 
+def civil_review_issues(review, followup=None):
+    if followup and followup.get('applied') is True:
+        return [
+            {'severity': 'Medium', 'records': followup['pending'],
+             'scope': '原45筆名稱覆核母體，其他34筆已補證恢復公開',
+             'description': '字形或同一身分仍有疑點，原件及實體保留待核'},
+            {'severity': 'Medium', 'records': followup['confirmed_historical_held'],
+             'scope': '名稱已核對，但有解散登記，未恢復公開',
+             'description': '歷史名冊正常狀態與後續解散公告不一致，保留原證據'}]
+    if review.get('action') != 'quarantined_after_explicit_shared_public_data_approval':
+        return []
+    return [
+        {'severity': 'Medium', 'records': review['official_missing_glyph_confirmed'],
+         'scope': '本輪45筆已隔離團體，不代表全臺母體',
+         'description': '官方原件名稱同樣缺字，保留Evidence待官方補正'},
+        {'severity': 'Medium', 'records': review['non_csv_review_pending'] + review['official_unavailable'],
+         'scope': '本輪45筆已隔離團體，不推定缺字原因',
+         'description': '官方非CSV／暫無法取得原件，待逐筆覆核'}]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--local-env', action='store_true')
@@ -96,14 +116,9 @@ def main():
             raise RuntimeError('Read-only public health query failed; sensitive details suppressed')
         review_path=ROOT/'docs/CIVIL_NAME_QUALITY_REVIEW_2026-11-20.json'
         review=json.loads(review_path.read_text()) if review_path.exists() else {}
-        issues=[]
-        if review.get('action')=='quarantined_after_explicit_shared_public_data_approval':
-            issues=[{'severity':'Medium','records':review['official_missing_glyph_confirmed'],
-                     'scope':'本輪 45 筆已隔離團體，不代表全臺母體',
-                     'description':'官方原件名稱同樣缺字，保留 Evidence 待官方補正'},
-                    {'severity':'Medium','records':review['non_csv_review_pending']+review['official_unavailable'],
-                     'scope':'本輪 45 筆已隔離團體，不推定缺字原因',
-                     'description':'官方非 CSV／暫無法取得原件，待逐筆覆核'}]
+        followup_path = ROOT/'docs/CIVIL_NAME_VERIFICATION_2026-11-20.json'
+        followup = json.loads(followup_path.read_text()) if followup_path.exists() else None
+        issues = civil_review_issues(review, followup)
         value = report(json.loads(run.stdout),known_issues=issues)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n')

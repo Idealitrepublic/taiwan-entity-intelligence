@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-20T13:34:22.263485+00:00",
+  "generated_at": "2026-11-20T14:24:15.654365+00:00",
   "environment": "tei-development",
   "scope": "current_public_product_anon_rls",
   "read_only": true,
@@ -8,15 +8,15 @@
   "known_upstream_issues": [
     {
       "severity": "Medium",
-      "records": 33,
-      "scope": "本輪 45 筆已隔離團體，不代表全臺母體",
-      "description": "官方原件名稱同樣缺字，保留 Evidence 待官方補正"
+      "records": 10,
+      "scope": "原45筆名稱覆核母體，其他34筆已補證恢復公開",
+      "description": "字形或同一身分仍有疑點，原件及實體保留待核"
     },
     {
       "severity": "Medium",
-      "records": 12,
-      "scope": "本輪 45 筆已隔離團體，不推定缺字原因",
-      "description": "官方非 CSV／暫無法取得原件，待逐筆覆核"
+      "records": 1,
+      "scope": "名稱已核對，但有解散登記，未恢復公開",
+      "description": "歷史名冊正常狀態與後續解散公告不一致，保留原證據"
     }
   ],
   "counts": {
@@ -26,787 +26,794 @@
       "Politician": 121,
       "PoliticalParty": 4,
       "GovernmentAgency": 12,
-      "CivilOrganization": 65203,
+      "CivilOrganization": 65237,
       "GovernmentOfficial": 31
     },
-    "evidence": 67090,
+    "evidence": 67124,
     "freshness": [
       {
         "records": 2375,
         "source_name": "Changhua County society roster 2026-10-16",
         "latest_retrieved_at": "2026-10-25T09:27:00.929589+00:00",
         "oldest_retrieved_at": "2026-10-25T09:27:00.929589+00:00",
-        "latest_retrieval_age_hours": 628.12
+        "latest_retrieval_age_hours": 628.95
       },
       {
         "records": 1023,
         "source_name": "Hsinchu City social organizations category pages 2026-10-25",
         "latest_retrieved_at": "2026-10-25T06:41:57.438776+00:00",
         "oldest_retrieved_at": "2026-10-25T06:41:57.438776+00:00",
-        "latest_retrieval_age_hours": 630.87
+        "latest_retrieval_age_hours": 631.71
       },
       {
         "records": 2181,
         "source_name": "Hsinchu County people's organizations official XLSX 2026-10-05",
         "latest_retrieved_at": "2026-10-25T10:55:35.84887+00:00",
         "oldest_retrieved_at": "2026-10-25T10:55:35.84887+00:00",
-        "latest_retrieval_age_hours": 626.65
+        "latest_retrieval_age_hours": 627.48
       },
       {
         "records": 1747,
         "source_name": "Kaohsiung City charity groups roster",
         "latest_retrieved_at": "2026-10-24T15:25:52.844676+00:00",
         "oldest_retrieved_at": "2026-10-24T15:25:52.844676+00:00",
-        "latest_retrieval_age_hours": 646.14
+        "latest_retrieval_age_hours": 646.97
       },
       {
         "records": 498,
         "source_name": "Kinmen County social organizations official XLSX 2026-10-25",
         "latest_retrieved_at": "2026-10-25T09:28:21.404188+00:00",
         "oldest_retrieved_at": "2026-10-25T09:28:21.404188+00:00",
-        "latest_retrieval_age_hours": 628.1
+        "latest_retrieval_age_hours": 628.93
       },
       {
         "records": 2384,
         "source_name": "Miaoli County social organizations official ODS 2026-10-25",
         "latest_retrieved_at": "2026-10-25T09:24:22.083004+00:00",
         "oldest_retrieved_at": "2026-10-25T09:24:22.083004+00:00",
-        "latest_retrieval_age_hours": 628.17
+        "latest_retrieval_age_hours": 629.0
       },
       {
         "records": 756,
         "source_name": "MOE education foundations roster",
         "latest_retrieved_at": "2026-10-24T15:24:19.383442+00:00",
         "oldest_retrieved_at": "2026-10-24T15:24:19.383442+00:00",
-        "latest_retrieval_age_hours": 646.17
+        "latest_retrieval_age_hours": 647.0
       },
       {
         "records": 463,
         "source_name": "MOEA/GCI",
         "latest_retrieved_at": "2026-11-01T13:23:21.580644+00:00",
         "oldest_retrieved_at": "2026-10-06T08:40:46.605629+00:00",
-        "latest_retrieval_age_hours": 456.18
+        "latest_retrieval_age_hours": 457.02
       },
       {
         "records": 8,
         "source_name": "MOI national civic foundations roster",
         "latest_retrieved_at": "2026-10-24T14:38:43.576903+00:00",
         "oldest_retrieved_at": "2026-10-24T14:38:43.576903+00:00",
-        "latest_retrieval_age_hours": 646.93
+        "latest_retrieval_age_hours": 647.76
       },
       {
         "records": 17,
         "source_name": "MOI national civil foundations roster",
         "latest_retrieved_at": "2026-10-24T08:36:02.302697+00:00",
         "oldest_retrieved_at": "2026-10-24T08:36:02.302697+00:00",
-        "latest_retrieval_age_hours": 652.97
+        "latest_retrieval_age_hours": 653.8
       },
       {
         "records": 23209,
         "source_name": "MOI nationwide people's associations roster",
         "latest_retrieved_at": "2026-10-24T08:14:36.606247+00:00",
         "oldest_retrieved_at": "2026-10-24T08:14:36.606247+00:00",
-        "latest_retrieval_age_hours": 653.33
+        "latest_retrieval_age_hours": 654.16
       },
       {
         "records": 104,
         "source_name": "MOL county/city union federations",
         "latest_retrieved_at": "2026-10-24T08:36:10.109206+00:00",
         "oldest_retrieved_at": "2026-10-24T08:36:10.109206+00:00",
-        "latest_retrieval_age_hours": 652.97
+        "latest_retrieval_age_hours": 653.8
       },
       {
         "records": 8,
         "source_name": "MOL directly supervised unions",
         "latest_retrieved_at": "2026-10-24T08:36:04.645405+00:00",
         "oldest_retrieved_at": "2026-10-24T08:36:04.645405+00:00",
-        "latest_retrieval_age_hours": 652.97
+        "latest_retrieval_age_hours": 653.8
       },
       {
         "records": 15,
         "source_name": "MOL labor foundations roster",
         "latest_retrieved_at": "2026-10-24T15:24:15.22103+00:00",
         "oldest_retrieved_at": "2026-10-24T15:24:15.22103+00:00",
-        "latest_retrieval_age_hours": 646.17
+        "latest_retrieval_age_hours": 647.0
       },
       {
         "records": 79,
         "source_name": "MOL national industry union federations",
         "latest_retrieved_at": "2026-10-24T08:36:12.605997+00:00",
         "oldest_retrieved_at": "2026-10-24T08:36:12.605997+00:00",
-        "latest_retrieval_age_hours": 652.97
+        "latest_retrieval_age_hours": 653.8
       },
       {
         "records": 11,
         "source_name": "MOL national union federations",
         "latest_retrieved_at": "2026-10-24T08:36:06.310473+00:00",
         "oldest_retrieved_at": "2026-10-24T08:36:06.310473+00:00",
-        "latest_retrieval_age_hours": 652.97
+        "latest_retrieval_age_hours": 653.8
       },
       {
         "records": 41,
         "source_name": "MOL provincial union federations",
         "latest_retrieved_at": "2026-10-24T08:36:07.966916+00:00",
         "oldest_retrieved_at": "2026-10-24T08:36:07.966916+00:00",
-        "latest_retrieval_age_hours": 652.97
+        "latest_retrieval_age_hours": 653.8
       },
       {
         "records": 470,
         "source_name": "New Taipei City community associations roster",
         "latest_retrieved_at": "2026-10-24T15:25:43.148658+00:00",
         "oldest_retrieved_at": "2026-10-24T15:25:43.148658+00:00",
-        "latest_retrieval_age_hours": 646.14
+        "latest_retrieval_age_hours": 646.98
       },
       {
         "records": 2,
         "source_name": "Official roster 101814: 經管財團法人名冊",
         "latest_retrieved_at": "2026-10-24T17:12:28.847512+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:28.847512+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 73,
         "source_name": "Official roster 102156: 農業財團法人名冊",
         "latest_retrieved_at": "2026-10-24T17:12:05.238993+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:05.238993+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 93,
         "source_name": "Official roster 102929: 臺南市財團法人名冊(社福基金會類)",
         "latest_retrieved_at": "2026-10-24T17:16:29.506859+00:00",
         "oldest_retrieved_at": "2026-10-24T17:16:29.506859+00:00",
-        "latest_retrieval_age_hours": 644.3
+        "latest_retrieval_age_hours": 645.13
       },
       {
         "records": 21,
         "source_name": "Official roster 104441: 高雄市文化基金會一覽表",
         "latest_retrieved_at": "2026-10-24T17:12:42.275037+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:42.275037+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 62,
         "source_name": "Official roster 106263: 臺南市財團法人名冊",
         "latest_retrieved_at": "2026-10-24T17:12:30.48452+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:30.48452+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 576,
         "source_name": "Official roster 107897: 社區發展協會",
         "latest_retrieved_at": "2026-10-24T17:10:44.088798+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:44.088798+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 13,
         "source_name": "Official roster 109238: 新竹縣已登記財團法人教會名冊一覽表",
         "latest_retrieved_at": "2026-10-24T17:12:45.808104+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:45.808104+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 70,
         "source_name": "Official roster 109320: 新竹縣人民團體名冊",
         "latest_retrieved_at": "2026-10-24T17:10:09.680382+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:09.680382+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 186,
         "source_name": "Official roster 109324: 新竹縣社區發展協會名冊",
         "latest_retrieved_at": "2026-10-24T17:10:48.958722+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:48.958722+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 91,
         "source_name": "Official roster 113361: 澎湖縣社區發展協會名冊",
         "latest_retrieved_at": "2026-10-24T17:10:33.705835+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:33.705835+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 284,
         "source_name": "Official roster 121528: 臺北市財團法人教育基金會清冊",
         "latest_retrieved_at": "2026-10-24T17:12:18.728958+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:18.728958+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 110,
         "source_name": "Official roster 124291: 新北市私立社會福利慈善事業基金會名冊",
         "latest_retrieved_at": "2026-10-24T17:12:14.098668+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:14.098668+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 67,
         "source_name": "Official roster 125155: 新北市文化基金會一覽表",
         "latest_retrieved_at": "2026-10-24T17:12:43.929764+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:43.929764+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 302,
         "source_name": "Official roster 125276: 新北市教育基金會資訊",
         "latest_retrieved_at": "2026-10-24T17:12:16.17245+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:16.17245+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 66,
         "source_name": "Official roster 128059: 高雄市人民團體-同鄉會",
         "latest_retrieved_at": "2026-10-24T17:11:41.649368+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:41.649368+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 365,
         "source_name": "Official roster 128070: 高雄市人民團體-自由職業團體",
         "latest_retrieved_at": "2026-10-24T17:12:02.471428+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:02.471428+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 83,
         "source_name": "Official roster 128138: 社會福利慈善事業基金會-基金會",
         "latest_retrieved_at": "2026-10-24T17:12:26.942046+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:26.942046+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 464,
         "source_name": "Official roster 128172: 人民團體-體育團體",
         "latest_retrieved_at": "2026-10-24T17:11:43.671747+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:43.671747+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 77,
         "source_name": "Official roster 128173: 人民團體-醫療衛生團體",
         "latest_retrieved_at": "2026-10-24T17:11:47.068926+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:47.068926+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 100,
         "source_name": "Official roster 128174: 人民團體-環保團體",
         "latest_retrieved_at": "2026-10-24T17:11:32.232136+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:32.232136+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 608,
         "source_name": "Official roster 128175: 人民團體-學術文化團體",
         "latest_retrieved_at": "2026-10-24T17:11:54.656823+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:54.656823+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 453,
         "source_name": "Official roster 128176: 人民團體-經濟業務團體",
         "latest_retrieved_at": "2026-10-24T17:11:34.566787+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:34.566787+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 313,
         "source_name": "Official roster 128178: 人民團體-國際團體",
         "latest_retrieved_at": "2026-10-24T17:11:57.93393+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:57.93393+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 228,
         "source_name": "Official roster 128179: 人民團體-商業團體",
         "latest_retrieved_at": "2026-10-24T17:11:49.449106+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:49.449106+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 122,
         "source_name": "Official roster 128180: 人民團體-校友會",
         "latest_retrieved_at": "2026-10-24T17:11:52.432291+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:52.432291+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 92,
         "source_name": "Official roster 128182: 人民團體-宗親會",
         "latest_retrieved_at": "2026-10-24T17:12:00.565039+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:00.565039+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 344,
         "source_name": "Official roster 128183: 人民團體-宗教團體",
         "latest_retrieved_at": "2026-10-24T17:11:38.351197+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:38.351197+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 154,
         "source_name": "Official roster 130824: 臺北市文化局文化藝術財團法人一覽表",
         "latest_retrieved_at": "2026-10-24T17:12:21.009184+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:21.009184+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 363,
         "source_name": "Official roster 133900: 嘉義縣社區發展協會",
         "latest_retrieved_at": "2026-10-24T17:10:51.22937+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:51.22937+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 910,
         "source_name": "Official roster 133902: 人民團體",
         "latest_retrieved_at": "2026-10-24T17:10:13.099527+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:13.099527+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 15,
         "source_name": "Official roster 134985: 社會福利財團法人名冊",
         "latest_retrieved_at": "2026-10-24T17:12:47.46765+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:47.46765+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 13,
         "source_name": "Official roster 145146: 嘉義市社會福利慈善事業基金會名冊",
         "latest_retrieved_at": "2026-10-24T17:12:37.096158+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:37.096158+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 313,
         "source_name": "Official roster 149069: 政府原始捐助（贈）之財團法人一覽表",
         "latest_retrieved_at": "2026-10-24T17:12:53.088567+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:53.088567+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 220,
         "source_name": "Official roster 156981: 臺北市社會福利基金會名冊",
         "latest_retrieved_at": "2026-10-24T17:12:22.986673+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:22.986673+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 176,
         "source_name": "Official roster 159507: 社區發展協會",
         "latest_retrieved_at": "2026-10-24T17:10:27.929225+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:27.929225+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 3,
         "source_name": "Official roster 159789: 臺中市經管財團法人名冊",
         "latest_retrieved_at": "2026-10-24T17:12:35.491457+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:35.491457+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 39,
         "source_name": "Official roster 159828: 臺中市人民團體-環保團體",
         "latest_retrieved_at": "2026-10-24T17:11:19.809205+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:19.809205+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 209,
         "source_name": "Official roster 159831: 臺中市人民團體-工商團體",
         "latest_retrieved_at": "2026-10-24T17:11:11.063634+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:11.063634+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 188,
         "source_name": "Official roster 159836: 臺中市人民團體-教師會",
         "latest_retrieved_at": "2026-10-24T17:11:13.4225+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:13.4225+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 42,
         "source_name": "Official roster 159889: 臺中市人民團體-同鄉會",
         "latest_retrieved_at": "2026-10-24T17:11:07.271036+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:07.271036+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 318,
         "source_name": "Official roster 159892: 臺中市人民團體-其他團體",
         "latest_retrieved_at": "2026-10-24T17:10:54.180418+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:54.180418+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 74,
         "source_name": "Official roster 159893: 臺中市人民團體-宗親會",
         "latest_retrieved_at": "2026-10-24T17:11:05.451536+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:05.451536+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 187,
         "source_name": "Official roster 159895: 臺中市人民團體-同學校友會",
         "latest_retrieved_at": "2026-10-24T17:11:08.946953+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:08.946953+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 461,
         "source_name": "Official roster 159896: 臺中市人民團體-國際團體",
         "latest_retrieved_at": "2026-10-24T17:11:21.53434+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:21.53434+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 547,
         "source_name": "Official roster 159898: 臺中市人民團體-宗教團體",
         "latest_retrieved_at": "2026-10-24T17:11:25.902354+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:25.902354+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 1230,
         "source_name": "Official roster 159899: 臺中市人民團體-社會服務及慈善團體",
         "latest_retrieved_at": "2026-10-24T17:10:56.804657+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:56.804657+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 281,
         "source_name": "Official roster 159900: 臺中市人民團體-經濟業務團體",
         "latest_retrieved_at": "2026-10-24T17:11:29.658605+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:29.658605+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.21
       },
       {
         "records": 85,
         "source_name": "Official roster 159901: 臺中市人民團體-醫療衛生團體",
         "latest_retrieved_at": "2026-10-24T17:11:03.627431+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:03.627431+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 89,
         "source_name": "Official roster 159902: 臺中市人民團體-自由職業團體",
         "latest_retrieved_at": "2026-10-24T17:11:01.646415+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:01.646415+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 422,
         "source_name": "Official roster 159903: 臺中市人民團體-體育運動團體",
         "latest_retrieved_at": "2026-10-24T17:11:16.445988+00:00",
         "oldest_retrieved_at": "2026-10-24T17:11:16.445988+00:00",
-        "latest_retrieval_age_hours": 644.38
+        "latest_retrieval_age_hours": 645.22
       },
       {
         "records": 15,
         "source_name": "Official roster 161037: 財團法人雲林縣社會福利基金會名冊",
         "latest_retrieved_at": "2026-10-24T17:12:40.652154+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:40.652154+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 823,
         "source_name": "Official roster 165174: 基隆市立案人民團體名冊",
         "latest_retrieved_at": "2026-10-24T17:13:33.055872+00:00",
         "oldest_retrieved_at": "2026-10-24T17:13:33.055872+00:00",
-        "latest_retrieval_age_hours": 644.35
+        "latest_retrieval_age_hours": 645.18
       },
       {
         "records": 155,
         "source_name": "Official roster 165816: 109年度臺東縣社區發展協會",
         "latest_retrieved_at": "2026-10-24T17:10:37.930133+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:37.930133+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 26,
         "source_name": "Official roster 165826: 政府捐助（贈）經費累計達法院登記財產總額百分之二十以上之財團法人一覽表",
         "latest_retrieved_at": "2026-10-24T17:12:56.033015+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:56.033015+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 18,
         "source_name": "Official roster 165829: 政府直接（間接）控制其人事、財務或業務之財團法人一覽表",
         "latest_retrieved_at": "2026-10-24T17:12:58.055618+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:58.055618+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 279,
         "source_name": "Official roster 174251: 苗栗縣社區發展協會名冊",
         "latest_retrieved_at": "2026-10-24T17:10:30.727062+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:30.727062+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 118,
         "source_name": "Official roster 174365: 金門縣社區發展協會",
         "latest_retrieved_at": "2026-10-24T17:10:35.789801+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:35.789801+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 87,
         "source_name": "Official roster 177844: 高雄市財團法人教會堂基本資料",
         "latest_retrieved_at": "2026-10-24T17:12:49.257259+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:49.257259+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 64,
         "source_name": "Official roster 26480: 桃園市財團法人教會堂及基金會名冊",
         "latest_retrieved_at": "2026-10-24T17:12:38.835261+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:38.835261+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 357,
         "source_name": "Official roster 32265: 桃園市社區發展協會名冊",
         "latest_retrieved_at": "2026-10-24T17:10:20.316218+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:20.316218+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 28,
         "source_name": "Official roster 41892: 全國性財團法人體育基金會資訊",
         "latest_retrieved_at": "2026-10-24T17:12:07.043739+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:07.043739+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 1,
         "source_name": "Official roster 42649: 大陸委員會主管港澳事務財團法人名冊",
         "latest_retrieved_at": "2026-10-24T17:12:12.489245+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:12.489245+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 82,
         "source_name": "Official roster 52394: 嘉義市社區發展協會名冊",
         "latest_retrieved_at": "2026-10-24T17:10:40.378841+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:40.378841+00:00",
-        "latest_retrieval_age_hours": 644.39
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 121,
         "source_name": "Official roster 70706: 政府捐助成立之財團法人基本資料",
         "latest_retrieved_at": "2026-10-24T17:12:08.601757+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:08.601757+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 21,
         "source_name": "Official roster 83867: 臺中市文化藝術財團法人(基金會)",
         "latest_retrieved_at": "2026-10-24T17:12:25.268038+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:25.268038+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 34,
         "source_name": "Official roster 90604: 屏東縣教育基金會名冊",
         "latest_retrieved_at": "2026-10-24T17:12:32.231132+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:32.231132+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 18,
         "source_name": "Official roster 9075: 大陸委員會主管大陸事務財團法人名冊",
         "latest_retrieved_at": "2026-10-24T17:12:10.673277+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:10.673277+00:00",
-        "latest_retrieval_age_hours": 644.37
+        "latest_retrieval_age_hours": 645.2
       },
       {
         "records": 609,
         "source_name": "Official roster 91949: 臺中市社區發展協會",
         "latest_retrieved_at": "2026-10-24T17:10:23.771862+00:00",
         "oldest_retrieved_at": "2026-10-24T17:10:23.771862+00:00",
-        "latest_retrieval_age_hours": 644.4
+        "latest_retrieval_age_hours": 645.23
       },
       {
         "records": 2,
         "source_name": "Official roster 99061: 國家通訊傳播委員會監督之財團法人基本資料(已移撥數位部，不再更新)",
         "latest_retrieved_at": "2026-10-24T17:12:51.219692+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:51.219692+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 7,
         "source_name": "Official roster 99290: 新竹縣文化藝術財團法人基本資訊",
         "latest_retrieved_at": "2026-10-24T17:12:33.904584+00:00",
         "oldest_retrieved_at": "2026-10-24T17:12:33.904584+00:00",
-        "latest_retrieval_age_hours": 644.36
+        "latest_retrieval_age_hours": 645.19
       },
       {
         "records": 13,
         "source_name": "Penghu County 同鄉會 groups official CSV 166902",
         "latest_retrieved_at": "2026-10-25T10:50:18.808547+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:18.808547+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.57
       },
       {
         "records": 12,
         "source_name": "Penghu County 國際會 groups official CSV 166908",
         "latest_retrieved_at": "2026-10-25T10:50:31.269357+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:31.269357+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 93,
         "source_name": "Penghu County 學術文化 groups official CSV 166910",
         "latest_retrieved_at": "2026-10-25T10:50:35.232671+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:35.232671+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 2,
         "source_name": "Penghu County 宗教 groups official CSV 166904",
         "latest_retrieved_at": "2026-10-25T10:50:22.568211+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:22.568211+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 27,
         "source_name": "Penghu County 宗親會 groups official CSV 166905",
         "latest_retrieved_at": "2026-10-25T10:50:24.052075+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:24.052075+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 57,
         "source_name": "Penghu County 工商職業 groups official CSV 166901",
         "latest_retrieved_at": "2026-10-25T10:50:16.130656+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:16.130656+00:00",
-        "latest_retrieval_age_hours": 626.74
+        "latest_retrieval_age_hours": 627.57
       },
       {
         "records": 12,
         "source_name": "Penghu County 校友會 groups official CSV 166907",
         "latest_retrieved_at": "2026-10-25T10:50:29.625724+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:29.625724+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 1,
         "source_name": "Penghu County 環保 groups official CSV 166911",
         "latest_retrieved_at": "2026-10-25T10:50:37.615773+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:37.615773+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 203,
         "source_name": "Penghu County 社會服務 groups official CSV 166906",
         "latest_retrieved_at": "2026-10-25T10:50:26.126744+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:26.126744+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 58,
         "source_name": "Penghu County 經濟 groups official CSV 166909",
         "latest_retrieved_at": "2026-10-25T10:50:33.024017+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:33.024017+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 26,
         "source_name": "Penghu County 自由職業 groups official CSV 166903",
         "latest_retrieved_at": "2026-10-25T10:50:20.557143+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:20.557143+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.57
       },
       {
         "records": 91,
         "source_name": "Penghu County 體育 groups official CSV 166912",
         "latest_retrieved_at": "2026-10-25T10:50:39.143935+00:00",
         "oldest_retrieved_at": "2026-10-25T10:50:39.143935+00:00",
-        "latest_retrieval_age_hours": 626.73
+        "latest_retrieval_age_hours": 627.56
       },
       {
         "records": 3439,
         "source_name": "Pingtung County people's organizations roster",
         "latest_retrieved_at": "2026-10-24T15:23:57.276899+00:00",
         "oldest_retrieved_at": "2026-10-24T15:23:57.276899+00:00",
-        "latest_retrieval_age_hours": 646.17
+        "latest_retrieval_age_hours": 647.01
       },
       {
         "records": 594,
         "source_name": "Taichung City academic-cultural groups roster",
         "latest_retrieved_at": "2026-10-24T15:25:48.738258+00:00",
         "oldest_retrieved_at": "2026-10-24T15:25:48.738258+00:00",
-        "latest_retrieval_age_hours": 646.14
+        "latest_retrieval_age_hours": 646.97
       },
       {
         "records": 3505,
         "source_name": "Tainan City people's organizations roster",
         "latest_retrieved_at": "2026-10-24T14:38:33.133871+00:00",
         "oldest_retrieved_at": "2026-10-24T14:38:33.133871+00:00",
-        "latest_retrieval_age_hours": 646.93
+        "latest_retrieval_age_hours": 647.76
       },
       {
         "records": 4176,
         "source_name": "Taipei City people's organizations roster",
         "latest_retrieved_at": "2026-10-24T14:38:18.260925+00:00",
         "oldest_retrieved_at": "2026-10-24T14:38:18.260925+00:00",
-        "latest_retrieval_age_hours": 646.93
+        "latest_retrieval_age_hours": 647.77
       },
       {
         "records": 1618,
         "source_name": "Yilan County people's organizations roster 2026-09-30",
         "latest_retrieved_at": "2026-10-24T17:14:28.120422+00:00",
         "oldest_retrieved_at": "2026-10-24T17:14:28.120422+00:00",
-        "latest_retrieval_age_hours": 644.33
+        "latest_retrieval_age_hours": 645.16
       },
       {
         "records": 1881,
         "source_name": "Yunlin County people's organizations roster 2026-07-13",
         "latest_retrieved_at": "2026-10-25T06:39:06.186392+00:00",
         "oldest_retrieved_at": "2026-10-25T06:39:06.186392+00:00",
-        "latest_retrieval_age_hours": 630.92
+        "latest_retrieval_age_hours": 631.75
+      },
+      {
+        "records": 34,
+        "source_name": "官方團體名稱逐筆覆核 / Official civil name review",
+        "latest_retrieved_at": "2026-11-20T14:20:37.340617+00:00",
+        "oldest_retrieved_at": "2026-11-20T14:15:32.486073+00:00",
+        "latest_retrieval_age_hours": 0.06
       },
       {
         "records": 3,
         "source_name": "政府電子採購網",
         "latest_retrieved_at": "2026-11-20T13:08:56.175848+00:00",
         "oldest_retrieved_at": "2026-10-18T07:24:54.430254+00:00",
-        "latest_retrieval_age_hours": 0.42
+        "latest_retrieval_age_hours": 1.26
       },
       {
         "records": 230,
         "source_name": "監察院政治獻金公開查閱平臺",
         "latest_retrieved_at": "2026-10-28T15:55:34.995029+00:00",
         "oldest_retrieved_at": "2026-09-23T08:27:56.88758+00:00",
-        "latest_retrieval_age_hours": 549.65
+        "latest_retrieval_age_hours": 550.48
       },
       {
         "records": 1159,
         "source_name": "立法院開放資料服務平台",
         "latest_retrieved_at": "2026-10-28T15:50:22.105481+00:00",
         "oldest_retrieved_at": "2026-09-22T23:31:40.024812+00:00",
-        "latest_retrieval_age_hours": 549.73
+        "latest_retrieval_age_hours": 550.56
       },
       {
         "records": 1,
         "source_name": "經濟部商工登記公示資料",
         "latest_retrieved_at": "2026-09-23T08:27:56.88758+00:00",
         "oldest_retrieved_at": "2026-09-23T08:27:56.88758+00:00",
-        "latest_retrieval_age_hours": 1397.11
+        "latest_retrieval_age_hours": 1397.94
       },
       {
         "records": 31,
         "source_name": "行政院部會首長名錄（來源觀察）",
         "latest_retrieved_at": "2026-10-28T16:10:33.66851+00:00",
         "oldest_retrieved_at": "2026-10-28T16:10:33.66851+00:00",
-        "latest_retrieval_age_hours": 549.4
+        "latest_retrieval_age_hours": 550.23
       }
     ],
     "invalid_edges": 0,
