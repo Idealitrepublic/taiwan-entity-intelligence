@@ -1,750 +1,143 @@
-# Data Health — DATA Phase 6
+# 公開資料健康檢查
 
-Generated: 2026-11-04T23:31:17.836967+00:00
-Benchmark Supabase: https://canqjiokrtcxkwblhmml.supabase.co
+檢查時間：2026-11-20T08:54:12.429282+00:00。僅 Development；Production 未修改。
 
-This is a read-only, fixed-sample benchmark, **not national coverage**.
-Unknown values are not zero. Politician coverage uses official `lgno` overlap; contribution and asset denominators remain unknown. Adapter fixtures are excluded.
-See [Phase 6 offline acceptance](DATA_PHASE_6_OFFLINE_ACCEPTANCE.md) for sample limits, the post-sync gate, source issues, and checkpoint recovery. Report freshness is not source-publication freshness; JList processing is not national historical recall.
+公開資料結構 High = 0；這不等於上線總驗收通過。
 
-| Source | Scope | Observed | Expected | Coverage | Freshness h | Errors | Duplicate | Provenance | Severity |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---|
-| company_registration | 3 fixed valid-company identifiers; live MOEA | 3 | 3 | 1.0 | 0.0 | 0 | 0.0 | 1.0 | OK |
-| directors | same 3 identifiers; presence only | 3 | 3 | 1.0 | 0.0 | 0 | 0.0 | 1.0 | OK |
-| procurement | same 3 identifiers; mirror response, not award recall | 3 | 3 | 1.0 | unknown | 0 | 0.0 | 1.0 | OK |
-| labor_penalties | indexed company-name reads; national recall unknown | 13 | unknown | unknown | 711.5 | 0 | 0.0 | 1.0 | Unknown |
-| judiciary | 3 official known-case JIDs; not historical recall | 3 | 3 | 1.0 | 5.2 | 0 | 0.0 | 1.0 | Medium |
-| politicians | official term-11 committee lgno matched to published politician_terms; not all legislators | 121 | 121 | 1.0 | 175.7 | 0 | 0.0 | 1.0 | OK |
-| political_contributions | public published-data sample; source denominator not yet established | 100 | unknown | unknown | 175.6 | 0 | 0.0 | 1.0 | Unknown |
-| asset_declarations | public published-data sample; source denominator not yet established | 63 | unknown | unknown | 175.4 | 0 | 0.0 | 1.0 | Unknown |
-| entity_resolution | private resolution_candidates excluded by RLS | unknown | unknown | unknown | unknown | 0 | unknown | unknown | Unknown |
+| 類型 | anon/RLS 可見筆數 |
+|---|---:|
+| 公司 | 472 |
+| 標案 | 2 |
+| 立委／政治人物 | 121 |
+| 政黨 | 4 |
+| 政府機關 | 12 |
+| 民間團體 | 65,203 |
+| 政府官員 | 31 |
 
-## Findings and disposition
+關係 1,389 筆；證據 67,089 筆。
+失效關係、缺來源、重複關係、公開缺字名稱：0, 0, 0, 0。
 
-- **Data-quality benchmark gate:** High = 0; none. This does not clear operational freshness, security, capacity or deployment gates.
-- **Politician master data:** the current official term-11 `lgno` overlap is 121/121. This measures the stated public sample; it does not establish national coverage or private draft counts.
-- **Contributions/assets:** current public samples contain 100 contribution and 63 asset row(s). These are bounded public reads; national denominators and unpublished draft counts remain unknown. This probe does not re-audit private identity crosswalks or infer matching accuracy from row counts.
-- **Judiciary:** latest local official JList/JDoc attempt 2026-11-04T18:17:12+00:00: status upstream_unavailable, 5096 documents ingested across the window; 0 pending retries; 690 verified upstream-unavailable documents; 0 T.E.I. ingestion errors; 232/232 JList batches complete (232 attempted; latest batch 0, 5786 changed JIDs). The completed window has source-side document gaps; it is not complete JDoc coverage or national historical recall.
-- **Provenance/unknowns:** labor samples verify raw-row hashes against official snapshot metadata; this does not prove retention of older CSV bytes or canonical company identity. Procurement mirror provenance is not independent official notice confirmation. Private resolution candidates remain hidden by RLS, so live precision/recall is unknown.
+## 範圍與限制
 
-### Judicial JList window coverage (not national historical recall)
+- 官方母體與逐來源更新 SLA 尚未完整建立；不可由入庫筆數推估全臺覆蓋率。
+- 資料取得時間不等於官方資料異動時間；即時公司登記與標案需另驗 API。
+- 45 筆 ASCII 問號缺字團體保留待核，未猜測更名或刪除原件；另列全形問號名稱待人工判別，不將標點符號自動視為缺字。
+- 已撤下的裁判、裁罰、候選人、財產、遊說及 165 不列公開站 freshness；歷史同步健康另留原報告。
 
-- Attempted: 5786/5786 JIDs (1.0); ingested 5096, pending ingestion 0, verified upstream unavailable 690.
-- Ingestion failure rate: 0.0; upstream-unavailable rate: 0.1193; latest attempt age: 5.2 h.
-These ratios use only this fixed JList window and never stand in for all historical judgments.
+## 各來源實際取得時間
 
-### Verified upstream document unavailable (not T.E.I. ingestion failure)
+| 來源 | 證據筆數 | 最早取得 | 最近取得 | 距最近取得小時 |
+|---|---:|---|---|---:|
+| Changhua County society roster 2026-10-16 | 2375 | 2026-10-25T09:27:00.929589+00:00 | 2026-10-25T09:27:00.929589+00:00 | 623.45 |
+| Hsinchu City social organizations category pages 2026-10-25 | 1023 | 2026-10-25T06:41:57.438776+00:00 | 2026-10-25T06:41:57.438776+00:00 | 626.2 |
+| Hsinchu County people's organizations official XLSX 2026-10-05 | 2181 | 2026-10-25T10:55:35.84887+00:00 | 2026-10-25T10:55:35.84887+00:00 | 621.98 |
+| Kaohsiung City charity groups roster | 1747 | 2026-10-24T15:25:52.844676+00:00 | 2026-10-24T15:25:52.844676+00:00 | 641.47 |
+| Kinmen County social organizations official XLSX 2026-10-25 | 498 | 2026-10-25T09:28:21.404188+00:00 | 2026-10-25T09:28:21.404188+00:00 | 623.43 |
+| Miaoli County social organizations official ODS 2026-10-25 | 2384 | 2026-10-25T09:24:22.083004+00:00 | 2026-10-25T09:24:22.083004+00:00 | 623.5 |
+| MOE education foundations roster | 756 | 2026-10-24T15:24:19.383442+00:00 | 2026-10-24T15:24:19.383442+00:00 | 641.5 |
+| MOEA/GCI | 463 | 2026-10-06T08:40:46.605629+00:00 | 2026-11-01T13:23:21.580644+00:00 | 451.51 |
+| MOI national civic foundations roster | 8 | 2026-10-24T14:38:43.576903+00:00 | 2026-10-24T14:38:43.576903+00:00 | 642.26 |
+| MOI national civil foundations roster | 17 | 2026-10-24T08:36:02.302697+00:00 | 2026-10-24T08:36:02.302697+00:00 | 648.3 |
+| MOI nationwide people's associations roster | 23209 | 2026-10-24T08:14:36.606247+00:00 | 2026-10-24T08:14:36.606247+00:00 | 648.66 |
+| MOL county/city union federations | 104 | 2026-10-24T08:36:10.109206+00:00 | 2026-10-24T08:36:10.109206+00:00 | 648.3 |
+| MOL directly supervised unions | 8 | 2026-10-24T08:36:04.645405+00:00 | 2026-10-24T08:36:04.645405+00:00 | 648.3 |
+| MOL labor foundations roster | 15 | 2026-10-24T15:24:15.22103+00:00 | 2026-10-24T15:24:15.22103+00:00 | 641.5 |
+| MOL national industry union federations | 79 | 2026-10-24T08:36:12.605997+00:00 | 2026-10-24T08:36:12.605997+00:00 | 648.3 |
+| MOL national union federations | 11 | 2026-10-24T08:36:06.310473+00:00 | 2026-10-24T08:36:06.310473+00:00 | 648.3 |
+| MOL provincial union federations | 41 | 2026-10-24T08:36:07.966916+00:00 | 2026-10-24T08:36:07.966916+00:00 | 648.3 |
+| New Taipei City community associations roster | 470 | 2026-10-24T15:25:43.148658+00:00 | 2026-10-24T15:25:43.148658+00:00 | 641.47 |
+| Official roster 101814: 經管財團法人名冊 | 2 | 2026-10-24T17:12:28.847512+00:00 | 2026-10-24T17:12:28.847512+00:00 | 639.7 |
+| Official roster 102156: 農業財團法人名冊 | 73 | 2026-10-24T17:12:05.238993+00:00 | 2026-10-24T17:12:05.238993+00:00 | 639.7 |
+| Official roster 102929: 臺南市財團法人名冊(社福基金會類) | 93 | 2026-10-24T17:16:29.506859+00:00 | 2026-10-24T17:16:29.506859+00:00 | 639.63 |
+| Official roster 104441: 高雄市文化基金會一覽表 | 21 | 2026-10-24T17:12:42.275037+00:00 | 2026-10-24T17:12:42.275037+00:00 | 639.69 |
+| Official roster 106263: 臺南市財團法人名冊 | 62 | 2026-10-24T17:12:30.48452+00:00 | 2026-10-24T17:12:30.48452+00:00 | 639.69 |
+| Official roster 107897: 社區發展協會 | 576 | 2026-10-24T17:10:44.088798+00:00 | 2026-10-24T17:10:44.088798+00:00 | 639.72 |
+| Official roster 109238: 新竹縣已登記財團法人教會名冊一覽表 | 13 | 2026-10-24T17:12:45.808104+00:00 | 2026-10-24T17:12:45.808104+00:00 | 639.69 |
+| Official roster 109320: 新竹縣人民團體名冊 | 70 | 2026-10-24T17:10:09.680382+00:00 | 2026-10-24T17:10:09.680382+00:00 | 639.73 |
+| Official roster 109324: 新竹縣社區發展協會名冊 | 186 | 2026-10-24T17:10:48.958722+00:00 | 2026-10-24T17:10:48.958722+00:00 | 639.72 |
+| Official roster 113361: 澎湖縣社區發展協會名冊 | 91 | 2026-10-24T17:10:33.705835+00:00 | 2026-10-24T17:10:33.705835+00:00 | 639.73 |
+| Official roster 121528: 臺北市財團法人教育基金會清冊 | 284 | 2026-10-24T17:12:18.728958+00:00 | 2026-10-24T17:12:18.728958+00:00 | 639.7 |
+| Official roster 124291: 新北市私立社會福利慈善事業基金會名冊 | 110 | 2026-10-24T17:12:14.098668+00:00 | 2026-10-24T17:12:14.098668+00:00 | 639.7 |
+| Official roster 125155: 新北市文化基金會一覽表 | 67 | 2026-10-24T17:12:43.929764+00:00 | 2026-10-24T17:12:43.929764+00:00 | 639.69 |
+| Official roster 125276: 新北市教育基金會資訊 | 302 | 2026-10-24T17:12:16.17245+00:00 | 2026-10-24T17:12:16.17245+00:00 | 639.7 |
+| Official roster 128059: 高雄市人民團體-同鄉會 | 66 | 2026-10-24T17:11:41.649368+00:00 | 2026-10-24T17:11:41.649368+00:00 | 639.71 |
+| Official roster 128070: 高雄市人民團體-自由職業團體 | 365 | 2026-10-24T17:12:02.471428+00:00 | 2026-10-24T17:12:02.471428+00:00 | 639.7 |
+| Official roster 128138: 社會福利慈善事業基金會-基金會 | 83 | 2026-10-24T17:12:26.942046+00:00 | 2026-10-24T17:12:26.942046+00:00 | 639.7 |
+| Official roster 128172: 人民團體-體育團體 | 464 | 2026-10-24T17:11:43.671747+00:00 | 2026-10-24T17:11:43.671747+00:00 | 639.71 |
+| Official roster 128173: 人民團體-醫療衛生團體 | 77 | 2026-10-24T17:11:47.068926+00:00 | 2026-10-24T17:11:47.068926+00:00 | 639.71 |
+| Official roster 128174: 人民團體-環保團體 | 100 | 2026-10-24T17:11:32.232136+00:00 | 2026-10-24T17:11:32.232136+00:00 | 639.71 |
+| Official roster 128175: 人民團體-學術文化團體 | 608 | 2026-10-24T17:11:54.656823+00:00 | 2026-10-24T17:11:54.656823+00:00 | 639.7 |
+| Official roster 128176: 人民團體-經濟業務團體 | 453 | 2026-10-24T17:11:34.566787+00:00 | 2026-10-24T17:11:34.566787+00:00 | 639.71 |
+| Official roster 128178: 人民團體-國際團體 | 313 | 2026-10-24T17:11:57.93393+00:00 | 2026-10-24T17:11:57.93393+00:00 | 639.7 |
+| Official roster 128179: 人民團體-商業團體 | 228 | 2026-10-24T17:11:49.449106+00:00 | 2026-10-24T17:11:49.449106+00:00 | 639.71 |
+| Official roster 128180: 人民團體-校友會 | 122 | 2026-10-24T17:11:52.432291+00:00 | 2026-10-24T17:11:52.432291+00:00 | 639.71 |
+| Official roster 128182: 人民團體-宗親會 | 92 | 2026-10-24T17:12:00.565039+00:00 | 2026-10-24T17:12:00.565039+00:00 | 639.7 |
+| Official roster 128183: 人民團體-宗教團體 | 344 | 2026-10-24T17:11:38.351197+00:00 | 2026-10-24T17:11:38.351197+00:00 | 639.71 |
+| Official roster 130824: 臺北市文化局文化藝術財團法人一覽表 | 154 | 2026-10-24T17:12:21.009184+00:00 | 2026-10-24T17:12:21.009184+00:00 | 639.7 |
+| Official roster 133900: 嘉義縣社區發展協會 | 363 | 2026-10-24T17:10:51.22937+00:00 | 2026-10-24T17:10:51.22937+00:00 | 639.72 |
+| Official roster 133902: 人民團體 | 910 | 2026-10-24T17:10:13.099527+00:00 | 2026-10-24T17:10:13.099527+00:00 | 639.73 |
+| Official roster 134985: 社會福利財團法人名冊 | 15 | 2026-10-24T17:12:47.46765+00:00 | 2026-10-24T17:12:47.46765+00:00 | 639.69 |
+| Official roster 145146: 嘉義市社會福利慈善事業基金會名冊 | 13 | 2026-10-24T17:12:37.096158+00:00 | 2026-10-24T17:12:37.096158+00:00 | 639.69 |
+| Official roster 149069: 政府原始捐助（贈）之財團法人一覽表 | 313 | 2026-10-24T17:12:53.088567+00:00 | 2026-10-24T17:12:53.088567+00:00 | 639.69 |
+| Official roster 156981: 臺北市社會福利基金會名冊 | 220 | 2026-10-24T17:12:22.986673+00:00 | 2026-10-24T17:12:22.986673+00:00 | 639.7 |
+| Official roster 159507: 社區發展協會 | 176 | 2026-10-24T17:10:27.929225+00:00 | 2026-10-24T17:10:27.929225+00:00 | 639.73 |
+| Official roster 159789: 臺中市經管財團法人名冊 | 3 | 2026-10-24T17:12:35.491457+00:00 | 2026-10-24T17:12:35.491457+00:00 | 639.69 |
+| Official roster 159828: 臺中市人民團體-環保團體 | 39 | 2026-10-24T17:11:19.809205+00:00 | 2026-10-24T17:11:19.809205+00:00 | 639.71 |
+| Official roster 159831: 臺中市人民團體-工商團體 | 209 | 2026-10-24T17:11:11.063634+00:00 | 2026-10-24T17:11:11.063634+00:00 | 639.72 |
+| Official roster 159836: 臺中市人民團體-教師會 | 188 | 2026-10-24T17:11:13.4225+00:00 | 2026-10-24T17:11:13.4225+00:00 | 639.72 |
+| Official roster 159889: 臺中市人民團體-同鄉會 | 42 | 2026-10-24T17:11:07.271036+00:00 | 2026-10-24T17:11:07.271036+00:00 | 639.72 |
+| Official roster 159892: 臺中市人民團體-其他團體 | 318 | 2026-10-24T17:10:54.180418+00:00 | 2026-10-24T17:10:54.180418+00:00 | 639.72 |
+| Official roster 159893: 臺中市人民團體-宗親會 | 74 | 2026-10-24T17:11:05.451536+00:00 | 2026-10-24T17:11:05.451536+00:00 | 639.72 |
+| Official roster 159895: 臺中市人民團體-同學校友會 | 187 | 2026-10-24T17:11:08.946953+00:00 | 2026-10-24T17:11:08.946953+00:00 | 639.72 |
+| Official roster 159896: 臺中市人民團體-國際團體 | 461 | 2026-10-24T17:11:21.53434+00:00 | 2026-10-24T17:11:21.53434+00:00 | 639.71 |
+| Official roster 159898: 臺中市人民團體-宗教團體 | 547 | 2026-10-24T17:11:25.902354+00:00 | 2026-10-24T17:11:25.902354+00:00 | 639.71 |
+| Official roster 159899: 臺中市人民團體-社會服務及慈善團體 | 1230 | 2026-10-24T17:10:56.804657+00:00 | 2026-10-24T17:10:56.804657+00:00 | 639.72 |
+| Official roster 159900: 臺中市人民團體-經濟業務團體 | 281 | 2026-10-24T17:11:29.658605+00:00 | 2026-10-24T17:11:29.658605+00:00 | 639.71 |
+| Official roster 159901: 臺中市人民團體-醫療衛生團體 | 85 | 2026-10-24T17:11:03.627431+00:00 | 2026-10-24T17:11:03.627431+00:00 | 639.72 |
+| Official roster 159902: 臺中市人民團體-自由職業團體 | 89 | 2026-10-24T17:11:01.646415+00:00 | 2026-10-24T17:11:01.646415+00:00 | 639.72 |
+| Official roster 159903: 臺中市人民團體-體育運動團體 | 422 | 2026-10-24T17:11:16.445988+00:00 | 2026-10-24T17:11:16.445988+00:00 | 639.72 |
+| Official roster 161037: 財團法人雲林縣社會福利基金會名冊 | 15 | 2026-10-24T17:12:40.652154+00:00 | 2026-10-24T17:12:40.652154+00:00 | 639.69 |
+| Official roster 165174: 基隆市立案人民團體名冊 | 823 | 2026-10-24T17:13:33.055872+00:00 | 2026-10-24T17:13:33.055872+00:00 | 639.68 |
+| Official roster 165816: 109年度臺東縣社區發展協會 | 155 | 2026-10-24T17:10:37.930133+00:00 | 2026-10-24T17:10:37.930133+00:00 | 639.73 |
+| Official roster 165826: 政府捐助（贈）經費累計達法院登記財產總額百分之二十以上之財團法人一覽表 | 26 | 2026-10-24T17:12:56.033015+00:00 | 2026-10-24T17:12:56.033015+00:00 | 639.69 |
+| Official roster 165829: 政府直接（間接）控制其人事、財務或業務之財團法人一覽表 | 18 | 2026-10-24T17:12:58.055618+00:00 | 2026-10-24T17:12:58.055618+00:00 | 639.69 |
+| Official roster 174251: 苗栗縣社區發展協會名冊 | 279 | 2026-10-24T17:10:30.727062+00:00 | 2026-10-24T17:10:30.727062+00:00 | 639.73 |
+| Official roster 174365: 金門縣社區發展協會 | 118 | 2026-10-24T17:10:35.789801+00:00 | 2026-10-24T17:10:35.789801+00:00 | 639.73 |
+| Official roster 177844: 高雄市財團法人教會堂基本資料 | 87 | 2026-10-24T17:12:49.257259+00:00 | 2026-10-24T17:12:49.257259+00:00 | 639.69 |
+| Official roster 26480: 桃園市財團法人教會堂及基金會名冊 | 64 | 2026-10-24T17:12:38.835261+00:00 | 2026-10-24T17:12:38.835261+00:00 | 639.69 |
+| Official roster 32265: 桃園市社區發展協會名冊 | 357 | 2026-10-24T17:10:20.316218+00:00 | 2026-10-24T17:10:20.316218+00:00 | 639.73 |
+| Official roster 41892: 全國性財團法人體育基金會資訊 | 28 | 2026-10-24T17:12:07.043739+00:00 | 2026-10-24T17:12:07.043739+00:00 | 639.7 |
+| Official roster 42649: 大陸委員會主管港澳事務財團法人名冊 | 1 | 2026-10-24T17:12:12.489245+00:00 | 2026-10-24T17:12:12.489245+00:00 | 639.7 |
+| Official roster 52394: 嘉義市社區發展協會名冊 | 82 | 2026-10-24T17:10:40.378841+00:00 | 2026-10-24T17:10:40.378841+00:00 | 639.73 |
+| Official roster 70706: 政府捐助成立之財團法人基本資料 | 121 | 2026-10-24T17:12:08.601757+00:00 | 2026-10-24T17:12:08.601757+00:00 | 639.7 |
+| Official roster 83867: 臺中市文化藝術財團法人(基金會) | 21 | 2026-10-24T17:12:25.268038+00:00 | 2026-10-24T17:12:25.268038+00:00 | 639.7 |
+| Official roster 90604: 屏東縣教育基金會名冊 | 34 | 2026-10-24T17:12:32.231132+00:00 | 2026-10-24T17:12:32.231132+00:00 | 639.69 |
+| Official roster 9075: 大陸委員會主管大陸事務財團法人名冊 | 18 | 2026-10-24T17:12:10.673277+00:00 | 2026-10-24T17:12:10.673277+00:00 | 639.7 |
+| Official roster 91949: 臺中市社區發展協會 | 609 | 2026-10-24T17:10:23.771862+00:00 | 2026-10-24T17:10:23.771862+00:00 | 639.73 |
+| Official roster 99061: 國家通訊傳播委員會監督之財團法人基本資料(已移撥數位部，不再更新) | 2 | 2026-10-24T17:12:51.219692+00:00 | 2026-10-24T17:12:51.219692+00:00 | 639.69 |
+| Official roster 99290: 新竹縣文化藝術財團法人基本資訊 | 7 | 2026-10-24T17:12:33.904584+00:00 | 2026-10-24T17:12:33.904584+00:00 | 639.69 |
+| Penghu County 同鄉會 groups official CSV 166902 | 13 | 2026-10-25T10:50:18.808547+00:00 | 2026-10-25T10:50:18.808547+00:00 | 622.06 |
+| Penghu County 國際會 groups official CSV 166908 | 12 | 2026-10-25T10:50:31.269357+00:00 | 2026-10-25T10:50:31.269357+00:00 | 622.06 |
+| Penghu County 學術文化 groups official CSV 166910 | 93 | 2026-10-25T10:50:35.232671+00:00 | 2026-10-25T10:50:35.232671+00:00 | 622.06 |
+| Penghu County 宗教 groups official CSV 166904 | 2 | 2026-10-25T10:50:22.568211+00:00 | 2026-10-25T10:50:22.568211+00:00 | 622.06 |
+| Penghu County 宗親會 groups official CSV 166905 | 27 | 2026-10-25T10:50:24.052075+00:00 | 2026-10-25T10:50:24.052075+00:00 | 622.06 |
+| Penghu County 工商職業 groups official CSV 166901 | 57 | 2026-10-25T10:50:16.130656+00:00 | 2026-10-25T10:50:16.130656+00:00 | 622.07 |
+| Penghu County 校友會 groups official CSV 166907 | 12 | 2026-10-25T10:50:29.625724+00:00 | 2026-10-25T10:50:29.625724+00:00 | 622.06 |
+| Penghu County 環保 groups official CSV 166911 | 1 | 2026-10-25T10:50:37.615773+00:00 | 2026-10-25T10:50:37.615773+00:00 | 622.06 |
+| Penghu County 社會服務 groups official CSV 166906 | 203 | 2026-10-25T10:50:26.126744+00:00 | 2026-10-25T10:50:26.126744+00:00 | 622.06 |
+| Penghu County 經濟 groups official CSV 166909 | 58 | 2026-10-25T10:50:33.024017+00:00 | 2026-10-25T10:50:33.024017+00:00 | 622.06 |
+| Penghu County 自由職業 groups official CSV 166903 | 26 | 2026-10-25T10:50:20.557143+00:00 | 2026-10-25T10:50:20.557143+00:00 | 622.06 |
+| Penghu County 體育 groups official CSV 166912 | 91 | 2026-10-25T10:50:39.143935+00:00 | 2026-10-25T10:50:39.143935+00:00 | 622.06 |
+| Pingtung County people's organizations roster | 3439 | 2026-10-24T15:23:57.276899+00:00 | 2026-10-24T15:23:57.276899+00:00 | 641.5 |
+| Taichung City academic-cultural groups roster | 594 | 2026-10-24T15:25:48.738258+00:00 | 2026-10-24T15:25:48.738258+00:00 | 641.47 |
+| Tainan City people's organizations roster | 3505 | 2026-10-24T14:38:33.133871+00:00 | 2026-10-24T14:38:33.133871+00:00 | 642.26 |
+| Taipei City people's organizations roster | 4176 | 2026-10-24T14:38:18.260925+00:00 | 2026-10-24T14:38:18.260925+00:00 | 642.27 |
+| Yilan County people's organizations roster 2026-09-30 | 1618 | 2026-10-24T17:14:28.120422+00:00 | 2026-10-24T17:14:28.120422+00:00 | 639.66 |
+| Yunlin County people's organizations roster 2026-07-13 | 1881 | 2026-10-25T06:39:06.186392+00:00 | 2026-10-25T06:39:06.186392+00:00 | 626.25 |
+| 政府電子採購網 | 2 | 2026-10-18T07:24:54.430254+00:00 | 2026-10-19T15:39:09.817684+00:00 | 761.25 |
+| 監察院政治獻金公開查閱平臺 | 230 | 2026-09-23T08:27:56.88758+00:00 | 2026-10-28T15:55:34.995029+00:00 | 544.98 |
+| 立法院開放資料服務平台 | 1159 | 2026-09-22T23:31:40.024812+00:00 | 2026-10-28T15:50:22.105481+00:00 | 545.06 |
+| 經濟部商工登記公示資料 | 1 | 2026-09-23T08:27:56.88758+00:00 | 2026-09-23T08:27:56.88758+00:00 | 1392.44 |
+| 行政院部會首長名錄（來源觀察） | 31 | 2026-10-28T16:10:33.66851+00:00 | 2026-10-28T16:10:33.66851+00:00 | 544.73 |
 
-These public JIDs stayed in the official JList but JDoc returned the same HTTP 200 document error across separate bounded runs. They are excluded from case-content Evidence and remain recheckable; source metadata and error fingerprints are retained. This does not establish national judiciary coverage.
-
-| JID | List date | Error | Runs | First seen | Last seen | Source |
-|---|---|---|---:|---|---|---|
-| CCEV,115,潮小,480,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:41:38+00:00 | 2026-11-04T17:59:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CCEV,115,潮簡,505,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:41:39+00:00 | 2026-11-04T17:59:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CCEV,115,潮簡,619,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:41:42+00:00 | 2026-11-04T17:59:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,1945,20261002,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:27+00:00 | 2026-11-04T17:59:45+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,1987,20261012,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:28+00:00 | 2026-11-04T17:59:45+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2000,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:28+00:00 | 2026-11-04T17:59:45+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2022,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:31+00:00 | 2026-11-04T17:59:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2023,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:31+00:00 | 2026-11-04T17:59:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2024,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:31+00:00 | 2026-11-04T17:59:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2025,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:34+00:00 | 2026-11-04T17:59:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2026,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:34+00:00 | 2026-11-04T17:59:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2027,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:34+00:00 | 2026-11-04T17:59:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2029,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:37+00:00 | 2026-11-04T17:59:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2031,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:44+00:00 | 2026-11-04T17:59:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2032,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:44+00:00 | 2026-11-04T17:59:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2033,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:44+00:00 | 2026-11-04T17:59:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2034,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:47+00:00 | 2026-11-04T17:59:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2035,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:47+00:00 | 2026-11-04T17:59:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2036,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:47+00:00 | 2026-11-04T18:00:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2037,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:49+00:00 | 2026-11-04T18:00:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2059,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:50+00:00 | 2026-11-04T18:00:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2060,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:50+00:00 | 2026-11-04T18:00:03+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2061,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:53+00:00 | 2026-11-04T18:00:03+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2062,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:53+00:00 | 2026-11-04T18:00:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2063,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:53+00:00 | 2026-11-04T18:00:07+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2064,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:56+00:00 | 2026-11-04T18:00:14+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2066,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:56+00:00 | 2026-11-04T18:00:14+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2067,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:57+00:00 | 2026-11-04T18:00:14+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2068,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:59+00:00 | 2026-11-04T18:00:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2072,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:00+00:00 | 2026-11-04T18:00:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2073,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:00+00:00 | 2026-11-04T18:00:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CDEV,115,橋司附民移調,2075,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:03+00:00 | 2026-11-04T18:00:21+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDM,115,毒聲,416,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:15:21+00:00 | 2026-11-04T18:00:21+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDM,115,毒聲,429,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:15:30+00:00 | 2026-11-04T18:00:21+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDM,115,毒聲,431,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:15:30+00:00 | 2026-11-04T18:00:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDM,115,毒聲,493,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:15:30+00:00 | 2026-11-04T18:00:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDM,115,毒聲,531,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:15:34+00:00 | 2026-11-04T18:00:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDM,115,聲扣,18,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:16:06+00:00 | 2026-11-04T18:00:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,114,勞移調,7,20250417,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:43:59+00:00 | 2026-11-04T18:00:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,114,家繼訴,111,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:46+00:00 | 2026-11-04T18:00:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,114,訴,285,20250416,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:44:38+00:00 | 2026-11-04T18:00:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,勞簡專調,55,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:16:39+00:00 | 2026-11-04T18:00:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,勞簡專調,59,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:16:41+00:00 | 2026-11-04T18:00:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,司家調,453,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:49+00:00 | 2026-11-04T18:00:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,司家調,545,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:49+00:00 | 2026-11-04T18:00:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,司家調,578,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:50+00:00 | 2026-11-04T18:00:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,司家非調,361,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:56+00:00 | 2026-11-04T18:00:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,司家非調,475,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:56+00:00 | 2026-11-04T18:00:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,650,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:01+00:00 | 2026-11-04T18:00:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,658,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:02+00:00 | 2026-11-04T18:00:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,689,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:02+00:00 | 2026-11-04T18:00:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,706,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:04+00:00 | 2026-11-04T18:00:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,707,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:05+00:00 | 2026-11-04T18:00:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,708,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:05+00:00 | 2026-11-04T18:00:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,709,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:08+00:00 | 2026-11-04T18:00:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,711,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:09+00:00 | 2026-11-04T18:00:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,736,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:09+00:00 | 2026-11-04T18:00:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,781,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:11+00:00 | 2026-11-04T18:00:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,784,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:12+00:00 | 2026-11-04T18:00:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,785,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:12+00:00 | 2026-11-04T18:01:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,788,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:15+00:00 | 2026-11-04T18:01:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,795,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:16+00:00 | 2026-11-04T18:01:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,803,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:16+00:00 | 2026-11-04T18:01:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,825,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:18+00:00 | 2026-11-04T18:01:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,830,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:25+00:00 | 2026-11-04T18:01:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,831,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:25+00:00 | 2026-11-04T18:01:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,833,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:25+00:00 | 2026-11-04T18:01:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,836,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:28+00:00 | 2026-11-04T18:01:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,家護,842,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:28+00:00 | 2026-11-04T18:01:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,暫家護,379,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:30+00:00 | 2026-11-04T18:01:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,暫家護,419,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:32+00:00 | 2026-11-04T18:01:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,暫家護,427,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:30:33+00:00 | 2026-11-04T18:01:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,移調,112,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:17:01+00:00 | 2026-11-04T18:01:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,訴,1124,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:17:02+00:00 | 2026-11-04T18:01:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHDV,115,訴,220,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:17:04+00:00 | 2026-11-04T18:01:19+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,114,彰簡,458,20261005,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:54:59+00:00 | 2026-11-04T18:01:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,525,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:01+00:00 | 2026-11-04T18:01:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,526,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:03+00:00 | 2026-11-04T18:01:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,527,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:03+00:00 | 2026-11-04T18:01:30+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,528,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:05+00:00 | 2026-11-04T18:01:30+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,529,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:12+00:00 | 2026-11-04T18:01:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,530,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:12+00:00 | 2026-11-04T18:01:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,531,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:12+00:00 | 2026-11-04T18:01:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,532,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:16+00:00 | 2026-11-04T18:01:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑移調,533,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:16+00:00 | 2026-11-04T18:01:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑簡移調,101,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:16+00:00 | 2026-11-04T18:01:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司刑簡移調,102,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:19+00:00 | 2026-11-04T18:01:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司附民移調,89,20261012,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:19+00:00 | 2026-11-04T18:01:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司附民移調,92,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:19+00:00 | 2026-11-04T18:01:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰司附民移調,93,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:23+00:00 | 2026-11-04T18:01:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰小調,480,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:26+00:00 | 2026-11-04T18:01:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰小調,566,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:26+00:00 | 2026-11-04T18:01:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰小調,591,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:27+00:00 | 2026-11-04T18:01:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰簡,505,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:30+00:00 | 2026-11-04T18:01:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CHEV,115,彰簡,657,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:55:31+00:00 | 2026-11-04T18:01:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CPEV,115,審竹北司小調,23,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:59:08+00:00 | 2026-11-04T18:01:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CPEV,115,審竹北司小調,39,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:59:08+00:00 | 2026-11-04T18:01:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CPEV,115,審竹北司小調,4,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:59:09+00:00 | 2026-11-04T18:01:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CPEV,115,審竹北司小調,65,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:59:16+00:00 | 2026-11-04T18:01:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CPEV,115,竹北小調,626,20261029,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:59:18+00:00 | 2026-11-04T18:01:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CPEV,115,竹北簡移調,48,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:59:19+00:00 | 2026-11-04T18:02:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CSEV,115,旗小,168,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:14+00:00 | 2026-11-04T18:02:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CSEV,115,旗小調,86,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:14+00:00 | 2026-11-04T18:02:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CTDM,115,毒聲,332,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:56:04+00:00 | 2026-11-04T18:02:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CTDM,115,毒聲,409,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:56:05+00:00 | 2026-11-04T18:02:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CTDM,115,毒聲,411,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:56:07+00:00 | 2026-11-04T18:02:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDM,115,毒聲,185,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:05+00:00 | 2026-11-04T18:02:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDM,115,毒聲,215,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:05+00:00 | 2026-11-04T18:02:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDM,115,毒聲,218,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:07+00:00 | 2026-11-04T18:02:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDM,115,毒聲,257,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:08+00:00 | 2026-11-04T18:02:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDM,115,附民,934,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:29+00:00 | 2026-11-04T18:02:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司偵移調,309,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:06+00:00 | 2026-11-04T18:02:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司偵移調,310,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:06+00:00 | 2026-11-04T18:02:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,870,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:06+00:00 | 2026-11-04T18:02:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,871,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:10+00:00 | 2026-11-04T18:02:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,872,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:10+00:00 | 2026-11-04T18:02:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,873,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:10+00:00 | 2026-11-04T18:02:19+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,874,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:13+00:00 | 2026-11-04T18:02:19+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,875,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:13+00:00 | 2026-11-04T18:02:22+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,876,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:14+00:00 | 2026-11-04T18:02:22+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,877,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:17+00:00 | 2026-11-04T18:02:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,878,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:17+00:00 | 2026-11-04T18:02:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,879,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:17+00:00 | 2026-11-04T18:02:26+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑移調,880,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:20+00:00 | 2026-11-04T18:02:26+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑簡上移調,30,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:27+00:00 | 2026-11-04T18:02:29+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑簡移調,124,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:27+00:00 | 2026-11-04T18:02:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑簡移調,125,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:27+00:00 | 2026-11-04T18:02:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑簡移調,126,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:31+00:00 | 2026-11-04T18:02:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑簡移調,127,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:31+00:00 | 2026-11-04T18:02:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司刑簡移調,128,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:31+00:00 | 2026-11-04T18:02:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,司消債調,260,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:58:35+00:00 | 2026-11-04T18:02:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,家聲抗,22,20260827,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:36+00:00 | 2026-11-04T18:02:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,家調,235,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:40+00:00 | 2026-11-04T18:02:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,家調,467,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:40+00:00 | 2026-11-04T18:02:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,家護,484,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:41+00:00 | 2026-11-04T18:02:46+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,家護,536,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:43+00:00 | 2026-11-04T18:02:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,家護,542,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:44+00:00 | 2026-11-04T18:02:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,家護抗,23,20260827,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:45+00:00 | 2026-11-04T18:02:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYDV,115,護,149,20260827,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:57:49+00:00 | 2026-11-04T18:02:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| CYEV,115,朴小調,179,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:42:22+00:00 | 2026-11-04T18:02:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| GSEV,115,岡小,318,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:17+00:00 | 2026-11-04T18:02:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| GSEV,115,岡小,348,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:19+00:00 | 2026-11-04T18:02:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| GSEV,115,岡小,458,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:19+00:00 | 2026-11-04T18:02:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| GSEV,115,岡簡,131,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:20+00:00 | 2026-11-04T18:02:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| GSEV,115,岡簡,359,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:22+00:00 | 2026-11-04T18:02:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司刑移調,544,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:06+00:00 | 2026-11-04T18:02:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司原小調,47,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:07+00:00 | 2026-11-04T18:03:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司原簡調,41,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:07+00:00 | 2026-11-04T18:03:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司原簡調,42,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:11+00:00 | 2026-11-04T18:03:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司小調,313,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:20+00:00 | 2026-11-04T18:03:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司小調,314,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:20+00:00 | 2026-11-04T18:03:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司小調,315,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:20+00:00 | 2026-11-04T18:03:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司小調,316,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:26+00:00 | 2026-11-04T18:03:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司小調,317,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:26+00:00 | 2026-11-04T18:03:14+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司消債調,133,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:26+00:00 | 2026-11-04T18:03:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司消債調,141,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:30+00:00 | 2026-11-04T18:03:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司消債調,148,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:30+00:00 | 2026-11-04T18:03:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,司消債調,170,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:19:30+00:00 | 2026-11-04T18:03:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,家移調,18,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:18:00+00:00 | 2026-11-04T18:03:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,家護,206,20260825,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:18:02+00:00 | 2026-11-04T18:03:22+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLDV,115,家護聲,17,20260825,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:18:05+00:00 | 2026-11-04T18:03:22+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| HLHV,115,刑上移調,66,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:42:34+00:00 | 2026-11-04T18:03:22+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDM,115,交附民移調,18,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:37:20+00:00 | 2026-11-04T18:03:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDM,115,刑移調,386,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:37:21+00:00 | 2026-11-04T18:03:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDM,115,刑移調,387,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:37:30+00:00 | 2026-11-04T18:03:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDM,115,刑移調,391,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:37:30+00:00 | 2026-11-04T18:03:29+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDM,115,刑移調,396,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:37:30+00:00 | 2026-11-04T18:03:29+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDM,115,毒聲,159,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:37:56+00:00 | 2026-11-04T18:03:29+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDM,115,附民移調,44,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:38:33+00:00 | 2026-11-04T18:03:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDM,115,附民移調,45,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:38:33+00:00 | 2026-11-04T18:03:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDV,115,移調,65,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:43:05+00:00 | 2026-11-04T18:03:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDV,115,移調,66,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:43:06+00:00 | 2026-11-04T18:03:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDV,115,移調,69,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:43:06+00:00 | 2026-11-04T18:03:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILDV,115,調,88,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:38:38+00:00 | 2026-11-04T18:03:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ILEV,115,宜簡移調,19,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:38:52+00:00 | 2026-11-04T18:03:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSDV,115,建簡,1,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:43:36+00:00 | 2026-11-04T18:03:46+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSDV,115,訴,749,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:43:48+00:00 | 2026-11-04T18:03:46+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2057,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:57+00:00 | 2026-11-04T18:03:46+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2066,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:58+00:00 | 2026-11-04T18:03:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2067,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:58+00:00 | 2026-11-04T18:03:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2068,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:00+00:00 | 2026-11-04T18:03:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2069,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:01+00:00 | 2026-11-04T18:03:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2070,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:07+00:00 | 2026-11-04T18:03:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2071,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:08+00:00 | 2026-11-04T18:03:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2072,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:08+00:00 | 2026-11-04T18:03:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2073,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:11+00:00 | 2026-11-04T18:03:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2074,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:11+00:00 | 2026-11-04T18:03:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2075,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:11+00:00 | 2026-11-04T18:04:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2076,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:13+00:00 | 2026-11-04T18:04:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2077,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:13+00:00 | 2026-11-04T18:04:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2078,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:13+00:00 | 2026-11-04T18:04:03+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2081,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:17+00:00 | 2026-11-04T18:04:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2082,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:17+00:00 | 2026-11-04T18:04:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2083,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:17+00:00 | 2026-11-04T18:04:07+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2084,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:20+00:00 | 2026-11-04T18:04:07+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司偵移調,2085,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:20+00:00 | 2026-11-04T18:04:07+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3098,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:20+00:00 | 2026-11-04T18:04:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3319,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:23+00:00 | 2026-11-04T18:04:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3361,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:23+00:00 | 2026-11-04T18:04:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3364,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:23+00:00 | 2026-11-04T18:04:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3441,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:26+00:00 | 2026-11-04T18:04:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3454,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:26+00:00 | 2026-11-04T18:04:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3598,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:26+00:00 | 2026-11-04T18:04:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3633,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:29+00:00 | 2026-11-04T18:04:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司小調,3646,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:29+00:00 | 2026-11-04T18:04:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司簡調,2437,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:29+00:00 | 2026-11-04T18:04:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司簡調,2459,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:32+00:00 | 2026-11-04T18:04:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司簡調,2580,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:39+00:00 | 2026-11-04T18:04:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司調,1281,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:39+00:00 | 2026-11-04T18:04:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司調,1312,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:39+00:00 | 2026-11-04T18:04:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司調,1342,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:42+00:00 | 2026-11-04T18:04:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司調,1390,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:42+00:00 | 2026-11-04T18:04:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄司附民移調,642,20260415,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:42+00:00 | 2026-11-04T18:04:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄小,1940,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:47+00:00 | 2026-11-04T18:04:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSEV,115,雄小,2053,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:57:50+00:00 | 2026-11-04T18:04:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSHM,115,刑上移調,425,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:43:39+00:00 | 2026-11-04T18:04:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,司暫家護,437,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:15+00:00 | 2026-11-04T18:04:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,司暫家護,626,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:15+00:00 | 2026-11-04T18:04:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,司暫家護,693,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:18+00:00 | 2026-11-04T18:04:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,司暫家護,792,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:19+00:00 | 2026-11-04T18:04:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,司暫家護,830,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:20+00:00 | 2026-11-04T18:04:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,司暫家護,861,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:21+00:00 | 2026-11-04T18:04:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家調,1448,20260924,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:35+00:00 | 2026-11-04T18:04:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1079,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:35+00:00 | 2026-11-04T18:04:45+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1137,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:35+00:00 | 2026-11-04T18:04:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1177,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:38+00:00 | 2026-11-04T18:04:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1182,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:38+00:00 | 2026-11-04T18:04:56+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1219,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:38+00:00 | 2026-11-04T18:04:56+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1230,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:42+00:00 | 2026-11-04T18:04:59+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1279,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:42+00:00 | 2026-11-04T18:04:59+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1285,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:42+00:00 | 2026-11-04T18:05:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1374,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:46+00:00 | 2026-11-04T18:05:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1453,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:46+00:00 | 2026-11-04T18:05:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1457,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:46+00:00 | 2026-11-04T18:05:03+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1464,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:50+00:00 | 2026-11-04T18:05:07+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1502,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:50+00:00 | 2026-11-04T18:05:07+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1535,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:50+00:00 | 2026-11-04T18:05:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1538,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:59:53+00:00 | 2026-11-04T18:06:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1572,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:02+00:00 | 2026-11-04T18:06:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1619,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:02+00:00 | 2026-11-04T18:06:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1632,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:02+00:00 | 2026-11-04T18:06:14+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1638,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:06+00:00 | 2026-11-04T18:06:14+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1652,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:06+00:00 | 2026-11-04T18:06:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1659,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:06+00:00 | 2026-11-04T18:06:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1683,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:09+00:00 | 2026-11-04T18:06:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1689,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:09+00:00 | 2026-11-04T18:06:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1691,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:09+00:00 | 2026-11-04T18:06:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1704,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:13+00:00 | 2026-11-04T18:06:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1711,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:13+00:00 | 2026-11-04T18:06:21+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,1722,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:13+00:00 | 2026-11-04T18:06:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護,794,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:17+00:00 | 2026-11-04T18:06:33+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護聲,148,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:17+00:00 | 2026-11-04T18:06:33+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,家護聲,167,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:17+00:00 | 2026-11-04T18:06:33+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| KSYV,115,緊家護,19,20260522,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:54:58+00:00 | 2026-11-04T18:06:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| LTEV,115,羅小移調,19,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:38:57+00:00 | 2026-11-04T18:06:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| LTEV,115,羅簡移調,29,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:01+00:00 | 2026-11-04T18:06:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| LTEV,115,羅簡移調,30,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:01+00:00 | 2026-11-04T18:06:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MKEV,115,馬小,59,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:02:51+00:00 | 2026-11-04T18:06:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDM,115,毒聲,254,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:46+00:00 | 2026-11-04T18:06:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDM,115,毒聲,268,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:47+00:00 | 2026-11-04T18:06:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDM,115,附民,639,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:59+00:00 | 2026-11-04T18:06:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,司暫家護,86,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:36:34+00:00 | 2026-11-04T18:06:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,司暫家護,88,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:36:36+00:00 | 2026-11-04T18:06:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,婚,96,20261007,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:03+00:00 | 2026-11-04T18:06:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,家親聲,42,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:04+00:00 | 2026-11-04T18:06:49+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,家親聲,78,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:04+00:00 | 2026-11-04T18:06:52+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,家調,368,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:58:19+00:00 | 2026-11-04T18:06:52+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,家護,301,20261029,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:06+00:00 | 2026-11-04T18:06:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,家護,306,20261029,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:08+00:00 | 2026-11-04T18:06:56+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,苗原小,16,20261005,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:48:55+00:00 | 2026-11-04T18:06:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| MLDV,115,苗小,610,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:48:56+00:00 | 2026-11-04T18:06:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NHEV,115,湖簡,909,20261028,2 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:40:46+00:00 | 2026-11-04T18:07:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NTDV,115,司家非調,182,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:47:19+00:00 | 2026-11-04T18:07:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NTDV,115,司暫家護,196,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:55+00:00 | 2026-11-04T18:07:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NTDV,115,司暫家護,199,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:56+00:00 | 2026-11-04T18:07:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NTDV,115,司暫家護,216,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:56+00:00 | 2026-11-04T18:07:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NTDV,115,司暫家護,217,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:58+00:00 | 2026-11-04T18:07:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NTDV,115,司暫家護,218,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:59+00:00 | 2026-11-04T18:07:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NTDV,115,家護,303,20260827,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:47:20+00:00 | 2026-11-04T18:07:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| NTDV,115,家護,334,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:47:20+00:00 | 2026-11-04T18:07:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,280,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:33+00:00 | 2026-11-04T18:07:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,281,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:34+00:00 | 2026-11-04T18:07:19+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,282,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:34+00:00 | 2026-11-04T18:07:19+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,283,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:37+00:00 | 2026-11-04T18:07:19+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,284,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:38+00:00 | 2026-11-04T18:07:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,285,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:38+00:00 | 2026-11-04T18:07:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,286,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:43+00:00 | 2026-11-04T18:07:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,287,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:44+00:00 | 2026-11-04T18:07:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,288,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:44+00:00 | 2026-11-04T18:07:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,290,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:48+00:00 | 2026-11-04T18:07:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員司刑移調,291,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:49+00:00 | 2026-11-04T18:07:30+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| OLEV,115,員小調,386,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:00:50+00:00 | 2026-11-04T18:07:30+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDM,115,毒聲,1009,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:12:05+00:00 | 2026-11-04T18:07:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDM,115,毒聲,1026,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:12:05+00:00 | 2026-11-04T18:07:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDM,115,毒聲,1229,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:12:07+00:00 | 2026-11-04T18:07:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDM,115,毒聲,1345,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:12:09+00:00 | 2026-11-04T18:07:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDM,115,毒聲,1349,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:12:10+00:00 | 2026-11-04T18:07:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDM,115,毒聲,1372,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:12:12+00:00 | 2026-11-04T18:07:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDM,115,毒聲,1378,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:12:14+00:00 | 2026-11-04T18:07:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDM,115,聲扣,64,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:13:04+00:00 | 2026-11-04T18:07:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,勞專調,27,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:21:11+00:00 | 2026-11-04T18:07:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司交附民移調,153,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:21:15+00:00 | 2026-11-04T18:07:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司交附民移調,155,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:21:16+00:00 | 2026-11-04T18:07:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司偵移調,1956,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:12+00:00 | 2026-11-04T18:07:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司偵移調,1957,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:12+00:00 | 2026-11-04T18:07:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司偵移調,1958,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:12+00:00 | 2026-11-04T18:07:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司偵移調,1962,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:16+00:00 | 2026-11-04T18:07:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司偵移調,1963,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:16+00:00 | 2026-11-04T18:07:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司偵移調,1964,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:16+00:00 | 2026-11-04T18:07:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司偵移調,1965,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:20+00:00 | 2026-11-04T18:08:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司偵移調,1966,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:27+00:00 | 2026-11-04T18:08:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2396,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:27+00:00 | 2026-11-04T18:08:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2397,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:29+00:00 | 2026-11-04T18:08:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2398,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:31+00:00 | 2026-11-04T18:08:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2399,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:31+00:00 | 2026-11-04T18:08:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2427,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:33+00:00 | 2026-11-04T18:08:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2428,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:35+00:00 | 2026-11-04T18:08:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2429,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:35+00:00 | 2026-11-04T18:08:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2430,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:37+00:00 | 2026-11-04T18:08:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2439,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:39+00:00 | 2026-11-04T18:08:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2440,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:40+00:00 | 2026-11-04T18:08:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2441,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:41+00:00 | 2026-11-04T18:08:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2442,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:43+00:00 | 2026-11-04T18:08:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2443,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:44+00:00 | 2026-11-04T18:08:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2444,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:46+00:00 | 2026-11-04T18:08:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2445,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:47+00:00 | 2026-11-04T18:08:26+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑移調,2446,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:48+00:00 | 2026-11-04T18:08:26+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司刑簡移調,81,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:22:50+00:00 | 2026-11-04T18:08:26+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1153,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:20:45+00:00 | 2026-11-04T18:08:29+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1229,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:37+00:00 | 2026-11-04T18:08:29+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1246,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:37+00:00 | 2026-11-04T18:08:30+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1247,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:39+00:00 | 2026-11-04T18:08:33+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1256,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:41+00:00 | 2026-11-04T18:08:33+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1257,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:41+00:00 | 2026-11-04T18:08:33+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1259,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:42+00:00 | 2026-11-04T18:08:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1262,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:50+00:00 | 2026-11-04T18:08:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護,1269,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:50+00:00 | 2026-11-04T18:08:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司暫家護聲,10,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:20:45+00:00 | 2026-11-04T18:08:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司附民移調,646,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:23:59+00:00 | 2026-11-04T18:08:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司附民移調,651,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:24:01+00:00 | 2026-11-04T18:08:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司附民移調,655,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:24:01+00:00 | 2026-11-04T18:08:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,司附民移調,656,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:24:03+00:00 | 2026-11-04T18:08:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,家護,1443,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:31:59+00:00 | 2026-11-04T18:08:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,家護,1625,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:32:00+00:00 | 2026-11-04T18:08:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,家護,2164,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:20:45+00:00 | 2026-11-04T18:08:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,家護,2240,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:20:49+00:00 | 2026-11-04T18:08:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,家護抗,146,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:32:01+00:00 | 2026-11-04T18:08:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,家護聲,169,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:32:03+00:00 | 2026-11-04T18:08:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCDV,115,護,613,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:20:54+00:00 | 2026-11-04T18:08:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCEV,115,板小,2192,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:01:13+00:00 | 2026-11-04T18:08:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCEV,115,板小,2420,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:01:20+00:00 | 2026-11-04T18:09:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCEV,115,板小,2996,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:01:44+00:00 | 2026-11-04T18:09:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PCEV,115,板簡,2473,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:02:09+00:00 | 2026-11-04T18:09:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PDEV,115,斗司刑移調,238,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:02:39+00:00 | 2026-11-04T18:09:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PDEV,115,斗司附民移調,42,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:02:39+00:00 | 2026-11-04T18:09:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PTDM,115,交附民,264,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:44:07+00:00 | 2026-11-04T18:09:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PTDM,115,附民,1567,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:44:45+00:00 | 2026-11-04T18:09:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PTDM,115,附民,1568,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:44:45+00:00 | 2026-11-04T18:09:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PTDV,115,司暫家護,493,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:44:48+00:00 | 2026-11-04T18:09:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PTDV,115,司暫家護,496,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:44:49+00:00 | 2026-11-04T18:09:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PTDV,115,司暫家護,507,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:44:49+00:00 | 2026-11-04T18:09:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PTDV,115,婚,66,20261028,2 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:44:59+00:00 | 2026-11-04T18:09:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| PTDV,115,暫家護抗,26,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:45:04+00:00 | 2026-11-04T18:09:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,114,聲扣更一,1,20261023,2 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:19+00:00 | 2026-11-04T18:09:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,114,聲扣更一,1,20261023,3 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:19+00:00 | 2026-11-04T18:09:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,115,交附民移調,85,20261005,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:27+00:00 | 2026-11-04T18:09:19+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,115,交附民移調,87,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:28+00:00 | 2026-11-04T18:09:19+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,115,原附民,99,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:39+00:00 | 2026-11-04T18:09:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,115,毒聲,324,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:48+00:00 | 2026-11-04T18:09:22+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,115,毒聲,325,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:39:49+00:00 | 2026-11-04T18:09:22+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,115,附民移調,339,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:40:14+00:00 | 2026-11-04T18:09:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDM,115,附民移調,340,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:40:14+00:00 | 2026-11-04T18:09:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,勞移調,34,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:45:58+00:00 | 2026-11-04T18:09:26+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,司消債調,245,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:07+00:00 | 2026-11-04T18:09:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,司消債調,246,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:08+00:00 | 2026-11-04T18:09:29+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,司消債調,273,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:08+00:00 | 2026-11-04T18:09:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,250,20260820,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:21+00:00 | 2026-11-04T18:09:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,251,20260819,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:23+00:00 | 2026-11-04T18:09:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,256,20260820,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:33+00:00 | 2026-11-04T18:09:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,260,20260820,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:33+00:00 | 2026-11-04T18:09:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,263,20260819,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:33+00:00 | 2026-11-04T18:09:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,269,20260817,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:37+00:00 | 2026-11-04T18:09:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,272,20260819,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:37+00:00 | 2026-11-04T18:09:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,274,20260820,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:37+00:00 | 2026-11-04T18:09:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護,365,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:42+00:00 | 2026-11-04T18:09:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護抗,10,20260818,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:42+00:00 | 2026-11-04T18:09:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,家護聲,47,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:42+00:00 | 2026-11-04T18:09:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司他調,7,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:19+00:00 | 2026-11-04T18:09:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司偵移調,73,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:21+00:00 | 2026-11-04T18:09:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司偵移調,74,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:21+00:00 | 2026-11-04T18:09:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司偵移調,75,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:23+00:00 | 2026-11-04T18:09:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司偵移調,76,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:25+00:00 | 2026-11-04T18:09:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司偵移調,77,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:25+00:00 | 2026-11-04T18:09:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,66,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:27+00:00 | 2026-11-04T18:09:59+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,67,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:29+00:00 | 2026-11-04T18:09:59+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,68,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:29+00:00 | 2026-11-04T18:09:59+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,69,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:31+00:00 | 2026-11-04T18:10:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,70,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:33+00:00 | 2026-11-04T18:10:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,71,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:34+00:00 | 2026-11-04T18:10:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,72,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:36+00:00 | 2026-11-04T18:10:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,73,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:38+00:00 | 2026-11-04T18:10:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑移調,74,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:38+00:00 | 2026-11-04T18:10:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司刑簡移調,16,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:40+00:00 | 2026-11-04T18:10:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審司調,23,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:42+00:00 | 2026-11-04T18:10:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審竹司小調,130,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:43+00:00 | 2026-11-04T18:10:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審竹司小調,131,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:44+00:00 | 2026-11-04T18:10:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審竹司小調,133,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:47+00:00 | 2026-11-04T18:10:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審竹司小調,143,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:55+00:00 | 2026-11-04T18:10:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,審竹司小調,93,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:46:55+00:00 | 2026-11-04T18:10:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,護,130,20260819,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:47+00:00 | 2026-11-04T18:10:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SCDV,115,護,134,20260819,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:14:47+00:00 | 2026-11-04T18:10:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SDEV,115,沙小,659,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:37:10+00:00 | 2026-11-04T18:10:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SDEV,115,沙小,684,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:37:12+00:00 | 2026-11-04T18:10:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司小調,3231,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:17+00:00 | 2026-11-04T18:10:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司小調,3241,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:17+00:00 | 2026-11-04T18:10:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司小調,3492,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:19+00:00 | 2026-11-04T18:10:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司小調,3525,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:22+00:00 | 2026-11-04T18:10:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司小調,3527,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:22+00:00 | 2026-11-04T18:10:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司小調,3538,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:23+00:00 | 2026-11-04T18:10:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司建簡調,112,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:27+00:00 | 2026-11-04T18:10:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司簡調,1839,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:27+00:00 | 2026-11-04T18:10:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司簡調,1922,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:28+00:00 | 2026-11-04T18:10:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重司簡調,1932,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:31+00:00 | 2026-11-04T18:10:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重小,2366,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:03:55+00:00 | 2026-11-04T18:10:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重簡,1115,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:04:01+00:00 | 2026-11-04T18:10:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SJEV,115,重簡,1462,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:04:08+00:00 | 2026-11-04T18:10:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,審交附民移調,203,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:17+00:00 | 2026-11-04T18:10:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,審附民移調,487,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:18+00:00 | 2026-11-04T18:10:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,審附民移調,488,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:20+00:00 | 2026-11-04T18:10:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,毒聲,391,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:50+00:00 | 2026-11-04T18:10:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,毒聲,423,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:22+00:00 | 2026-11-04T18:10:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,毒聲,444,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:23+00:00 | 2026-11-04T18:10:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,毒聲,466,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:50+00:00 | 2026-11-04T18:10:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,簡上附民移調,26,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:26+00:00 | 2026-11-04T18:10:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,附民移調,368,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:40+00:00 | 2026-11-04T18:11:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDM,115,附民移調,369,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:56:40+00:00 | 2026-11-04T18:11:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,勞專調,54,20261021,2 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:47:40+00:00 | 2026-11-04T18:11:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,勞專調,63,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:11+00:00 | 2026-11-04T18:11:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,勞移調,69,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:11+00:00 | 2026-11-04T18:11:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,勞移調,70,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:47:40+00:00 | 2026-11-04T18:11:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,家調,664,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:47:28+00:00 | 2026-11-04T18:11:07+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,家調裁,53,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:47:36+00:00 | 2026-11-04T18:11:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,家護,939,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:47:36+00:00 | 2026-11-04T18:11:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,家護,980,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:47:36+00:00 | 2026-11-04T18:11:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,移調,241,20261013,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:40:55+00:00 | 2026-11-04T18:11:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,移調,248,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:40:56+00:00 | 2026-11-04T18:11:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLDV,115,簡上移調,25,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:41:04+00:00 | 2026-11-04T18:11:14+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLEV,115,士司小調,2116,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:03+00:00 | 2026-11-04T18:11:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SLEV,115,士司小調,2138,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:05+00:00 | 2026-11-04T18:11:15+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SSEV,115,新小調,840,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:53:25+00:00 | 2026-11-04T18:11:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SSEV,115,新小調,915,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:53:26+00:00 | 2026-11-04T18:11:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SSEV,115,新小調,925,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:53:26+00:00 | 2026-11-04T18:11:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| SSEV,115,新簡移調,16,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:53:29+00:00 | 2026-11-04T18:11:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,111,婚,15,20261016,3 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:22+00:00 | 2026-11-04T18:11:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,司暫家護,2372,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:29+00:00 | 2026-11-04T18:11:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,司暫家護,2385,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:29+00:00 | 2026-11-04T18:11:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家暫,87,20260807,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:33+00:00 | 2026-11-04T18:11:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家親聲,604,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:34+00:00 | 2026-11-04T18:11:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,1003,20260826,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:38+00:00 | 2026-11-04T18:11:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,1046,20260827,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:38+00:00 | 2026-11-04T18:11:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,1255,20260824,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:38+00:00 | 2026-11-04T18:11:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,343,20260826,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:41+00:00 | 2026-11-04T18:11:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,855,20260724,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:41+00:00 | 2026-11-04T18:11:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,883,20260824,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:42+00:00 | 2026-11-04T18:11:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,896,20260824,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:44+00:00 | 2026-11-04T18:11:39+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,908,20260824,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:44+00:00 | 2026-11-04T18:11:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,935,20260824,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:44+00:00 | 2026-11-04T18:11:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,家護,957,20260824,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:47+00:00 | 2026-11-04T18:11:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCDV,115,護,470,20260824,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:41:53+00:00 | 2026-11-04T18:11:46+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2900,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:33:55+00:00 | 2026-11-04T18:11:46+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2901,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:33:56+00:00 | 2026-11-04T18:11:46+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2902,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:33:56+00:00 | 2026-11-04T18:11:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2903,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:33:59+00:00 | 2026-11-04T18:11:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2904,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:06+00:00 | 2026-11-04T18:11:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2905,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:06+00:00 | 2026-11-04T18:11:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2906,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:06+00:00 | 2026-11-04T18:12:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2907,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:10+00:00 | 2026-11-04T18:12:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2908,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:10+00:00 | 2026-11-04T18:12:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2909,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:10+00:00 | 2026-11-04T18:12:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2910,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:13+00:00 | 2026-11-04T18:12:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2911,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:14+00:00 | 2026-11-04T18:12:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2912,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:14+00:00 | 2026-11-04T18:12:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2913,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:17+00:00 | 2026-11-04T18:12:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2914,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:17+00:00 | 2026-11-04T18:12:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2939,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:18+00:00 | 2026-11-04T18:12:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2940,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:21+00:00 | 2026-11-04T18:12:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2941,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:21+00:00 | 2026-11-04T18:12:14+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2942,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:21+00:00 | 2026-11-04T18:12:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2943,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:25+00:00 | 2026-11-04T18:12:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2944,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:25+00:00 | 2026-11-04T18:12:18+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司偵移調,2945,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:25+00:00 | 2026-11-04T18:12:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3580,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:29+00:00 | 2026-11-04T18:12:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3581,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:29+00:00 | 2026-11-04T18:12:21+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3582,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:29+00:00 | 2026-11-04T18:12:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3583,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:32+00:00 | 2026-11-04T18:12:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3584,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:32+00:00 | 2026-11-04T18:12:25+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3585,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:33+00:00 | 2026-11-04T18:12:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3586,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:36+00:00 | 2026-11-04T18:12:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3587,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:43+00:00 | 2026-11-04T18:12:29+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3588,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:43+00:00 | 2026-11-04T18:12:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3589,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:43+00:00 | 2026-11-04T18:12:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3590,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:47+00:00 | 2026-11-04T18:12:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3591,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:47+00:00 | 2026-11-04T18:12:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3592,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:47+00:00 | 2026-11-04T18:12:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3593,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:50+00:00 | 2026-11-04T18:12:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3630,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:51+00:00 | 2026-11-04T18:12:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3631,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:51+00:00 | 2026-11-04T18:12:46+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3632,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:54+00:00 | 2026-11-04T18:12:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3633,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:54+00:00 | 2026-11-04T18:12:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3634,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:55+00:00 | 2026-11-04T18:12:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3635,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:58+00:00 | 2026-11-04T18:12:50+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3636,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:58+00:00 | 2026-11-04T18:12:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3637,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:34:59+00:00 | 2026-11-04T18:12:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3638,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:02+00:00 | 2026-11-04T18:12:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3639,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:02+00:00 | 2026-11-04T18:12:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑移調,3640,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:03+00:00 | 2026-11-04T18:12:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑簡上移調,140,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:05+00:00 | 2026-11-04T18:12:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司刑簡移調,144,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:06+00:00 | 2026-11-04T18:12:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCEV,115,中司附民移調,330,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:06+00:00 | 2026-11-04T18:13:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCHM,115,毒抗,146,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:44+00:00 | 2026-11-04T18:13:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCHV,115,上易,19,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:54+00:00 | 2026-11-04T18:13:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCHV,115,上移調,506,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:56+00:00 | 2026-11-04T18:13:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCHV,115,刑上移調,776,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:57+00:00 | 2026-11-04T18:13:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TCHV,115,金簡易,86,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:35:59+00:00 | 2026-11-04T18:13:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDM,115,毒聲,454,20261026,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:48+00:00 | 2026-11-04T18:13:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDM,115,毒聲,513,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:11+00:00 | 2026-11-04T18:13:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDM,115,毒聲,543,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:12+00:00 | 2026-11-04T18:13:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDM,115,毒聲,551,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:50:50+00:00 | 2026-11-04T18:13:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,勞訴,103,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:51:14+00:00 | 2026-11-04T18:13:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家調,333,20261020,2 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:58+00:00 | 2026-11-04T18:13:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家調,347,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:26+00:00 | 2026-11-04T18:13:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家調,612,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:27+00:00 | 2026-11-04T18:13:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家調,618,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:27+00:00 | 2026-11-04T18:13:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家調,624,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:59+00:00 | 2026-11-04T18:13:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家調,637,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:29+00:00 | 2026-11-04T18:13:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家調,689,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:30+00:00 | 2026-11-04T18:13:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家非調,461,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:30+00:00 | 2026-11-04T18:13:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司家非調,503,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:32+00:00 | 2026-11-04T18:13:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司暫家護,275,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:00+00:00 | 2026-11-04T18:13:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,司暫家護,335,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:01+00:00 | 2026-11-04T18:13:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,1046,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:08+00:00 | 2026-11-04T18:13:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,1047,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:09+00:00 | 2026-11-04T18:13:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,738,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:09+00:00 | 2026-11-04T18:13:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,756,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:11+00:00 | 2026-11-04T18:13:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,765,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:18+00:00 | 2026-11-04T18:13:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,778,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:18+00:00 | 2026-11-04T18:13:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,829,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:18+00:00 | 2026-11-04T18:13:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,848,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:21+00:00 | 2026-11-04T18:13:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護,933,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:22+00:00 | 2026-11-04T18:13:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,家護抗,94,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:22+00:00 | 2026-11-04T18:13:45+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,暫家護抗,32,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:24+00:00 | 2026-11-04T18:13:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,訴,2168,20261028,2 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:55:50+00:00 | 2026-11-04T18:13:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,訴,481,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:52:37+00:00 | 2026-11-04T18:13:53+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,護,299,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:29+00:00 | 2026-11-04T18:13:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNDV,115,護,303,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:46:30+00:00 | 2026-11-04T18:13:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司交簡上附民移調,5,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:21+00:00 | 2026-11-04T18:13:57+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1816,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:21+00:00 | 2026-11-04T18:14:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1817,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:22+00:00 | 2026-11-04T18:14:00+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1818,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:24+00:00 | 2026-11-04T18:14:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1819,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:24+00:00 | 2026-11-04T18:14:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1820,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:25+00:00 | 2026-11-04T18:14:04+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1821,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:27+00:00 | 2026-11-04T18:14:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1822,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:27+00:00 | 2026-11-04T18:14:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1823,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:28+00:00 | 2026-11-04T18:14:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1824,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:30+00:00 | 2026-11-04T18:14:08+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1825,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:30+00:00 | 2026-11-04T18:14:11+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1826,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:10+00:00 | 2026-11-04T18:14:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1827,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:11+00:00 | 2026-11-04T18:14:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1828,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:11+00:00 | 2026-11-04T18:14:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1829,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:13+00:00 | 2026-11-04T18:14:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1830,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:13+00:00 | 2026-11-04T18:14:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1831,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:14+00:00 | 2026-11-04T18:14:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1832,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:16+00:00 | 2026-11-04T18:14:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1833,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:53:31+00:00 | 2026-11-04T18:14:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1834,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:17+00:00 | 2026-11-04T18:14:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1835,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:17+00:00 | 2026-11-04T18:14:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑移調,1836,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:19+00:00 | 2026-11-04T18:14:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑簡上移調,85,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:20+00:00 | 2026-11-04T18:14:32+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑簡移調,169,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:31+00:00 | 2026-11-04T18:14:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司刑簡移調,170,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:38+00:00 | 2026-11-04T18:14:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司小調,2114,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:26+00:00 | 2026-11-04T18:14:36+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司小調,2721,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:26+00:00 | 2026-11-04T18:14:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司簡調,1519,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:38+00:00 | 2026-11-04T18:14:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司簡附民移調,21,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:27+00:00 | 2026-11-04T18:14:40+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司調,264,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:30+00:00 | 2026-11-04T18:14:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司附民移調,402,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:38+00:00 | 2026-11-04T18:14:43+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司附民移調,403,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:41+00:00 | 2026-11-04T18:14:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司附民移調,404,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:41+00:00 | 2026-11-04T18:14:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司附民移調,405,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:30+00:00 | 2026-11-04T18:14:47+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南司附民移調,406,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:49:30+00:00 | 2026-11-04T18:14:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南簡,468,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:45:44+00:00 | 2026-11-04T18:14:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNEV,115,南簡移調,33,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:53:39+00:00 | 2026-11-04T18:14:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNHM,115,附民移調,210,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:48:29+00:00 | 2026-11-04T18:14:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TNHV,115,上移調,294,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:48:37+00:00 | 2026-11-04T18:14:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,重附民,134,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:28:48+00:00 | 2026-11-04T18:14:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1627,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:28:52+00:00 | 2026-11-04T18:14:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1628,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:28:52+00:00 | 2026-11-04T18:14:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1635,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:28:53+00:00 | 2026-11-04T18:14:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1636,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:28:56+00:00 | 2026-11-04T18:14:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1637,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:28:56+00:00 | 2026-11-04T18:15:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1638,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:28:56+00:00 | 2026-11-04T18:15:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1644,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:00+00:00 | 2026-11-04T18:15:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1645,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:00+00:00 | 2026-11-04T18:15:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHM,115,附民,1647,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:00+00:00 | 2026-11-04T18:15:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHV,115,上,158,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:16+00:00 | 2026-11-04T18:15:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHV,115,上移調,502,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:17+00:00 | 2026-11-04T18:15:13+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHV,115,勞上移調,77,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:23+00:00 | 2026-11-04T18:15:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHV,115,審上移調,335,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:24+00:00 | 2026-11-04T18:15:16+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHV,115,審上移調,336,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:26+00:00 | 2026-11-04T18:15:17+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHV,115,審勞上移調,46,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:27+00:00 | 2026-11-04T18:15:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TPHV,115,審移調,121,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:28+00:00 | 2026-11-04T18:15:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,158,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:26+00:00 | 2026-11-04T18:15:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,174,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:36+00:00 | 2026-11-04T18:15:23+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,186,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:36+00:00 | 2026-11-04T18:15:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,191,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:36+00:00 | 2026-11-04T18:15:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,194,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:40+00:00 | 2026-11-04T18:15:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,199,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:41+00:00 | 2026-11-04T18:15:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,202,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:41+00:00 | 2026-11-04T18:15:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,209,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:45+00:00 | 2026-11-04T18:15:30+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,家護,212,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:46+00:00 | 2026-11-04T18:15:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TTDV,115,暫家護,135,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:05:46+00:00 | 2026-11-04T18:15:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,刑移調,173,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:49:01+00:00 | 2026-11-04T18:15:33+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,刑移調,174,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:49:01+00:00 | 2026-11-04T18:15:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,原附民移調,242,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:49:05+00:00 | 2026-11-04T18:15:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,原附民移調,243,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:49:06+00:00 | 2026-11-04T18:15:37+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,審附民,2485,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:49:39+00:00 | 2026-11-04T18:15:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,審附民,2487,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:49:40+00:00 | 2026-11-04T18:15:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,審附民,2523,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:49:40+00:00 | 2026-11-04T18:15:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,毒聲,499,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:50:11+00:00 | 2026-11-04T18:15:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,毒聲,693,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:50:11+00:00 | 2026-11-04T18:15:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,毒聲,718,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:50:11+00:00 | 2026-11-04T18:15:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,毒聲,740,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:50:14+00:00 | 2026-11-04T18:15:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,毒聲,756,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:50:14+00:00 | 2026-11-04T18:15:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,毒聲,769,20261014,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:50:15+00:00 | 2026-11-04T18:15:51+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,毒聲,827,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:50:18+00:00 | 2026-11-04T18:15:54+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民,2660,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:18+00:00 | 2026-11-04T18:15:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民,2661,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:18+00:00 | 2026-11-04T18:15:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2436,20261012,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:22+00:00 | 2026-11-04T18:15:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2444,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:22+00:00 | 2026-11-04T18:15:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2445,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:22+00:00 | 2026-11-04T18:15:58+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2451,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:25+00:00 | 2026-11-04T18:16:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2453,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:26+00:00 | 2026-11-04T18:16:01+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2454,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:26+00:00 | 2026-11-04T18:16:02+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2455,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:29+00:00 | 2026-11-04T18:16:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2456,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:29+00:00 | 2026-11-04T18:16:05+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2457,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:30+00:00 | 2026-11-04T18:16:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2458,20261016,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:38+00:00 | 2026-11-04T18:16:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2464,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:38+00:00 | 2026-11-04T18:16:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2465,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:38+00:00 | 2026-11-04T18:16:09+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2474,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:41+00:00 | 2026-11-04T18:16:12+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2476,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:42+00:00 | 2026-11-04T18:16:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2477,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:44+00:00 | 2026-11-04T18:16:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2478,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:45+00:00 | 2026-11-04T18:16:20+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2479,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:46+00:00 | 2026-11-04T18:16:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2480,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:48+00:00 | 2026-11-04T18:16:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2481,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:49+00:00 | 2026-11-04T18:16:24+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2486,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:50+00:00 | 2026-11-04T18:16:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDM,115,附民移調,2494,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T16:51:51+00:00 | 2026-11-04T18:16:27+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,114,家親聲,654,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:13+00:00 | 2026-11-04T18:16:28+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,勞簡專調,110,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:43+00:00 | 2026-11-04T18:16:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家移調,52,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:39+00:00 | 2026-11-04T18:16:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家移調,54,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:39+00:00 | 2026-11-04T18:16:31+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家調,1139,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:44+00:00 | 2026-11-04T18:16:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家調,1210,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:45+00:00 | 2026-11-04T18:16:34+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家調,1220,20261015,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:45+00:00 | 2026-11-04T18:16:35+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家調,1282,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:48+00:00 | 2026-11-04T18:16:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家調,1287,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:56+00:00 | 2026-11-04T18:16:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家調,1374,20261019,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:56+00:00 | 2026-11-04T18:16:38+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1053,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:06:58+00:00 | 2026-11-04T18:16:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1087,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:01+00:00 | 2026-11-04T18:16:41+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1117,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:01+00:00 | 2026-11-04T18:16:42+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1119,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:03+00:00 | 2026-11-04T18:16:44+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1144,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:05+00:00 | 2026-11-04T18:16:45+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1182,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:05+00:00 | 2026-11-04T18:16:45+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1194,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:07+00:00 | 2026-11-04T18:16:48+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1256,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:09+00:00 | 2026-11-04T18:16:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1258,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:09+00:00 | 2026-11-04T18:16:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1269,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:11+00:00 | 2026-11-04T18:16:55+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1280,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:13+00:00 | 2026-11-04T18:16:59+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1349,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:14+00:00 | 2026-11-04T18:16:59+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1408,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:16+00:00 | 2026-11-04T18:16:59+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,1604,20261028,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:18+00:00 | 2026-11-04T18:17:03+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護,919,20260831,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:18+00:00 | 2026-11-04T18:17:03+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家護抗,81,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:20+00:00 | 2026-11-04T18:17:03+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家非調,721,20261021,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:22+00:00 | 2026-11-04T18:17:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,家非調,797,20261020,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:22+00:00 | 2026-11-04T18:17:06+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,護,429,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:33+00:00 | 2026-11-04T18:17:07+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| TYDV,115,護,430,20261027,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:07:34+00:00 | 2026-11-04T18:17:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ULDM,115,附民,1149,20261022,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:08:40+00:00 | 2026-11-04T18:17:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-| ULDV,115,護,79,20260828,1 | 2026-10-29 | upstream_document_error | 2 | 2026-11-04T17:29:45+00:00 | 2026-11-04T18:17:10+00:00 | https://data.judicial.gov.tw/jdg/api/JList |
-
-## Privileged, read-only database cross-check
-
-Audited: 2026-11-04T17:07:12.224663+00:00 against canqjiokrtcxkwblhmml; this is a separate snapshot, not refreshed by the public benchmark.
-All publication states were counted using equivalent read-only SQL:
-
-- `politician_terms`: 123 record(s) across all states.
-- `asset_declarations`: 63 record(s) across all states.
-- `politician_entities`: 123 record(s) across all states.
-- `political_contributions`: 230 record(s) across all states.
-- Corporate contribution Evidence, unresolved draft: unknown; not counted in this audit.
-- Published terms/contributions/assets: 121/230/63.
-
-Migrations: 30; public tables with RLS: 30/30; public indexes: 119.
-Preview Supabase override configured for new deployments: deployment verified separately. Existing Preview deployments may still use prior settings. Production data was not copied or modified.
-
-## Reproduce and rollback
-
-Set `TEI_ENTITY_SUPABASE_URL` and `TEI_ENTITY_ANON_KEY` to the Development project's public values, then run `python scripts/data_health.py --json reports/data_health.json --markdown docs/DATA_HEALTH.md --db-audit reports/data_health_db_audit_development.json`. Refresh the audit JSON using read-only `scripts/data_health_remote.sql` before comparing all-state counts. Never use Production credentials for this Development benchmark.
+原 Phase 6 全來源報告保留於 [歷史健康報告](archive/DATA_HEALTH_PHASE6_2026-11-04.md)。公開站檢查不修改司法 checkpoint，也不宣稱歷史上游錯誤已恢復。

@@ -227,7 +227,7 @@
   if(typeof ResizeObserver!=='undefined')new ResizeObserver(syncGraphCanvasTop).observe(graphBar);
   window.addEventListener('resize',syncGraphCanvasTop);syncGraphCanvasTop();
   const connectionJump=document.createElement('button');connectionJump.id='connectionSummaryJump';connectionJump.type='button';connectionJump.className='toolbtn connection-summary-jump';connectionJump.textContent='關係摘要 / Connection summary';connectionJump.hidden=true;graphFocus.after(connectionJump);connectionJump.addEventListener('click',()=>{const panel=$('connectionSummary');if(!panel.hidden){placeConnectionSummary();panel.scrollIntoView({block:'nearest',behavior:'smooth'})}});
-  graphFocus.addEventListener('click',()=>{const focused=document.querySelector('.main').classList.toggle('graph-focused');graphFocus.textContent=focused?'返回完整畫面 / Show panels':'展開圖譜 / Expand graph';graphFocus.setAttribute('aria-pressed',String(focused));placeConnectionSummary();resetGraphView()});
+  graphFocus.addEventListener('click',()=>{const focused=document.querySelector('.main').classList.toggle('graph-focused');graphFocus.textContent=focused?'返回完整畫面 / Show panels':'展開圖譜 / Expand graph';graphFocus.setAttribute('aria-pressed',String(focused));placeConnectionSummary();requestAnimationFrame(restoreGraphCamera)});
   const graphCrossLinks=document.createElement('button');
   graphCrossLinks.id='graphCrossLinks';graphCrossLinks.type='button';graphCrossLinks.className='toolbtn connection-summary-jump';
   graphCrossLinks.hidden=true;graphCrossLinks.setAttribute('aria-pressed','false');
@@ -660,6 +660,9 @@
   function focusKnowledgeExpansion(entityId,layout,newIds){
     if(!layout?.zones)return;
     syncGraphCanvasTop();
+    const svg=$('svg'),screenScale=Math.min(svg.clientWidth/1000,svg.clientHeight/700);
+    // Detail mode keeps 10-unit labels at least 12 screen pixels. Fit remains an explicit overview.
+    setZoom(Math.max(zoom,Math.min(3,1.2/Math.max(.1,screenScale))));
     const area=graphFitArea(true),parent=layout.positions.get(entityId);
     const branches=layout.zones.filter(zone=>zone.ids.some(id=>newIds.has(id)));
     if(!parent||!branches.length)return;
@@ -702,6 +705,15 @@
     panX=zoom*(500-(point.x+(childPoint.x-point.x)*.72));panY=zoom*(350-point.y);
     applyGraphTransform();
     if(!$('graphSub').textContent.includes('拖曳查看其餘節點'))$('graphSub').textContent+=' · 拖曳查看其餘節點；置中可返回此分支 / Drag for more; Fit refocuses this branch';
+  }
+  function restoreGraphCamera(){
+    if(['path','knowledge'].includes(graphMode)&&knowledgeGraph?.focusedBranch){
+      const parent=knowledgeGraph.focusedBranch,layout=knowledgeLayout([...knowledgeGraph.nodes.values()],[...knowledgeGraph.edges.values()]);
+      const ids=new Set([...knowledgeGraph.nodes.keys()].filter(id=>id!==parent));
+      focusKnowledgeExpansion(parent,layout,ids);
+    }else if(graphMode==='legacy'&&(legacyFocusId||expandedHub)){
+      focusLegacyExpansion(legacyFocusId||`hub:${expandedHub}`);
+    }else fitGraphBounds();
   }
   function resetGraphView(){panX=0;panY=0;selectedNodeId=null;selectedEdgeId=null;$('nodeInfo').hidden=true;document.querySelectorAll('#svg .node,.edge-group').forEach(item=>item.classList.remove('selected'));if(document.querySelector('.graph>.connection-summary:not([hidden])')){legacyFocusId=null;fitGraphBounds();return}if(graphMode==='legacy'&&expandedHub){focusLegacyExpansion(legacyFocusId||`hub:${expandedHub}`);return}legacyFocusId=null;fitGraphBounds()}
   function resetLegacyDetails(){
@@ -2253,7 +2265,7 @@
     else judicialPage=advance(judicialPage);
     selectedNodeId=null;$('nodeInfo').hidden=true;renderGraph(current.graph);
   });
-  window.addEventListener('resize',()=>{placeConnectionSummary();if(graphMode==='path'||document.querySelector('.graph>.connection-summary:not([hidden])'))requestAnimationFrame(fitGraphBounds);else if(graphMode==='legacy'&&legacyFocusId)requestAnimationFrame(()=>{if(legacyFocusId)focusLegacyExpansion(legacyFocusId)})});
+  window.addEventListener('resize',()=>{placeConnectionSummary();if(['path','knowledge'].includes(graphMode))requestAnimationFrame(restoreGraphCamera);else if(document.querySelector('.graph>.connection-summary:not([hidden])'))requestAnimationFrame(fitGraphBounds);else if(graphMode==='legacy'&&legacyFocusId)requestAnimationFrame(()=>{if(legacyFocusId)focusLegacyExpansion(legacyFocusId)})});
   function moveKnowledgeDrag(event){
     const drag=nodeDragState;
     const dx=(event.clientX-drag.x)*drag.scaleX/zoom,dy=(event.clientY-drag.y)*drag.scaleY/zoom;

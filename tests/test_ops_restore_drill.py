@@ -23,6 +23,12 @@ class RestoreDrillTests(unittest.TestCase):
         (root / 'manifest.json').write_text(json.dumps(manifest))
         return manifest
 
+    def test_current_policy_helper_schema_is_restored_and_compared(self):
+        source = (Path(__file__).resolve().parents[1] / 'scripts/ops_restore_drill.py').read_text()
+        self.assertIn('create schema tei_source_checks;', source)
+        self.assertIn("'--schema=tei_source_checks'", source)
+        self.assertIn("'public','auth','tei_private','tei_source_checks'", source)
+
     def test_tampered_encrypted_archive_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

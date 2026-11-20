@@ -166,7 +166,10 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       const positions=await page.locator('#svg .node').evaluateAll(els=>els.map(el=>({id:el.dataset.nodeId,
         x:el.querySelector('circle:not(.hit)').getAttribute('cx'),y:el.querySelector('circle:not(.hit)').getAttribute('cy')})));
       for(const old of oldPositions)assert.deepEqual(positions.find(p=>p.id===old.id),old,'expansion keeps existing nodes fixed');
-      assert.equal(await page.locator('#zoomValue').textContent(),scale,'expansion preserves the current zoom');
+      const nextScale=await page.locator('#zoomValue').textContent();
+      assert(parseInt(nextScale)>=parseInt(scale),'expansion never zooms out; it raises an unreadable overview to detail scale');
+      const fontPixels=await page.locator('#svg .node text:not(.type-label)').evaluateAll(texts=>Math.min(...texts.map(t=>parseFloat(getComputedStyle(t).fontSize)*Math.hypot(t.getScreenCTM().a,t.getScreenCTM().b))));
+      assert(fontPixels>=11.8,'Expanded detail labels are at least 12 screen pixels');
       assert.equal(await page.locator('#pathEntitySelect').inputValue(),node.id);
       assert.equal(await page.locator('#tabProcurementCount').textContent(),count+' 筆 / records');
     }

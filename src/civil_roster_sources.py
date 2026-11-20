@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from src.entities.models import Entity, evidence_from_projection, stable_id, timestamp
+from src.civil_organizations import name_quality_issue
 
 
 SOURCES = {
@@ -256,11 +257,13 @@ def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
             if seq in seen:
                 raise ValueError(f"Duplicate official roster sequence {seq}")
             seen.add(seq)
+            quality = name_quality_issue(name)
+            row_status = "draft" if quality else publication_status
             source_id = f"{snapshot_hash}:{seq}"
             entity = Entity(id=stable_id("entity", source["name"], source_id),
                             entity_type="CivilOrganization", canonical_name=name,
                             display_name=name, source=source["name"], source_id=source_id,
-                            identity_status="SOURCE_SCOPED", publication_status=publication_status)
+                            identity_status="SOURCE_SCOPED", publication_status=row_status)
             locator = {"dataset_id": source["dataset"], "download_url": source["download"],
                        "snapshot_sha256": snapshot_hash, "csv_row": row_number,
                        "source_seq_no": seq, "source_scope": source["description"]}
@@ -288,13 +291,15 @@ def official_roster_bundles(path: Path, source_key: str, *, retrieved_at: str,
                 value = (row.get(field) or "").strip()
                 if value:
                     locator[field] = value
+            if quality:
+                locator["name_quality_issue"] = quality
             evidence = evidence_from_projection(
                 source_name=source["name"], source_record_id=source_id,
                 source_class="Government Open Data", source_url=source["url"],
                 source_locator=locator, title=f"官方團體清冊紀錄：{name}",
                 summary="來源範圍內的團體名冊紀錄；現行狀態及與其他清冊同名實體的身分尚未核對。",
                 observed_at=retrieved_at, retrieved_at=retrieved_at,
-                publication_status=publication_status)
+                publication_status=row_status)
             bundle["entities"].append(entity.to_dict())
             bundle["evidence"].append(evidence.to_dict())
             bundle["entity_evidence"].append({"entity_id": entity.id,

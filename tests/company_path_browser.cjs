@@ -135,6 +135,10 @@ function segment(from, to, id, evidenceId, reverse=false) {
       assert.equal(await page.locator('#svg .node').count(),6);
       assert.equal(await page.locator('#svg .edge-group').count(),5);
       assert.equal(await mainNotes.count(),5);
+      await page.waitForFunction(()=>Number(document.querySelector('#zoomValue').textContent.replace('%',''))>100);
+      const labelSize=await page.locator('#svg .node text').evaluateAll(texts=>Math.min(...texts.filter(t=>!t.classList.contains('type-label')).map(t=>parseFloat(getComputedStyle(t).fontSize)*Math.hypot(t.getScreenCTM().a,t.getScreenCTM().b))));
+      assert(labelSize>=11.8,`Expanded path labels stay readable after ${width}px resize: ${labelSize}`);
+
     }
     await page.locator('#closeNode').click();
     await page.locator('#pathEntitySelect').selectOption(B.id);

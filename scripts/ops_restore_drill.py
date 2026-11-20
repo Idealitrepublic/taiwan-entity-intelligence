@@ -107,7 +107,7 @@ def snapshot(env):
       'functions',(select json_agg(t order by signature) from
         (select p.oid::regprocedure::text signature,md5(pg_get_functiondef(p.oid)) definition_hash
          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-         where n.nspname in ('public','auth','tei_private') and p.prokind in ('f','p')
+         where n.nspname in ('public','auth','tei_private','tei_source_checks') and p.prokind in ('f','p')
            and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass
              and d.objid=p.oid and d.deptype='e')) t),
       'triggers',(select json_agg(t order by table_name,tgname) from
@@ -175,7 +175,7 @@ def drill(folder, source_url, identity):
                 create role supabase_auth_admin; create role supabase_storage_admin;
                 create role supabase_admin; create role authenticator;
                 create schema auth; create schema supabase_migrations; create schema tei_private;
-                create schema extensions; create extension pgcrypto with schema extensions;
+                create schema tei_source_checks; create schema extensions; create extension pgcrypto with schema extensions;
                 create extension "uuid-ossp" with schema extensions; create extension pg_trgm with schema public;""",
                   read_only=False)
             age = subprocess.Popen([executable('age'), '-d', '-i', str(identity),
@@ -183,7 +183,8 @@ def drill(folder, source_url, identity):
                                    stderr=subprocess.DEVNULL)
             restore = subprocess.Popen([executable('pg_restore'), '--dbname=postgres', '--no-owner',
                                          '--no-privileges', '--exit-on-error', '--schema=public',
-                                         '--schema=auth', '--schema=supabase_migrations', '--schema=tei_private'],
+                                         '--schema=auth', '--schema=supabase_migrations', '--schema=tei_private',
+                                         '--schema=tei_source_checks'],
                                         stdin=age.stdout, stdout=subprocess.DEVNULL,
                                         stderr=subprocess.PIPE, env=local)
             age.stdout.close()

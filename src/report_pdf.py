@@ -68,6 +68,23 @@ def _source_links(source):
     return [(label, url) for label, url, _ in result]
 
 
+class PageTable(LongTable):
+    """Split normal rows only between rows; oversized cells start on a fresh page."""
+
+    full_frame_height = landscape(A4)[1] - 24 * mm - 12
+
+    def split(self, availWidth, availHeight):
+        self.splitInRow = 0
+        parts = super().split(availWidth, availHeight)
+        if not parts and availHeight >= self.full_frame_height - 1:
+            # Only a row taller than a full frame needs a cell split. Waiting
+            # for a fresh page prevents a continuation repeating headers below
+            # the preceding fragment on the same page.
+            self.splitInRow = 1
+            parts = super().split(availWidth, availHeight)
+        return parts
+
+
 class RelationshipDiagram(Flowable):
     """A page-safe vector diagram of every edge in one bounded graph chunk."""
 
@@ -228,18 +245,8 @@ def render_report_pdf(report):
 
     def compact_table(rows, proportions, section_title, *, keep_source_rows=False):
         rows = [[paragraph(section_title, heading)] + [''] * (len(proportions) - 1)] + rows
-        # Keep ordinary source citations together. Only an oversized row may
-        # split inside a cell; otherwise ReportLab can repeat headings within
-        # one page after splitting the next source into the remaining space.
-        split_inside = 1
-        if keep_source_rows:
-            heights = [max(cell.wrap(width * part - 10, page_height)[1]
-                           for cell, part in zip(row, proportions)) + 6
-                       for row in rows[1:]]
-            split_inside = int(max(heights[1:], default=0) + sum(heights[:1]) + 52
-                               > page_height - margin * 2 - 12)
-        result = LongTable(rows, colWidths=[width * part for part in proportions],
-                           repeatRows=2, splitByRow=1, splitInRow=split_inside, hAlign="LEFT")
+        result = PageTable(rows, colWidths=[width * part for part in proportions],
+                           repeatRows=2, splitByRow=1, splitInRow=0, hAlign="LEFT")
         result.setStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("SPAN", (0, 0), (-1, 0)),

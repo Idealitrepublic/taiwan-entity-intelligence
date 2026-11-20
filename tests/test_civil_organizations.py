@@ -41,6 +41,20 @@ class CivilOrganizationIngestionTests(unittest.TestCase):
         again = list(roster_bundles(path, retrieved_at=NOW, batch_size=2))
         self.assertEqual(again[0]["entities"][0]["id"], left["entities"][0]["id"])
 
+    def test_missing_source_glyphs_remain_draft_with_stable_provenance(self):
+        path = self.roster("1,?林協會,131010,,,\n2,正確協會,131010,,,\n")
+        bundle = list(roster_bundles(path, retrieved_at=NOW, publication_status="published"))[0]
+        self.assertEqual([e['publication_status'] for e in bundle['entities']], ['draft', 'published'])
+        self.assertEqual(bundle['evidence'][0]['publication_status'], 'draft')
+        self.assertEqual(bundle['evidence'][0]['source_locator']['name_quality_issue'], 'source_name_missing_glyph')
+        self.assertEqual(bundle['entities'][0]['display_name'], '?林協會')
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'roster.csv'
+            source.write_text('name,address,phone\n?子協會,,\n正確協會,,\n', encoding='utf-8')
+            official = list(official_roster_bundles(source, 'pingtung', retrieved_at=NOW, publication_status='published'))[0]
+            self.assertEqual([e['publication_status'] for e in official['entities']], ['draft', 'published'])
+            self.assertEqual(official['evidence'][0]['source_locator']['name_quality_issue'], 'source_name_missing_glyph')
+
     def test_duplicate_sequence_is_rejected_not_name_merged(self):
         path = self.roster("1,協會甲,131010,,,\n1,協會乙,131010,,,\n")
         with self.assertRaisesRegex(ValueError, "Duplicate"):

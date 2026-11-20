@@ -100,6 +100,31 @@ class ReportPDFTests(unittest.TestCase):
         for page in reader.pages:
             self.assertLessEqual(page.extract_text().count('來源 / Sources · 7 筆'),1)
 
+    def test_mixed_long_contract_and_source_tables_repeat_headers_only_on_new_pages(self):
+        value = report()
+        value['sources'] = [{'id':f'proof-{i}', 'title':f'官方資料{i}',
+                            'source_url':f'https://example.gov.tw/record/{i}',
+                            'source_locator':{'公告': ('中文官方公告與可驗證的長資料內容。' * (10+i*3))},
+                            'retrieved_at':'2026-11-20T00:00:00Z'} for i in range(19)]
+        value['government_contracts'] = [
+            {'relationship':{'relationship_type':'CONTRACT_WITH','start_date':'2020-07-03'},
+             'source_entity':{'display_name':'聯上開發股份有限公司'},
+             'target_entity':{'display_name':'完整標案名稱與英文 Title ' * (i+2)},
+             'evidence':value['sources'][i]} for i in range(8)]
+        value['sources'][-1]['source_locator']['公告'] = '完整超長單列不可遺失的內容' * 900
+        pages = PdfReader(BytesIO(render_report_pdf(value))).pages
+        for page in pages:
+            text = page.extract_text()
+            for header in ('政府標案 / Government Contracts · 8 筆','來源 / Sources · 19 筆'):
+                self.assertLessEqual(text.count(header),1)
+        text = ''.join(p.extract_text() for p in pages)
+        # Row columns and repeated page chrome can interleave extracted phrases.
+        # These unique characters occur only in the giant cell: every one must survive.
+        self.assertEqual(text.count('遺'),900)
+        self.assertEqual(text.count('超'),900)
+        for i in range(19):
+            self.assertIn(f'官方資料{i}',text)
+
     def test_real_landscape_pdf_embeds_chinese_font_and_source_link(self):
         data = render_report_pdf(report())
         self.assertTrue(data.startswith(b"%PDF-"))

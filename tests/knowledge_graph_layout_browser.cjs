@@ -32,7 +32,7 @@ const evidence = index => ({id:`evidence-${index}`,source_name:'官方公開來�
   source_url:`https://example.gov.tw/record/${index}`,retrieved_at:'2026-10-16T00:00:00Z'});
 const edge = (from,to,index) => ({id:`edge-${index}`,source:from,target:to,relationship_type:index%2?'CONTRACT_WITH':'RELATED_TO_JUDGMENT',primary_evidence:evidence(index)});
 
-async function geometry(page, label) {
+async function geometry(page, label, detail=false) {
   const result = await page.evaluate(() => {
     const svg=document.querySelector('#svg'),viewport=svg.getBoundingClientRect();
     const nodes=[...svg.querySelectorAll('.node')].map(element=>({id:element.dataset.nodeId,
@@ -55,10 +55,12 @@ async function geometry(page, label) {
         if(hit){crossed.push([group.dataset.edgeId,hit.id]);break}}
     }
     const filledEdges=[...svg.querySelectorAll('.edge-group path.edge')].filter(path=>getComputedStyle(path).fill!=='none').length;
-    return{nodes:nodes.length,overlap,clipped,truncated,crossed,filledEdges};
+    const readable=Math.min(...[...svg.querySelectorAll('.node text:not(.type-label)')].map(t=>parseFloat(getComputedStyle(t).fontSize)*Math.hypot(t.getScreenCTM().a,t.getScreenCTM().b)));
+    return{nodes:nodes.length,overlap,clipped,truncated,crossed,filledEdges,readable};
   });
   assert.deepEqual(result.overlap,[],`${label}: nodes and full labels do not overlap`);
-  assert.deepEqual(result.clipped,[],`${label}: node labels remain inside the graph viewport`);
+  if(detail)assert(result.readable>=11.8,`${label}: detail text remains readable (${result.readable}px); pan explores the rest`);
+  else assert.deepEqual(result.clipped,[],`${label}: explicit overview keeps full labels inside the graph viewport`);
   assert.deepEqual(result.truncated,[],`${label}: node labels are not truncated`);
   assert.deepEqual(result.crossed,[],`${label}: connectors avoid unrelated labels`);
   assert.equal(result.filledEdges,0,`${label}: routed connectors must not paint filled polygons`);
@@ -85,14 +87,15 @@ async function geometry(page, label) {
     assert((await geometry(page,'10 first-layer nodes')).nodes>=11);
     await page.locator(`#svg .node[data-node-id="${first[2].id}"] circle:not(.hit)`).click();
     await page.locator(`#svg .node[data-node-id="${second[5].id}"]`).waitFor();
-    assert.equal((await geometry(page,'mixed second layer')).nodes,17);
+    assert.equal((await geometry(page,'mixed second layer',true)).nodes,17);
     await page.locator('#svg .edge-group[data-edge-id="edge-100"]').dispatchEvent('click');
     assert.match(await page.locator('#nodeInfoBody').innerText(),/official-100/);
     await page.locator('#closeNode').click();
     if(process.env.TEI_KNOWLEDGE_SCREENSHOT)await page.locator('.graph').screenshot({path:process.env.TEI_KNOWLEDGE_SCREENSHOT});
     for(const width of[1440,1280,1024,768]){
       await page.setViewportSize({width,height:900});
-      await geometry(page,`${width}px viewport`);
+      await page.waitForFunction(()=>Number(document.querySelector('#zoomValue').textContent.replace('%',''))>100);
+      await geometry(page,`${width}px detail viewport`,true);
       await page.locator('#fit').click();
       await geometry(page,`${width}px fit`);
     }

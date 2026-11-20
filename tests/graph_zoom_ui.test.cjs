@@ -20,6 +20,7 @@ console.log('PASS related-company zoom and dashboard relationship summary');
 const focusCode = html.slice(html.indexOf('  function focusKnowledgeExpansion('), html.indexOf('  function focusLegacyExpansion('));
 const focusContext = vm.createContext({
   zoom: 1, panX: 0, panY: 0,
+  $:()=>({clientWidth:1200,clientHeight:840}),
   knowledgeGraph: {nodes: new Map([['bridge',{id:'bridge'}]])},
   knowledgeMetrics:()=>({halfWidth:45,top:45,bottom:22}),
   syncGraphCanvasTop:()=>{},
@@ -45,3 +46,19 @@ assert.equal(focusContext.zoom,1,'a large expansion never shrinks all existing n
 assert.equal(focusContext.panX,0,'an oversized group does not pull the camera away from its parent');
 assert.equal(focusContext.panY,0);
 console.log('PASS expansion preserves the camera and pans minimally to reveal a nearby group');
+
+focusContext.zoom=.39;
+focusContext.$=()=>({clientWidth:500,clientHeight:700});
+vm.runInContext('focusKnowledgeExpansion("bridge",layout,newIds);',focusContext);
+assert.equal(focusContext.zoom,2.4,'expanding a dense overview restores 12px labels');
+const cameraCode=html.slice(html.indexOf('  function restoreGraphCamera('),html.indexOf('  function resetGraphView('));
+let focused=0,fitted=0;
+const camera=vm.createContext({graphMode:'path',knowledgeGraph:{focusedBranch:'bridge',nodes:new Map([['bridge',{}],['child',{}]]),edges:new Map()},knowledgeLayout:()=>({}),focusKnowledgeExpansion:()=>focused++,fitGraphBounds:()=>fitted++});
+vm.runInContext(cameraCode+'\nrestoreGraphCamera();',camera);
+assert.equal(focused,1);assert.equal(fitted,0,'resize/fullscreen restore never globally shrinks an expanded branch');
+camera.knowledgeGraph.focusedBranch=null;vm.runInContext('restoreGraphCamera();',camera);assert.equal(fitted,1,'unexpanded overview still fits');
+
+camera.graphMode='legacy';camera.legacyFocusId='hub:procurement';camera.expandedHub='procurement';
+let legacyRestored=null;camera.focusLegacyExpansion=id=>legacyRestored=id;
+vm.runInContext('restoreGraphCamera();',camera);
+assert.equal(legacyRestored,'hub:procurement','fullscreen also preserves legacy award branch detail');

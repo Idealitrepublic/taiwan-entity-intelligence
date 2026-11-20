@@ -130,7 +130,7 @@ test('expanded graph keeps the same summary and listeners visible; narrowing res
  focused=true;vm.runInContext('placeConnectionSummary()',h.context);assert.equal(h.panel.parentElement,graph);
  assert.equal(h.panel.listeners.click,listener);
  wide=false;vm.runInContext('placeConnectionSummary()',h.context);assert.equal(h.panel.parentElement,right);
- assert.equal(moves,2);assert(html.includes('placeConnectionSummary();resetGraphView()'));
+ assert.equal(moves,2);assert(html.includes('placeConnectionSummary();requestAnimationFrame(restoreGraphCamera)'));
 });
 test('expanded fit reserves the actual summary rectangle instead of hiding company B underneath it',()=>{
  const context=vm.createContext({document:{querySelector:()=>({getBoundingClientRect:()=>({left:660})})},$:()=>({getScreenCTM:()=>({inverse:()=>({})}),getBoundingClientRect:()=>({left:0,right:1000,top:0,bottom:700}),createSVGPoint:()=>({matrixTransform(){return{x:this.x,y:this.y}}})})});

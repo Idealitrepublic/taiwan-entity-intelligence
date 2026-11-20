@@ -19,6 +19,11 @@ DOWNLOAD_URL = ("https://opdadm.moi.gov.tw/api/v1/no-auth/resource/api/dataset/"
 EXPECTED_COLUMNS = {"SeqNo", "Name", "Date_of_Establishment", "address", "Chairman", "session"}
 
 
+def name_quality_issue(name):
+    """Never repair a missing source glyph by guessing another identity."""
+    return 'source_name_missing_glyph' if any(char in name for char in ('?', '\ufffd')) else None
+
+
 def roster_bundles(path: Path, *, retrieved_at: str, batch_size: int = 75,
                    publication_status: str = "draft"):
     """Yield bounded ingestion bundles; omit address/chairperson and all name joins.
@@ -46,24 +51,28 @@ def roster_bundles(path: Path, *, retrieved_at: str, batch_size: int = 75,
             if seq in seen:
                 raise ValueError(f"Duplicate MOI roster sequence {seq}")
             seen.add(seq)
+            quality = name_quality_issue(name)
+            row_status = "draft" if quality else publication_status
             source_id = f"{snapshot_hash}:{seq}"
             entity = Entity(id=stable_id("entity", SOURCE_NAME, source_id),
                             entity_type="CivilOrganization", canonical_name=name,
                             display_name=name, source=SOURCE_NAME, source_id=source_id,
                             identity_status="SOURCE_SCOPED",
-                            publication_status=publication_status)
+                            publication_status=row_status)
             locator = {"dataset_id": "13603", "download_url": DOWNLOAD_URL,
                        "snapshot_sha256": snapshot_hash, "csv_row": row_number,
                        "source_seq_no": seq, "establishment_date_raw":
                        (row.get("Date_of_Establishment") or "").strip(),
                        "scope": "historical_roster_not_current_registration"}
+            if quality:
+                locator["name_quality_issue"] = quality
             evidence = evidence_from_projection(
                 source_name=SOURCE_NAME, source_record_id=source_id,
                 source_class="Government Open Data", source_url=SOURCE_URL,
                 source_locator=locator, title=f"內政部團體名冊歷史紀錄：{name}",
                 summary="官方名冊歷史收錄紀錄；不證明現行登記、營運狀態或與同名實體相同。",
                 observed_at=retrieved_at, retrieved_at=retrieved_at,
-                publication_status=publication_status)
+                publication_status=row_status)
             bundle["entities"].append(entity.to_dict())
             bundle["evidence"].append(evidence.to_dict())
             bundle["entity_evidence"].append({"entity_id": entity.id,
