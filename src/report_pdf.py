@@ -19,6 +19,53 @@ FONT_PATH = Path(__file__).resolve().parents[1] / "assets/fonts/NotoSansTC-Regul
 FONT_LOCK = RLock()
 
 
+def _source_links(source):
+    """Use supplied record links, without guessing URLs or changing provenance."""
+    source = source or {}
+    locator = source.get('source_locator')
+    locator = locator if isinstance(locator, dict) else {}
+
+    def safe(value):
+        if not isinstance(value, str) or any(ord(char) <= 32 for char in value):
+            return None
+        try:
+            parsed = urlsplit(value)
+            if (parsed.scheme in ('https', 'http') and parsed.hostname
+                    and not parsed.username and not parsed.password):
+                return value
+        except ValueError:
+            pass
+        return None
+
+    candidates = [
+        safe(source.get('official_notice_url') or locator.get('official_notice_url')),
+        safe(source.get('original_source_url')),
+        safe(source.get('source_url')),
+        safe(locator.get('detail_source_url')),
+    ]
+    result = []
+    for url in dict.fromkeys(url for url in candidates if url):
+        parsed = urlsplit(url)
+        query = (parsed.path.rstrip('/') in ('', '/prkms/tender/common/basic/indexTenderBasic')
+                 or 'indexTenderBasic' in parsed.path)
+        dataset = ('/dataset/' in parsed.path or '/opendata/' in parsed.path)
+        official = parsed.hostname == 'web.pcc.gov.tw' or parsed.hostname.endswith('.gov.tw')
+        if query:
+            label = '查詢入口（非單筆） / Search portal'
+        elif dataset:
+            label = '資料集（非單筆） / Dataset'
+        elif official:
+            label = '官方資料 / Official record'
+        elif parsed.hostname == 'pcc-api.openfun.app':
+            label = '介接明細 / Structured source'
+        else:
+            label = '來源資料 / Source record'
+        result.append((label, url, query or dataset))
+    # A generic official search page must not displace the supplied record URL.
+    result.sort(key=lambda item: item[2])
+    return [(label, url) for label, url, _ in result]
+
+
 class RelationshipDiagram(Flowable):
     """A page-safe vector diagram of every edge in one bounded graph chunk."""
 
@@ -215,6 +262,25 @@ def render_report_pdf(report):
                    if key[0] and candidate[:3] == key[:3]]
         return matches[0] if len(matches) == 1 else "來源表 / See sources"
 
+    def source_link_paragraph(evidence, *, reference=False):
+        links = _source_links(evidence)
+        ref = escape(source_ref(evidence)) if reference else ''
+        if not links:
+            return paragraph((ref + '\n' if ref else '') + '無可用來源連結 / No source link')
+        chosen = links[:1] if reference else links
+        parts = []
+        for label, url in chosen:
+            if reference:
+                caption = ('查詢入口<br/>Search' if 'Search portal' in label else
+                           '資料集<br/>Dataset' if label.endswith('Dataset') else
+                           '開啟資料<br/>Open source')
+                body = f'{ref}<br/>{caption}'
+            else:
+                body = f'{escape(label)}<br/>{escape(url)}'
+            parts.append(f'<link href="{escape(url, quote=True)}" color="#1769aa">{body}</link>')
+        text = '<br/>'.join(parts)
+        return Paragraph(text, normal)
+
     for section in view["sections"]:
         key = section["key"]
         if key in ("key_relationships", "political_relationships", "government_contracts", "judgments", "penalties"):
@@ -248,7 +314,7 @@ def render_report_pdf(report):
                     rows.append([paragraph(date_text),
                                  paragraph(relation_label),
                                  paragraph(f"{source.get('display_name') or '—'} → {target_name}"),
-                                 paragraph(source_ref(record.get("evidence")))])
+                                 source_link_paragraph(record.get("evidence"), reference=True)])
                 compact_table(rows, (.14, .23, .53, .10), f"{section['title']} · {len(records)} 筆")
             continue
         if key in ("entity_profiles", "saved_evidence", "workspace_items") and all(
@@ -275,7 +341,7 @@ def render_report_pdf(report):
                         provider if provider != title_text else '', locator) if part)
                     rows.append([paragraph(f"S{source_index:03d}"),
                                  paragraph(source_text),
-                                 paragraph(source.get("source_url") or "—", key="Source URL"),
+                                 source_link_paragraph(source),
                                  paragraph(format_date(source.get("retrieved_at")) or "—")])
                 compact_table(rows, (.07, .43, .30, .20), f"{section['title']} · {len(sources)} 筆", keep_source_rows=True)
             continue

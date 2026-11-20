@@ -355,6 +355,8 @@ class ReportService:
             record_id = "procurement:" + str(row.get("id"))
             evidence = {"title": row.get("title"), "source_name": awards.get("source"),
                         "source_url": row.get("source_url"),
+                        "official_notice_url": (row.get("key_award_detail") or {}).get("official_notice_url"),
+                        "original_source_url": row.get("official_search_url"),
                         "source_record_id": row.get("id"),
                         "retrieved_at": awards.get("retrieved_at"),
                         "source_locator": {"unit_id": row.get("unit_id"), "job_number": row.get("job_number"),
@@ -404,6 +406,8 @@ class ReportService:
                 sources[key] = {"title": evidence.get("title") or node.get("label"),
                                 "source_name": evidence.get("source_name"),
                                 "source_url": evidence["source_url"],
+                                "official_notice_url": evidence.get("official_notice_url"),
+                                "original_source_url": evidence.get("original_source_url"),
                                 "retrieved_at": evidence.get("retrieved_at"),
                                 "content_hash": evidence.get("content_hash"),
                                 "source_record_id": evidence.get("source_record_id"),

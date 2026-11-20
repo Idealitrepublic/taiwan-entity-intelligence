@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 from pypdf import PdfReader
 
 from app import app
-from src.report_pdf import render_report_pdf
+from src.report_pdf import _source_links, render_report_pdf
 from src.reports import dispatch_report_api
 
 ENTITY = "11111111-1111-4111-8111-111111111111"
@@ -27,6 +27,42 @@ def report():
 
 
 class ReportPDFTests(unittest.TestCase):
+    def test_clickable_relationship_and_source_table_prefer_supplied_official_notice(self):
+        from copy import deepcopy
+        official = 'https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=20200703&fn=BDM-1-53131415.xml'
+        mirror = 'https://pcc-api.openfun.app/api/tender?unit_id=3.13.31&job_number=0630800011'
+        evidence = {'id': 'award-evidence', 'title': '仁愛路合建案',
+                    'source_url': mirror, 'official_notice_url': official,
+                    'retrieved_at': '2026-11-20T00:00:00Z'}
+        value = report()
+        value['sources'] = [evidence]
+        value['government_contracts'] = [{
+            'relationship': {'relationship_type': 'CONTRACT_WITH', 'start_date': '2020-07-03'},
+            'source_entity': {'display_name': '聯上開發股份有限公司'},
+            'target_entity': {'display_name': '仁愛路合建案'}, 'evidence': evidence}]
+        original = deepcopy(value)
+        pdf = PdfReader(BytesIO(render_report_pdf(value)))
+        urls = [annotation.get_object().get('/A', {}).get('/URI') for page in pdf.pages
+                for annotation in page.get('/Annots', [])]
+        self.assertGreaterEqual(urls.count(official), 2, 'Both evidence citation and source table open the official record')
+        self.assertIn(mirror, urls, 'The structured provenance URL remains available')
+        text = ''.join(page.extract_text() for page in pdf.pages)
+        self.assertIn('S001', text)
+        self.assertIn('官方資料 / Official record', text)
+        self.assertEqual(value, original, 'Presentation never overwrites original source provenance')
+
+    def test_record_fallback_precedes_generic_query_and_rejects_unsafe_urls(self):
+        portal = 'https://web.pcc.gov.tw/prkms/tender/common/basic/indexTenderBasic'
+        mirror = 'https://pcc-api.openfun.app/api/tender?unit_id=3.13.31&job_number=0630800011'
+        self.assertEqual(_source_links({'source_url': mirror, 'original_source_url': portal}), [
+            ('介接明細 / Structured source', mirror), ('查詢入口（非單筆） / Search portal', portal)])
+        for unsafe in ('javascript:alert(1)', 'file:///etc/passwd', 'https://user:password@example.com/',
+                       'https://example.com/\nsecret', 'https://[broken'):
+            self.assertEqual(_source_links({'source_url': unsafe}), [])
+        direct = 'https://example.gov.tw/record/123'
+        self.assertEqual(_source_links({'source_url': direct})[0][1], direct)
+        self.assertEqual(len(_source_links({'source_url': direct, 'original_source_url': direct})), 1)
+
     def test_compact_workspace_retains_all_facts_without_a_page_per_saved_item(self):
         from copy import deepcopy
         value = report()

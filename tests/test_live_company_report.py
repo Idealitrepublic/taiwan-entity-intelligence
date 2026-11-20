@@ -36,6 +36,22 @@ class LiveCompanyReportTests(unittest.TestCase):
         self.context_patch.start()
         self.addCleanup(self.context_patch.stop)
 
+    def test_award_official_detail_link_survives_evidence_and_source_projection(self):
+        official = 'https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=20200703&fn=BDM-1-53131415.xml'
+        mirror = 'https://pcc-api.openfun.app/api/tender?unit_id=3.13.31&job_number=0630800011'
+        row = {'id': 'award-1', 'title': '仁愛路合建案', 'date': '20200703',
+               'unit_id': '3.13.31', 'job_number': '0630800011', 'notice_filename': 'BDM-1-53131415',
+               'source_url': mirror, 'key_award_detail': {'status': 'ok', 'official_notice_url': official}}
+        result = ReportService().company_report('96979933', company_loader=company,
+            award_loader=lambda _: {'status': 'ok', 'records': [row]},
+            related_loader=lambda _: {'status': 'ok', 'items': []})
+        evidence = result['government_contracts'][0]['evidence']
+        source = next(item for item in result['sources'] if item.get('source_record_id') == 'award-1')
+        self.assertEqual(evidence['official_notice_url'], official)
+        self.assertEqual(source['official_notice_url'], official)
+        self.assertEqual(source['source_url'], mirror)
+        self.assertEqual(evidence['source_locator']['job_number'], '0630800011')
+
     def test_official_snapshot_is_not_labelled_as_a_live_lookup(self):
         from src.report_presentation import present_report
         value = company('96979933')
