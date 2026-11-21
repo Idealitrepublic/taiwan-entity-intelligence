@@ -1187,7 +1187,7 @@
     beginInvestigation();fictionalDemoActive=true;current=null;currentCheck=null;companySearchItem=null;clearConnectionSummary();
     const data=fictionalDemoData();for(const [role,id] of [['source','demo:company-a'],['target','demo:company-b']]){clearPathLookup(role);pathSelection[role]=data.nodes.find(node=>node.id===id);$(role==='source'?'pathSourceQuery':'pathTargetQuery').value=pathSelection[role].display_name}
     pathRange.value='2';renderPathSelection();$('q').value='';$('company').textContent='自創範例 / Fictional demo';$('uniform').textContent='範例編號不是統編 / Example IDs are not company IDs';$('companyKV').innerHTML='<div class="notice">僅供功能展示 / Demonstration only</div>';$('signal').hidden=true;
-    renderFictionalGraph();if(location.pathname!=='/'||location.hash!=='#demo')history.pushState(null,'','/#demo');
+    renderFictionalGraph();selectOverviewTab();$('rightPanel').scrollTop=0;if(location.pathname!=='/'||location.hash!=='#demo')history.pushState(null,'','/#demo');
   }
   const demoNotice=document.createElement('section');demoNotice.id='fictionalDemoNotice';demoNotice.className='fictional-demo-notice';demoNotice.hidden=true;demoNotice.setAttribute('aria-label','自創展示說明 Fictional demo notice');demoNotice.innerHTML=`<b>${esc(fictionalDemoNotice)}</b><button type="button" class="toolbtn" id="exitFictionalDemo">回到真實搜尋 / Search real data</button>`;document.querySelector('.search').before(demoNotice);$('exitFictionalDemo').addEventListener('click',()=>location.assign('/'));
   document.addEventListener('click',event=>{const button=event.target.closest('[data-demo-evidence]');if(!button||!fictionalDemoActive)return;const edge=fictionalDemoData().edges.find(row=>row.id===button.dataset.demoEvidence);if(edge)showFictionalEdge(edge)});

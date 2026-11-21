@@ -4,6 +4,7 @@ const vm = require('node:vm');
 const html = fs.readFileSync('web/index.html','utf8');
 function section(start,end){const a=html.indexOf(start),b=html.indexOf(end,a);assert(a>=0&&b>a,start);return html.slice(a,b)}
 const context=vm.createContext({fictionalDemoNotice:'Fictional demo'});
+assert(section('  function loadRelationshipExample(', '  const demoNotice=').includes('renderFictionalGraph();selectOverviewTab()'), 'Load demo must restore the overview even after a real awards tab');
 vm.runInContext(section('  function fictionalDemoData(', '  function fictionalDemoOverview('),context);
 const data=vm.runInContext('fictionalDemoData()',context);
 assert.equal(data.nodes.length,8);assert.equal(data.edges.length,10);assert.equal(data.records.length,6);
