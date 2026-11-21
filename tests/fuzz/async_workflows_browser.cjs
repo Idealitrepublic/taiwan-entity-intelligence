@@ -18,6 +18,10 @@ const awards=n=>({status:'ok',source:'隔離決標來源',matched:3,records:[0,1
 const pdfs=Object.fromEntries([A,B].map(n=>[n.public_identifier,execFileSync(process.env.TEI_PYTHON||'python3',['-c',"from src.report_pdf import render_report_pdf;import sys;sys.stdout.buffer.write(render_report_pdf({'title':'隔離報告 '+sys.argv[1],'methodology':'合成測試資料','report_type':'ENTITY','generated_at':'2026-11-19','sources':[],'relationship_graph':{'nodes':[],'edges':[]}}))",n.public_identifier])]));
 const pdf=pdfs[A.public_identifier];
 const defer=()=>{let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve}};
+async function startRealPath(page){
+ for(const [role,node] of [['Source',A],['Target',B]]){await page.locator('#path'+role+'Query').fill(node.display_name);await page.locator('#path'+role+'Matches .path-match').click()}
+ await page.locator('#pathDepth').selectOption('2');await page.locator('#pathFind').click();
+}
 const results=[];const output=process.env.TEI_FUZZ_OUTPUT||'/tmp/tei-async-fuzz-'+seed+'.json';
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.TEI_BROWSER_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
@@ -109,22 +113,22 @@ const results=[];const output=process.env.TEI_FUZZ_OUTPUT||'/tmp/tei-async-fuzz-
  await run('company-tail-after-example',async({page,gate,enter,text,settle})=>{
   const old=gate(u=>u.pathname==='/api/procurement/'+A.public_identifier);
   await page.goto('https://tei.local/');await enter(A.public_identifier);await old.hit;await text('#company',A.display_name);await page.locator('#sample').click();
-  await page.locator('#svg[data-path-graph=true]').waitFor();old.open();await old.done;await settle();
-  assert.equal(await page.locator('#svg').getAttribute('data-path-graph'),'true','Old company source rerender removed the example path');
+  await page.locator('#fictionalDemoNotice:not([hidden])').waitFor();old.open();await old.done;await settle();
+  assert.equal(await page.locator('#svg .node').count(),8,'Old source response replaced the fictional dataset');assert.match(await page.locator('#company').textContent(),/Fictional/);
  });
  await run('path-after-new-search',async({page,gate,enter,text,settle})=>{
-  const old=gate(u=>u.pathname==='/api/v1/paths');await page.goto('https://tei.local/');await page.locator('#sample').click();await old.hit;
+  const old=gate(u=>u.pathname==='/api/v1/paths');await page.goto('https://tei.local/');await startRealPath(page);await old.hit;
   await enter(B.public_identifier);await text('#company',B.display_name);old.open();await old.done;await settle();
   assert.match(await page.locator('#graphTitle').textContent(),/隔離公司乙/);assert.equal(await page.locator('#svg').getAttribute('data-path-graph'),null,'Late path response replaced a newer search');
  });
  await run('path-range-then-clear',async({page,gate,settle})=>{
-  const old=gate(u=>u.pathname==='/api/v1/paths'&&u.searchParams.get('max_depth')==='2');await page.goto('https://tei.local/');await page.locator('#sample').click();await old.hit;
+  const old=gate(u=>u.pathname==='/api/v1/paths'&&u.searchParams.get('max_depth')==='2');await page.goto('https://tei.local/');await startRealPath(page);await old.hit;
   await page.locator('#pathDepth').selectOption('3');await page.locator('#pathFind').click();await page.locator('#svg .node').nth(3).waitFor();old.open();await old.done;await settle();
   assert.equal(await page.locator('#svg .node').count(),4,'Old range response replaced a newer two-intermediary result');
   await page.locator('#pathClear').click();assert.match(await page.locator('#pathSource').textContent(),/Not selected/);
  });
  await run('path-clear-pending',async({page,gate,settle})=>{
-  const old=gate(u=>u.pathname==='/api/v1/paths');await page.goto('https://tei.local/');await page.locator('#sample').click();await old.hit;
+  const old=gate(u=>u.pathname==='/api/v1/paths');await page.goto('https://tei.local/');await startRealPath(page);await old.hit;
   await page.locator('#pathClear').click();old.open();await old.done;await settle();assert.match(await page.locator('#pathSource').textContent(),/Not selected/);assert.equal(await page.locator('#svg').getAttribute('data-path-graph'),null);assert.equal(await page.locator('#pathFind').isEnabled(),false);
  });
  await run('award-filter-detach-retry',async({page,gate,enter,text,settle,requests})=>{

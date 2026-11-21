@@ -29,7 +29,7 @@ function pathHarness() {
     ${oneLine('invalidatePathRequest')}
     ${oneLine('renderPathSelection')}
     ${oneLine('setPathEndpoint')}
-    ${shipped('  async function findRelationshipPath()', "  pathRange.addEventListener")}`,context);
+    ${shipped('  async function findRelationshipPath()', "  // Self-contained fictional data")}`,context);
   return {context,elements,requests,renders,cleared};
 }
 function reportHarness({popup=null,status=200,mime='application/pdf',bytes='%PDF-1.7 valid',modal=true,picker=null}={}) {
@@ -91,16 +91,12 @@ test('each range uses its existing exact max_depth and renders response',async()
     await pending;assert.equal(h.renders[0].depth,depth);assert.equal(h.elements.pathFind.disabled,false);
   }
 });
-test('public example loads two real companies and runs the one-intermediary query',()=>{
+test('public example uses a separate fictional dataset instead of real political entities',()=>{
   assert(html.includes("$('sample').addEventListener('click',loadRelationshipExample)"));
-  const values={pathSourceQuery:{value:''},pathTargetQuery:{value:''}};
-  const pathRange={},pathSelection={};
-  const result=vm.runInNewContext(shipped('  function loadRelationshipExample(', '  pathRange.addEventListener')+
-    '\nloadRelationshipExample()', {$:id=>values[id],pathRange,pathSelection,
-      invalidatePathRequest:()=>{},hideSearchResults:()=>{},clearPathLookup:()=>{},
-      renderPathSelection:()=>{},findRelationshipPath:()=>[pathSelection.source.public_identifier,
-        pathSelection.target.public_identifier,pathRange.value].join(':')});
-  assert.equal(result,'22659295:54690903:2');
+  const loader=shipped('  function loadRelationshipExample(', '  const demoNotice=');
+  assert(loader.includes('fictionalDemoData()'));
+  assert(loader.includes('renderFictionalGraph()'));
+  assert(!/fetch\(|findRelationshipPath\(|22659295|54690903/.test(loader));
 });
 test('empty/truncated path does not claim absence of relationships',()=>{
   const h=pathHarness();h.context.num=Number;h.context.pathRangeLabels={};

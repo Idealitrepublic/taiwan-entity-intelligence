@@ -57,6 +57,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       const url=new URL(route.request().url()),path=url.pathname;
       if(path==='/'||path.startsWith('/entity/'))return route.fulfill({status:200,contentType:'text/html',body:html});
       let data={};
+      if(path==='/api/v1/search')data={data:{items:[a,b].filter(n=>n.display_name.includes(url.searchParams.get('q'))).map(n=>({...n,entity_id:n.id}))}};
       if(path==='/api/v1/paths')data={data:{found:true,depth:2,max_depth:2,source_entity:a,target_entity:b,
         segments:[segment(a,middle,1),segment(middle,b,2,true)]}};
       if(path.startsWith('/api/v1/graph/')) {
@@ -86,7 +87,7 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
     await page.goto('https://tei.local/');
     assert.equal(await page.locator('#workspaceOpen,#watchlistOpen,#workspaceDialog,form[type="password"],input[type="password"]').count(),0);
     assert.equal(await page.locator('#systemStatus').isVisible(),false);
-    assert.equal(await page.locator('#sample').textContent(),'載入真實範例 / Load real example');
+    assert.equal(await page.locator('#sample').textContent(),'載入自創範例 / Load fictional demo');
     assert.deepEqual(await page.locator('#entityTypeFilter option').evaluateAll(els=>els.map(el=>el.value)),
       ['', 'Company','Politician','GovernmentOfficial','GovernmentAgency','PoliticalParty','CivilOrganization','Contract']);
     assert.equal(await page.evaluate(()=>sessionStorage.getItem('tei_workspace_session')),null);
@@ -119,7 +120,8 @@ const awards = node => ({status:'ok',matched:node.id===a.id?7:5,source:'公開�
       await targetHeader(width);
     }
     await page.setViewportSize({width:1440,height:900});
-    await page.locator('#sample').click();
+    for(const [role,node] of [['Source',a],['Target',b]]){await page.locator('#path'+role+'Query').fill(node.display_name);await page.locator('#path'+role+'Matches .path-match').click()}
+    await page.locator('#pathDepth').selectOption('2');await page.locator('#pathFind').click();
     await page.locator('#pathResult .path-segment').nth(1).waitFor();
 
     async function toolbar(label) {

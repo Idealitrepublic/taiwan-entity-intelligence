@@ -49,6 +49,12 @@ Entity or Relationship. See [refresh acceptance](DATA_REFRESH_2026-10-29.md).
 
 Status: audited 2026-09-16 on branch `chore/local-dev-setup`, based on `main` commit `688f4c7`.
 
+## 自創範例的資料邊界 — 2026-11-21
+
+首頁「載入自創範例」與 `/#demo` 使用 `web/index.html` 內的固定展示資料，涵蓋公司職務、共同法人董事、得標案件及共同採購機關。所有實體、關係與 Evidence 使用 `demo:` 編號並標記 `is_demo`；不使用真實統編、官方網址或發布狀態，也不寫入 Supabase。範例路徑在瀏覽器本機計算，保留原有直接／一個中介／兩個中介語意；節點資訊、採購與證據改讀同一份展示資料，阻擋範例編號進入真實查詢與報告 API。既有資料庫狀態輪詢維持唯讀，並明示真實資料庫統計不含範例。
+
+退出或開始真實調查會清除展示狀態，原有查詢與已下架類別的限制保持不變。驗收記錄見 `FICTIONAL_DEMO_ACCEPTANCE_2026-11-21.md`。
+
 ## System context
 
 T.E.I. turns Taiwanese public records into an investigation workspace. The canonical request path is:
