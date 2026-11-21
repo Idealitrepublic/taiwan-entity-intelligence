@@ -156,17 +156,18 @@ def database_status():
             snapshot = verified_count_snapshot()
             if snapshot:
                 body = {'status': 'cached', 'version': '9.3-directional-filters', 'supabase': snapshot}
-                cached = (0, (200, body))
+                cached = (float('-inf'), (200, body))
             else:
                 body = {'status': 'degraded', 'version': '9.3-directional-filters',
                         'supabase': {'configured': bool(core.SUPABASE_KEY),
                                      'connected': False, 'counts_state': 'unavailable'}}
-                cached = (0, (503, body))
+                cached = (float('-inf'), (503, body))
             STATUS_CACHE[cache_key] = cached
     if cached:
         # Never fan out exact RLS counts on a public page load: those compete
         # with search on the same database. Keep dated verified aggregates and
         # probe connectivity with one bounded row, single-flight per process.
+        # An unchecked snapshot is always due, even on a host with <55s uptime.
         if core.SUPABASE_KEY and time.monotonic() - cached[0] >= 55 and STATUS_BACKGROUND_LOCK.acquire(blocking=False):
             def refresh():
                 try:

@@ -25,6 +25,35 @@ class SearchLoadIsolationTests(unittest.TestCase):
         app.STATUS_BACKGROUND_LOCK.release()
         return result
 
+    def test_first_probe_does_not_wait_for_host_uptime(self):
+        for target, expected_code in (
+                ('https://canqjiokrtcxkwblhmml.supabase.co', 200),
+                ('https://other.supabase.co', 503)):
+            with self.subTest(target=target):
+                app.STATUS_CACHE.clear()
+                with patch('app.core.SUPABASE', target), \
+                        patch('app.time.monotonic', return_value=1), \
+                        patch('app.Thread') as thread:
+                    try:
+                        code, before, _ = app.database_status()
+                        self.assertEqual(code, expected_code)
+                        thread.assert_called_once()
+                    finally:
+                        if thread.called:
+                            app.STATUS_BACKGROUND_LOCK.release()
+                    response = Mock()
+                    response.__enter__ = Mock(return_value=response)
+                    response.__exit__ = Mock(return_value=False)
+                    response.read.return_value = b'[]'
+                    with patch('app.urllib.request.urlopen', return_value=response):
+                        app._refresh_status_connectivity()
+                    thread.reset_mock()
+                    code, after, _ = app.database_status()
+                    self.assertEqual(code, 200)
+                    self.assertTrue(after['supabase']['connected'])
+                    self.assertEqual(after['supabase'].get('canonical'), before['supabase'].get('canonical'))
+                    thread.assert_not_called()
+
     def test_cold_and_repeated_page_loads_never_start_count_queries(self):
         with patch('app.db_count') as counted, patch('app._refresh_database_status') as full, \
                 patch('app.Thread') as thread:
