@@ -1,0 +1,1837 @@
+{
+  "checked_at": "2026-11-21T01:06:16.687959+00:00",
+  "result": "PASS",
+  "scope": "Production/Preview parity and bounded offline fuzzing; no DB writes, environment changes, new features or restored withdrawn categories",
+  "production": {
+    "url": "https://taiwan-entity-intelligence.vercel.app/",
+    "deployment": "dpl_9GqszKuv67Y8gvLv7FgsyaWVYuju",
+    "commit": "4badb87d27c7b0ee018e60a6a3f5656a0248caf8",
+    "state": "READY",
+    "ci_url": "https://github.com/Idealitrepublic/taiwan-entity-intelligence/actions/runs/44847493958"
+  },
+  "preview": {
+    "url": "https://taiwan-entity-intelligence-lbt2im96r-coldlight871029-9944.vercel.app/",
+    "deployment": "dpl_7MDWMf23fnqYHBQEzy6YCyF6heyo",
+    "commit": "4badb87d27c7b0ee018e60a6a3f5656a0248caf8",
+    "state": "READY",
+    "ci_url": "https://github.com/Idealitrepublic/taiwan-entity-intelligence/actions/runs/44847207324"
+  },
+  "parity": {
+    "production": "https://taiwan-entity-intelligence.vercel.app/",
+    "preview": "https://taiwan-entity-intelligence-lbt2im96r-coldlight871029-9944.vercel.app/",
+    "production_commit": "4badb87d27c7b0ee018e60a6a3f5656a0248caf8",
+    "preview_commit": "4badb87d27c7b0ee018e60a6a3f5656a0248caf8",
+    "product_code_equal": true,
+    "only_git_differences": [],
+    "homepage_matches_source": true,
+    "homepage_sha256": "d975c51368432e05adca302a0597a5a38775cf6696e474d5e72adc4cd093bf71",
+    "results": [
+      {
+        "name": "status",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 1.115
+      },
+      {
+        "name": "company_search",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 5.009
+      },
+      {
+        "name": "politician_search",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 5.028
+      },
+      {
+        "name": "agency_search",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 3.13
+      },
+      {
+        "name": "civil_search",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.67
+      },
+      {
+        "name": "party_search",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 1.192
+      },
+      {
+        "name": "contract_search",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 1.078
+      },
+      {
+        "name": "company_entity",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 1.712
+      },
+      {
+        "name": "company_graph",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.834
+      },
+      {
+        "name": "politician_graph",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 1.078
+      },
+      {
+        "name": "agency_graph",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 1.352
+      },
+      {
+        "name": "civil_entity",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.702
+      },
+      {
+        "name": "path_one",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.748
+      },
+      {
+        "name": "path_two",
+        "status": 200,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.759
+      },
+      {
+        "name": "withdrawn_Judgment",
+        "status": 400,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.15
+      },
+      {
+        "name": "withdrawn_Penalty",
+        "status": 400,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.133
+      },
+      {
+        "name": "withdrawn_AssetDeclaration",
+        "status": 400,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.128
+      },
+      {
+        "name": "withdrawn_Candidate",
+        "status": 400,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.129
+      },
+      {
+        "name": "withdrawn_LobbyingRecord",
+        "status": 400,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.128
+      },
+      {
+        "name": "withdrawn_165",
+        "status": 410,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.192
+      },
+      {
+        "name": "private_workspace",
+        "status": 401,
+        "result": "PASS",
+        "different_fields": [],
+        "seconds": 0.158
+      }
+    ],
+    "passed": 21,
+    "failed": 0,
+    "database_writes": false,
+    "production_access": "No cookies, login or bypass",
+    "status_comparison_scope": "Version, canonical exact count snapshot, count verification time, configured, source notices; background connectivity probe is environment-local and is recorded separately"
+  },
+  "repairs": [
+    {
+      "id": "P-01",
+      "result": "PASS",
+      "root_cause": "Measured graph header could consume a short desktop canvas; collapse/expand at 1280x625 left only 195px drawing height",
+      "repair_commit": "9c2b7d24205f82add7832425bbcddb202056802a",
+      "local_regression": [
+        {
+          "belowHeader": true,
+          "canvas": 320,
+          "height": 625,
+          "pageWidth": 1425,
+          "width": 1440
+        },
+        {
+          "belowHeader": true,
+          "canvas": 320,
+          "height": 520,
+          "pageWidth": 1425,
+          "width": 1440
+        },
+        {
+          "belowHeader": true,
+          "canvas": 320,
+          "height": 625,
+          "pageWidth": 1265,
+          "width": 1280
+        },
+        {
+          "belowHeader": true,
+          "canvas": 320,
+          "height": 520,
+          "pageWidth": 1265,
+          "width": 1280
+        },
+        {
+          "belowHeader": true,
+          "canvas": 320,
+          "height": 625,
+          "pageWidth": 1106,
+          "width": 1121
+        },
+        {
+          "belowHeader": true,
+          "canvas": 320,
+          "height": 520,
+          "pageWidth": 1106,
+          "width": 1121
+        }
+      ]
+    },
+    {
+      "id": "P-02",
+      "result": "PASS",
+      "root_cause": "Initial health cache time 0 postponed first probe until host monotonic uptime reached 55 seconds; fresh CI hosts exposed failure",
+      "repair_commit": "4badb87d27c7b0ee018e60a6a3f5656a0248caf8",
+      "reproduction": {
+        "old_commit": "9c2b7d24205f82add7832425bbcddb202056802a",
+        "clock_seconds": 1,
+        "reproduced": true,
+        "failing_subcases": 2,
+        "new_targeted_tests_passed": 10
+      },
+      "initial_ci_failure": "https://github.com/Idealitrepublic/taiwan-entity-intelligence/actions/runs/44772335904"
+    }
+  ],
+  "core": {
+    "local_python_pass": 578,
+    "postgresql_checks_pass": 338,
+    "javascript": "PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "cloud_python_run": 578,
+    "cloud_python_pass": 576,
+    "cloud_python_skipped": 2,
+    "cloud_skipped_reason": "age/tar encryption tools unavailable on hosted runner; both ran locally"
+  },
+  "fuzz": {
+    "offline": [
+      {
+        "seed": 20261121,
+        "cases_per_target": 6000,
+        "targets": {
+          "api": {
+            "cases": 6000,
+            "unique_inputs": 4752,
+            "failure_classes": 0,
+            "seconds": 0.167
+          },
+          "procurement": {
+            "cases": 6000,
+            "unique_inputs": 272,
+            "failure_classes": 0,
+            "seconds": 0.56
+          },
+          "notice_detail": {
+            "cases": 6000,
+            "unique_inputs": 132,
+            "failure_classes": 0,
+            "seconds": 0.293
+          },
+          "exact_path": {
+            "cases": 6000,
+            "unique_inputs": 4395,
+            "failure_classes": 0,
+            "seconds": 0.191
+          },
+          "pdf": {
+            "cases": 100,
+            "unique_inputs": 100,
+            "failure_classes": 0,
+            "seconds": 1.015
+          },
+          "report_html": {
+            "cases": 6000,
+            "unique_inputs": 6000,
+            "failure_classes": 0,
+            "seconds": 1.767
+          }
+        },
+        "network": "denied",
+        "failures": []
+      },
+      {
+        "seed": 7112026,
+        "cases_per_target": 6000,
+        "targets": {
+          "api": {
+            "cases": 6000,
+            "unique_inputs": 4733,
+            "failure_classes": 0,
+            "seconds": 0.172
+          },
+          "procurement": {
+            "cases": 6000,
+            "unique_inputs": 272,
+            "failure_classes": 0,
+            "seconds": 0.573
+          },
+          "notice_detail": {
+            "cases": 6000,
+            "unique_inputs": 132,
+            "failure_classes": 0,
+            "seconds": 0.299
+          },
+          "exact_path": {
+            "cases": 6000,
+            "unique_inputs": 4441,
+            "failure_classes": 0,
+            "seconds": 0.184
+          },
+          "pdf": {
+            "cases": 100,
+            "unique_inputs": 100,
+            "failure_classes": 0,
+            "seconds": 1.067
+          },
+          "report_html": {
+            "cases": 6000,
+            "unique_inputs": 6000,
+            "failure_classes": 0,
+            "seconds": 1.639
+          }
+        },
+        "network": "denied",
+        "failures": []
+      }
+    ],
+    "total_generated_cases": 60200,
+    "not_all_cases_distinct": true,
+    "async_permutation_cases": 4000,
+    "async_seeds": [
+      20261121,
+      7112026
+    ],
+    "ui": {
+      "seed": 20261121,
+      "initial_failure": {
+        "step": 6,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "result": "FAIL",
+        "error": "Graph invariant failed {\"bounds\":{\"h\":195,\"w\":585},\"ids\":[\"11111111-1111-4111-8111-000000000000\",\"11111111-1111-4111-8111-000000000001\",\"11111111-1111-4111-8111-000000000002\",\"11111111-1111-4111-8111-000000000003\",\"11111111-1111-4111-8111-000000000011\"],\"injected\":0,\"invalid\":0,\"unsafeLinks\":0}"
+      },
+      "post_repair_steps": 180,
+      "executed_steps": 161,
+      "inapplicable_steps": 19,
+      "post_repair_failures": [],
+      "max_nodes": 13,
+      "outbound_network": "local fixture transport only; no database; CSP connect-src self",
+      "console_errors": 0,
+      "result": "PASS"
+    },
+    "ui_actions": [
+      {
+        "step": 7,
+        "action": "fit",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 8,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 9,
+        "action": "range",
+        "executed": true,
+        "range": "1",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 10,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000001",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 11,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 12,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 13,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 14,
+        "action": "resize",
+        "executed": true,
+        "width": 1280,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 15,
+        "action": "filter",
+        "executed": true,
+        "filter": "MEMBER_OF",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 16,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 17,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 18,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 19,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 20,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000001",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 21,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 22,
+        "action": "select",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000011",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 23,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 24,
+        "action": "select",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 25,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 26,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 27,
+        "action": "range",
+        "executed": true,
+        "range": "3",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 28,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 29,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 30,
+        "action": "fit",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 31,
+        "action": "filter",
+        "executed": true,
+        "filter": "MEMBER_OF",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 32,
+        "action": "range",
+        "executed": true,
+        "range": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 33,
+        "action": "fit",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 34,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 35,
+        "action": "range",
+        "executed": true,
+        "range": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 36,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 37,
+        "action": "evidence",
+        "executed": false,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 38,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 39,
+        "action": "evidence",
+        "executed": false,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 40,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 41,
+        "action": "evidence",
+        "executed": false,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 42,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 43,
+        "action": "drag",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 44,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 45,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 46,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 47,
+        "action": "evidence",
+        "executed": false,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 48,
+        "action": "fit",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 49,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 50,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000001",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 51,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 52,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000011",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 53,
+        "action": "range",
+        "executed": true,
+        "range": "3",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 54,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 55,
+        "action": "fit",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 56,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 57,
+        "action": "evidence",
+        "executed": false,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 58,
+        "action": "resize",
+        "executed": true,
+        "width": 1024,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 59,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 60,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 61,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 62,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 63,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000001",
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 64,
+        "action": "filter",
+        "executed": true,
+        "filter": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 65,
+        "action": "range",
+        "executed": true,
+        "range": "2",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 66,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 67,
+        "action": "drag",
+        "executed": true,
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 68,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000003",
+        "nodes": 10,
+        "result": "PASS"
+      },
+      {
+        "step": 69,
+        "action": "drag",
+        "executed": true,
+        "nodes": 10,
+        "result": "PASS"
+      },
+      {
+        "step": 70,
+        "action": "focus",
+        "executed": false,
+        "nodes": 10,
+        "result": "PASS"
+      },
+      {
+        "step": 71,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 10,
+        "result": "PASS"
+      },
+      {
+        "step": 72,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 73,
+        "action": "range",
+        "executed": true,
+        "range": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 74,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 75,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 76,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 77,
+        "action": "range",
+        "executed": true,
+        "range": "2",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 78,
+        "action": "focus",
+        "executed": false,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 79,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 80,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000001",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 81,
+        "action": "select",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 82,
+        "action": "select",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000003",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 83,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 84,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 6,
+        "result": "PASS"
+      },
+      {
+        "step": 85,
+        "action": "select",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000006",
+        "nodes": 6,
+        "result": "PASS"
+      },
+      {
+        "step": 86,
+        "action": "resize",
+        "executed": true,
+        "width": 390,
+        "nodes": 6,
+        "result": "PASS"
+      },
+      {
+        "step": 87,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 88,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 89,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 90,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000011",
+        "nodes": 6,
+        "result": "PASS"
+      },
+      {
+        "step": 91,
+        "action": "filter",
+        "executed": true,
+        "filter": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 92,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 93,
+        "action": "fit",
+        "executed": true,
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 94,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 95,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000007",
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 96,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000001",
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 97,
+        "action": "focus",
+        "executed": false,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 98,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 99,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 100,
+        "action": "drag",
+        "executed": false,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 101,
+        "action": "drag",
+        "executed": false,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 102,
+        "action": "focus",
+        "executed": false,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 103,
+        "action": "fit",
+        "executed": true,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 104,
+        "action": "resize",
+        "executed": true,
+        "width": 1440,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 105,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 106,
+        "action": "range",
+        "executed": true,
+        "range": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 107,
+        "action": "filter",
+        "executed": true,
+        "filter": "CONTRACT_WITH",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 108,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000003",
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 109,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000010",
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 110,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 111,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 112,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000011",
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 113,
+        "action": "focus",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 114,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 115,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 116,
+        "action": "select",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000003",
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 117,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 118,
+        "action": "drag",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 119,
+        "action": "focus",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 120,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 121,
+        "action": "drag",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 122,
+        "action": "filter",
+        "executed": true,
+        "filter": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 123,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 124,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 125,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 126,
+        "action": "filter",
+        "executed": true,
+        "filter": "MEMBER_OF",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 127,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 128,
+        "action": "focus",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 129,
+        "action": "filter",
+        "executed": true,
+        "filter": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 130,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000011",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 131,
+        "action": "focus",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 132,
+        "action": "resize",
+        "executed": true,
+        "width": 1024,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 133,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 134,
+        "action": "fit",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 135,
+        "action": "focus",
+        "executed": false,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 136,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 137,
+        "action": "focus",
+        "executed": false,
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 138,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 139,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 140,
+        "action": "range",
+        "executed": true,
+        "range": "2",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 141,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 142,
+        "action": "drag",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 143,
+        "action": "range",
+        "executed": true,
+        "range": "",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 144,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 145,
+        "action": "range",
+        "executed": true,
+        "range": "1",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 146,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 147,
+        "action": "range",
+        "executed": true,
+        "range": "3",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 148,
+        "action": "resize",
+        "executed": true,
+        "width": 390,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 149,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 150,
+        "action": "filter",
+        "executed": true,
+        "filter": "MEMBER_OF",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 151,
+        "action": "focus",
+        "executed": false,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 152,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 153,
+        "action": "focus",
+        "executed": false,
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 154,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000001",
+        "nodes": 8,
+        "result": "PASS"
+      },
+      {
+        "step": 155,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000001",
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 156,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 157,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000007",
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 158,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 159,
+        "action": "drag",
+        "executed": false,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 160,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 11,
+        "result": "PASS"
+      },
+      {
+        "step": 161,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 162,
+        "action": "drag",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 163,
+        "action": "resize",
+        "executed": true,
+        "width": 1280,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 164,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 165,
+        "action": "filter",
+        "executed": true,
+        "filter": "MEMBER_OF",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 166,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000003",
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 167,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 168,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 7,
+        "result": "PASS"
+      },
+      {
+        "step": 169,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000002",
+        "nodes": 10,
+        "result": "PASS"
+      },
+      {
+        "step": 170,
+        "action": "resize",
+        "executed": true,
+        "width": 390,
+        "nodes": 10,
+        "result": "PASS"
+      },
+      {
+        "step": 171,
+        "action": "drag",
+        "executed": false,
+        "nodes": 10,
+        "result": "PASS"
+      },
+      {
+        "step": 172,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000008",
+        "nodes": 13,
+        "result": "PASS"
+      },
+      {
+        "step": 173,
+        "action": "drag",
+        "executed": false,
+        "nodes": 13,
+        "result": "PASS"
+      },
+      {
+        "step": 174,
+        "action": "fit",
+        "executed": true,
+        "nodes": 13,
+        "result": "PASS"
+      },
+      {
+        "step": 175,
+        "action": "fit",
+        "executed": true,
+        "nodes": 13,
+        "result": "PASS"
+      },
+      {
+        "step": 176,
+        "action": "fit",
+        "executed": true,
+        "nodes": 13,
+        "result": "PASS"
+      },
+      {
+        "step": 177,
+        "action": "focus",
+        "executed": false,
+        "nodes": 13,
+        "result": "PASS"
+      },
+      {
+        "step": 178,
+        "action": "filter",
+        "executed": true,
+        "filter": "MEMBER_OF",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 179,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 180,
+        "action": "collapse",
+        "executed": true,
+        "nodes": 1,
+        "result": "PASS"
+      },
+      {
+        "step": 181,
+        "action": "expand",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000000",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 182,
+        "action": "select",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000011",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 183,
+        "action": "evidence",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 184,
+        "action": "switch-fast",
+        "executed": true,
+        "id": "11111111-1111-4111-8111-000000000003",
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 185,
+        "action": "zoom",
+        "executed": true,
+        "nodes": 5,
+        "result": "PASS"
+      },
+      {
+        "step": 186,
+        "action": "range",
+        "executed": true,
+        "range": "3",
+        "nodes": 5,
+        "result": "PASS"
+      }
+    ],
+    "ui_source": "web/index.html unchanged between graph repair and final health repair"
+  },
+  "production_ui": {
+    "url": "https://taiwan-entity-intelligence.vercel.app/",
+    "one_intermediary": {
+      "nodes": 3,
+      "edges": 2
+    },
+    "two_intermediaries": {
+      "nodes": 4,
+      "edges": 3
+    },
+    "company_expansion": {
+      "nodes": 21,
+      "edges": 20
+    },
+    "evidence_official_case": "1141401387",
+    "console_errors": []
+  },
+  "production_responsive": [
+    {
+      "canvas": 320,
+      "headerClear": true,
+      "height": 625,
+      "page": 1425,
+      "width": 1440
+    },
+    {
+      "canvas": 320,
+      "headerClear": true,
+      "height": 625,
+      "page": 1265,
+      "width": 1280
+    },
+    {
+      "canvas": 320,
+      "headerClear": true,
+      "height": 520,
+      "page": 1106,
+      "width": 1121
+    },
+    {
+      "canvas": 443,
+      "headerClear": true,
+      "height": 900,
+      "page": 1009,
+      "width": 1024
+    },
+    {
+      "canvas": 443,
+      "headerClear": true,
+      "height": 900,
+      "page": 753,
+      "width": 768
+    },
+    {
+      "canvas": 280,
+      "headerClear": true,
+      "height": 844,
+      "page": 375,
+      "width": 390
+    }
+  ],
+  "pdf_parity": {
+    "result": "PASS",
+    "production_file": "tei-company-22659295 (6).pdf",
+    "production_bytes": 165851,
+    "preview_bytes": 165842,
+    "comparison": "page count, landscape, company ID, bilingual sections, official URI set, no repeated headers",
+    "facts": {
+      "pages": 15,
+      "landscape": true,
+      "official_uris": [
+        "https://ardata.cy.gov.tw/api/v1/Search/download?AccountNumber=&DownloadType=3&ElectionArea=%E8%87%BA%E5%8C%97%E5%B8%82&ElectionName=113%E5%B9%B4%E7%AB%8B%E6%B3%95%E5%A7%94%E5%93%A1%E9%81%B8%E8%88%89&SearchType=2&Version=&YearOrSerial=1",
+        "https://data.gcis.nat.gov.tw/od/data/api/4E5F7653-1B91-4DDC-99D5-468530FAE396?%24format=json&%24filter=Business_Accounting_NO+eq+22659295&%24skip=0&%24top=1000",
+        "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6?%24format=json&%24filter=Business_Accounting_NO+eq+22659295&%24skip=0&%24top=1",
+        "https://data.gcis.nat.gov.tw/od/data/api/5F64D864-61CB-4D0D-8AD9-492047CC1EA6?%24format=json&%24filter=Business_Accounting_NO+eq+22659295&%24top=1",
+        "https://web.pcc.gov.tw/prkms/tender/common/basic/indexTenderBasic",
+        "https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=20200703&fn=BDM-1-53131415.xml",
+        "https://web.pcc.gov.tw/prkms/urlSelector/common/atm?pk=MTEwNDEz",
+        "https://web.pcc.gov.tw/prkms/urlSelector/common/atm?pk=MTM3NDcxNA==",
+        "https://web.pcc.gov.tw/prkms/urlSelector/common/atm?pk=MjE4NTg0",
+        "https://web.pcc.gov.tw/prkms/urlSelector/common/atm?pk=MzExNzA0",
+        "https://web.pcc.gov.tw/prkms/urlSelector/common/atm?pk=Mzk5OTA1",
+        "https://web.pcc.gov.tw/prkms/urlSelector/common/atm?pk=MzkzOTMx"
+      ],
+      "has_company": true,
+      "bilingual": true,
+      "repeat_headers": []
+    },
+    "all_text_equal_except_observed_generation_retrieval_times": true,
+    "normalized_text_sha256": "45316b342ffb0e1e187319bc527e6ddf71cf32459f7d5ed89d97b7ada31db674"
+  },
+  "runtime_errors": {
+    "deployment": "dpl_9GqszKuv67Y8gvLv7FgsyaWVYuju",
+    "window_utc": [
+      "2026-11-21T00:49:41.475Z",
+      "2026-11-21T01:04:41.475Z"
+    ],
+    "levels": [
+      "error",
+      "fatal"
+    ],
+    "records": 0,
+    "not_long_duration_sla": true
+  },
+  "method_notes": [
+    "Initial JSON comparator distinguished Python int/float after JS parses JSON numbers; corrected to compare JSON numeric values while retaining string-vs-number differences.",
+    "Preview viewport capability was bound to the active fixture tab; invalid viewport measurements were discarded and replaced with assertions on actual requested window dimensions.",
+    "Earlier PDF label assertion expected Company Profile; actual bilingual section is Entity Profile. Corrected validator to actual published section; no product/report data changed."
+  ],
+  "limits": [
+    "Bounded synthetic fuzzing does not prove zero vulnerabilities or exhaustive input coverage.",
+    "21 real API comparisons and a company report are sampled parity evidence, not all-record national data certification.",
+    "10 ambiguous civil names and 1 dissolved historical record remain withheld.",
+    "Shared Development public data architecture remains; no independent Production DB was created."
+  ]
+}
